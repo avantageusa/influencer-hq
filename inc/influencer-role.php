@@ -102,10 +102,15 @@ add_action('wp_loaded', 'hide_admin_bar_for_influencer');
 function block_wp_admin_access_for_influencer() {
     $user = wp_get_current_user();
     
+    // Never block admins or editors
+    if ( $user->has_cap('edit_posts') ) {
+        return;
+    }
+
     if (in_array('influencer', $user->roles)) {
         // Block direct access to wp-admin URLs
         if (strpos($_SERVER['REQUEST_URI'], '/wp-admin') !== false && !wp_doing_ajax()) {
-            wp_redirect(home_url('/#login'));
+            wp_redirect(home_url('/portal/portal-home/'));
             exit;
         }
     }
@@ -117,12 +122,16 @@ add_action('init', 'block_wp_admin_access_for_influencer');
  */
 function block_influencer_from_admin() {
     $user = wp_get_current_user();
+
+    // Never block admins or editors
+    if ( $user->has_cap('edit_posts') ) {
+        return;
+    }
     
     if (in_array('influencer', $user->roles)) {
         // Block ALL admin access
         if (is_admin() && !wp_doing_ajax()) {
-            // Redirect to Influencer HQ page instead of admin
-            wp_redirect(home_url('/#login'));
+            wp_redirect(home_url('/portal/portal-home/'));
             exit;
         }
     }
@@ -136,10 +145,14 @@ function redirect_influencer_after_login($redirect_to, $request, $user) {
     if (is_wp_error($user)) {
         return $redirect_to;
     }
+
+    // Never redirect admins or editors away from where they intended to go
+    if ( $user->has_cap('edit_posts') ) {
+        return $redirect_to;
+    }
     
     if (in_array('influencer', $user->roles)) {
-        // Always redirect influencers to the Influencer HQ page, never to admin
-        return home_url('/#login');
+        return home_url('/portal/portal-home/');
     }
     
     return $redirect_to;

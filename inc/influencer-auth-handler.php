@@ -2,20 +2,110 @@
 /**
  * Influencer Authentication Handler
  * Processes registration and login for influencer users
- * 
+ *
  * This file should be included in functions.php:
  * require_once get_template_directory() . '/inc/influencer-auth-handler.php';
  */
 
-// Hook into WordPress init to process forms early
-add_action('init', 'process_influencer_auth_forms');
+// ---------------------------------------------------------------------------
+// Helper: store flash messages in transient-backed cookies
+// ---------------------------------------------------------------------------
+if (!function_exists('set_auth_error')) {
+    function set_auth_error($message) {
+        setcookie('auth_error', $message, time() + 60, COOKIEPATH, COOKIE_DOMAIN, is_ssl(), true);
+    }
+}
+
+if (!function_exists('set_auth_success')) {
+    function set_auth_success($message) {
+        setcookie('auth_success', $message, time() + 60, COOKIEPATH, COOKIE_DOMAIN, is_ssl(), true);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// AJAX Login handler (used by the login form on page-home)
+// ---------------------------------------------------------------------------
+add_action('wp_ajax_nopriv_influencer_login_ajax', 'influencer_login_ajax');
+add_action('wp_ajax_influencer_login_ajax', 'influencer_login_ajax');
+
+function influencer_login_ajax() {
+    if (!check_ajax_referer('influencer_login_ajax', 'nonce', false)) {
+        wp_send_json_error('Security verification failed.');
+        return;
+    }
+
+    $email    = sanitize_email($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $redirect = isset($_POST['redirect_url']) ? esc_url_raw($_POST['redirect_url']) : home_url('/portal/portal-home/');
+
+    if (!is_email($email)) {
+        wp_send_json_error('Please enter a valid email address.');
+        return;
+    }
+
+    if (empty($password)) {
+        wp_send_json_error('Please enter your password.');
+        return;
+    }
+
+    $user = get_user_by('email', $email);
+    if (!$user) {
+        wp_send_json_error('No account found with this email address.');
+        return;
+    }
+
+    $result = wp_signon(
+        array(
+            'user_login'    => $user->user_login,
+            'user_password' => $password,
+            'remember'      => true,
+        ),
+        false
+    );
+
+    if (is_wp_error($result)) {
+        wp_send_json_error('Incorrect password. Please try again.');
+        return;
+    }
+
+    // ── Refresh IHQ platform session on every login ───────────────────────────
+    $first_name = get_user_meta($user->ID, 'first_name', true);
+    $last_name  = get_user_meta($user->ID, 'last_name',  true);
+    $ihq_data   = ihq_register_oauth_user($user->ID, $first_name, $last_name, $user->user_email);
+    if ($ihq_data && !empty($ihq_data['AccessToken'])) {
+        update_user_meta($user->ID, 'ihq_access_token',  $ihq_data['AccessToken']);
+        update_user_meta($user->ID, 'ihq_id_token',      $ihq_data['IdToken']);
+        update_user_meta($user->ID, 'ihq_refresh_token', $ihq_data['RefreshToken'] ?? '');
+        update_user_meta($user->ID, 'ihq_token_type',    $ihq_data['TokenType']    ?? 'Bearer');
+        update_user_meta($user->ID, 'ihq_token_expires', time() + (int)($ihq_data['ExpiresIn'] ?? 3600));
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
+    wp_send_json_success(array('redirect' => $redirect));
+}
+
+// ---------------------------------------------------------------------------
+// Traditional form-POST handler (kept as reference; primary flow is AJAX above)
+// To re-enable, post to admin-post.php with action=influencer_register or
+// action=influencer_login and hook via admin_post_nopriv_{action}.
+// ---------------------------------------------------------------------------
 
 function process_influencer_auth_forms() {
     // Only process if this is a POST request
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         return;
     }
-    
+
+    // Never intercept AJAX requests
+    if (defined('DOING_AJAX') && DOING_AJAX) {
+        return;
+    }
+
+    // Never intercept wp-admin requests
+    if (is_admin()) {
+        return;
+    }
+
     // Only process if action is set
     if (!isset($_POST['action'])) {
         return;
@@ -27,7 +117,7 @@ if ($_POST['action'] === 'influencer_register') {
     // Verify nonce
     if (!isset($_POST['register_nonce']) || !wp_verify_nonce($_POST['register_nonce'], 'influencer_register')) {
         set_auth_error('Security verification failed. Please try again.');
-        wp_redirect($_POST['redirect_url']);
+        wp_redirect(isset($_POST['redirect_url']) ? esc_url_raw($_POST['redirect_url']) : home_url());
         exit;
     }
     
@@ -170,6 +260,19 @@ if (isset($_POST['action']) && $_POST['action'] === 'influencer_login') {
         wp_redirect($redirect_url);
         exit;
     }
+
+    // ── Refresh IHQ platform session on every login ───────────────────────────
+    $first_name = get_user_meta($user->ID, 'first_name', true);
+    $last_name  = get_user_meta($user->ID, 'last_name',  true);
+    $ihq_data   = ihq_register_oauth_user($user->ID, $first_name, $last_name, $user->user_email);
+    if ($ihq_data && !empty($ihq_data['AccessToken'])) {
+        update_user_meta($user->ID, 'ihq_access_token',  $ihq_data['AccessToken']);
+        update_user_meta($user->ID, 'ihq_id_token',      $ihq_data['IdToken']);
+        update_user_meta($user->ID, 'ihq_refresh_token', $ihq_data['RefreshToken'] ?? '');
+        update_user_meta($user->ID, 'ihq_token_type',    $ihq_data['TokenType']    ?? 'Bearer');
+        update_user_meta($user->ID, 'ihq_token_expires', time() + (int)($ihq_data['ExpiresIn'] ?? 3600));
+    }
+    // ─────────────────────────────────────────────────────────────────────────
     
     // Success
     set_auth_success('Login successful! Welcome back.');
@@ -180,5 +283,6 @@ if (isset($_POST['action']) && $_POST['action'] === 'influencer_login') {
 }
 
 // If no valid action, redirect to home
-wp_redirect(home_url());
-exit;
+    wp_redirect(home_url());
+    exit;
+} // end process_influencer_auth_forms()

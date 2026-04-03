@@ -159,6 +159,53 @@ function avantage_baccarat_scripts() {
 add_action( 'wp_enqueue_scripts', 'avantage_baccarat_scripts' );
 
 /**
+ * Game Portal URL — user profile field
+ * Stored in user meta as 'hq_game_url'.
+ * Leave blank to use the theme default URL.
+ */
+function avantage_baccarat_game_url_profile_field( $user ) {
+	$value = get_user_meta( $user->ID, 'hq_game_url', true );
+	?>
+	<h3><?php esc_html_e( 'Game Portal Settings', 'avantage-baccarat' ); ?></h3>
+	<table class="form-table">
+		<tr>
+			<th><label for="hq_game_url"><?php esc_html_e( 'Game Portal URL', 'avantage-baccarat' ); ?></label></th>
+			<td>
+				<input type="url" name="hq_game_url" id="hq_game_url"
+					value="<?php echo esc_attr( $value ); ?>"
+					class="regular-text" />
+				<p class="description"><?php esc_html_e( 'Override the base game portal URL for this user. Leave blank to use the default.', 'avantage-baccarat' ); ?></p>
+			</td>
+		</tr>
+	</table>
+	<?php
+}
+add_action( 'show_user_profile', 'avantage_baccarat_game_url_profile_field' );
+add_action( 'edit_user_profile', 'avantage_baccarat_game_url_profile_field' );
+
+function avantage_baccarat_save_game_url_profile_field( $user_id ) {
+	if ( ! current_user_can( 'edit_user', $user_id ) ) {
+		return;
+	}
+	$url = isset( $_POST['hq_game_url'] ) ? esc_url_raw( wp_unslash( $_POST['hq_game_url'] ) ) : '';
+	update_user_meta( $user_id, 'hq_game_url', $url );
+}
+add_action( 'personal_options_update',  'avantage_baccarat_save_game_url_profile_field' );
+add_action( 'edit_user_profile_update', 'avantage_baccarat_save_game_url_profile_field' );
+
+function avantage_save_hq_game_url() {
+	check_ajax_referer( 'settings_save_nonce', 'nonce' );
+	$user_id = get_current_user_id();
+	if ( ! $user_id ) {
+		wp_send_json_error( array( 'message' => 'Not logged in.' ) );
+	}
+	$url = isset( $_POST['value'] ) ? esc_url_raw( wp_unslash( $_POST['value'] ) ) : '';
+	update_user_meta( $user_id, 'hq_game_url', $url );
+	wp_send_json_success();
+}
+add_action( 'wp_ajax_save_hq_game_url', 'avantage_save_hq_game_url' );
+
+/**
  * Implement the Custom Header feature.
  */
 require get_template_directory() . '/inc/custom-header.php';
@@ -199,222 +246,231 @@ require get_template_directory() . '/inc/influencer-role.php';
  * Email Verification Handler
  */
 require_once get_template_directory() . '/inc/email-verification-handler.php';
+/**
+ * Influencer Authentication Handler
+ */
+require_once get_template_directory() . '/inc/influencer-auth-handler.php';
+
+/**
+ * API AJAX Calls (equity chart data, etc.)
+ */
+require_once get_template_directory() . '/inc/api-ajax-calls.php';
 
 /**
  * Check if user exists in Braze (for influencer integration)
  */
-function check_braze_user_exists_influencer($email, $external_id = null) {
-    $braze_api_key = '20bea073-5d29-40ca-b7b5-17126a5893c6';
-    $braze_endpoint = 'https://rest.iad-05.braze.com/users/export/ids';
+// function check_braze_user_exists_influencer($email, $external_id = null) {
+//     $braze_api_key = '20bea073-5d29-40ca-b7b5-17126a5893c6';
+//     $braze_endpoint = 'https://rest.iad-05.braze.com/users/export/ids';
     
-    // Use email as external_id if not provided
-    if (!$external_id) {
-        $external_id = $email;
-    }
+//     // Use email as external_id if not provided
+//     if (!$external_id) {
+//         $external_id = $email;
+//     }
     
-    $payload = [
-        'external_ids' => [$external_id]
-    ];
+//     $payload = [
+//         'external_ids' => [$external_id]
+//     ];
     
-    $response = wp_remote_post($braze_endpoint, [
-        'headers' => [
-            'Authorization' => 'Bearer ' . $braze_api_key,
-            'Content-Type' => 'application/json',
-        ],
-        'body' => wp_json_encode($payload),
-        'timeout' => 15,
-        'sslverify' => true
-    ]);
+//     $response = wp_remote_post($braze_endpoint, [
+//         'headers' => [
+//             'Authorization' => 'Bearer ' . $braze_api_key,
+//             'Content-Type' => 'application/json',
+//         ],
+//         'body' => wp_json_encode($payload),
+//         'timeout' => 15,
+//         'sslverify' => true
+//     ]);
     
-    if (is_wp_error($response)) {
-        return [
-            'success' => false,
-            'exists' => false,
-            'error' => $response->get_error_message(),
-            'user_data' => null
-        ];
-    }
+//     if (is_wp_error($response)) {
+//         return [
+//             'success' => false,
+//             'exists' => false,
+//             'error' => $response->get_error_message(),
+//             'user_data' => null
+//         ];
+//     }
     
-    $response_code = wp_remote_retrieve_response_code($response);
-    $response_body = wp_remote_retrieve_body($response);
-    $data = json_decode($response_body, true);
+//     $response_code = wp_remote_retrieve_response_code($response);
+//     $response_body = wp_remote_retrieve_body($response);
+//     $data = json_decode($response_body, true);
     
-    if ($response_code >= 200 && $response_code < 300) {
-        $user_exists = false;
-        $existing_user_data = null;
+//     if ($response_code >= 200 && $response_code < 300) {
+//         $user_exists = false;
+//         $existing_user_data = null;
         
-        if (isset($data['users']) && !empty($data['users'])) {
-            // Check if the email field exists and matches target email
-            foreach ($data['users'] as $user) {
-                if (isset($user['email']) && $user['email'] === $email) {
-                    $user_exists = true;
-                    $existing_user_data = $user;
-                    break;
-                }
-            }
-        }
+//         if (isset($data['users']) && !empty($data['users'])) {
+//             // Check if the email field exists and matches target email
+//             foreach ($data['users'] as $user) {
+//                 if (isset($user['email']) && $user['email'] === $email) {
+//                     $user_exists = true;
+//                     $existing_user_data = $user;
+//                     break;
+//                 }
+//             }
+//         }
         
-        return [
-            'success' => true,
-            'exists' => $user_exists,
-            'user_data' => $existing_user_data,
-            'full_response' => $data
-        ];
-    } else {
-        return [
-            'success' => false,
-            'exists' => false,
-            'error' => 'API returned error code: ' . $response_code,
-            'user_data' => null
-        ];
-    }
-}
+//         return [
+//             'success' => true,
+//             'exists' => $user_exists,
+//             'user_data' => $existing_user_data,
+//             'full_response' => $data
+//         ];
+//     } else {
+//         return [
+//             'success' => false,
+//             'exists' => false,
+//             'error' => 'API returned error code: ' . $response_code,
+//             'user_data' => null
+//         ];
+//     }
+// }
 
 // Hook: Create Genius Referrals advocate when a new influencer account is created
-add_action('set_user_role', function($user_id, $role, $old_roles) {
-	error_log('=== GENIUS REFERRALS: set_user_role hook triggered for user ID: ' . $user_id);
-	error_log('=== GENIUS REFERRALS: New role: ' . $role . ', Old roles: ' . print_r($old_roles, true));
+// add_action('set_user_role', function($user_id, $role, $old_roles) {
+// 	error_log('=== GENIUS REFERRALS: set_user_role hook triggered for user ID: ' . $user_id);
+// 	error_log('=== GENIUS REFERRALS: New role: ' . $role . ', Old roles: ' . print_r($old_roles, true));
 	
-	// Only proceed if the new role is influencer
-	if ($role !== 'influencer') {
-		error_log('=== GENIUS REFERRALS: New role is NOT influencer, skipping advocate creation');
-		return;
-	}
+// 	// Only proceed if the new role is influencer
+// 	if ($role !== 'influencer') {
+// 		error_log('=== GENIUS REFERRALS: New role is NOT influencer, skipping advocate creation');
+// 		return;
+// 	}
 	
-	error_log('=== GENIUS REFERRALS: User IS now an influencer, proceeding with advocate creation');
+// 	error_log('=== GENIUS REFERRALS: User IS now an influencer, proceeding with advocate creation');
 	
-	$user = get_userdata($user_id);
-	if (!$user) {
-		error_log('=== GENIUS REFERRALS: Could not load user data, aborting');
-		return;
-	}
+// 	$user = get_userdata($user_id);
+// 	if (!$user) {
+// 		error_log('=== GENIUS REFERRALS: Could not load user data, aborting');
+// 		return;
+// 	}
 	
-	$email = $user->user_email;
-	$first_name = get_user_meta($user_id, 'first_name', true);
-	$last_name = get_user_meta($user_id, 'last_name', true);
+// 	$email = $user->user_email;
+// 	$first_name = get_user_meta($user_id, 'first_name', true);
+// 	$last_name = get_user_meta($user_id, 'last_name', true);
 	
-	error_log('=== GENIUS REFERRALS: Email: "' . $email . '", First name: "' . $first_name . '", Last name: "' . $last_name . '"');
+// 	error_log('=== GENIUS REFERRALS: Email: "' . $email . '", First name: "' . $first_name . '", Last name: "' . $last_name . '"');
 	
-	$advocate_data = array(
-		'advocate' => array(
-			'firstname' => $first_name ? $first_name : $user->display_name,
-			'lastname' => $last_name ? $last_name : 'User',
-			'email' => $email,
-			'payout_threshold' => 20,
-			'currency_code' => 'USD',
-			'can_refer' => 1,
-			'status' => 'active'
-		)
-	);
+// 	$advocate_data = array(
+// 		'advocate' => array(
+// 			'firstname' => $first_name ? $first_name : $user->display_name,
+// 			'lastname' => $last_name ? $last_name : 'User',
+// 			'email' => $email,
+// 			'payout_threshold' => 20,
+// 			'currency_code' => 'USD',
+// 			'can_refer' => 1,
+// 			'status' => 'active'
+// 		)
+// 	);
 	
-	error_log('=== GENIUS REFERRALS: Advocate data prepared: ' . json_encode($advocate_data));
+// 	error_log('=== GENIUS REFERRALS: Advocate data prepared: ' . json_encode($advocate_data));
 	
-	$url = 'https://api.geniusreferrals.com/accounts/dev_qc/advocates';
-	$args = array(
-		'method' => 'POST',
-		'headers' => array(
-			'X-Auth-Token' => '1a5b59cf8307b1b1f0f922aa12d4807c05ebaa10',
-			'Content-Type' => 'application/json',
-			'Accept' => 'application/json'
-		),
-		'body' => json_encode($advocate_data)
-	);
+// 	$url = 'https://api.geniusreferrals.com/accounts/dev_qc/advocates';
+// 	$args = array(
+// 		'method' => 'POST',
+// 		'headers' => array(
+// 			'X-Auth-Token' => '1a5b59cf8307b1b1f0f922aa12d4807c05ebaa10',
+// 			'Content-Type' => 'application/json',
+// 			'Accept' => 'application/json'
+// 		),
+// 		'body' => json_encode($advocate_data)
+// 	);
 	
-	error_log('=== GENIUS REFERRALS: Sending API request to: ' . $url);
+// 	error_log('=== GENIUS REFERRALS: Sending API request to: ' . $url);
 	
-	$response = wp_remote_post($url, $args);
+// 	$response = wp_remote_post($url, $args);
 	
-	if (is_wp_error($response)) {
-		error_log('=== GENIUS REFERRALS: API Error: ' . $response->get_error_message());
-	} else {
-		$body = wp_remote_retrieve_body($response);
-		$code = wp_remote_retrieve_response_code($response);
-		error_log('=== GENIUS REFERRALS: API Response Code: ' . $code);
-		error_log('=== GENIUS REFERRALS: API Response Body: ' . $body);
+// 	if (is_wp_error($response)) {
+// 		error_log('=== GENIUS REFERRALS: API Error: ' . $response->get_error_message());
+// 	} else {
+// 		$body = wp_remote_retrieve_body($response);
+// 		$code = wp_remote_retrieve_response_code($response);
+// 		error_log('=== GENIUS REFERRALS: API Response Code: ' . $code);
+// 		error_log('=== GENIUS REFERRALS: API Response Body: ' . $body);
 		
-		// Save the token to user meta
-		$response_data = json_decode($body, true);
-		if (isset($response_data['token'])) {
-			$genius_token = $response_data['token'];
-			update_user_meta($user_id, 'genius_token', $genius_token);
-			error_log('=== GENIUS REFERRALS: Token saved to user meta: ' . $genius_token);
+// 		// Save the token to user meta
+// 		$response_data = json_decode($body, true);
+// 		if (isset($response_data['token'])) {
+// 			$genius_token = $response_data['token'];
+// 			update_user_meta($user_id, 'genius_token', $genius_token);
+// 			error_log('=== GENIUS REFERRALS: Token saved to user meta: ' . $genius_token);
 			
-			// Send influencer data to Braze
-			$country = get_user_meta($user_id, 'country', true);
+// 			// Send influencer data to Braze
+// 			$country = get_user_meta($user_id, 'country', true);
 			
-			// Check if email exists in Braze
-			$braze_user_check = check_braze_user_exists_influencer($email);
-			$external_id_to_use = '';
-			$influencer_guid = '';
+// 			// Check if email exists in Braze
+// 			$braze_user_check = check_braze_user_exists_influencer($email);
+// 			$external_id_to_use = '';
+// 			$influencer_guid = '';
 			
-			if ($braze_user_check['success'] && $braze_user_check['exists']) {
-				// CASE A: Email exists in Braze - use existing external_id as WordPress GUID
-				$existing_braze_user_info = $braze_user_check['user_data'];
-				$external_id_to_use = $existing_braze_user_info['external_id'] ?? $email;
+// 			if ($braze_user_check['success'] && $braze_user_check['exists']) {
+// 				// CASE A: Email exists in Braze - use existing external_id as WordPress GUID
+// 				$existing_braze_user_info = $braze_user_check['user_data'];
+// 				$external_id_to_use = $existing_braze_user_info['external_id'] ?? $email;
 				
-				// Use the existing Braze external_id as WordPress influencer GUID
-				$influencer_guid = $external_id_to_use;
-			} else {
-				// CASE B: Email does not exist in Braze - create new GUID and use as external_id
-				$influencer_guid = 'wpinfluencer_' . bin2hex(random_bytes(12));
-				$external_id_to_use = $influencer_guid; // Use GUID as external_id for new users
-			}
+// 				// Use the existing Braze external_id as WordPress influencer GUID
+// 				$influencer_guid = $external_id_to_use;
+// 			} else {
+// 				// CASE B: Email does not exist in Braze - create new GUID and use as external_id
+// 				$influencer_guid = 'wpinfluencer_' . bin2hex(random_bytes(12));
+// 				$external_id_to_use = $influencer_guid; // Use GUID as external_id for new users
+// 			}
 			
-			$braze_api_key = '81adeace-fad5-4566-bdd9-06095acdd3ee';
-			$braze_endpoint = 'https://rest.iad-05.braze.com/users/track';
+// 			$braze_api_key = '81adeace-fad5-4566-bdd9-06095acdd3ee';
+// 			$braze_endpoint = 'https://rest.iad-05.braze.com/users/track';
 			
-			$braze_data = [
-				'attributes' => [
-					[
-						'external_id' => $external_id_to_use,
-						'email' => $email,
-						'first_name' => $first_name ? $first_name : $user->display_name,
-						'last_name' => $last_name ? $last_name : '',
-						'Language' => $country ? $country : '',
-						'wp_influencer_guid' => $influencer_guid
-					]
-				],
-				'events' => [
-					[
-						'external_id' => $external_id_to_use,
-						'name' => 'influencer_registered',
-						'time' => date('c')
-					]
-				]
-			];
+// 			$braze_data = [
+// 				'attributes' => [
+// 					[
+// 						'external_id' => $external_id_to_use,
+// 						'email' => $email,
+// 						'first_name' => $first_name ? $first_name : $user->display_name,
+// 						'last_name' => $last_name ? $last_name : '',
+// 						'Language' => $country ? $country : '',
+// 						'wp_influencer_guid' => $influencer_guid
+// 					]
+// 				],
+// 				'events' => [
+// 					[
+// 						'external_id' => $external_id_to_use,
+// 						'name' => 'influencer_registered',
+// 						'time' => date('c')
+// 					]
+// 				]
+// 			];
 			
-			error_log('=== GENIUS REFERRALS: Sending to Braze with external_id: ' . $external_id_to_use);
-			error_log('=== GENIUS REFERRALS: Braze payload: ' . wp_json_encode($braze_data));
+// 			error_log('=== GENIUS REFERRALS: Sending to Braze with external_id: ' . $external_id_to_use);
+// 			error_log('=== GENIUS REFERRALS: Braze payload: ' . wp_json_encode($braze_data));
 			
-			$braze_response = wp_remote_post($braze_endpoint, [
-				'headers' => [
-					'Content-Type' => 'application/json',
-					'Authorization' => 'Bearer ' . $braze_api_key,
-				],
-				'body' => wp_json_encode($braze_data),
-				'timeout' => 15,
-				'sslverify' => true
-			]);
+// 			$braze_response = wp_remote_post($braze_endpoint, [
+// 				'headers' => [
+// 					'Content-Type' => 'application/json',
+// 					'Authorization' => 'Bearer ' . $braze_api_key,
+// 				],
+// 				'body' => wp_json_encode($braze_data),
+// 				'timeout' => 15,
+// 				'sslverify' => true
+// 			]);
 			
-			if (is_wp_error($braze_response)) {
-				error_log('=== GENIUS REFERRALS: Braze API Error: ' . $braze_response->get_error_message());
-			} else {
-				$braze_body = wp_remote_retrieve_body($braze_response);
-				$braze_code = wp_remote_retrieve_response_code($braze_response);
-				error_log('=== GENIUS REFERRALS: Braze API Response Code: ' . $braze_code);
-				error_log('=== GENIUS REFERRALS: Braze API Response Body: ' . $braze_body);
+// 			if (is_wp_error($braze_response)) {
+// 				error_log('=== GENIUS REFERRALS: Braze API Error: ' . $braze_response->get_error_message());
+// 			} else {
+// 				$braze_body = wp_remote_retrieve_body($braze_response);
+// 				$braze_code = wp_remote_retrieve_response_code($braze_response);
+// 				error_log('=== GENIUS REFERRALS: Braze API Response Code: ' . $braze_code);
+// 				error_log('=== GENIUS REFERRALS: Braze API Response Body: ' . $braze_body);
 				
-				if ($braze_code >= 200 && $braze_code < 300) {
-					error_log('=== GENIUS REFERRALS: Braze submission SUCCESS');
-				} else {
-					error_log('=== GENIUS REFERRALS: Braze submission FAILED - Check response above');
-				}
-			}
-		} else {
-			error_log('=== GENIUS REFERRALS: No token found in response');
-		}
-	}
-}, 10, 3);
+// 				if ($braze_code >= 200 && $braze_code < 300) {
+// 					error_log('=== GENIUS REFERRALS: Braze submission SUCCESS');
+// 				} else {
+// 					error_log('=== GENIUS REFERRALS: Braze submission FAILED - Check response above');
+// 				}
+// 			}
+// 		} else {
+// 			error_log('=== GENIUS REFERRALS: No token found in response');
+// 		}
+// 	}
+// }, 10, 3);
 
 /**
  * Register Custom Post Type: Live Appearance
@@ -492,79 +548,97 @@ function add_live_appearance_meta_boxes() {
 add_action('add_meta_boxes', 'add_live_appearance_meta_boxes');
 
 /**
+ * Move Live Appearance Details meta box above the editor on the edit screen.
+ */
+add_action( 'admin_footer', function() {
+    global $post_type;
+    if ( 'live_appearance' !== $post_type ) {
+        return;
+    }
+    ?>
+    <script>
+    (function () {
+        var box    = document.getElementById('live_appearance_details');
+        var editor = document.getElementById('postdivrich')
+                  || document.getElementById('wp-content-wrap')
+                  || document.querySelector('#postdiv');
+        if ( box && editor && editor.parentNode ) {
+            editor.parentNode.insertBefore( box, editor );
+        }
+    })();
+    </script>
+    <?php
+} );
+
+/**
  * Meta Box Callback for Live Appearance Details
  */
 function live_appearance_meta_box_callback($post) {
-    // Add nonce field for security
     wp_nonce_field('live_appearance_meta_box', 'live_appearance_meta_box_nonce');
-    
-    // Get existing values
-    $user_id = get_post_meta($post->ID, '_live_appearance_user_id', true);
-    $appearance_datetime = get_post_meta($post->ID, '_live_appearance_datetime', true);
-    $location = get_post_meta($post->ID, '_live_appearance_location', true);
-    $duration = get_post_meta($post->ID, '_live_appearance_duration', true);
-    $notes = get_post_meta($post->ID, '_live_appearance_notes', true);
-    
-    // Format datetime for input field
-    if ($appearance_datetime) {
-        $formatted_datetime = date('Y-m-d\TH:i', strtotime($appearance_datetime));
-    } else {
-        $formatted_datetime = '';
-    }
-    
+
+    $user_id            = get_post_meta( $post->ID, '_live_appearance_user_id', true );
+    $la_day             = get_post_meta( $post->ID, '_live_appearance_day', true );
+    $la_backup_day      = get_post_meta( $post->ID, '_live_appearance_backup_day', true );
+    $la_start_time      = get_post_meta( $post->ID, '_live_appearance_start_time', true );
+    $la_backup_time     = get_post_meta( $post->ID, '_live_appearance_backup_start_time', true );
+    $la_opponent        = get_post_meta( $post->ID, '_live_appearance_opponent_handle', true );
+    $la_backup_opponent = get_post_meta( $post->ID, '_live_appearance_backup_opponent_handle', true );
+    $la_url             = get_post_meta( $post->ID, '_live_appearance_url', true );
+    $la_date_created    = get_post_meta( $post->ID, '_live_appearance_date_created', true );
+
+    // Status dropdown
+    $la_status = get_post_meta( $post->ID, '_live_appearance_status', true ) ?: 'pending';
+
     echo '<table class="form-table">';
-    
-    // User ID field with dropdown
+
+    // Submitted by (read-only)
+    $user = $user_id ? get_userdata( $user_id ) : null;
     echo '<tr>';
-    echo '<th><label for="live_appearance_user_id">' . __('User', 'avantage-baccarat') . '</label></th>';
+    echo '<th>' . __( 'Submitted By', 'avantage-baccarat' ) . '</th>';
+    echo '<td>' . ( $user ? esc_html( $user->display_name . ' (' . $user->user_email . ')' ) : '—' ) . '</td>';
+    echo '</tr>';
+
+    // Request status
+    echo '<tr>';
+    echo '<th><label for="la_request_status_change">' . __( 'Request Status', 'avantage-baccarat' ) . '</label></th>';
     echo '<td>';
-    wp_dropdown_users(array(
-        'name' => 'live_appearance_user_id',
-        'id' => 'live_appearance_user_id',
-        'selected' => $user_id,
-        'show_option_none' => __('Select a user', 'avantage-baccarat'),
-        'option_none_value' => '',
-    ));
-    echo '<p class="description">' . __('Select the user associated with this live appearance.', 'avantage-baccarat') . '</p>';
+    echo '<select name="la_request_status_change" id="la_request_status_change">';
+    echo '<option value="pending"'   . selected( $la_status, 'pending',   false ) . '>Pending</option>';
+    echo '<option value="confirmed"' . selected( $la_status, 'confirmed', false ) . '>Confirmed</option>';
+    echo '</select>';
     echo '</td>';
     echo '</tr>';
-    
-    // Date/Time field
+
+    // Portal form fields (read-only)
+    $fields = array(
+        'Day'                    => $la_day,
+        'Backup Day'             => $la_backup_day,
+        'Start Time'             => $la_start_time,
+        'Backup Start Time'      => $la_backup_time,
+        'Opponent Handle'        => $la_opponent,
+        'Backup Opponent Handle' => $la_backup_opponent,
+    );
+    foreach ( $fields as $label => $value ) {
+        echo '<tr>';
+        echo '<th>' . esc_html( $label ) . '</th>';
+        echo '<td>' . esc_html( $value ?: '—' ) . '</td>';
+        echo '</tr>';
+    }
+
     echo '<tr>';
-    echo '<th><label for="live_appearance_datetime">' . __('Date & Time', 'avantage-baccarat') . '</label></th>';
+    echo '<th>' . __( 'Appearance URL', 'avantage-baccarat' ) . '</th>';
     echo '<td>';
-    echo '<input type="datetime-local" id="live_appearance_datetime" name="live_appearance_datetime" value="' . esc_attr($formatted_datetime) . '" style="width: 250px;" />';
-    echo '<p class="description">' . __('Select the date and time of the live appearance.', 'avantage-baccarat') . '</p>';
+    echo $la_url ? '<a href="' . esc_url( $la_url ) . '" target="_blank">' . esc_html( $la_url ) . '</a>' : '—';
     echo '</td>';
     echo '</tr>';
-    
-    // Location field
-    echo '<tr>';
-    echo '<th><label for="live_appearance_location">' . __('Location', 'avantage-baccarat') . '</label></th>';
-    echo '<td>';
-    echo '<input type="text" id="live_appearance_location" name="live_appearance_location" value="' . esc_attr($location) . '" style="width: 100%;" />';
-    echo '<p class="description">' . __('Enter the location of the live appearance.', 'avantage-baccarat') . '</p>';
-    echo '</td>';
-    echo '</tr>';
-    
-    // Duration field
-    echo '<tr>';
-    echo '<th><label for="live_appearance_duration">' . __('Duration (minutes)', 'avantage-baccarat') . '</label></th>';
-    echo '<td>';
-    echo '<input type="number" id="live_appearance_duration" name="live_appearance_duration" value="' . esc_attr($duration) . '" min="0" style="width: 100px;" />';
-    echo '<p class="description">' . __('Duration of the appearance in minutes.', 'avantage-baccarat') . '</p>';
-    echo '</td>';
-    echo '</tr>';
-    
-    // Notes field
-    echo '<tr>';
-    echo '<th><label for="live_appearance_notes">' . __('Additional Notes', 'avantage-baccarat') . '</label></th>';
-    echo '<td>';
-    echo '<textarea id="live_appearance_notes" name="live_appearance_notes" rows="4" style="width: 100%;">' . esc_textarea($notes) . '</textarea>';
-    echo '<p class="description">' . __('Any additional notes or details about the live appearance.', 'avantage-baccarat') . '</p>';
-    echo '</td>';
-    echo '</tr>';
-    
+
+    if ( $la_date_created ) {
+        echo '<tr>';
+        echo '<th>' . __( 'Submitted', 'avantage-baccarat' ) . '</th>';
+        echo '<td>' . esc_html( date( 'M j, Y g:i A', strtotime( $la_date_created ) ) ) . '</td>';
+        echo '</tr>';
+    }
+
     echo '</table>';
 }
 
@@ -572,52 +646,22 @@ function live_appearance_meta_box_callback($post) {
  * Save Live Appearance Meta Box Data
  */
 function save_live_appearance_meta_box_data($post_id) {
-    // Check if nonce is valid
-    if (!isset($_POST['live_appearance_meta_box_nonce']) || !wp_verify_nonce($_POST['live_appearance_meta_box_nonce'], 'live_appearance_meta_box')) {
+    if ( ! isset( $_POST['live_appearance_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['live_appearance_meta_box_nonce'], 'live_appearance_meta_box' ) ) {
         return;
     }
-    
-    // Check if user has permissions to save data
-    if (!current_user_can('edit_post', $post_id)) {
+    if ( ! current_user_can( 'edit_post', $post_id ) ) {
         return;
     }
-    
-    // Check if not an autosave
-    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
         return;
     }
-    
-    // Save User ID
-    if (isset($_POST['live_appearance_user_id'])) {
-        update_post_meta($post_id, '_live_appearance_user_id', sanitize_text_field($_POST['live_appearance_user_id']));
-    }
-    
-    // Save Date/Time
-    if (isset($_POST['live_appearance_datetime'])) {
-        $datetime = sanitize_text_field($_POST['live_appearance_datetime']);
-        if ($datetime) {
-            // Convert to MySQL datetime format
-            $formatted_datetime = date('Y-m-d H:i:s', strtotime($datetime));
-            update_post_meta($post_id, '_live_appearance_datetime', $formatted_datetime);
-        } else {
-            delete_post_meta($post_id, '_live_appearance_datetime');
+
+    // Save request status as meta field
+    if ( isset( $_POST['la_request_status_change'] ) ) {
+        $new_status = sanitize_text_field( $_POST['la_request_status_change'] );
+        if ( in_array( $new_status, array( 'pending', 'confirmed' ), true ) ) {
+            update_post_meta( $post_id, '_live_appearance_status', $new_status );
         }
-    }
-    
-    // Save Location
-    if (isset($_POST['live_appearance_location'])) {
-        update_post_meta($post_id, '_live_appearance_location', sanitize_text_field($_POST['live_appearance_location']));
-    }
-    
-    // Save Duration
-    if (isset($_POST['live_appearance_duration'])) {
-        $duration = intval($_POST['live_appearance_duration']);
-        update_post_meta($post_id, '_live_appearance_duration', $duration);
-    }
-    
-    // Save Notes
-    if (isset($_POST['live_appearance_notes'])) {
-        update_post_meta($post_id, '_live_appearance_notes', sanitize_textarea_field($_POST['live_appearance_notes']));
     }
 }
 add_action('save_post', 'save_live_appearance_meta_box_data');
@@ -627,14 +671,17 @@ add_action('save_post', 'save_live_appearance_meta_box_data');
  */
 function add_live_appearance_admin_columns($columns) {
     $new_columns = array();
-    $new_columns['cb'] = $columns['cb'];
-    $new_columns['title'] = $columns['title'];
-    $new_columns['live_user'] = __('User', 'avantage-baccarat');
-    $new_columns['live_datetime'] = __('Date & Time', 'avantage-baccarat');
-    $new_columns['live_location'] = __('Location', 'avantage-baccarat');
-    $new_columns['live_duration'] = __('Duration', 'avantage-baccarat');
-    $new_columns['date'] = $columns['date'];
-    
+    $new_columns['cb']             = $columns['cb'];
+    $new_columns['title']          = $columns['title'];
+    $new_columns['live_status']    = __( 'Status', 'avantage-baccarat' );
+    $new_columns['live_user']      = __( 'User', 'avantage-baccarat' );
+    $new_columns['live_day']       = __( 'Day', 'avantage-baccarat' );
+    $new_columns['live_backup_day']= __( 'Backup Day', 'avantage-baccarat' );
+    $new_columns['live_start_time']= __( 'Start Time', 'avantage-baccarat' );
+    $new_columns['live_opponent']  = __( 'Opponent', 'avantage-baccarat' );
+    $new_columns['live_url']       = __( 'URL', 'avantage-baccarat' );
+    $new_columns['live_created']   = __( 'Submitted', 'avantage-baccarat' );
+    $new_columns['date']           = $columns['date'];
     return $new_columns;
 }
 add_filter('manage_live_appearance_posts_columns', 'add_live_appearance_admin_columns');
@@ -644,6 +691,13 @@ add_filter('manage_live_appearance_posts_columns', 'add_live_appearance_admin_co
  */
 function display_live_appearance_admin_columns($column, $post_id) {
     switch ($column) {
+        case 'live_status':
+            $status = get_post_meta( $post_id, '_live_appearance_status', true ) ?: 'pending';
+            $label  = $status === 'confirmed' ? 'Confirmed' : 'Pending';
+            $color  = $status === 'confirmed' ? '#1a9e1a' : '#b8972f';
+            echo '<strong style="color:' . esc_attr( $color ) . '">' . esc_html( $label ) . '</strong>';
+            break;
+
         case 'live_user':
             $user_id = get_post_meta($post_id, '_live_appearance_user_id', true);
             if ($user_id) {
@@ -657,28 +711,34 @@ function display_live_appearance_admin_columns($column, $post_id) {
                 echo '—';
             }
             break;
-            
-        case 'live_datetime':
-            $datetime = get_post_meta($post_id, '_live_appearance_datetime', true);
-            if ($datetime) {
-                echo esc_html(date('M j, Y g:i A', strtotime($datetime)));
-            } else {
-                echo '—';
-            }
+
+        case 'live_day':
+            echo esc_html( get_post_meta( $post_id, '_live_appearance_day', true ) ?: '—' );
             break;
-            
-        case 'live_location':
-            $location = get_post_meta($post_id, '_live_appearance_location', true);
-            echo $location ? esc_html($location) : '—';
+
+        case 'live_backup_day':
+            echo esc_html( get_post_meta( $post_id, '_live_appearance_backup_day', true ) ?: '—' );
             break;
-            
-        case 'live_duration':
-            $duration = get_post_meta($post_id, '_live_appearance_duration', true);
-            if ($duration) {
-                echo esc_html($duration . ' min');
-            } else {
-                echo '—';
-            }
+
+        case 'live_start_time':
+            echo esc_html( get_post_meta( $post_id, '_live_appearance_start_time', true ) ?: '—' );
+            break;
+
+        case 'live_opponent':
+            $opp  = get_post_meta( $post_id, '_live_appearance_opponent_handle', true );
+            $back = get_post_meta( $post_id, '_live_appearance_backup_opponent_handle', true );
+            echo esc_html( $opp ?: '—' );
+            if ( $back ) echo '<br><small style="color:#aaa">backup: ' . esc_html( $back ) . '</small>';
+            break;
+
+        case 'live_url':
+            $url = get_post_meta( $post_id, '_live_appearance_url', true );
+            echo $url ? '<a href="' . esc_url( $url ) . '" target="_blank" style="font-size:11px;word-break:break-all">' . esc_html( $url ) . '</a>' : '—';
+            break;
+
+        case 'live_created':
+            $created = get_post_meta( $post_id, '_live_appearance_date_created', true );
+            echo $created ? esc_html( date( 'M j, Y g:i A', strtotime( $created ) ) ) : '—';
             break;
     }
 }
@@ -688,8 +748,7 @@ add_action('manage_live_appearance_posts_custom_column', 'display_live_appearanc
  * Make custom columns sortable
  */
 function make_live_appearance_columns_sortable($columns) {
-    $columns['live_datetime'] = 'live_datetime';
-    $columns['live_duration'] = 'live_duration';
+    $columns['live_created'] = 'live_created';
     return $columns;
 }
 add_filter('manage_edit-live_appearance_sortable_columns', 'make_live_appearance_columns_sortable');
@@ -701,17 +760,111 @@ function live_appearance_custom_orderby($query) {
     if (!is_admin() || !$query->is_main_query()) {
         return;
     }
-    
-    $orderby = $query->get('orderby');
-    
-    if ('live_datetime' === $orderby) {
-        $query->set('meta_key', '_live_appearance_datetime');
+    if ( 'live_created' === $query->get('orderby') ) {
+        $query->set('meta_key', '_live_appearance_date_created');
         $query->set('orderby', 'meta_value');
-    } elseif ('live_duration' === $orderby) {
-        $query->set('meta_key', '_live_appearance_duration');
-        $query->set('orderby', 'meta_value_num');
     }
 }
 add_action('pre_get_posts', 'live_appearance_custom_orderby');
 
+// Custom REST API endpoint for live influencers
+add_action('rest_api_init', function () {
+    register_rest_route('custom/v1', '/live-influencers', array(
+        'methods' => 'GET',
+        'callback' => 'get_live_influencers',
+        'permission_callback' => '__return_true', // Open to all
+    ));
+});
 
+function get_live_influencers($request) {
+    $args = array(
+        'role' => 'influencer',
+        'meta_query' => array(
+            array(
+                'key' => 'is_live_now',
+                'value' => '1',
+                'compare' => '='
+            )
+        ),
+        'fields' => array('ID', 'display_name', 'user_email', 'user_login')
+    );
+    
+    $users = get_users($args);
+    
+    // Format the response
+    $response = array();
+    foreach ($users as $user) {
+        $response[] = array(
+            'id' => $user->ID,
+            'name' => $user->display_name,
+            'email' => $user->user_email,
+            'username' => $user->user_login,
+            'is_live_now' => get_user_meta($user->ID, 'is_live_now', true)
+        );
+    }
+    
+    return new WP_REST_Response($response, 200);
+}
+
+// ─── IHQ API Test Page AJAX Proxy ───────────────────────────────────────────
+function ihq_api_proxy() {
+    check_ajax_referer('ihq_api_test', 'nonce');
+
+    $endpoint       = isset($_POST['endpoint'])       ? $_POST['endpoint']       : '';
+    $method         = isset($_POST['method'])         ? strtoupper(sanitize_text_field($_POST['method'])) : 'GET';
+    $body           = isset($_POST['body'])           ? stripslashes($_POST['body']) : null;
+    $extra_headers  = isset($_POST['extra_headers'])  ? json_decode(stripslashes($_POST['extra_headers']), true) : array();
+
+    if (empty($endpoint)) {
+        wp_send_json_error(array('message' => 'No endpoint provided.'));
+        return;
+    }
+
+    $api_base = 'https://02nvfvonol.execute-api.eu-west-2.amazonaws.com/qc';
+    $url      = $api_base . $endpoint;
+
+    $headers = array(
+        'Authorization' => 'milos_testing',
+        'Content-Type'  => 'application/json',
+    );
+    if (is_array($extra_headers)) {
+        $headers = array_merge($headers, $extra_headers);
+    }
+
+    $args = array(
+        'method'    => $method,
+        'headers'   => $headers,
+        'timeout'   => 30,
+        'sslverify' => true,
+    );
+
+    if ($body && in_array($method, array('POST', 'PUT', 'PATCH'))) {
+        $args['body'] = $body;
+    }
+
+    $response = wp_remote_request($url, $args);
+
+    if (is_wp_error($response)) {
+        wp_send_json_error(array('message' => $response->get_error_message(), 'url' => $url, 'method' => $method));
+        return;
+    }
+
+    $status          = wp_remote_retrieve_response_code($response);
+    $status_message  = wp_remote_retrieve_response_message($response);
+    $response_body   = wp_remote_retrieve_body($response);
+    $resp_headers    = array();
+    foreach (wp_remote_retrieve_headers($response) as $k => $v) {
+        $resp_headers[$k] = $v;
+    }
+
+    wp_send_json_success(array(
+        'status'         => $status,
+        'status_message' => $status_message,
+        'headers'        => $resp_headers,
+        'body'           => $response_body,
+        'url'            => $url,
+        'method'         => $method,
+    ));
+}
+add_action('wp_ajax_ihq_api_proxy',        'ihq_api_proxy');
+add_action('wp_ajax_nopriv_ihq_api_proxy', 'ihq_api_proxy');
