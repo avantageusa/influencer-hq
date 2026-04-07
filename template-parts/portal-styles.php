@@ -1,3 +1,6 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&display=swap" rel="stylesheet">
 <style>
     :root {
         --gold: #E6CFA0;
@@ -8,7 +11,7 @@
     body {
         margin: 0;
         padding: 0;
-        font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         background-color: var(--dark-bg);
         color: #fff;
     }
@@ -211,7 +214,7 @@
     
     /* Dealer Image */
     .dealer-image-container {
-        margin-top: 280px; /* Account for search bar + header + nav */
+        margin-top: 230px; /* Account for search bar + header + nav */
         text-align: center;
         position: relative;
     }
@@ -1582,9 +1585,26 @@
     }
 
     body.page-template-page-portal-live-php .live-intro-text p {
-        margin: 0 0 10px;
+        margin: 0 0 20px;
         color: #e5e5e5;
-        font-size: 13px;
+        font-size: 20px;
+        line-height: 1.55;
+    }
+
+    body.page-template-page-portal-live-php .live-text-content p {
+        margin: 0 0 20px;
+        color: #e5e5e5;
+        font-size: 20px;
+        line-height: 1.55;
+    }
+
+    body.page-template-page-portal-live-php .live-text-content ul {
+        padding-left: 1rem;
+    }
+
+    body.page-template-page-portal-live-php .live-text-content ul li {
+        color: #e5e5e5;
+        font-size: 20px;
         line-height: 1.55;
     }
 
@@ -1603,6 +1623,7 @@
     body.page-template-page-portal-live-php .live-separator {
         height: 2px;
         width: 100%;
+        margin: 10px 0;
         background: radial-gradient(ellipse at center, rgba(184, 151, 47, 0.82) 0%, rgba(184, 151, 47, 0) 75%);
     }
 
@@ -1621,7 +1642,7 @@
         justify-content: center;
         gap: 10px;
         text-align: center;
-        margin-bottom: 16px;
+        margin-bottom: 20px;
     }
 
 
@@ -1646,7 +1667,7 @@
     body.page-template-page-portal-live-php .live-title {
         margin: 0;
         font-family: "Cinzel", serif;
-        font-size: 28px;
+        font-size: 30px;
         line-height: 1;
         font-weight: 600;
         text-transform: uppercase;
@@ -1670,6 +1691,8 @@
         align-items: flex-start;
         gap: 8px;
         margin-bottom: 10px;
+        padding-left: 0;
+        padding-right: 0;
     }
 
     body.page-template-page-portal-live-php .live-intro-item img {
@@ -1680,15 +1703,17 @@
     }
 
     body.page-template-page-portal-live-php .live-intro-item p {
-        margin: 0;
+        margin: 0 0 20px;
         color: #e5e5e5;
-        font-size: 13px;
-        line-height: 1.5;
+        font-size: 20px;
+        line-height: 1.55;
     }
 
     body.page-template-page-portal-live-php .live-intro-item-wide {
         margin-top: 10px;
         margin-bottom: 18px;
+        padding-left: 0;
+        padding-right: 0;
     }
 
     body.page-template-page-portal-live-php .live-section-heading {
@@ -1701,15 +1726,32 @@
     }
 
     body.page-template-page-portal-live-php .live-label {
-        margin: 14px 0 8px;
-        font-size: 13px;
+        margin: 20px 0 12px;
+        font-size: 18px;
+        font-weight: 600;
         color: #fff;
     }
 
     body.page-template-page-portal-live-php .live-input-row {
         display: flex;
         gap: 10px;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
+        align-items: center;
+    }
+
+    body.page-template-page-portal-live-php .live-input-row-choice {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 10px;
+    }
+
+    body.page-template-page-portal-live-php .live-choice-label {
+        flex: 0 0 90px;
+        font-size: 16px;
+        font-weight: 500;
+        color: #fff;
+        white-space: nowrap;
     }
 
     body.page-template-page-portal-live-php .live-field {
@@ -1739,33 +1781,46 @@
 
     body.page-template-page-portal-live-php .live-input {
         border: 1px solid #b8972f;
-        border-radius: 2px;
-        min-height: 30px;
-        padding: 6px 10px;
-        color: #c7c7c7;
-        font-size: 12px;
+        border-radius: 4px;
+        min-height: 36px;
+        padding: 7px 36px 7px 14px;
+        color: #fff;
+        font-size: 14px;
         line-height: 1.2;
+        background: #000;
     }
 
     body.page-template-page-portal-live-php select.live-input,
     body.page-template-page-portal-live-php input.live-input {
-        background: transparent;
+        background: #000;
         outline: none;
         width: 100%;
         font-family: inherit;
         -webkit-appearance: none;
         appearance: none;
-        color: #c7c7c7;
+        color: #fff;
         box-sizing: border-box;
     }
 
     body.page-template-page-portal-live-php input.live-input::placeholder {
-        color: #666;
+        color: #888;
     }
 
     body.page-template-page-portal-live-php select.live-input option {
-        background: #30313e;
-        color: #c7c7c7;
+        background: #000;
+        color: #fff;
+    }
+
+    /* Gold chevron arrow for selects */
+    body.page-template-page-portal-live-php .live-field {
+        position: relative;
+    }
+
+    body.page-template-page-portal-live-php .live-field select.live-input {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23b8972f' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 36px;
     }
 
     body.page-template-page-portal-live-php input[type="time"].live-input::-webkit-calendar-picker-indicator,
@@ -1807,17 +1862,19 @@
     }
 
     body.page-template-page-portal-live-php .live-status {
-        width: 220px;
-        min-height: 30px;
+        display: inline-block;
+        min-width: 220px;
+        min-height: 44px;
         border: 1px solid #b8972f;
-        border-radius: 2px;
-        background: #b8972f;
-        color: #000;
-        font-size: 12px;
+        border-radius: 4px;
+        background: transparent;
+        color: #fff;
+        font-size: 16px;
         font-weight: 600;
         text-align: center;
-        line-height: 28px;
+        line-height: 42px;
         margin-bottom: 12px;
+        padding: 0 16px;
     }
 
     body.page-template-page-portal-live-php .live-url {
@@ -1911,8 +1968,7 @@
         body.page-template-page-portal-live-php .live-copy-muted,
         body.page-template-page-portal-live-php .live-schedule-item,
         body.page-template-page-portal-live-php .live-submit-row,
-        body.page-template-page-portal-live-php .live-section-heading,
-        body.page-template-page-portal-live-php .live-intro-item-wide {
+        body.page-template-page-portal-live-php .live-section-heading {
             padding-left: 20px;
             padding-right: 20px;
         }
@@ -1929,8 +1985,7 @@
         body.page-template-page-portal-live-php .live-copy-muted,
         body.page-template-page-portal-live-php .live-schedule-item,
         body.page-template-page-portal-live-php .live-submit-row,
-        body.page-template-page-portal-live-php .live-section-heading,
-        body.page-template-page-portal-live-php .live-intro-item-wide {
+        body.page-template-page-portal-live-php .live-section-heading {
             padding-left: 16px;
             padding-right: 16px;
         }
