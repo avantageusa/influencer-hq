@@ -521,12 +521,17 @@ function request_live_appearance_ajax() {
         wp_send_json_error( array( 'message' => 'You must be logged in to submit a request.' ) );
     }
 
-    $day             = sanitize_text_field( $_POST['la_day']                    ?? '' );
-    $backup_day      = sanitize_text_field( $_POST['la_backup_day']             ?? '' );
-    $start_time      = sanitize_text_field( $_POST['la_start_time']             ?? '' );
-    $backup_time     = sanitize_text_field( $_POST['la_backup_start_time']      ?? '' );
-    $opponent        = sanitize_text_field( $_POST['la_opponent_handle']        ?? '' );
-    $backup_opponent = sanitize_text_field( $_POST['la_backup_opponent_handle'] ?? '' );
+    $day             = sanitize_text_field( $_POST['la_choice_1_month'] ?? '' ) . '/' . sanitize_text_field( $_POST['la_choice_1_day'] ?? '' );
+    $backup_day      = sanitize_text_field( $_POST['la_choice_2_month'] ?? '' ) . '/' . sanitize_text_field( $_POST['la_choice_2_day'] ?? '' );
+    $start_time      = sanitize_text_field( $_POST['la_choice_1_time']  ?? '' );
+    $backup_time     = sanitize_text_field( $_POST['la_choice_2_time']  ?? '' );
+    $choice_3_month  = sanitize_text_field( $_POST['la_choice_3_month'] ?? '' );
+    $choice_3_day    = sanitize_text_field( $_POST['la_choice_3_day']   ?? '' );
+    $choice_3_time   = sanitize_text_field( $_POST['la_choice_3_time']  ?? '' );
+    $opponent        = sanitize_text_field( $_POST['la_opponent_name']        ?? '' );
+    $backup_opponent = sanitize_text_field( $_POST['la_backup_opponent_name'] ?? '' );
+    $opponent_email  = sanitize_email( $_POST['la_opponent_email']        ?? '' );
+    $backup_opp_email = sanitize_email( $_POST['la_backup_opponent_email'] ?? '' );
     $url_raw         = sanitize_text_field( $_POST['la_url']                    ?? '' );
     $url             = $url_raw ? esc_url_raw( $url_raw ) : '';
 
@@ -555,8 +560,13 @@ function request_live_appearance_ajax() {
     update_post_meta( $post_id, '_live_appearance_backup_day',             $backup_day );
     update_post_meta( $post_id, '_live_appearance_start_time',             $start_time );
     update_post_meta( $post_id, '_live_appearance_backup_start_time',      $backup_time );
+    update_post_meta( $post_id, '_live_appearance_choice_3_month',         $choice_3_month );
+    update_post_meta( $post_id, '_live_appearance_choice_3_day',           $choice_3_day );
+    update_post_meta( $post_id, '_live_appearance_choice_3_time',          $choice_3_time );
     update_post_meta( $post_id, '_live_appearance_opponent_handle',        $opponent );
     update_post_meta( $post_id, '_live_appearance_backup_opponent_handle', $backup_opponent );
+    update_post_meta( $post_id, '_live_appearance_opponent_email',         $opponent_email );
+    update_post_meta( $post_id, '_live_appearance_backup_opponent_email',  $backup_opp_email );
     update_post_meta( $post_id, '_live_appearance_url',                    $url );
     update_post_meta( $post_id, '_live_appearance_date_created',           current_time( 'mysql' ) );
 
@@ -599,8 +609,12 @@ function get_live_appearance_status_ajax() {
     $url     = get_post_meta( $post_id, '_live_appearance_url', true );
 
     $labels = array(
-        'pending'   => 'Pending',
-        'confirmed' => 'Confirmed',
+        'pending'              => 'Pending',
+        'confirmed'            => 'Confirmed',
+        '1st_choice_accepted'  => '1st Choice Accepted',
+        '2nd_choice_accepted'  => '2nd Choice Accepted',
+        '3rd_choice_accepted'  => '3rd Choice Accepted',
+        'declined'             => 'Declined',
     );
     $status_label = $labels[ $status ] ?? ucwords( $status );
 
