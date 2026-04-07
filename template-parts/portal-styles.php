@@ -222,14 +222,22 @@
         border-radius: 8px;
     }
 
-    .logo-container img {
-        max-height: 30px;
+    .dealer-image-wrap {
+        position: relative;
     }
 
-    /* Desktop flanking texts — hidden by default (mobile) */
-    .concierge-text-left,
-    .concierge-text-right {
-        display: none;
+    .concierge-text-above {
+        color: #fff;
+        font-family: 'Be Vietnam Pro', sans-serif;
+        font-size: 20px;
+        font-weight: 600;
+        text-align: center;
+        margin: 0 0 12px;
+        padding: 0 16px;
+    }
+
+    .logo-container img {
+        max-height: 30px;
     }
     
     /* Fixed Footer Links */
@@ -380,18 +388,16 @@
 
     /* Portal Home Styles */
     body.page-template-page-portal-home-php .concierge-title {
-        position: absolute;
-        bottom: 15px;
-        left: 50%;
-        transform: translateX(-50%);
+        z-index: 20;
+        display: block;
+        position: relative;
         color: white;
         font-family: 'Be Vietnam Pro', sans-serif;
-        font-size: 18px;
+        font-size: 20px;
         font-weight: 600;
         text-align: center;
         text-decoration: underline;
-        z-index: 2;
-        margin: 0;
+        margin: -40px 0 0;
         cursor: pointer;
     }
 
@@ -2028,7 +2034,7 @@
             align-items: center;
             justify-content: center;
             max-width: 1024px;
-            margin: 280px auto 0;
+            margin: 255px auto 0;
             padding-left: 20px;
             padding-right: 20px;
         }
@@ -2037,6 +2043,10 @@
             flex: 0 0 50%;
             max-width: 50%;
             margin-top: 0;
+        }
+
+        .dealer-image-wrap {
+            padding-bottom: 10px;
         }
 
         .dealer-image-container {
@@ -2051,20 +2061,6 @@
             display: block;
             text-align: center;
             margin-top: 12px;
-        }
-
-        .concierge-text-left,
-        .concierge-text-right {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex: 1;
-            color: white;
-            font-family: 'Be Vietnam Pro', sans-serif;
-            font-size: 20px;
-            font-weight: 600;
-            padding: 0 16px;
-            text-align: center;
         }
 
         .accordion-next-btn {

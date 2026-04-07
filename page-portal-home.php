@@ -27,13 +27,14 @@ get_template_part( 'template-parts/portal-styles' );
         ?>
         <!-- Dealer Image (Home Page Only) -->
         <div class="dealer-row">
-            <p class="concierge-text-left">We believe conversations should be easy.</p>
             <div class="dealer-image-container">
-                <div class="dealer-gradient-overlay" style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(48,49,62,0) 0%,rgba(48,49,62,0) 55%,rgba(8,4,4,1) 100%);pointer-events:none;z-index:2;"></div>
-                <img src="<?php echo get_template_directory_uri(); ?>/images/concierge.png" alt="Casino Dealer" class="dealer-image" style="position:relative;z-index:1;">
+                <p class="concierge-text-above">We believe conversations should be easy.</p>
+                <div class="dealer-image-wrap">
+                    <div class="dealer-gradient-overlay" style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(48,49,62,0) 0%,rgba(48,49,62,0) 55%,rgba(8,4,4,1) 100%);pointer-events:none;z-index:2;"></div>
+                    <img src="<?php echo get_template_directory_uri(); ?>/images/concierge.png" alt="Casino Dealer" class="dealer-image" style="position:relative;z-index:1;">
+                </div>
                 <a href="#" class="concierge-title">Talk Now - Executive Concierge</a>
             </div>
-            <p class="concierge-text-right">Booking an appointment is always open to you.</p>
         </div>
         
         <div class="container py-2 the-gradient" style="max-width: 1024px; padding-left: 20px; padding-right: 20px;padding-top:20px!important;">
