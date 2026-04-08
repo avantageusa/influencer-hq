@@ -211,7 +211,7 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
 
 <style>
 /* ── Settings page layout ─────────────────────────────── */
-.sett-wrap   { max-width: 1024px; padding-left: 18px; padding-right: 18px;padding-top:200px!important; }
+.sett-wrap   { max-width: 1024px; padding-left: 18px; padding-right: 18px; }
 .sett-content{ padding-bottom: 80px; }
 
 /* Game Portal URL form */

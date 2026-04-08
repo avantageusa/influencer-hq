@@ -969,7 +969,6 @@
         max-width: 1024px;
         padding-left: 20px;
         padding-right: 20px;
-        padding-top: 260px !important;
     }
 
     body.page-template-page-portal-challenges-php .competition-header {

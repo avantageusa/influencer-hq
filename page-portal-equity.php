@@ -15,7 +15,7 @@ get_template_part( 'template-parts/portal-styles' );
         
         <?php get_template_part( 'template-parts/portal-header' ); ?>
         
-        <div class="container py-2 the-gradient" id="portal-content" style="max-width: 1024px; padding-left: 20px; padding-right: 20px; padding-top: 240px;">
+        <div class="container py-2 the-gradient" id="portal-content" style="max-width: 1024px; padding-left: 20px; padding-right: 20px;">
 
             <!-- Equity Content -->
             <div class="equity-page-content">
@@ -749,6 +749,5 @@ get_template_part( 'template-parts/portal-scripts' );
 }());
 </script>
 
-<?php get_footer(); ?>
 <?php
 get_footer();

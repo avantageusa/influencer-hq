@@ -109,14 +109,9 @@
         else if (stickyHeader) bottom = stickyHeader.getBoundingClientRect().bottom;
         else if (searchBar)    bottom = searchBar.getBoundingClientRect().bottom;
 
-        console.log('[adjustContentPadding]', {
-            searchBarBottom:    searchBar    ? searchBar.getBoundingClientRect().bottom    : null,
-            stickyHeaderBottom: stickyHeader ? stickyHeader.getBoundingClientRect().bottom : null,
-            stickyNavBottom:    stickyNav    ? stickyNav.getBoundingClientRect().bottom    : null,
-            appliedPaddingTop:  bottom > 0 ? (bottom - 10) + 'px' : 'unchanged'
-        });
+        
 
-        if (bottom > 0) content.style.setProperty('padding-top', (bottom - 10) + 'px', 'important');
+        if (bottom > 0) content.style.setProperty('padding-top', (bottom + 20) + 'px', 'important');
     }
 
     document.addEventListener('DOMContentLoaded', adjustContentPadding);
