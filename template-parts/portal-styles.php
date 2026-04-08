@@ -214,7 +214,6 @@
     
     /* Dealer Image */
     .dealer-image-container {
-        margin-top: 230px; /* Account for search bar + header + nav */
         text-align: center;
         position: relative;
     }

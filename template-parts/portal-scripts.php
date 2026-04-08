@@ -1,5 +1,21 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Dynamically offset dealer-image-container below fixed headers
+    function adjustDealerMargin() {
+        var searchBar = document.querySelector('.search-bar-container');
+        var stickyHeader = document.querySelector('.sticky-header');
+        var stickyNav = document.querySelector('.sticky-nav');
+        var dealerContainer = document.querySelector('.dealer-image-container');
+        if (!dealerContainer) return;
+        var total = 0;
+        if (searchBar)    total += searchBar.offsetHeight;
+        if (stickyHeader) total += stickyHeader.offsetHeight;
+        if (stickyNav)    total += stickyNav.offsetHeight;
+        dealerContainer.style.marginTop = total + 'px';
+    }
+    adjustDealerMargin();
+    window.addEventListener('resize', adjustDealerMargin);
+
     // Initialize Bootstrap tabs - simpler method
     var triggerTabList = document.querySelectorAll('.nav-link-inline[data-bs-toggle="tab"]');
     triggerTabList.forEach(function (triggerEl) {
