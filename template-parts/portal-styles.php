@@ -551,7 +551,9 @@
     }
 
     body.page-template-page-portal-equity-php .equity-intro p {
-        margin: 0 0 12px;
+        margin: 0 0 14px;
+        font-weight: 300;
+        font-size: 16px;
     }
 
     body.page-template-page-portal-equity-php .equity-intro p:last-child {
