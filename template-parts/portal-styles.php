@@ -1006,9 +1006,68 @@
         margin-bottom: 16px;
         overflow: hidden;
     }
+    body.page-template-page-portal-challenges-php .comp-lead--desktop { display: none; }
+    body.page-template-page-portal-challenges-php .comp-lead--mobile  { display: block; }
+    @media (min-width: 1025px) {
+        body.page-template-page-portal-challenges-php .comp-lead--mobile  { display: none; }
+        body.page-template-page-portal-challenges-php .comp-lead--desktop { display: block; }
+        body.page-template-page-portal-challenges-php .comp-lead-desktop-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 32px;
+            margin-bottom: 24px;
+        }
+        body.page-template-page-portal-challenges-php .comp-lead-desktop-img {
+            flex: 0 0 40%;
+            max-width: 40%;
+        }
+        body.page-template-page-portal-challenges-php .comp-lead-desktop-img img {
+            width: 100%;
+            border-radius: 6px;
+            display: block;
+        }
+        body.page-template-page-portal-challenges-php .comp-lead-desktop-text {
+            flex: 1;
+            color: #fff;
+            font-family: 'Be Vietnam Pro', sans-serif;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        body.page-template-page-portal-challenges-php .comp-lead--desktop .comp-lead-kings--desktop {
+            font-family: 'Cinzel', serif;
+            font-size: 22px;
+            font-weight: 700;
+            margin: 0 0 12px;
+            letter-spacing: .04em;
+            text-align: left;
+            padding-left: 0;
+            padding-top: 0;
+        }
+        body.page-template-page-portal-challenges-php .comp-lead-desktop-2col {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            font-family: 'Be Vietnam Pro', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+            padding: 10px 20px;
+        }
+        body.page-template-page-portal-challenges-php .comp-lead-diamond {
+            text-align: center;
+            padding: 6px 0;
+        }
+    }
     body.page-template-page-portal-challenges-php .comp-lead-sep {
         height: 2px;
         background: radial-gradient(ellipse 80% 100% at 50% 50%, rgba(184,151,47,.8) 0%, rgba(184,151,47,0) 100%);
+    }
+    @media (min-width: 1025px) {
+        body.page-template-page-portal-challenges-php .comp-lead--desktop .comp-lead-sep {
+            width: 50%;
+            margin: 0 auto;
+            background: radial-gradient(ellipse 60% 100% at 50% 50%, rgba(184,151,47,.8) 20%, rgba(100,80,20,.4) 70%, rgba(60,40,0,0) 100%);
+        }
     }
     body.page-template-page-portal-challenges-php .comp-lead-kings {
         font-family: 'Cinzel', serif;
@@ -1016,6 +1075,12 @@
         color: #fff; text-align: center;
         margin: 0; padding: 14px 16px 12px;
         letter-spacing: .04em;
+    }
+    @media (max-width: 1024px) {
+        body.page-template-page-portal-challenges-php .comp-lead--mobile .comp-lead-kings {
+            font-size: 24px;
+            padding: 14px 0px 12px;
+        }
     }
     body.page-template-page-portal-challenges-php .comp-lead-body {
         padding: 14px 20px;
@@ -1042,6 +1107,13 @@
         padding: 10px 40px;
         font-family: 'Be Vietnam Pro', sans-serif;
         font-size: 16px; font-weight: 600; color: #fff;
+    }
+    @media (max-width: 1024px) {
+        body.page-template-page-portal-challenges-php .comp-lead--mobile .comp-lead-row {
+            /* display: flex; */
+            display: block;
+            text-align: center;
+        }
     }
     body.page-template-page-portal-challenges-php .comp-lead-row--single {
         justify-content: center; padding: 10px 20px;

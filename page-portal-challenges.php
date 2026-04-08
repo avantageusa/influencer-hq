@@ -27,44 +27,134 @@ get_template_part( 'template-parts/portal-styles' );
                 </div>
 
                 <!-- Lead Section: Game of Kings / Traditional / Avantage -->
-                <div class="comp-lead">
+                <!-- Lead Section: Mobile (<1024px) -->
+                <div class="comp-lead comp-lead--mobile">
                     <div class="comp-lead-sep"></div>
                     <h2 class="comp-lead-kings">The Game of Kings</h2>
-                    <div class="comp-lead-sep"></div>
 
                     <div class="comp-lead-body">
                         <p>For over 500 years, Baccarat has been known as the Game of Kings.</p>
+                        <!-- <p>Propelled into the modern era over 40 years ago by James Bond, it remains the preferred game of high rollers worldwide, and stands as Asia's game of choice.</p> -->
+                    </div>
+
+                    <h3 class="comp-lead-kings">TRADITIONAL BACCARAT</h3>
+                    <div class="comp-lead-row">
+                        <span>Matchup - 1 Bank vs. Player</span>
+                    </div>
+                    <div class="comp-lead-row">
+                        <span>All Plays - Before the Hand</span>
+                    </div>
+                    <div class="comp-lead-sep"></div>
+                    <h3 class="comp-lead-kings">The modern era</h3>
+                    <div class="comp-lead-body">
                         <p>Propelled into the modern era over 40 years ago by James Bond, it remains the preferred game of high rollers worldwide, and stands as Asia's game of choice.</p>
                     </div>
 
-                    <div class="comp-lead-sep"></div>
-                    <h3 class="comp-lead-game-title">TRADITIONAL &nbsp; BACCARAT</h3>
-                    <div class="comp-lead-sep"></div>
-                    <div class="comp-lead-row">
-                        <span>Matchup</span><span>1 Bank vs. Player</span>
+                    <div class="comp-lead-avantage-head">
+                        <h3 class="comp-lead-kings">AVANTAGE BACCARAT</h3>
                     </div>
+                    <div class="comp-lead-sep"></div>
+                    <div class="comp-lead-row"><span>Matchup - 1 Bank vs. 5 Players</span></div>
+                    <div class="comp-lead-sep"></div>
                     <div class="comp-lead-row">
-                        <span>All Plays</span><span>Before the Hand</span>
+                        <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="comp-lead-avantage-icon">
+                        <span>All Plays - Throughout the Hand</span>
+                    </div>
+                    <div class="comp-lead-sep"></div>
+                    <div class="comp-lead-row comp-lead-row--single">$100 Million World Championship</div>
+                    <div class="comp-lead-sep"></div>
+                    <div class="comp-lead-row comp-lead-row--stack">
+                        <span class="comp-lead-row-main">Influencer Competitions</span><br>
+                        <span class="comp-lead-row-sub">Private - Community - World</span>
+                    </div>
+                    <div class="comp-lead-sep"></div>
+                    <div class="comp-lead-row comp-lead-row--single">52 World Tour Events</div>
+                    <div class="comp-lead-sep"></div>
+                    <div class="comp-lead-row comp-lead-row--stack">
+                        <span class="comp-lead-row-main">Celebrity Followers Leagues</span><br>
+                        <span class="comp-lead-row-sub">Movies - Music - Sports</span>
+                    </div>
+                    <div class="comp-lead-sep"></div>
+                    <div class="comp-lead-row comp-lead-row--single">International League</div>
+                    <div class="comp-lead-sep"></div>
+                    <div class="comp-lead-row comp-lead-row--single">Leading Money Winner Competitions</div>
+                    <div class="comp-lead-sep"></div>
+                    <div class="comp-lead-row comp-lead-row--single">Olympic Style Medal Competitions</div>
+                    <div class="comp-lead-sep"></div>
+                    <div class="comp-lead-row comp-lead-row--single">Pools - Top 30% Split</div>
+                    <div class="comp-lead-sep"></div>
+
+                </div>
+
+                <!-- Lead Section: Desktop (>1024px) -->
+                <div class="comp-lead comp-lead--desktop">
+
+                    <!-- Game of Kings: image left, text right -->
+                    <div class="comp-lead-desktop-row" style="margin-top: 20px;">
+                        <div class="comp-lead-desktop-img">
+                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/image-left-kings.png" alt="The Game of Kings">
+                        </div>
+                        <div class="comp-lead-desktop-text">
+                            <h2 class="comp-lead-kings comp-lead-kings--desktop">The Game of Kings</h2>
+                            <p>For over 500 years, Baccarat has been known as the Game of Kings.</p>
+                            <h3 class="comp-lead-game-title" style="text-align: left;padding-left: 0;">Traditional Baccarat</h3>
+                            <p>Matchup - 1 Bank vs. Player</p>
+                            <p>All Plays - Before the Hand</p>
+                        </div>
+                    </div>
+
+                    <!-- The Modern Era: text left, image right -->
+                    <div class="comp-lead-desktop-row" style="margin-top: 75px;">
+                        <div class="comp-lead-desktop-text">
+                            <h2 class="comp-lead-kings comp-lead-kings--desktop">The Modern Era</h2>
+                            <p style="width:85%;"> Propelled into the modern era over 40 years ago by James Bond, Baccarat remains the preferred game of high rollers worldwide, and stands as Asia's game of choice with over 100 million active players.</p>
+                        </div>
+                        <div class="comp-lead-desktop-img">
+                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/image-right-kings.png" alt="The Modern Era">
+                        </div>
+                    </div>
+
+                    <div class="comp-lead-sep"></div>
+                    <!-- Avantage Baccarat -->
+                    <div class="comp-lead-avantage-head">
+                        <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="comp-lead-avantage-icon">
+                        <h3 class="comp-lead-game-title">Avantage Baccarat</h3>
                     </div>
                     <div class="comp-lead-sep"></div>
 
-                    <div class="comp-lead-avantage-head">
-                        <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="comp-lead-avantage-icon">
-                        <h3 class="comp-lead-game-title">AVANTAGE &nbsp; BACCARAT</h3>
+                    <!-- Two-column Matchup / All Plays row -->
+                    <div class="comp-lead-desktop-2col">
+                        <span>Matchup - 1 Bank vs. 5 Players</span>
+                        <span>All Plays - Throughout the Hand</span>
                     </div>
-                    <div class="comp-lead-sep"></div>
-                    <div class="comp-lead-row"><span>Matchup</span><span>1 Bank vs. 5 Players</span></div>
-                    <div class="comp-lead-sep"></div>
-                    <div class="comp-lead-row"><span>All Plays</span><span>Throughout the Hand</span></div>
+
+                    <div class="comp-lead-row comp-lead-row--single">Pools - Top 30% Split</div>
+
+                    <!-- Diamond separator -->
+                    <div class="comp-lead-diamond">
+                        <img style="width: 50px; height: 50px;margin: 10px 0px;" src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="comp-lead-avantage-icon">
+                    </div>
+
                     <div class="comp-lead-sep"></div>
                     <div class="comp-lead-row comp-lead-row--single">$100 Million World Championship</div>
+                    <div class="comp-lead-sep"></div>
+                    <div class="comp-lead-row comp-lead-row--single">52 World Tour Events</div>
+                    <div class="comp-lead-sep"></div>
+                    <div class="comp-lead-row comp-lead-row--single">Leading Money Winner Competitions</div>
+                    <div class="comp-lead-sep"></div>
+                    <div class="comp-lead-row comp-lead-row--single">Olympic Style Medal Competitions</div>
+                    <div class="comp-lead-sep"></div>
+
+                    <!-- Diamond separator -->
+                    <div class="comp-lead-diamond">
+                        <img style="width: 50px; height: 50px;margin: 10px 0px;" src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="comp-lead-avantage-icon">
+                    </div>
+
                     <div class="comp-lead-sep"></div>
                     <div class="comp-lead-row comp-lead-row--stack">
                         <span class="comp-lead-row-main">Influencer Competitions</span>
                         <span class="comp-lead-row-sub">Private - Community - World</span>
                     </div>
-                    <div class="comp-lead-sep"></div>
-                    <div class="comp-lead-row comp-lead-row--single">52 World Tour Events</div>
                     <div class="comp-lead-sep"></div>
                     <div class="comp-lead-row comp-lead-row--stack">
                         <span class="comp-lead-row-main">Celebrity Followers Leagues</span>
@@ -72,12 +162,6 @@ get_template_part( 'template-parts/portal-styles' );
                     </div>
                     <div class="comp-lead-sep"></div>
                     <div class="comp-lead-row comp-lead-row--single">International League</div>
-                    <div class="comp-lead-sep"></div>
-                    <div class="comp-lead-row comp-lead-row--single">Leading Money Winners Competition</div>
-                    <div class="comp-lead-sep"></div>
-                    <div class="comp-lead-row comp-lead-row--single">Olympic Style Medals Competition</div>
-                    <div class="comp-lead-sep"></div>
-                    <div class="comp-lead-row"><span>Pools</span><span>Top 30% Split</span></div>
                     <div class="comp-lead-sep"></div>
 
                 </div>
