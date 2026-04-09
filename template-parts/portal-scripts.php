@@ -1,12 +1,16 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Dynamically offset dealer-image-container below fixed headers
+    // Dynamically offset dealer-image-container below fixed headers (mobile only)
     function adjustDealerMargin() {
+        var dealerContainer = document.querySelector('.dealer-image-container');
+        if (!dealerContainer) return;
+        if (window.innerWidth >= 1024) {
+            dealerContainer.style.marginTop = '';
+            return;
+        }
         var searchBar = document.querySelector('.search-bar-container');
         var stickyHeader = document.querySelector('.sticky-header');
         var stickyNav = document.querySelector('.sticky-nav');
-        var dealerContainer = document.querySelector('.dealer-image-container');
-        if (!dealerContainer) return;
         var total = 0;
         if (searchBar)    total += searchBar.offsetHeight;
         if (stickyHeader) total += stickyHeader.offsetHeight;
