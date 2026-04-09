@@ -539,7 +539,8 @@
     }
 
     /* Portal Equity Styles */
-    body.page-template-page-portal-equity-php .equity-intro {
+    body.page-template-page-portal-equity-php .equity-intro,
+    body.page-template-page-portal-more-php .equity-intro {
         color: #ffffff;
         font-family: 'Be Vietnam Pro', sans-serif;
         padding:0 20px;
@@ -550,22 +551,26 @@
         margin: 0 0 20px;
     }
 
-    body.page-template-page-portal-equity-php .equity-intro p {
+    body.page-template-page-portal-equity-php .equity-intro p,
+    body.page-template-page-portal-more-php .equity-intro p {
         margin: 0 0 14px;
         font-weight: 300;
         font-size: 16px;
     }
 
-    body.page-template-page-portal-equity-php .equity-intro p:last-child {
+    body.page-template-page-portal-equity-php .equity-intro p:last-child,
+    body.page-template-page-portal-more-php .equity-intro p:last-child {
         margin-bottom: 0;
     }
 
-    body.page-template-page-portal-equity-php .equity-header {
+    body.page-template-page-portal-equity-php .equity-header,
+    body.page-template-page-portal-more-php .equity-header {
         text-align: center;
         margin-bottom: 18px;
     }
 
-    body.page-template-page-portal-equity-php .equity-header-top {
+    body.page-template-page-portal-equity-php .equity-header-top,
+    body.page-template-page-portal-more-php .equity-header-top {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -573,12 +578,14 @@
         margin-bottom: 12px;
     }
 
-    body.page-template-page-portal-equity-php .equity-icon {
+    body.page-template-page-portal-equity-php .equity-icon,
+    body.page-template-page-portal-more-php .equity-icon {
         width: 59px;
         height: 48px;
     }
 
-    body.page-template-page-portal-equity-php .equity-title {
+    body.page-template-page-portal-equity-php .equity-title,
+    body.page-template-page-portal-more-php .equity-title {
         color: #ffffff;
         font-family: 'Cinzel', serif;
         font-size: 28px;
@@ -2161,7 +2168,7 @@
             align-items: center;
             justify-content: center;
             max-width: 1024px;
-            margin: 255px auto 0;
+            margin: 280px auto 0;
             padding-left: 20px;
             padding-right: 20px;
         }

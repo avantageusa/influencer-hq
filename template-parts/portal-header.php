@@ -78,6 +78,8 @@
                 <span class="nav-separator">|</span>
                 
                 <a href="<?php echo home_url('/portal/account'); ?>" class="nav-link-inline <?php echo (is_page('portal/account')) ? 'active' : ''; ?>">Profile</a>
+                <span class="nav-separator">|</span>
+                <a href="<?php echo home_url('/portal/more'); ?>" class="nav-link-inline <?php echo (is_page('portal/more')) ? 'active' : ''; ?>">More</a>
             </div>
         </div>
     </div>
@@ -93,7 +95,7 @@
         
         <li><a href="<?php echo home_url('/portal/rankings'); ?>" class="dropdown-link <?php echo (is_page('portal/rankings')) ? 'active' : ''; ?>"><i class="icon-ranking"></i> Rankings</a></li>
         <li><a href="<?php echo home_url('/portal/account'); ?>" class="dropdown-link <?php echo (is_page('portal/account')) ? 'active' : ''; ?>"><i class="icon-profile"></i> Profile</a></li>
-    </ul>
+        <li><a href="<?php echo home_url('/portal/more'); ?>" class="dropdown-link <?php echo (is_page('portal/more')) ? 'active' : ''; ?>"><i class="icon-more"></i> More</a></li>
 </div>
 <script>
 (function () {
