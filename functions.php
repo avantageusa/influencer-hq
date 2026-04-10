@@ -152,6 +152,13 @@ function avantage_baccarat_scripts() {
 	// Enqueue Bootstrap JS
 	wp_enqueue_script( 'bootstrap-js', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js', array(), '5.3.0', true );
 
+	// ElevenLabs Conversational AI
+	wp_enqueue_script( 'elevenlabs-client', 'https://cdn.jsdelivr.net/npm/@11labs/client@latest/dist/index.umd.js', array(), null, true );
+	wp_localize_script( 'elevenlabs-client', 'ihqElevenLabs', [
+		'ajax_url' => admin_url( 'admin-ajax.php' ),
+		'nonce'    => wp_create_nonce( 'ihq_elevenlabs_nonce' ),
+	] );
+
 	if ( is_singular() && comments_open() && get_option( 'thread_comments' ) ) {
 		wp_enqueue_script( 'comment-reply' );
 	}
@@ -868,3 +875,28 @@ function ihq_api_proxy() {
 }
 add_action('wp_ajax_ihq_api_proxy',        'ihq_api_proxy');
 add_action('wp_ajax_nopriv_ihq_api_proxy', 'ihq_api_proxy');
+
+/**
+ * ElevenLabs Conversational AI — get a signed conversation URL.
+ * Requires ELEVENLABS_AGENT_ID and ELEVENLABS_API_KEY defined in wp-config.php.
+ */
+function ihq_elevenlabs_signed_url() {
+	check_ajax_referer( 'ihq_elevenlabs_nonce', 'nonce' );
+
+	$agent_id = 'agent_2401kn7brtx3fdn93j5f4mxh70fa';
+	$api_key  = 'sk_99f22f038088cf701582493e92891178398568d33c60770d';
+
+	$response = wp_remote_get(
+		'https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=' . rawurlencode( $agent_id ),
+		[ 'headers' => [ 'xi-api-key' => $api_key ] ]
+	);
+
+	if ( is_wp_error( $response ) ) {
+		wp_send_json_error( [ 'message' => $response->get_error_message() ] );
+	}
+
+	$body = json_decode( wp_remote_retrieve_body( $response ), true );
+	wp_send_json_success( $body );
+}
+add_action( 'wp_ajax_ihq_elevenlabs_signed_url',        'ihq_elevenlabs_signed_url' );
+add_action( 'wp_ajax_nopriv_ihq_elevenlabs_signed_url', 'ihq_elevenlabs_signed_url' );

@@ -364,6 +364,48 @@ get_template_part( 'template-parts/portal-styles' );
         </div>
     </main><!-- #main -->
 
+<script>
+(function () {
+    console.log('[ElevenLabs] Script block running');
+    console.log('[ElevenLabs] ihqElevenLabs defined:', typeof ihqElevenLabs !== 'undefined' ? ihqElevenLabs : 'NOT DEFINED');
+    document.addEventListener('DOMContentLoaded', function () {
+        var btn = document.querySelector('.concierge-title');
+        console.log('[ElevenLabs] Button found:', btn);
+        if (!btn) return;
+
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            btn.style.pointerEvents = 'none';
+            var originalText = btn.textContent;
+            btn.textContent = 'Connecting\u2026';
+
+            fetch(ihqElevenLabs.ajax_url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'action=ihq_elevenlabs_signed_url&nonce=' + encodeURIComponent(ihqElevenLabs.nonce),
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                console.log('[ElevenLabs] API response:', data);
+                console.log('[ElevenLabs] Raw ElevenLabs data:', data.data);
+                if (data.success && data.data && data.data.signed_url) {
+                    window.location.href = data.data.signed_url;
+                } else {
+                    alert('Could not connect. Please try again.');
+                    btn.style.pointerEvents = '';
+                    btn.textContent = originalText;
+                }
+            })
+            .catch(function () {
+                alert('Connection error. Please try again.');
+                btn.style.pointerEvents = '';
+                btn.textContent = originalText;
+            });
+        });
+    });
+})();
+</script>
+
 <?php 
 get_template_part( 'template-parts/portal-scripts' );
 get_footer();
