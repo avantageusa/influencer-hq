@@ -371,13 +371,20 @@ get_template_part( 'template-parts/portal-styles' );
     document.addEventListener('DOMContentLoaded', function () {
         var btn = document.querySelector('.concierge-title');
         console.log('[ElevenLabs] Button found:', btn);
-        if (!btn) return;
+
+        var errMsg = document.createElement('p');
+        errMsg.style.cssText = 'color:#f85149;font-size:.85rem;text-align:center;margin-top:8px;display:none;';
+        btn.parentNode.insertBefore(errMsg, btn.nextSibling);
+
+        function showError(msg) { errMsg.textContent = msg; errMsg.style.display = 'block'; }
+        function hideError() { errMsg.style.display = 'none'; }
 
         btn.addEventListener('click', function (e) {
             e.preventDefault();
+            hideError();
             btn.style.pointerEvents = 'none';
             var originalText = btn.textContent;
-            btn.textContent = 'Connecting\u2026';
+            btn.textContent = 'Connecting…';
 
             fetch(ihqElevenLabs.ajax_url, {
                 method: 'POST',
@@ -389,15 +396,41 @@ get_template_part( 'template-parts/portal-styles' );
                 console.log('[ElevenLabs] API response:', data);
                 console.log('[ElevenLabs] Raw ElevenLabs data:', data.data);
                 if (data.success && data.data && data.data.signed_url) {
-                    window.location.href = data.data.signed_url;
+                    var signedUrl = data.data.signed_url;
+                    console.log('[ElevenLabs] Starting session with:', signedUrl);
+                    ElevenLabsClient.Conversation.startSession({
+                        signedUrl: signedUrl,
+                        onConnect: function () {
+                            console.log('[ElevenLabs] Connected');
+                            btn.textContent = 'Connected - Listening...';
+                        },
+                        onDisconnect: function () {
+                            console.log('[ElevenLabs] Disconnected');
+                            btn.style.pointerEvents = '';
+                            btn.textContent = originalText;
+                        },
+                        onError: function (error) {
+                            console.error('[ElevenLabs] Error:', error);
+                            showError('Connection error. Please try again.');
+                            btn.style.pointerEvents = '';
+                            btn.textContent = originalText;
+                        },
+                        onMessage: function (msg) { console.log('[ElevenLabs] Message:', msg); },
+                    }).catch(function (err) {
+                        console.error('[ElevenLabs] startConversation failed:', err);
+                        showError('Could not start conversation. Please try again.');
+                        btn.style.pointerEvents = '';
+                        btn.textContent = originalText;
+                    });
                 } else {
-                    alert('Could not connect. Please try again.');
+                    showError('Could not connect. Please try again.');
                     btn.style.pointerEvents = '';
                     btn.textContent = originalText;
                 }
             })
-            .catch(function () {
-                alert('Connection error. Please try again.');
+            .catch(function (err) {
+                console.error('[ElevenLabs] Fetch error:', err);
+                showError('Connection error. Please try again.');
                 btn.style.pointerEvents = '';
                 btn.textContent = originalText;
             });

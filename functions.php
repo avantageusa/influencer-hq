@@ -153,7 +153,7 @@ function avantage_baccarat_scripts() {
 	wp_enqueue_script( 'bootstrap-js', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js', array(), '5.3.0', true );
 
 	// ElevenLabs Conversational AI
-	wp_enqueue_script( 'elevenlabs-client', 'https://cdn.jsdelivr.net/npm/@11labs/client@latest/dist/index.umd.js', array(), null, true );
+	wp_enqueue_script( 'elevenlabs-client', 'https://cdn.jsdelivr.net/npm/@elevenlabs/client@latest/dist/lib.iife.js', array(), null, true );
 	wp_localize_script( 'elevenlabs-client', 'ihqElevenLabs', [
 		'ajax_url' => admin_url( 'admin-ajax.php' ),
 		'nonce'    => wp_create_nonce( 'ihq_elevenlabs_nonce' ),
