@@ -379,11 +379,20 @@ get_template_part( 'template-parts/portal-styles' );
         function showError(msg) { errMsg.textContent = msg; errMsg.style.display = 'block'; }
         function hideError() { errMsg.style.display = 'none'; }
 
+        var activeSession = null;
+        var originalText = btn.textContent;
+
         btn.addEventListener('click', function (e) {
             e.preventDefault();
             hideError();
+
+            // If connected, hang up
+            if (activeSession) {
+                activeSession.endSession();
+                return;
+            }
+
             btn.style.pointerEvents = 'none';
-            var originalText = btn.textContent;
             btn.textContent = 'Connecting…';
 
             fetch(ihqElevenLabs.ajax_url, {
@@ -402,23 +411,29 @@ get_template_part( 'template-parts/portal-styles' );
                         signedUrl: signedUrl,
                         onConnect: function () {
                             console.log('[ElevenLabs] Connected');
-                            btn.textContent = 'Connected - Listening...';
+                            btn.textContent = 'End Talk';
+                            btn.style.pointerEvents = '';
                         },
                         onDisconnect: function () {
                             console.log('[ElevenLabs] Disconnected');
+                            activeSession = null;
                             btn.style.pointerEvents = '';
                             btn.textContent = originalText;
                         },
                         onError: function (error) {
                             console.error('[ElevenLabs] Error:', error);
                             showError('Connection error. Please try again.');
+                            activeSession = null;
                             btn.style.pointerEvents = '';
                             btn.textContent = originalText;
                         },
                         onMessage: function (msg) { console.log('[ElevenLabs] Message:', msg); },
+                    }).then(function (session) {
+                        activeSession = session;
                     }).catch(function (err) {
                         console.error('[ElevenLabs] startConversation failed:', err);
                         showError('Could not start conversation. Please try again.');
+                        activeSession = null;
                         btn.style.pointerEvents = '';
                         btn.textContent = originalText;
                     });
