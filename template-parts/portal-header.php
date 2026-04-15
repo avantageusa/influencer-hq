@@ -26,7 +26,7 @@
 <div class="sticky-header">
     <div class="container" style="max-width: 1024px; padding-left: 20px; padding-right: 20px; margin-top: 20px; padding-bottom: 30px;">
         <div class="d-flex align-items-center">
-            <div style="flex: 1;">
+            <div style="flex: 1; display: flex; align-items: center; gap: 12px;">
                 <button class="hamburger-menu bg-transparent border-0 p-0">
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3B9FFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -34,6 +34,26 @@
                         <line x1="3" y1="18" x2="21" y2="18"></line>
                     </svg>
                 </button>
+                <!-- Desktop-only: Help & Language -->
+                <div class="desktop-header-left-items">
+                    <a href="<?php echo esc_url( home_url('/portal/portal-home/') ); ?>?open=concierge" class="header-help-btn">Help</a>
+                    <div class="header-lang-wrap">
+                        <button class="header-lang-btn" id="headerLangBtn" aria-label="Select Language">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E6CFA0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="2" y1="12" x2="22" y2="12"></line>
+                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                            </svg>
+                        </button>
+                        <div class="header-lang-dropdown" id="headerLangDropdown">
+                            <a href="#" class="header-lang-option">English</a>
+                            <a href="#" class="header-lang-option">Español</a>
+                            <a href="#" class="header-lang-option">Français</a>
+                            <a href="#" class="header-lang-option">Deutsch</a>
+                            <a href="#" class="header-lang-option">中文</a>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="logo-container text-center">
                 <img src="<?php echo get_template_directory_uri(); ?>/images/logo-tm.png" alt="influencerHQ" class="img-fluid">
@@ -56,7 +76,22 @@
                 'hqAvatar'         => $avatar_url,
             ), $base_game_url );
             ?>
-            <div style="flex: 1; text-align: right;">
+            <div style="flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 14px;">
+                <!-- Desktop-only: Volume, Login, Register -->
+                <div class="desktop-header-right-items">
+                    <div class="header-volume-wrap">
+                        <button class="header-volume-btn" id="headerVolumeBtn" aria-label="Volume">
+                            <svg class="header-volume-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                            </svg>
+                        </button>
+                        <input type="range" class="header-volume-slider" id="headerVolumeSlider" min="0" max="100" value="70" aria-label="Volume">
+                    </div>
+                    <a href="<?php echo esc_url( home_url('/influencer-login/') ); ?>" class="header-login-link">Login</a>
+                    <a href="<?php echo esc_url( home_url('/influencer-login/') ); ?>" class="header-register-btn">Register Now</a>
+                </div>
                 <a href="<?php echo esc_url( $game_url ); ?>" target="_blank" rel="noopener noreferrer" class="go-to-game-btn">PLAY</a>
             </div>
         </div>
@@ -98,6 +133,39 @@
         <li><a href="<?php echo home_url('/portal/more'); ?>" class="dropdown-link <?php echo (is_page('portal/more')) ? 'active' : ''; ?>"><i class="icon-more"></i> More</a></li>
 </div>
 <script>
+(function () {
+    // Language dropdown toggle
+    var langBtn = document.getElementById('headerLangBtn');
+    var langDropdown = document.getElementById('headerLangDropdown');
+    if (langBtn && langDropdown) {
+        langBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            langDropdown.classList.toggle('open');
+        });
+        document.addEventListener('click', function () {
+            langDropdown.classList.remove('open');
+        });
+    }
+
+    // Auto-click .concierge-title is handled in page-portal-home.php
+
+    // Volume slider toggle
+    var volBtn = document.getElementById('headerVolumeBtn');
+    var volSlider = document.getElementById('headerVolumeSlider');
+    if (volBtn && volSlider) {
+        volBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            volSlider.classList.toggle('open');
+        });
+        document.addEventListener('click', function () {
+            volSlider.classList.remove('open');
+        });
+        volSlider.addEventListener('click', function (e) {
+            e.stopPropagation();
+        });
+    }
+}());
+
 (function () {
     function adjustContentPadding() {
         var stickyNav    = document.querySelector('.sticky-nav');

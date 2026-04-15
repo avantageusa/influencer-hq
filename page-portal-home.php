@@ -454,6 +454,16 @@ get_template_part( 'template-parts/portal-styles' );
 })();
 </script>
 
+<script>
+// Auto-click .concierge-title if arriving with ?open=concierge
+if (window.location.search.indexOf('open=concierge') !== -1) {
+    window.addEventListener('load', function () {
+        var el = document.querySelector('.concierge-title');
+        if (el) el.click();
+    });
+}
+</script>
+
 <?php 
 get_template_part( 'template-parts/portal-scripts' );
 get_footer();
