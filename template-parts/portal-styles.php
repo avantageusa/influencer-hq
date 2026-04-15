@@ -2222,10 +2222,6 @@
             gap: 50px;
         }
 
-        .accordion-nav-btns .accordion-next-btn:only-child {
-            margin-left: auto;
-        }
-
     }
 
     /* Sailboat wrap labels */
