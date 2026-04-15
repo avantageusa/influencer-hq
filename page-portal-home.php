@@ -328,31 +328,7 @@ get_template_part( 'template-parts/portal-styles' );
                         </div>
                     </div>
 
-                    <script>
-                    (function() {
-                        function initNextButtons() {
-                            if (window.innerWidth <= 1024) return;
-                            var panels = document.querySelectorAll('#equityAccordion .accordion-collapse');
-                            panels.forEach(function(panel, index) {
-                                if (index === panels.length - 1) return;
-                                var btn = document.createElement('button');
-                                btn.className = 'accordion-next-btn';
-                                btn.textContent = 'Next';
-                                btn.addEventListener('click', function() {
-                                    var nextPanel = panels[index + 1];
-                                    var nextCollapse = bootstrap.Collapse.getOrCreateInstance(nextPanel);
-                                    nextCollapse.show();
-                                });
-                                panel.querySelector('.accordion-body').appendChild(btn);
-                            });
-                        }
-                        if (document.readyState === 'loading') {
-                            document.addEventListener('DOMContentLoaded', initNextButtons);
-                        } else {
-                            initNextButtons();
-                        }
-                    })();
-                    </script>
+
 
                     
         

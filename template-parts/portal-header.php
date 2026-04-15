@@ -193,4 +193,54 @@
         resizeTimer = setTimeout(adjustContentPadding, 80);
     });
 }());
+
+(function () {
+    function initAccordionNavButtons() {
+        if (window.innerWidth <= 1024) return;
+        // Find every accordion group (each direct accordion wrapper)
+        var accordions = document.querySelectorAll('.accordion.custom-accordion, #equityAccordion');
+        accordions.forEach(function (accordion) {
+            var panels = accordion.querySelectorAll('.accordion-collapse');
+            panels.forEach(function (panel, index) {
+                var body = panel.querySelector('.accordion-body');
+                if (!body) return;
+
+                var wrap = document.createElement('div');
+                wrap.className = 'accordion-nav-btns';
+
+                if (index > 0) {
+                    var prevBtn = document.createElement('button');
+                    prevBtn.className = 'accordion-prev-btn';
+                    prevBtn.textContent = 'Previous';
+                    prevBtn.addEventListener('click', function () {
+                        var prevPanel = panels[index - 1];
+                        bootstrap.Collapse.getOrCreateInstance(prevPanel).show();
+                    });
+                    wrap.appendChild(prevBtn);
+                }
+
+                if (index < panels.length - 1) {
+                    var nextBtn = document.createElement('button');
+                    nextBtn.className = 'accordion-next-btn';
+                    nextBtn.textContent = 'Next';
+                    nextBtn.addEventListener('click', function () {
+                        var nextPanel = panels[index + 1];
+                        bootstrap.Collapse.getOrCreateInstance(nextPanel).show();
+                    });
+                    wrap.appendChild(nextBtn);
+                }
+
+                if (wrap.hasChildNodes()) {
+                    body.appendChild(wrap);
+                }
+            });
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAccordionNavButtons);
+    } else {
+        initAccordionNavButtons();
+    }
+}());
 </script>

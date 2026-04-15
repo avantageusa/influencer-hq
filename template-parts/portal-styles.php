@@ -2197,9 +2197,8 @@
             margin-top: 12px;
         }
 
-        .accordion-next-btn {
-            display: block;
-            margin: 20px auto 4px;
+        .accordion-next-btn,
+        .accordion-prev-btn {
             background: none;
             border: none;
             color: white;
@@ -2211,8 +2210,20 @@
             padding: 0;
         }
 
-        .accordion-next-btn:hover {
+        .accordion-next-btn:hover,
+        .accordion-prev-btn:hover {
             color: #b8972f;
+        }
+
+        .accordion-nav-btns {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 50px;
+        }
+
+        .accordion-nav-btns .accordion-next-btn:only-child {
+            margin-left: auto;
         }
 
     }
