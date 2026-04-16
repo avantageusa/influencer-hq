@@ -191,18 +191,28 @@ get_template_part( 'template-parts/portal-styles' );
                             <div class="accordion-item mb-3">
                                 <h2 class="accordion-header" id="headingFive">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFive" aria-expanded="false" aria-controls="collapseFive">
-                                        <span class="question-text">There are hundreds of platforms offering hundreds of different competitions…tell me more about this particular opportunity?</span>
+                                        <span class="question-text">Tell me more about this particular opportunity.</span>
                                     </button>
                                 </h2>
                                 <div id="collapseFive" class="accordion-collapse collapse" aria-labelledby="headingFive" data-bs-parent="#equityAccordion">
                                     <div class="accordion-body">
-                                        <p>Over 10 years ago, an Entrepreneur, while traveling across Asia, visited Macau and discovered an oasis of excitement - thousands of players, young and old, in a single grande parlor of a single grande hotel, sitting and standing around Baccarat tables stretching almost as far as the eye could see…all separately cheering and shouting in anticipation of each card received and squeezed in the most ritualistic manner imaginable.</p>
-                                        <p>The game is Baccarat — Known as the Game of the Kings for over 500 years — Baccarat had become Asia's game of choice and the choice of high rollers across the world about the time James Bond introduced the game to the modern world over 40 years ago.</p>
-                                        <p>The founder asked himself, "why couldn't there be an on-line version of Baccarat that captures the same elegance on display in Macau?"</p>
-                                        <p>Avantage Baccarat World Tour and World Championship official launch is the result of our founder's love for the game.</p>
-                                        <p>But Avantage Baccarat is more than just a game…it's a Competition System built around the Avantage model of International Competition including Celebrity Followers Leagues and the Influencer Challenge Series, where top Influencers and their followers square off against each other in both Private Challenges and the World Challenge Series.</p>
-                                        <p>All of this culminates with the Avantage Baccarat World Championship, which guarantees a prize pool of $100 Million.</p>
-                                        <p>Baccarat succeeded in Asia for the same reason it became the game of choice in Monte Carlo and other elite locations across the world…simple rules, no bluffing and high prestige dating back to the French Royal Court 500 years ago.</p>
+                                        <p>There are hundreds of platforms offering hundreds of different competitions.</p>
+                                        <p>Over 10 years ago, the Founder, traveling across Asia visited Macau and discovered an oasis of excitement — thousands of players, young and old, gathered inside a single grand parlor around Baccarat tables stretching almost as far as the eye could see.</p>
+                                        <p>Each table alive with anticipation.</p>
+                                        <p>Each card squeezed in ritual suspense.</p>
+                                        <p>The game is Baccarat.</p>
+                                        <p>Known as the Game of the Kings for over 500 years, Baccarat became Asia's game of choice — and the choice of high rollers worldwide after James Bond introduced it to the modern era more than 40 years ago.</p>
+                                        <p>The founder asked himself:</p>
+                                        <p>Why couldn't there be an online version of Baccarat that captures the same elegance on display in Macau?</p>
+                                        <p>Avantage Baccarat World Tour and World Championship are the result of that vision.</p>
+                                        <p>But Avantage Baccarat is more than just a game.</p>
+                                        <p>It is a Competition System — built around the Avantage model of International Competition, including Celebrity Followers Leagues and the Influencer Challenge Series — where top Influencers and their followers compete in Private Challenges and the World Challenge Series.</p>
+                                        <p>All of this culminates in the Avantage Baccarat World Championship —</p>
+                                        <p>$100 Million Guaranteed Prize Pool.</p>
+                                        <p>Baccarat succeeded in Asia for the same reason it became the game of choice in Monte Carlo, Asia and other elite locations across the world:</p>
+                                        <p>Simple rules.</p>
+                                        <p>No bluffing.</p>
+                                        <p>Enduring prestige dating back to the French Royal Court 500 years ago.</p>
                                     </div>
                                 </div>
                             </div>

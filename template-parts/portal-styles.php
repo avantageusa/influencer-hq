@@ -130,6 +130,10 @@
         text-align: left;
     }
 
+    .accordion-button:not(.collapsed) .question-text {
+        text-align: center;
+    }
+
     .accordion-gradient-container {
        
         padding: 20px;
