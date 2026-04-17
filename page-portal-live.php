@@ -124,9 +124,18 @@ get_template_part( 'template-parts/portal-styles' );
                         <p class="live-label">Status of Request</p>
                         <div class="live-status" id="live-request-status">—</div>
 
-                        <p class="live-label">Unique Live Appearance URL Address to Share</p>
-                        <div id="live-url-wrap">
+                        <p class="live-label">Referral Link</p>
+                        <div id="live-url-wrap" style="display:flex;align-items:center;gap:8px;">
                             <div class="live-url live-url--display" id="live-url-display">URL will appear here...</div>
+                            <button type="button" id="live-url-copy-btn" class="live-inline-btn" onclick="(function(){
+                                var txt=document.getElementById('live-url-display').textContent;
+                                if(!txt||txt==='URL will appear here...')return;
+                                navigator.clipboard.writeText(txt).then(function(){
+                                    var btn=document.getElementById('live-url-copy-btn');
+                                    btn.textContent='copied!';
+                                    setTimeout(function(){btn.textContent='copy';},2000);
+                                });
+                            })()">copy</button>
                         </div>
                     </div>
 
@@ -387,6 +396,20 @@ $_schedule_nonce = wp_create_nonce( 'kick_schedule_nonce' );
             .then(function(res) {
                 if (res.success && res.data.found) {
                     setStatus(res.data.status_label, res.data.status_key);
+                    setUrl(res.data.url);
+                }
+            }).catch(function() {});
+    })();
+
+    // Load the referral share URL on page load
+    (function loadReferralUrl() {
+        var fd = new FormData();
+        fd.append('action', 'get_referral_link');
+        fd.append('nonce',  _liveNonce);
+        fetch(_liveAjaxUrl, { method: 'POST', body: fd })
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                if (res.success && res.data.url) {
                     setUrl(res.data.url);
                 }
             }).catch(function() {});

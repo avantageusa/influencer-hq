@@ -627,6 +627,48 @@ function get_live_appearance_status_ajax() {
     ) );
 }
 
+// ---------------------------------------------------------------------------
+// Referral Link — nonce: request_live_appearance_nonce
+// Action: get_referral_link
+// Returns the user's share URL from GET /referral/user/{userId}/link
+// ---------------------------------------------------------------------------
+add_action( 'wp_ajax_get_referral_link', 'get_referral_link_ajax' );
+
+function get_referral_link_ajax() {
+    if ( ! check_ajax_referer( 'request_live_appearance_nonce', 'nonce', false ) ) {
+        wp_send_json_error( array( 'message' => 'Security check failed.' ), 403 );
+    }
+    $user_id  = get_current_user_id();
+    $id_token = get_user_meta( $user_id, 'ihq_id_token', true );
+    if ( ! $user_id || empty( $id_token ) ) {
+        wp_send_json_error( array( 'message' => 'Not authenticated.' ) );
+    }
+
+    $wpu_id   = 'influencerhq-wpu-' . $user_id;
+    $api_url  = INFLUENCER_API_BASE . '/referral/user/' . rawurlencode( $wpu_id ) . '/link';
+    $response = wp_remote_get( $api_url, array(
+        'timeout'   => 10,
+        'sslverify' => true,
+        'headers'   => array(
+            'Accept'        => 'application/json',
+            'Authorization' => 'Bearer ' . $id_token,
+        ),
+    ) );
+
+    if ( is_wp_error( $response ) ) {
+        wp_send_json_error( array( 'message' => $response->get_error_message() ) );
+    }
+
+    $status = wp_remote_retrieve_response_code( $response );
+    $body   = json_decode( wp_remote_retrieve_body( $response ), true );
+
+    if ( 200 !== $status ) {
+        wp_send_json_error( array( 'message' => 'API returned HTTP ' . $status, 'body' => $body ) );
+    }
+
+    wp_send_json_success( array( 'url' => isset( $body['url'] ) ? esc_url_raw( $body['url'] ) : '' ) );
+}
+
 // ============================================================
 // KICK Broadcasting Schedule — nonce: kick_schedule_nonce
 // Actions: add_kick_schedule | delete_kick_schedule
@@ -797,4 +839,118 @@ function save_settings_avatar_ajax() {
     update_user_meta( $user_id, '_ihq_avatar_url', $url );
 
     wp_send_json_success( [ 'url' => $url ] );
+}
+
+// ---------------------------------------------------------------------------
+// Profile: Get player data from GET /account/players/me
+// ---------------------------------------------------------------------------
+add_action( 'wp_ajax_ihq_get_player_me', 'ihq_get_player_me_ajax' );
+
+function ihq_get_player_me_ajax() {
+    if ( ! check_ajax_referer( 'settings_save_nonce', 'nonce', false ) ) {
+        wp_send_json_error( 'Security check failed.', 403 );
+    }
+
+    $wp_user_id = get_current_user_id();
+    $id_token   = get_user_meta( $wp_user_id, 'ihq_id_token', true );
+    if ( empty( $id_token ) ) {
+        wp_send_json_error( [ 'message' => 'No IHQ session token — run SSO first.' ] );
+        return;
+    }
+
+    $decoded = _challenge_get_sub( $id_token );
+    if ( isset( $decoded['error'] ) ) {
+        wp_send_json_error( [ 'message' => $decoded['error'] ] );
+        return;
+    }
+    $sub = $decoded['sub'];
+
+    $api_url  = INFLUENCER_API_BASE . '/account/players/me';
+    $response = wp_remote_get( $api_url, array(
+        'timeout'   => 10,
+        'sslverify' => true,
+        'headers'   => array(
+            'Accept'        => 'application/json',
+            'Authorization' => 'Bearer ' . $id_token,
+            'username'      => $sub,
+        ),
+    ) );
+
+    if ( is_wp_error( $response ) ) {
+        wp_send_json_error( array( 'message' => $response->get_error_message() ) );
+        return;
+    }
+
+    $status = wp_remote_retrieve_response_code( $response );
+    $body   = json_decode( wp_remote_retrieve_body( $response ), true );
+
+    if ( 200 !== $status ) {
+        wp_send_json_error( array( 'message' => 'API returned HTTP ' . $status, 'body' => $body, '_sub' => $sub ) );
+        return;
+    }
+
+    wp_send_json_success( $body );
+}
+
+// ---------------------------------------------------------------------------
+// Profile: Update fullname via PATCH /account/players/fullname
+// ---------------------------------------------------------------------------
+add_action( 'wp_ajax_ihq_update_fullname', 'ihq_update_fullname_ajax' );
+
+function ihq_update_fullname_ajax() {
+    if ( ! check_ajax_referer( 'settings_save_nonce', 'nonce', false ) ) {
+        wp_send_json_error( 'Security check failed.', 403 );
+    }
+
+    $wp_user_id = get_current_user_id();
+    $id_token   = get_user_meta( $wp_user_id, 'ihq_id_token', true );
+    if ( empty( $id_token ) ) {
+        wp_send_json_error( array( 'message' => 'No IHQ session token — run SSO first.' ) );
+        return;
+    }
+
+    $decoded = _challenge_get_sub( $id_token );
+    if ( isset( $decoded['error'] ) ) {
+        wp_send_json_error( array( 'message' => $decoded['error'] ) );
+        return;
+    }
+    $sub = $decoded['sub'];
+
+    $first_name = sanitize_text_field( wp_unslash( $_POST['firstName'] ?? '' ) );
+    $last_name  = sanitize_text_field( wp_unslash( $_POST['lastName']  ?? '' ) );
+
+    $api_url  = INFLUENCER_API_BASE . '/account/players/fullname';
+    $response = wp_remote_request( $api_url, array(
+        'method'    => 'PATCH',
+        'timeout'   => 10,
+        'sslverify' => true,
+        'headers'   => array(
+            'Content-Type'  => 'application/json',
+            'Authorization' => 'Bearer ' . $id_token,
+            'username'      => $sub,
+        ),
+        'body' => wp_json_encode( array(
+            'firstName' => $first_name,
+            'lastName'  => $last_name,
+        ) ),
+    ) );
+
+    if ( is_wp_error( $response ) ) {
+        wp_send_json_error( array( 'message' => $response->get_error_message() ) );
+        return;
+    }
+
+    $status = wp_remote_retrieve_response_code( $response );
+    $body   = json_decode( wp_remote_retrieve_body( $response ), true );
+
+    if ( $status < 200 || $status >= 300 ) {
+        wp_send_json_error( array( 'message' => 'API returned HTTP ' . $status, 'body' => $body, '_sub' => $sub ) );
+        return;
+    }
+
+    // Keep WP user meta in sync
+    update_user_meta( $wp_user_id, 'first_name', $first_name );
+    update_user_meta( $wp_user_id, 'last_name',  $last_name );
+
+    wp_send_json_success( array( 'firstName' => $first_name, 'lastName' => $last_name ) );
 }
