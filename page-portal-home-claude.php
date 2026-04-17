@@ -40,6 +40,7 @@ get_header();
   <div class="hero-btns">
     <button class="btn-gold" onclick="openModal()">Yes — Let's Start the Conversation</button>
   </div>
+  <button id="claudeTalkBtn" type="button">Let's Talk</button>
   <div class="scroll-hint"><span>Discover</span><div class="scroll-line"></div></div>
 </section>
 
@@ -793,6 +794,67 @@ function handleAuthRegister(e) {
       btn.textContent = 'Send Verification Email';
     });
 }
+</script>
+
+<script>
+(function () {
+    document.addEventListener('DOMContentLoaded', function () {
+        var btn          = document.getElementById('claudeTalkBtn');
+        var activeSession = null;
+        var originalText  = "Let's Talk";
+        if (!btn) return;
+
+        btn.addEventListener('click', function () {
+            if (activeSession) {
+                activeSession.endSession();
+                return;
+            }
+            btn.style.pointerEvents = 'none';
+            btn.textContent = 'Connecting…';
+
+            fetch(ihqElevenLabs.ajax_url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'action=ihq_elevenlabs_signed_url&nonce=' + encodeURIComponent(ihqElevenLabs.nonce),
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success && data.data && data.data.signed_url) {
+                    ElevenLabsClient.Conversation.startSession({
+                        signedUrl: data.data.signed_url,
+                        onConnect: function () {
+                            btn.textContent = 'End Talk';
+                            btn.style.pointerEvents = '';
+                        },
+                        onDisconnect: function () {
+                            activeSession = null;
+                            btn.style.pointerEvents = '';
+                            btn.textContent = originalText;
+                        },
+                        onError: function () {
+                            activeSession = null;
+                            btn.style.pointerEvents = '';
+                            btn.textContent = originalText;
+                        },
+                        onMessage: function () {},
+                    }).then(function (session) {
+                        activeSession = session;
+                    }).catch(function () {
+                        btn.style.pointerEvents = '';
+                        btn.textContent = originalText;
+                    });
+                } else {
+                    btn.style.pointerEvents = '';
+                    btn.textContent = originalText;
+                }
+            })
+            .catch(function () {
+                btn.style.pointerEvents = '';
+                btn.textContent = originalText;
+            });
+        });
+    });
+}());
 </script>
 
 <div style="display:none">

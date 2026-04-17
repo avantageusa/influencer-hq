@@ -22,6 +22,8 @@ get_template_part( 'template-parts/portal-styles' );
 
 $user            = wp_get_current_user();
 $display_name    = $user->display_name ?: $user->user_login;
+$first_name      = get_user_meta( $user->ID, 'first_name', true ) ?: $user->first_name;
+$last_name       = get_user_meta( $user->ID, 'last_name',  true ) ?: $user->last_name;
 $user_email      = $user->user_email;
 $user_handle     = get_user_meta( $user->ID, '_ihq_handle',    true ) ?: ( '@' . $user->user_login );
 $user_country    = get_user_meta( $user->ID, '_ihq_country',   true );
@@ -125,7 +127,8 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                 <div class="sett-card">
                     <?php
                     $acct_rows = [
-                        [ 'key' => 'name',     'label' => 'Name',                   'value' => $display_name,  'type' => 'text'   ],
+                        [ 'key' => 'first_name', 'label' => 'First Name',             'value' => $first_name,    'type' => 'text'   ],
+                        [ 'key' => 'last_name',  'label' => 'Last Name',              'value' => $last_name,     'type' => 'text'   ],
                         [ 'key' => 'email',    'label' => 'Email',                  'value' => $user_email,    'type' => 'email'  ],
                         [ 'key' => 'country',  'label' => 'Country',                'value' => $user_country,  'type' => 'text'   ],
                         [ 'key' => 'city',     'label' => 'City',                   'value' => $user_city,     'type' => 'text'   ],
@@ -207,173 +210,18 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
             <span class="footer-separator">|</span>
             <a href="#" class="footer-link">Privacy</a>
         </div>
+
+        <!-- API Debug Panel -->
+        <div id="ihq-api-debug" style="margin:24px 16px;background:#111;border:1px solid #444;border-radius:8px;padding:16px;font-family:monospace;font-size:12px;color:#ccc;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <strong style="color:#b8972f;">API Debug</strong>
+                <button onclick="document.getElementById('ihq-api-debug-log').innerHTML='';" style="background:none;border:1px solid #555;color:#aaa;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:11px;">Clear</button>
+            </div>
+            <div id="ihq-api-debug-log" style="max-height:400px;overflow-y:auto;"></div>
+        </div>
+
     </main><!-- #main -->
 
-<style>
-/* ── Settings page layout ─────────────────────────────── */
-.sett-wrap   { max-width: 1024px; padding-left: 18px; padding-right: 18px; }
-.sett-content{ padding-bottom: 80px; }
-
-/* Game Portal URL form */
-.hq-game-url-input {
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid #b8972f;
-    color: #fff;
-    font-size: 16px;
-    width: 100%;
-    outline: none;
-    padding: 2px 4px;
-}
-.hq-game-url-input::placeholder { color: #555; font-style: italic; }
-.hq-game-url-save-btn {
-    background: none;
-    border: 1px solid #b8972f;
-    color: #b8972f;
-    font-size: 13px;
-    padding: 3px 10px;
-    border-radius: 3px;
-    cursor: pointer;
-    flex-shrink: 0;
-    margin-left: 8px;
-}
-.hq-game-url-save-btn:hover { background: rgba(184,151,47,.15); }
-
-/* Separators */
-.sett-sep {
-    height: 1px;
-    margin: 6px 0;
-    background: radial-gradient(ellipse 80% 100% at 50% 50%, rgba(184,151,47,.8) 0%, rgba(184,151,47,0) 100%);
-}
-
-/* Header */
-.sett-header { display:flex; align-items:center; gap:12px; padding:10px 0 6px; }
-.sett-header-icon { width:44px; height:44px; object-fit:contain; }
-.sett-title {
-    font-family: 'Cinzel', serif;
-    font-size: 22px; font-weight:700; color:#fff;
-    margin:0; letter-spacing:.05em;
-}
-
-/* Identity */
-.sett-identity { display:flex; align-items:center; gap:14px; padding:14px 0 12px; }
-.sett-avatar-ring {
-    width:66px; height:66px; border-radius:50%;
-    border:2px solid #fff; overflow:hidden; flex-shrink:0;
-}
-.sett-avatar-img { width:100%; height:100%; object-fit:cover; display:block; }
-.sett-identity-body { flex:1; display:flex; flex-direction:column; gap:2px; }
-.sett-display-name { font-size:16px; font-weight:700; color:#fff; }
-.sett-user-handle  { font-size:16px; color:#616161; }
-.sett-social-row   { display:flex; align-items:center; gap:7px; margin-top:4px; }
-.sett-soc-icon     { width:11px; height:11px; object-fit:contain; opacity:.9; }
-.sett-identity-right { display:flex; flex-direction:column; align-items:center; gap:4px; }
-.sett-lang         { font-size:16px; font-weight:600; color:#fff; text-transform:uppercase; }
-.sett-country-icon { width:24px; height:24px; object-fit:contain; }
-
-/* Section headers */
-.sett-section-head {
-    display:flex; align-items:baseline; flex-wrap:wrap; gap:5px;
-    margin:14px 0 4px; padding-left:10px; padding-right:10px;
-}
-.sett-section-head > .sett-section-title:first-child {
-    min-width:280px; flex-shrink:0;
-}
-.sett-section-title {
-    font-size:16px; font-weight:700; color:#fff;
-    text-transform:uppercase; letter-spacing:.06em;
-}
-.sett-section-sub { font-size:16px; }
-.sett-hint  { flex:1; display:flex; justify-content:end; align-items:center; gap:6px; }
-.sett-hint-text { font-size:13px; color:#919191; }
-.sett-info-icon {
-    display:inline-flex; align-items:center; justify-content:center;
-    width:18px; height:18px; border-radius:50%;
-    background:#D4AF37; color:#000; font-size:11px; font-weight:700;
-    font-style:italic; cursor:default; position:relative; line-height:1;
-    font-family:Georgia, 'Times New Roman', serif; flex-shrink:0;
-    user-select:none;
-}
-.sett-info-icon .sett-info-tooltip {
-    display:none; position:absolute; bottom:calc(100% + 8px); right:0;
-    transform:none;
-    background:#1a1a1a; color:#e5e5e5;
-    font-size:13px; font-style:normal; font-weight:400; font-family:inherit;
-    padding:7px 11px; border-radius:4px;
-    border:1px solid #b8972f; z-index:200;
-    width:260px; white-space:normal; text-align:center;
-    pointer-events:none; line-height:1.45;
-    box-shadow:0 4px 12px rgba(0,0,0,.5);
-}
-.sett-info-icon:hover .sett-info-tooltip { display:block; }
-.sett-section-head--comm { justify-content:space-between; }
-.sett-arrow { font-size:16px; color:#fff; }
-/* Card */
-.sett-card {
-    background:#000;
-    border:1px solid #b8972f;
-    border-radius:5px;
-    margin-bottom:14px;
-    overflow:hidden;
-}
-
-/* Row */
-.sett-row {
-    display:flex; align-items:center; justify-content:space-between;
-    min-height:26px; padding:3px 10px;
-    border-bottom:1px solid rgba(184,151,47,.2);
-    gap:6px;
-}
-.sett-row:last-of-type { border-bottom:none; }
-
-.sett-row-lbl {
-    font-size:16px; color:#e5e5e5;
-    flex:1; min-width:120px; max-width:280px;
-}
-.sett-row-val {
-    width:33%; flex-shrink:0; display:flex; align-items:center; justify-content:flex-end;
-}
-
-/* Editable spans */
-.sett-editable {
-    font-size:16px; color:#fff; text-align:right;
-    cursor:pointer; padding:1px 3px; border-radius:2px;
-    display:inline-block; min-width:60px; min-height:20px;
-}
-.sett-editable:hover { background:rgba(184,151,47,.12); }
-.sett-editable:empty::before {
-    content:'tap to add'; color:#555; font-style:italic;
-}
-.sett-editable--handle {
-    border:1px dashed transparent; min-width:90px;
-}
-.sett-editable--handle:hover { border-color:rgba(255,255,255,.25); }
-.sett-editable--handle:empty::before {
-    content:'tap to add'; color:#555; font-style:italic;
-}
-.sett-change-photo {
-    font-size:16px; color:#919191; text-decoration:underline;
-    background:none; border:none; cursor:pointer; padding:0;
-}
-
-
-
-/* Quote */
-.sett-quote {
-    font-size:16px; color:#fff; font-style:italic;
-    margin:2px 0 14px; line-height:1.55;
-}
-
-/* Add more */
-.sett-add-more-row {
-    padding:5px 10px; text-align:right;
-    border-top:1px solid rgba(184,151,47,.15);
-}
-.sett-add-more-btn {
-    font-size:16px; color:#919191; text-decoration:underline;
-    background:none; border:none; cursor:pointer; padding:0;
-}
-</style>
 
 <script>
 (function(){
@@ -395,7 +243,12 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
             function commit(){
                 var v = input.value.trim();
                 el.textContent = v;
-                save('save_settings_field', { group: el.dataset.group, field: el.dataset.field, value: v });
+                var field = el.dataset.field;
+                if ( field === 'first_name' || field === 'last_name' ) {
+                    saveFullname();
+                } else {
+                    save('save_settings_field', { group: el.dataset.group, field: field, value: v });
+                }
             }
             input.addEventListener('blur', commit);
             input.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); commit(); }});
@@ -438,6 +291,43 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
         });
     }
 
+    /* ── API Debug log ────────────────────────────────── */
+    function dbg(label, sent, received) {
+        var log = document.getElementById('ihq-api-debug-log');
+        if (!log) return;
+        var ts = new Date().toLocaleTimeString();
+        var color = (received && received.success) ? '#53FC18' : '#ff6b6b';
+        var html = '<div style="border-bottom:1px solid #333;padding:8px 0;">';
+        html += '<div style="color:' + color + ';margin-bottom:4px;">▶ ' + label + ' <span style="color:#666;font-size:11px;">' + ts + '</span></div>';
+        if (sent !== null) {
+            html += '<div style="color:#aaa;margin-bottom:2px;">SENT:</div>';
+            html += '<pre style="color:#e0c97f;white-space:pre-wrap;word-break:break-all;margin:0 0 6px 0;">' + JSON.stringify(sent, null, 2) + '</pre>';
+        }
+        html += '<div style="color:#aaa;margin-bottom:2px;">RECEIVED:</div>';
+        html += '<pre style="color:#ccc;white-space:pre-wrap;word-break:break-all;margin:0;">' + JSON.stringify(received, null, 2) + '</pre>';
+        html += '</div>';
+        log.innerHTML = html + log.innerHTML;
+    }
+
+    function saveFullname() {
+        var fn = document.querySelector('.sett-editable[data-field="first_name"]');
+        var ln = document.querySelector('.sett-editable[data-field="last_name"]');
+        if (!fn || !ln) return;
+        var payload = {
+            firstName: fn.textContent.trim(),
+            lastName:  ln.textContent.trim(),
+        };
+        var fd = new FormData();
+        fd.append('action', 'ihq_update_fullname');
+        fd.append('nonce',  _nonce);
+        fd.append('firstName', payload.firstName);
+        fd.append('lastName',  payload.lastName);
+        fetch(_ajax, { method:'POST', body:fd })
+            .then(function(r){ return r.json(); })
+            .then(function(res){ dbg('PATCH /account/players/fullname', payload, res); })
+            .catch(function(e){ dbg('PATCH /account/players/fullname', payload, {error: String(e)}); });
+    }
+
     function save(action, params){
         var fd = new FormData();
         fd.append('action', action);
@@ -445,6 +335,25 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
         Object.keys(params).forEach(function(k){ fd.append(k, params[k]); });
         fetch(_ajax, { method:'POST', body:fd }).catch(function(){});
     }
+
+    // Read first/last name from API on load
+    var getPayload = { action: 'ihq_get_player_me', nonce: _nonce };
+    fetch(_ajax, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'action=ihq_get_player_me&nonce=' + encodeURIComponent(_nonce),
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(res) {
+        dbg('GET /account/players/me', getPayload, res);
+        if (res.success && res.data) {
+            var d = res.data;
+            var fn = document.querySelector('.sett-editable[data-field="first_name"]');
+            var ln = document.querySelector('.sett-editable[data-field="last_name"]');
+            if (fn && d.firstName !== undefined) fn.textContent = d.firstName;
+            if (ln && d.lastName  !== undefined) ln.textContent = d.lastName;
+        }
+    }).catch(function(e){ dbg('GET /account/players/me', getPayload, {error: String(e)}); });
 })();
 
 </script>

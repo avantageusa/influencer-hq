@@ -113,6 +113,11 @@ footer p{font-size:.65rem;letter-spacing:.2em;color:var(--soft);text-transform:u
 .cal-wrap{margin:20px 0 28px}
 .cal-label{font-family:'Be Vietnam Pro',sans-serif;font-size:.7rem;letter-spacing:.3em;text-transform:uppercase;color:var(--gl);display:block;margin-bottom:12px;font-weight:700}
 .cal-input{width:100%;padding:18px 20px;background:rgba(240,201,58,.05);border:2px solid rgba(240,201,58,.3);font-family:'Cinzel',serif;font-size:1.2rem;color:var(--white);cursor:pointer;appearance:none;-webkit-appearance:none}
+
+/* FLOATING TALK BUTTON */
+#claudeTalkBtn{position:fixed;bottom:28px;right:28px;z-index:999;display:flex;align-items:center;justify-content:center;width:88px;height:88px;border-radius:50%;background:var(--gl);color:#000;border:none;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;font-weight:700;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 0 28px rgba(240,201,58,.5),0 4px 16px rgba(0,0,0,.5);transition:transform .2s ease,box-shadow .2s ease}
+#claudeTalkBtn:hover{transform:scale(1.08);box-shadow:0 0 44px rgba(240,201,58,.7),0 6px 20px rgba(0,0,0,.5)}
+#claudeTalkBtn:active{transform:scale(.96)}
 .cal-input:focus{outline:none;border-color:var(--gl)}
 
 /* MODAL */

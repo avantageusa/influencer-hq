@@ -56,7 +56,7 @@
                 </div>
             </div>
             <div class="logo-container text-center">
-                <a href="<?php echo esc_url( home_url( '/portal-home' ) ); ?>">
+                <a href="<?php echo esc_url( home_url( '/' ) ); ?>">
                     <img src="<?php echo get_template_directory_uri(); ?>/images/logo-tm.png" alt="influencerHQ" class="img-fluid">
                 </a>
             </div>

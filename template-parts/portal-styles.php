@@ -2439,3 +2439,170 @@
         }
     }
 </style>
+
+<?php if ( is_page_template( 'page-portal-profile.php' ) ) : ?>
+<style>
+/* ── Profile page styles ─────────────────────────────── */
+.sett-wrap   { max-width: 1024px; padding-left: 18px; padding-right: 18px; }
+.sett-content{ padding-bottom: 80px; }
+
+/* Game Portal URL form */
+.hq-game-url-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #b8972f;
+    color: #fff;
+    font-size: 16px;
+    width: 100%;
+    outline: none;
+    padding: 2px 4px;
+}
+.hq-game-url-input::placeholder { color: #555; font-style: italic; }
+.hq-game-url-save-btn {
+    background: none;
+    border: 1px solid #b8972f;
+    color: #b8972f;
+    font-size: 13px;
+    padding: 3px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-left: 8px;
+}
+.hq-game-url-save-btn:hover { background: rgba(184,151,47,.15); }
+
+/* Separators */
+.sett-sep {
+    height: 1px;
+    margin: 6px 0;
+    background: radial-gradient(ellipse 80% 100% at 50% 50%, rgba(184,151,47,.8) 0%, rgba(184,151,47,0) 100%);
+}
+
+/* Header */
+.sett-header { display:flex; align-items:center; gap:12px; padding:10px 0 6px; }
+.sett-header-icon { width:44px; height:44px; object-fit:contain; }
+.sett-title {
+    font-family: 'Cinzel', serif;
+    font-size: 22px; font-weight:700; color:#fff;
+    margin:0; letter-spacing:.05em;
+}
+
+/* Identity */
+.sett-identity { display:flex; align-items:center; gap:14px; padding:14px 0 12px; }
+.sett-avatar-ring {
+    width:66px; height:66px; border-radius:50%;
+    border:2px solid #fff; overflow:hidden; flex-shrink:0;
+}
+.sett-avatar-img { width:100%; height:100%; object-fit:cover; display:block; }
+.sett-identity-body { flex:1; display:flex; flex-direction:column; gap:2px; }
+.sett-display-name { font-size:16px; font-weight:700; color:#fff; }
+.sett-user-handle  { font-size:16px; color:#616161; }
+.sett-social-row   { display:flex; align-items:center; gap:7px; margin-top:4px; }
+.sett-soc-icon     { width:11px; height:11px; object-fit:contain; opacity:.9; }
+.sett-identity-right { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.sett-lang         { font-size:16px; font-weight:600; color:#fff; text-transform:uppercase; }
+.sett-country-icon { width:24px; height:24px; object-fit:contain; }
+
+/* Section headers */
+.sett-section-head {
+    display:flex; align-items:baseline; flex-wrap:wrap; gap:5px;
+    margin:14px 0 4px; padding-left:10px; padding-right:10px;
+}
+.sett-section-head > .sett-section-title:first-child {
+    min-width:280px; flex-shrink:0;
+}
+.sett-section-title {
+    font-size:16px; font-weight:700; color:#fff;
+    text-transform:uppercase; letter-spacing:.06em;
+}
+.sett-section-sub { font-size:16px; }
+.sett-hint  { flex:1; display:flex; justify-content:end; align-items:center; gap:6px; }
+.sett-hint-text { font-size:13px; color:#919191; }
+.sett-info-icon {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:18px; height:18px; border-radius:50%;
+    background:#D4AF37; color:#000; font-size:11px; font-weight:700;
+    font-style:italic; cursor:default; position:relative; line-height:1;
+    font-family:Georgia, 'Times New Roman', serif; flex-shrink:0;
+    user-select:none;
+}
+.sett-info-icon .sett-info-tooltip {
+    display:none; position:absolute; bottom:calc(100% + 8px); right:0;
+    transform:none;
+    background:#1a1a1a; color:#e5e5e5;
+    font-size:13px; font-style:normal; font-weight:400; font-family:inherit;
+    padding:7px 11px; border-radius:4px;
+    border:1px solid #b8972f; z-index:200;
+    width:260px; white-space:normal; text-align:center;
+    pointer-events:none; line-height:1.45;
+    box-shadow:0 4px 12px rgba(0,0,0,.5);
+}
+.sett-info-icon:hover .sett-info-tooltip { display:block; }
+.sett-section-head--comm { justify-content:space-between; }
+.sett-arrow { font-size:16px; color:#fff; }
+
+/* Card */
+.sett-card {
+    background:#000;
+    border:1px solid #b8972f;
+    border-radius:5px;
+    margin-bottom:14px;
+    overflow:hidden;
+}
+
+/* Row */
+.sett-row {
+    display:flex; align-items:center; justify-content:space-between;
+    min-height:26px; padding:3px 10px;
+    border-bottom:1px solid rgba(184,151,47,.2);
+    gap:6px;
+}
+.sett-row:last-of-type { border-bottom:none; }
+
+.sett-row-lbl {
+    font-size:16px; color:#e5e5e5;
+    flex:1; min-width:120px; max-width:280px;
+}
+.sett-row-val {
+    width:33%; flex-shrink:0; display:flex; align-items:center; justify-content:flex-end;
+}
+
+/* Editable spans */
+.sett-editable {
+    font-size:16px; color:#fff; text-align:right;
+    cursor:pointer; padding:1px 3px; border-radius:2px;
+    display:inline-block; min-width:60px; min-height:20px;
+}
+.sett-editable:hover { background:rgba(184,151,47,.12); }
+.sett-editable:empty::before {
+    content:'tap to add'; color:#555; font-style:italic;
+}
+.sett-editable--handle {
+    border:1px dashed transparent; min-width:90px;
+}
+.sett-editable--handle:hover { border-color:rgba(255,255,255,.25); }
+.sett-editable--handle:empty::before {
+    content:'tap to add'; color:#555; font-style:italic;
+}
+.sett-change-photo {
+    font-size:16px; color:#919191; text-decoration:underline;
+    background:none; border:none; cursor:pointer; padding:0;
+}
+
+/* Quote */
+.sett-quote {
+    font-size:16px; color:#fff; font-style:italic;
+    margin:2px 0 14px; line-height:1.55;
+}
+
+/* Add more */
+.sett-add-more-row {
+    padding:5px 10px; text-align:right;
+    border-top:1px solid rgba(184,151,47,.15);
+}
+.sett-add-more-btn {
+    font-size:16px; color:#919191; text-decoration:underline;
+    background:none; border:none; cursor:pointer; padding:0;
+}
+</style>
+<?php endif; ?>
