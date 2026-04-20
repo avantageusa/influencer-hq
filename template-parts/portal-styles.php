@@ -2604,5 +2604,29 @@
     font-size:16px; color:#919191; text-decoration:underline;
     background:none; border:none; cursor:pointer; padding:0;
 }
+
+/* Celebrity Followers Leagues */
+.celeb-grid-layout {
+    display:grid; grid-template-columns:1fr 1fr 1fr;
+    gap:10px; padding:10px;
+}
+.celeb-col {
+    display:flex; flex-direction:column; gap:6px;
+}
+.celeb-col-label {
+    font-size:15px; color:#e5e5e5; text-align:center; font-weight:600;
+}
+.celeb-select {
+    background:#000; color:#fff;
+    border:1px solid rgba(184,151,47,.5); border-radius:3px;
+    font-size:14px; padding:3px 4px;
+    outline:none; cursor:pointer; width:100%;
+}
+.celeb-select:focus { border-color:#b8972f; }
+.celeb-select option { background:#1a1a1a; }
+@media (max-width:600px) {
+    .celeb-grid-layout { grid-template-columns:1fr; }
+    .celeb-col-label { text-align:left; }
+}
 </style>
 <?php endif; ?>

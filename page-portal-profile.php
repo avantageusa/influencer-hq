@@ -43,6 +43,12 @@ if ( ! is_array( $account_visible ) ) { $account_visible = []; }
 $comm_prefs      = get_user_meta( $user->ID, '_ihq_comm_prefs',      true );
 if ( ! is_array( $comm_prefs ) )      { $comm_prefs      = []; }
 
+$celebrity_selections = [
+    'movie_stars'   => get_user_meta( $user->ID, '_ihq_cel_movie_stars',   true ) ?: '',
+    'music_artists' => get_user_meta( $user->ID, '_ihq_cel_music_artists', true ) ?: '',
+    'sports_icons'  => get_user_meta( $user->ID, '_ihq_cel_sports_icons',  true ) ?: '',
+];
+
 $social_platforms = ['Kick','YouTube','X','TikTok','Discord','WeChat','LINE','KakaoTalk','WhatsApp','Instagram','LinkedIn','Facebook','Snapchat','Reddit','Viber','Twitch'];
 $comm_platforms   = ['Email','Kick','YouTube','X','TikTok','Discord','WeChat','LINE','KakaoTalk','WhatsApp','Instagram','LinkedIn','Facebook','Snapchat','Reddit','Viber','Twitch'];
 
@@ -149,6 +155,43 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                         </div>
                     </div>
                     <?php endforeach; ?>
+                </div>
+
+                <!-- CELEBRITY FOLLOWERS LEAGUES -->
+                <div class="sett-section-head sett-section-head--comm celeb-leagues-head" id="celebLeaguesHead" style="cursor:pointer;">
+                    <span class="sett-section-title">CELEBRITY &nbsp;FOLLOWERS &nbsp;LEAGUES</span>
+                    <span class="sett-arrow" id="celebLeaguesArrow">▼</span>
+                </div>
+
+                <div id="celebLeaguesBody">
+                    <p class="sett-quote" style="margin-top:0;"><em>Choose your favorite celebrity in all three categories. Influencer Headquarters will be promoting you as a Team Captain with all new game participants.</em></p>
+
+                    <?php
+                    $celeb_lists = [
+                        'movie_stars'   => ['Celebrity Name 1','Tom Cruise','Celebrity Name 3','Celebrity Name 4','Celebrity Name 5','Celebrity Name 6','Celebrity Name 7','Celebrity Name 8','Celebrity Name 9','Celebrity Name 10','Celebrity Name 11','Celebrity Name 12','Celebrity Name 13','Celebrity Name 14','Celebrity Name 15','Celebrity Name 16','Celebrity Name 17','Celebrity Name 18','Celebrity Name 19','Celebrity Name 20'],
+                        'music_artists' => ['Celebrity Name 1','Celebrity Name 2','Celebrity Name 3','Celebrity Name 4','Celebrity Name 5','Celebrity Name 6','Celebrity Name 7','Celebrity Name 8','Celebrity Name 9','Celebrity Name 10','Celebrity Name 11','Celebrity Name 12','Celebrity Name 13','Celebrity Name 14','Celebrity Name 15','Celebrity Name 16','Celebrity Name 17','Celebrity Name 18','Celebrity Name 19','Celebrity Name 20'],
+                        'sports_icons'  => ['Celebrity Name 1','Celebrity Name 2','Celebrity Name 3','Celebrity Name 4','Celebrity Name 5','Celebrity Name 6','Celebrity Name 7','Celebrity Name 8','Celebrity Name 9','Celebrity Name 10','Celebrity Name 11','Celebrity Name 12','Celebrity Name 13','Celebrity Name 14','Celebrity Name 15','Celebrity Name 16','Celebrity Name 17','Celebrity Name 18','Celebrity Name 19','Celebrity Name 20'],
+                    ];
+                    $celeb_labels = ['movie_stars' => 'Movie Stars', 'music_artists' => 'Music Artists', 'sports_icons' => 'Sports Icons'];
+                    ?>
+
+                    <div class="sett-card">
+                        <div class="celeb-grid-layout">
+                            <?php foreach ( $celeb_labels as $cat => $label ) :
+                                $saved = $celebrity_selections[ $cat ] ?? '';
+                            ?>
+                            <div class="celeb-col">
+                                <span class="celeb-col-label"><?php echo esc_html( $label ); ?></span>
+                                <select class="celeb-select" data-category="<?php echo esc_attr( $cat ); ?>">
+                                    <option value="">Open</option>
+                                    <?php foreach ( $celeb_lists[ $cat ] as $name ) : ?>
+                                    <option value="<?php echo esc_attr( $name ); ?>"<?php selected( $saved, $name ); ?>><?php echo esc_html( $name ); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Quote -->
@@ -354,6 +397,25 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
             if (ln && d.lastName  !== undefined) ln.textContent = d.lastName;
         }
     }).catch(function(e){ dbg('GET /account/players/me', getPayload, {error: String(e)}); });
+
+    /* ── Celebrity Followers Leagues ──────────────────── */
+    var celebHead  = document.getElementById('celebLeaguesHead');
+    var celebBody  = document.getElementById('celebLeaguesBody');
+    var celebArrow = document.getElementById('celebLeaguesArrow');
+    if (celebHead) {
+        celebHead.addEventListener('click', function(){
+            var hidden = celebBody.style.display === 'none';
+            celebBody.style.display = hidden ? '' : 'none';
+            celebArrow.textContent  = hidden ? '▼' : '▲';
+        });
+    }
+
+    document.querySelectorAll('.celeb-select').forEach(function(sel){
+        sel.addEventListener('change', function(){
+            save('save_settings_field', { group: 'account', field: 'celebrity_' + sel.dataset.category, value: sel.value });
+        });
+    });
+
 })();
 
 </script>

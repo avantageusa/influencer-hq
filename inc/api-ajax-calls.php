@@ -535,12 +535,15 @@ function save_settings_field_ajax() {
 
     if ( $group === 'account' ) {
         $map = [
-            'name'     => 'display_name',
-            'email'    => 'user_email',
-            'country'  => '_ihq_country',
-            'city'     => '_ihq_city',
-            'timezone' => '_ihq_timezone',
-            'handle'   => '_ihq_handle',
+            'name'                   => 'display_name',
+            'email'                  => 'user_email',
+            'country'                => '_ihq_country',
+            'city'                   => '_ihq_city',
+            'timezone'               => '_ihq_timezone',
+            'handle'                 => '_ihq_handle',
+            'celebrity_movie_stars'  => '_ihq_cel_movie_stars',
+            'celebrity_music_artists'=> '_ihq_cel_music_artists',
+            'celebrity_sports_icons' => '_ihq_cel_sports_icons',
         ];
         if ( isset( $map[ $field ] ) ) {
             if ( in_array( $map[ $field ], [ 'display_name', 'user_email' ], true ) ) {
