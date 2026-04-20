@@ -307,7 +307,7 @@ get_template_part( 'template-parts/portal-styles' );
                     </div>
                 </div>
 
-                <h2>Insert design here</h2>
+                <h2 style="text-align: center;">Insert design here</h2>
 
             </div>
 
