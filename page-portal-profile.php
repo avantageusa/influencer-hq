@@ -49,6 +49,8 @@ $celebrity_selections = [
     'sports_icons'  => get_user_meta( $user->ID, '_ihq_cel_sports_icons',  true ) ?: '',
 ];
 
+$intl_league_team = get_user_meta( $user->ID, '_ihq_intl_league_team', true ) ?: '';
+
 $social_platforms = ['Kick','YouTube','X','TikTok','Discord','WeChat','LINE','KakaoTalk','WhatsApp','Instagram','LinkedIn','Facebook','Snapchat','Reddit','Viber','Twitch'];
 $comm_platforms   = ['Email','Kick','YouTube','X','TikTok','Discord','WeChat','LINE','KakaoTalk','WhatsApp','Instagram','LinkedIn','Facebook','Snapchat','Reddit','Viber','Twitch'];
 
@@ -168,9 +170,9 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
 
                     <?php
                     $celeb_lists = [
-                        'movie_stars'   => ['Celebrity Name 1','Tom Cruise','Celebrity Name 3','Celebrity Name 4','Celebrity Name 5','Celebrity Name 6','Celebrity Name 7','Celebrity Name 8','Celebrity Name 9','Celebrity Name 10','Celebrity Name 11','Celebrity Name 12','Celebrity Name 13','Celebrity Name 14','Celebrity Name 15','Celebrity Name 16','Celebrity Name 17','Celebrity Name 18','Celebrity Name 19','Celebrity Name 20'],
-                        'music_artists' => ['Celebrity Name 1','Celebrity Name 2','Celebrity Name 3','Celebrity Name 4','Celebrity Name 5','Celebrity Name 6','Celebrity Name 7','Celebrity Name 8','Celebrity Name 9','Celebrity Name 10','Celebrity Name 11','Celebrity Name 12','Celebrity Name 13','Celebrity Name 14','Celebrity Name 15','Celebrity Name 16','Celebrity Name 17','Celebrity Name 18','Celebrity Name 19','Celebrity Name 20'],
-                        'sports_icons'  => ['Celebrity Name 1','Celebrity Name 2','Celebrity Name 3','Celebrity Name 4','Celebrity Name 5','Celebrity Name 6','Celebrity Name 7','Celebrity Name 8','Celebrity Name 9','Celebrity Name 10','Celebrity Name 11','Celebrity Name 12','Celebrity Name 13','Celebrity Name 14','Celebrity Name 15','Celebrity Name 16','Celebrity Name 17','Celebrity Name 18','Celebrity Name 19','Celebrity Name 20'],
+                        'movie_stars'   => ['Leonardo DiCaprio','Fan Bingbing','Scarlett Johansson','Tony Leung','Anya Wong','Maggie Cheung','Iko Uwais','Tom Cruise','Hyun Bin','Chow Yun-fat','Zhang Ziyi','Song Hye-kyo','Gong Yoo','Michelle Yeoh','Donnie Yen','Vicky Chen','Bruce Lee','Gong Li','Liu Yifei','Jackie Chan'],
+                        'music_artists' => ['Jolin Tsai','Namewee','IU (Lee Ji-eun)','BTS','Ariana Grande','Bruno Mars','PSY','Blackpink','Twice','Tomorrow X Together','Billie Eilish','Jay Chou','Lisa (BLACKPINK)','Zhou Shen','G-Dragon','Lady Gaga','Taylor Swift','Deng Liqi','Justin Bieber','Ed Sheeran'],
+                        'sports_icons'  => ['Son Heung-min','Lionel Messi','Roger Federer','Naomi Osaka','Ding Junhui','Jeremy Lin','Cristiano Ronaldo','Stephen Curry','Michael Jordan','Novak Djokovic','Kento Momota','Sachin Tendulkar','Rafael Nadal','Virat Kohli','Manny Pacquiao','Shohei Ohtani','Yao Ming','LeBron James','Kylian Mbappé','Lee Chong Wei'],
                     ];
                     $celeb_labels = ['movie_stars' => 'Movie Stars', 'music_artists' => 'Music Artists', 'sports_icons' => 'Sports Icons'];
                     ?>
@@ -194,53 +196,73 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                     </div>
                 </div>
 
+                <!-- INTERNATIONAL LEAGUE TEAM -->
+                <div class="sett-section-head sett-section-head--comm celeb-leagues-head" id="intlLeagueHead" style="cursor:pointer;">
+                    <span class="sett-section-title">CHOOSE YOUR INTERNATIONAL LEAGUE TEAM</span>
+                    <span class="sett-arrow" id="intlLeagueArrow">▼</span>
+                </div>
+
+                <div id="intlLeagueBody">
+                    <div class="sett-card">
+                        <div class="celeb-grid-layout" style="grid-template-columns:1fr;">
+                            <div class="celeb-col">
+                                <span class="celeb-col-label">Country / Region</span>
+                                <select class="celeb-select" id="intlLeagueSelect">
+                                    <option value="">Open</option>
+                                    <?php
+                                    $intl_league_regions = ['South Korea','Europe','Malaysia','Thailand','Africa','Singapore','Asia','India','China','Hong Kong','Philippines','Taiwan','United States','Canada','Macao','Pakistan','South America','Japan','Australia','South Africa'];
+                                    foreach ( $intl_league_regions as $region ) :
+                                    ?>
+                                    <option value="<?php echo esc_attr( $region ); ?>"<?php selected( $intl_league_team, $region ); ?>><?php echo esc_html( $region ); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Quote -->
                 <p class="sett-quote"><em>We believe visibility powers competition. The more visible you choose to be, the farther your leadership can travel.</em></p>
 
-                <!-- SOCIAL MEDIA HANDLES -->
-                <div class="sett-section-head">
-                    <span class="sett-section-title">SOCIAL &nbsp;MEDIA</span>
-                    <span class="sett-section-title sett-section-sub">HANDLES</span>
-                    <span class="sett-hint"><span class="sett-hint-text">Click to enter / edit</span><span class="sett-info-icon">i<span class="sett-info-tooltip">Entered information is saved by pressing Enter key, or by clicking anywhere outside the input field.</span></span></span>
+                <!-- USERNAME OR CONTACT -->
+                <div class="sett-section-head sett-section-head--comm" id="contactHead" style="cursor:pointer;">
+                    <span class="sett-section-title">USERNAME OR CONTACT</span>
+                    <span class="sett-arrow" id="contactArrow">▼</span>
                 </div>
 
-                <div class="sett-card">
-                    <?php foreach ( $social_platforms as $platform ) :
-                        $key  = strtolower( $platform );
-                        $val  = $social_handles[ $key ] ?? '';
-                        $on   = ! empty( $social_visible[ $key ] );
-                    ?>
-                    <div class="sett-row">
-                        <div class="sett-row-lbl"><?php echo esc_html( $platform ); ?></div>
-                        <div class="sett-row-val">
-                            <span class="sett-editable sett-editable--handle" data-group="social" data-field="<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $val ); ?></span>
+                <div id="contactBody">
+                    <div class="sett-card contact-card">
+                        <?php
+                        $contact_platforms = ['Discord','Email','Facebook','Instagram','KakaoTalk','Kick','LINE','LinkedIn','Reddit','Snapchat','TikTok','Twitch','Viber','WeChat','WhatsApp','X','YouTube'];
+                        foreach ( $contact_platforms as $cp ) :
+                            $ckey  = strtolower( $cp );
+                            $cval  = $social_handles[ $ckey ] ?? '';
+                            $cshow = ! empty( $social_visible[ $ckey ] );
+                            $ccomm = ! empty( $comm_prefs[ $ckey ] );
+                        ?>
+                        <div class="contact-row" data-key="<?php echo esc_attr( $ckey ); ?>">
+                            <div class="contact-row-main">
+                                <span class="contact-row-lbl"><?php echo esc_html( $cp ); ?></span>
+                                <span class="contact-row-addval<?php echo $cval ? ' contact-row-addval--filled' : ''; ?>"><?php echo $cval ? esc_html( $cval ) : 'add'; ?></span>
+                            </div>
+                            <div class="contact-row-expand" style="display:none;">
+                                <input type="text" class="contact-input" value="<?php echo esc_attr( $cval ); ?>" placeholder="click to enter / edit">
+                                <div class="contact-toggles">
+                                    <label class="contact-toggle<?php echo $cshow ? ' contact-toggle--on' : ''; ?>">
+                                        <input type="checkbox" class="contact-toggle-cb" data-type="show"<?php checked( $cshow ); ?>>
+                                        <span class="contact-toggle-label">Show on My Profile</span>
+                                        <span class="contact-toggle-track"></span>
+                                    </label>
+                                    <label class="contact-toggle<?php echo $ccomm ? ' contact-toggle--on' : ''; ?>">
+                                        <input type="checkbox" class="contact-toggle-cb" data-type="comm"<?php checked( $ccomm ); ?>>
+                                        <span class="contact-toggle-label">Communicate with Me</span>
+                                        <span class="contact-toggle-track"></span>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
+                        <?php endforeach; ?>
                     </div>
-                    <?php endforeach; ?>
-                    <div class="sett-add-more-row"><button type="button" class="sett-add-more-btn">add more</button></div>
-                </div>
-
-                <!-- HOW YOU LIKE US TO COMMUNICATE -->
-                <div class="sett-section-head sett-section-head--comm">
-                    <span class="sett-section-title">HOW YOU LIKE US TO COMMUNICATE WITH YOU</span>
-                    <span class="sett-arrow">▼</span>
-                </div>
-
-                <div class="sett-card">
-                    <?php foreach ( $comm_platforms as $platform ) :
-                        $key = strtolower( $platform );
-                        $on  = ! empty( $comm_prefs[ $key ] );
-                    ?>
-                    <div class="sett-row">
-                        <div class="sett-row-lbl"><?php echo esc_html( $platform ); ?></div>
-                        <div class="sett-row-val">
-                            <?php if ( $platform === 'Email' ) : ?>
-                                <span class="sett-editable" data-group="comm" data-field="email"><?php echo esc_html( $user_email ); ?></span>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                    <?php endforeach; ?>
-                    <div class="sett-add-more-row"><button type="button" class="sett-add-more-btn">add more</button></div>
                 </div>
 
             </div><!-- .sett-content -->
@@ -298,12 +320,56 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
         });
     });
 
-    /* ── Toggles ───────────────────────────────────────── */
-    document.querySelectorAll('.sett-toggle-cb').forEach(function(cb){
-        cb.addEventListener('change', function(){
-            var lbl = cb.closest('.sett-toggle');
-            cb.checked ? lbl.classList.add('sett-toggle--on') : lbl.classList.remove('sett-toggle--on');
-            save('save_settings_toggle', { group: cb.dataset.group, key: cb.dataset.key, value: cb.checked ? 1 : 0 });
+    /* ── Username or Contact ─────────────────────────── */
+    var contactHead  = document.getElementById('contactHead');
+    var contactBody  = document.getElementById('contactBody');
+    var contactArrow = document.getElementById('contactArrow');
+    if (contactHead) {
+        contactHead.addEventListener('click', function(){
+            var hidden = contactBody.style.display === 'none';
+            contactBody.style.display = hidden ? '' : 'none';
+            contactArrow.textContent  = hidden ? '▼' : '▲';
+        });
+    }
+
+    document.querySelectorAll('.contact-row').forEach(function(row){
+        var key    = row.dataset.key;
+        var main   = row.querySelector('.contact-row-main');
+        var expand = row.querySelector('.contact-row-expand');
+        var input  = row.querySelector('.contact-input');
+        var valEl  = row.querySelector('.contact-row-addval');
+
+        main.addEventListener('click', function(){
+            var isOpen = expand.style.display !== 'none';
+            document.querySelectorAll('.contact-row-expand').forEach(function(e){ e.style.display = 'none'; });
+            if (!isOpen) {
+                expand.style.display = '';
+                input.focus();
+            }
+        });
+
+        function commitInput(){
+            var v = input.value.trim();
+            valEl.textContent = v || 'add';
+            v ? valEl.classList.add('contact-row-addval--filled') : valEl.classList.remove('contact-row-addval--filled');
+            save('save_settings_field', { group: 'social', field: key, value: v });
+        }
+        input.addEventListener('blur', commitInput);
+        input.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); commitInput(); } });
+        expand.addEventListener('mousedown', function(e){
+            if (e.target !== input) e.preventDefault();
+        });
+
+        row.querySelectorAll('.contact-toggle-cb').forEach(function(cb){
+            cb.addEventListener('change', function(){
+                var lbl = cb.closest('.contact-toggle');
+                cb.checked ? lbl.classList.add('contact-toggle--on') : lbl.classList.remove('contact-toggle--on');
+                if (cb.dataset.type === 'show') {
+                    save('save_settings_toggle', { group: 'social', key: key, value: cb.checked ? 1 : 0 });
+                } else {
+                    save('save_settings_toggle', { group: 'comm',   key: key, value: cb.checked ? 1 : 0 });
+                }
+            });
         });
     });
 
@@ -415,6 +481,25 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
             save('save_settings_field', { group: 'account', field: 'celebrity_' + sel.dataset.category, value: sel.value });
         });
     });
+
+    /* ── International League Team ────────────────────── */
+    var intlLeagueHead  = document.getElementById('intlLeagueHead');
+    var intlLeagueBody  = document.getElementById('intlLeagueBody');
+    var intlLeagueArrow = document.getElementById('intlLeagueArrow');
+    if (intlLeagueHead) {
+        intlLeagueHead.addEventListener('click', function(){
+            var hidden = intlLeagueBody.style.display === 'none';
+            intlLeagueBody.style.display = hidden ? '' : 'none';
+            intlLeagueArrow.textContent  = hidden ? '▼' : '▲';
+        });
+    }
+
+    var intlLeagueSelect = document.getElementById('intlLeagueSelect');
+    if (intlLeagueSelect) {
+        intlLeagueSelect.addEventListener('change', function(){
+            save('save_settings_field', { group: 'account', field: 'intl_league_team', value: intlLeagueSelect.value });
+        });
+    }
 
 })();
 

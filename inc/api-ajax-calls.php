@@ -544,6 +544,7 @@ function save_settings_field_ajax() {
             'celebrity_movie_stars'  => '_ihq_cel_movie_stars',
             'celebrity_music_artists'=> '_ihq_cel_music_artists',
             'celebrity_sports_icons' => '_ihq_cel_sports_icons',
+            'intl_league_team'       => '_ihq_intl_league_team',
         ];
         if ( isset( $map[ $field ] ) ) {
             if ( in_array( $map[ $field ], [ 'display_name', 'user_email' ], true ) ) {

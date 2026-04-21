@@ -2628,5 +2628,52 @@
     .celeb-grid-layout { grid-template-columns:1fr; }
     .celeb-col-label { text-align:left; }
 }
+
+/* Username or Contact */
+.contact-card { overflow:visible; }
+.contact-row { border-bottom:1px solid rgba(184,151,47,.2); }
+.contact-row:last-of-type { border-bottom:none; }
+.contact-row-main {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:7px 10px; cursor:pointer; min-height:38px; gap:6px;
+}
+.contact-row-main:hover { background:rgba(184,151,47,.06); }
+.contact-row-lbl { font-size:16px; color:#e5e5e5; }
+.contact-row-addval { font-size:16px; color:#555; font-style:italic; }
+.contact-row-addval--filled { color:#fff; font-style:normal; }
+.contact-row-expand {
+    padding:8px 10px 14px;
+    border-top:1px solid rgba(184,151,47,.15);
+    background:rgba(184,151,47,.04);
+}
+.contact-input {
+    display:block; width:100%; box-sizing:border-box;
+    background:transparent;
+    border:1px dashed rgba(255,255,255,.35);
+    border-radius:3px;
+    color:#fff; font-size:15px; padding:6px 10px;
+    outline:none; margin-bottom:14px;
+}
+.contact-input::placeholder { color:#555; font-style:italic; }
+.contact-toggles { display:flex; gap:24px; flex-wrap:wrap; align-items:center; }
+.contact-toggle {
+    display:flex; align-items:center; gap:8px;
+    cursor:pointer; user-select:none;
+}
+.contact-toggle input[type="checkbox"] { display:none; }
+.contact-toggle-label { font-size:14px; color:#ccc; }
+.contact-toggle-track {
+    width:44px; height:24px; border-radius:12px;
+    background:#e53935; position:relative;
+    transition:background .2s; flex-shrink:0;
+}
+.contact-toggle-track::after {
+    content:''; position:absolute;
+    width:20px; height:20px; border-radius:50%;
+    background:#fff; top:2px; left:2px;
+    transition:left .2s; box-shadow:0 1px 3px rgba(0,0,0,.4);
+}
+.contact-toggle--on .contact-toggle-track { background:#43e97b; }
+.contact-toggle--on .contact-toggle-track::after { left:22px; }
 </style>
 <?php endif; ?>
