@@ -136,6 +136,20 @@ get_template_part( 'template-parts/portal-styles' );
                                     setTimeout(function(){btn.textContent='copy';},2000);
                                 });
                             })()">copy</button>
+                        </div>                        <div id="live-url-qr" style="display:none;margin-top:12px;"></div>
+                        <div id="live-qr-caption" style="display:none;margin-top:8px;font-size:13px;color:#ccc;display:none;align-items:center;gap:6px;">
+                            Scan to share QR code with opponent
+                            <span class="live-qr-info-icon" tabindex="0" aria-label="How to scan" style="position:relative;cursor:pointer;display:inline-flex;align-items:center;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                                <span class="live-qr-tooltip" role="tooltip" style="display:none;position:absolute;left:24px;top:-8px;background:#1a1a1a;border:1px solid #555;border-radius:6px;padding:14px 16px;width:260px;font-size:12px;line-height:1.6;color:#ddd;z-index:9999;pointer-events:none;">
+                                    <strong style="display:block;margin-bottom:6px;">How to scan:</strong>
+                                    &bull; Open your phone&rsquo;s camera<br>
+                                    &bull; Point it at the code<br>
+                                    &bull; Tap the link that appears<br><br>
+                                    <em>Viewing on this phone? Press and hold the code, then tap the link.</em><br><br>
+                                    Works on any iPhone or Android from 2017 or newer. No app needed.
+                                </span>
+                            </span>
                         </div>
                     </div>
 
@@ -538,14 +552,39 @@ $_schedule_nonce = wp_create_nonce( 'kick_schedule_nonce' );
     function setUrl(url) {
         var el = document.getElementById('live-url-display');
         if (!el) return;
+        var qrWrap = document.getElementById('live-url-qr');
         if (url) {
             el.textContent = url;
             el.classList.add('live-url--has-value');
+            if (qrWrap) {
+                qrWrap.innerHTML = '';
+                qrWrap.style.display = '';
+                new QRCode(qrWrap, { text: url, width: 150, height: 150, correctLevel: QRCode.CorrectLevel.M });
+            }
+            var cap = document.getElementById('live-qr-caption');
+            if (cap) { cap.style.display = 'flex'; }
         } else {
             el.textContent = 'URL will appear here...';
             el.classList.remove('live-url--has-value');
+            if (qrWrap) { qrWrap.innerHTML = ''; qrWrap.style.display = 'none'; }
+            var cap = document.getElementById('live-qr-caption');
+            if (cap) { cap.style.display = 'none'; }
         }
     }
+
+    // Tooltip show/hide for the QR info icon
+    document.addEventListener('DOMContentLoaded', function() {
+        var icon = document.querySelector('.live-qr-info-icon');
+        if (!icon) return;
+        var tip = icon.querySelector('.live-qr-tooltip');
+        if (!tip) return;
+        function showTip() { tip.style.display = 'block'; }
+        function hideTip() { tip.style.display = 'none'; }
+        icon.addEventListener('mouseenter', showTip);
+        icon.addEventListener('mouseleave', hideTip);
+        icon.addEventListener('focus', showTip);
+        icon.addEventListener('blur', hideTip);
+    });
 
     function showMsg(text, isError) {
         var el = document.getElementById('live-request-msg');
@@ -841,6 +880,7 @@ $_schedule_nonce = wp_create_nonce( 'kick_schedule_nonce' );
 
 })();
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <?php
 get_template_part( 'template-parts/portal-scripts' );
 get_footer();
