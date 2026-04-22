@@ -167,6 +167,10 @@ get_template_part( 'template-parts/portal-styles' );
                             <span>Upcoming Live Appearances</span>
                         </div>
                         <div id="la-schedule-list">
+                            <?php
+                            $la_logged_user = wp_get_current_user();
+                            $la_user_name   = $la_logged_user->display_name ?: $la_logged_user->user_login;
+                            ?>
                             <?php if ( empty( $la_confirmed ) ) : ?>
                             <p class="live-copy-muted la-schedule-empty">No confirmed appearances yet.</p>
                             <?php else : ?>
@@ -189,9 +193,27 @@ get_template_part( 'template-parts/portal-styles' );
                                 $la_c1d = $la_day_parts[1]   ?? '';
                                 $la_c2m = $la_bkday_parts[0] ?? '';
                                 $la_c2d = $la_bkday_parts[1] ?? '';
+                                $la_display_date = 'Date TBD';
+                                $la_month_num = (int) $la_c1m;
+                                $la_day_num   = (int) $la_c1d;
+                                if ( $la_month_num >= 1 && $la_month_num <= 12 && $la_day_num >= 1 && $la_day_num <= 31 ) {
+                                    $la_year = (int) current_time( 'Y' );
+                                    $la_ts   = mktime( 12, 0, 0, $la_month_num, $la_day_num, $la_year );
+                                    if ( $la_ts < ( current_time( 'timestamp' ) - DAY_IN_SECONDS ) ) {
+                                        $la_ts = mktime( 12, 0, 0, $la_month_num, $la_day_num, $la_year + 1 );
+                                    }
+                                    if ( $la_ts ) {
+                                        $la_display_date = date_i18n( 'Y F l jS', $la_ts );
+                                    }
+                                }
+                                $la_opp_label   = $la_opp ? $la_opp : 'Opponent TBD';
+                                $la_matchup_txt = $la_user_name . ' vs ' . $la_opp_label;
+                                if ( ! empty( $la_bkopp ) ) {
+                                    $la_matchup_txt .= ' (backup: ' . $la_bkopp . ')';
+                                }
                             ?>
                             <div class="la-schedule-item" data-id="<?php echo esc_attr( $la_cid ); ?>">
-                                <span class="la-schedule-name"><?php echo esc_html( $la_cpost->post_title ); ?></span>
+                                <span class="la-schedule-name"><?php echo esc_html( $la_matchup_txt . ' | ' . $la_display_date ); ?></span>
                                 <div class="la-schedule-actions">
                                     <button type="button" class="live-inline-btn la-edit-btn"
                                         data-id="<?php echo esc_attr( $la_cid ); ?>"
