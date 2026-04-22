@@ -580,7 +580,6 @@ function save_settings_toggle_ajax() {
 
     $meta_map = [
         'account' => '_ihq_account_visible',
-        'social'  => '_ihq_social_visible',
         'comm'    => '_ihq_comm_prefs',
     ];
 

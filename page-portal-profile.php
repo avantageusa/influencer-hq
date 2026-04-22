@@ -36,10 +36,7 @@ if ( ! $user_avatar ) {
 
 $social_handles  = get_user_meta( $user->ID, '_ihq_social_handles',  true );
 if ( ! is_array( $social_handles ) )  { $social_handles  = []; }
-$social_visible  = get_user_meta( $user->ID, '_ihq_social_visible',  true );
-if ( ! is_array( $social_visible ) )  { $social_visible  = []; }
-$account_visible = get_user_meta( $user->ID, '_ihq_account_visible', true );
-if ( ! is_array( $account_visible ) ) { $account_visible = []; }
+
 $comm_prefs      = get_user_meta( $user->ID, '_ihq_comm_prefs',      true );
 if ( ! is_array( $comm_prefs ) )      { $comm_prefs      = []; }
 
@@ -237,7 +234,6 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                         foreach ( $contact_platforms as $cp ) :
                             $ckey  = strtolower( $cp );
                             $cval  = $social_handles[ $ckey ] ?? '';
-                            $cshow = ! empty( $social_visible[ $ckey ] );
                             $ccomm = ! empty( $comm_prefs[ $ckey ] );
                         ?>
                         <div class="contact-row" data-key="<?php echo esc_attr( $ckey ); ?>">
@@ -248,11 +244,6 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                             <div class="contact-row-expand" style="display:none;">
                                 <input type="text" class="contact-input" value="<?php echo esc_attr( $cval ); ?>" placeholder="click to enter / edit">
                                 <div class="contact-toggles">
-                                    <label class="contact-toggle<?php echo $cshow ? ' contact-toggle--on' : ''; ?>">
-                                        <input type="checkbox" class="contact-toggle-cb" data-type="show"<?php checked( $cshow ); ?>>
-                                        <span class="contact-toggle-label">Show on My Profile</span>
-                                        <span class="contact-toggle-track"></span>
-                                    </label>
                                     <label class="contact-toggle<?php echo $ccomm ? ' contact-toggle--on' : ''; ?>">
                                         <input type="checkbox" class="contact-toggle-cb" data-type="comm"<?php checked( $ccomm ); ?>>
                                         <span class="contact-toggle-label">Communicate with Me</span>
@@ -360,17 +351,14 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
             if (e.target !== input) e.preventDefault();
         });
 
-        row.querySelectorAll('.contact-toggle-cb').forEach(function(cb){
-            cb.addEventListener('change', function(){
-                var lbl = cb.closest('.contact-toggle');
-                cb.checked ? lbl.classList.add('contact-toggle--on') : lbl.classList.remove('contact-toggle--on');
-                if (cb.dataset.type === 'show') {
-                    save('save_settings_toggle', { group: 'social', key: key, value: cb.checked ? 1 : 0 });
-                } else {
-                    save('save_settings_toggle', { group: 'comm',   key: key, value: cb.checked ? 1 : 0 });
-                }
+        var commCb = row.querySelector('.contact-toggle-cb[data-type="comm"]');
+        if (commCb) {
+            commCb.addEventListener('change', function(){
+                var lbl = commCb.closest('.contact-toggle');
+                commCb.checked ? lbl.classList.add('contact-toggle--on') : lbl.classList.remove('contact-toggle--on');
+                save('save_settings_toggle', { group: 'comm', key: key, value: commCb.checked ? 1 : 0 });
             });
-        });
+        }
     });
 
     /* ── Avatar upload ─────────────────────────────────── */
