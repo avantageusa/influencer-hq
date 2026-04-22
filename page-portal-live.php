@@ -139,6 +139,86 @@ get_template_part( 'template-parts/portal-styles' );
                         </div>
                     </div>
 
+                    <?php
+                    // ── Upcoming Live Appearance Schedule ───────────────────
+                    $la_months_map = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
+                    $la_confirmed  = get_posts( array(
+                        'post_type'      => 'live_appearance',
+                        'post_status'    => 'publish',
+                        'author'         => get_current_user_id(),
+                        'posts_per_page' => -1,
+                        'orderby'        => 'meta_value',
+                        'meta_key'       => '_live_appearance_date_created',
+                        'order'          => 'DESC',
+                        'meta_query'     => array(
+                            array(
+                                'key'   => '_live_appearance_status',
+                                'value' => 'confirmed',
+                            ),
+                        ),
+                    ) );
+                    ?>
+                    <div class="live-separator"></div>
+                    <h2 class="live-section-heading">LIVE APPEARANCE SCHEDULE</h2>
+                    <div class="live-separator"></div>
+
+                    <div class="la-schedule-wrap">
+                        <div class="la-schedule-header">
+                            <span>Upcoming Live Appearances</span>
+                        </div>
+                        <div id="la-schedule-list">
+                            <?php if ( empty( $la_confirmed ) ) : ?>
+                            <p class="live-copy-muted la-schedule-empty">No confirmed appearances yet.</p>
+                            <?php else : ?>
+                            <?php foreach ( $la_confirmed as $la_cpost ) :
+                                $la_cid         = $la_cpost->ID;
+                                $la_day_raw     = get_post_meta( $la_cid, '_live_appearance_day',                    true );
+                                $la_bkday_raw   = get_post_meta( $la_cid, '_live_appearance_backup_day',             true );
+                                $la_c1t         = get_post_meta( $la_cid, '_live_appearance_start_time',             true );
+                                $la_c2t         = get_post_meta( $la_cid, '_live_appearance_backup_start_time',      true );
+                                $la_c3m         = get_post_meta( $la_cid, '_live_appearance_choice_3_month',         true );
+                                $la_c3d         = get_post_meta( $la_cid, '_live_appearance_choice_3_day',           true );
+                                $la_c3t         = get_post_meta( $la_cid, '_live_appearance_choice_3_time',          true );
+                                $la_opp         = get_post_meta( $la_cid, '_live_appearance_opponent_handle',        true );
+                                $la_bkopp       = get_post_meta( $la_cid, '_live_appearance_backup_opponent_handle', true );
+                                $la_oppemail    = get_post_meta( $la_cid, '_live_appearance_opponent_email',         true );
+                                $la_bkoppemail  = get_post_meta( $la_cid, '_live_appearance_backup_opponent_email',  true );
+                                $la_day_parts   = $la_day_raw   ? explode( '/', $la_day_raw )   : [ '', '' ];
+                                $la_bkday_parts = $la_bkday_raw ? explode( '/', $la_bkday_raw ) : [ '', '' ];
+                                $la_c1m = $la_day_parts[0]   ?? '';
+                                $la_c1d = $la_day_parts[1]   ?? '';
+                                $la_c2m = $la_bkday_parts[0] ?? '';
+                                $la_c2d = $la_bkday_parts[1] ?? '';
+                            ?>
+                            <div class="la-schedule-item" data-id="<?php echo esc_attr( $la_cid ); ?>">
+                                <span class="la-schedule-name"><?php echo esc_html( $la_cpost->post_title ); ?></span>
+                                <div class="la-schedule-actions">
+                                    <button type="button" class="live-inline-btn la-edit-btn"
+                                        data-id="<?php echo esc_attr( $la_cid ); ?>"
+                                        data-c1m="<?php echo esc_attr( $la_c1m ); ?>"
+                                        data-c1d="<?php echo esc_attr( $la_c1d ); ?>"
+                                        data-c1t="<?php echo esc_attr( $la_c1t ); ?>"
+                                        data-c2m="<?php echo esc_attr( $la_c2m ); ?>"
+                                        data-c2d="<?php echo esc_attr( $la_c2d ); ?>"
+                                        data-c2t="<?php echo esc_attr( $la_c2t ); ?>"
+                                        data-c3m="<?php echo esc_attr( $la_c3m ); ?>"
+                                        data-c3d="<?php echo esc_attr( $la_c3d ); ?>"
+                                        data-c3t="<?php echo esc_attr( $la_c3t ); ?>"
+                                        data-opp="<?php echo esc_attr( $la_opp ); ?>"
+                                        data-bkopp="<?php echo esc_attr( $la_bkopp ); ?>"
+                                        data-oppemail="<?php echo esc_attr( $la_oppemail ); ?>"
+                                        data-bkoppemail="<?php echo esc_attr( $la_bkoppemail ); ?>"
+                                    >Edit</button>
+                                    <button type="button" class="live-inline-btn la-cancel-btn"
+                                        data-id="<?php echo esc_attr( $la_cid ); ?>"
+                                    >Cancel</button>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
                     <div class="live-separator"></div>
                     <h2 class="live-section-heading">STREAMING ON KICK</h2>
                     <div class="live-separator"></div>
@@ -341,6 +421,73 @@ get_template_part( 'template-parts/portal-styles' );
             
             </div>
         
+        <!-- Edit Live Appearance Modal -->
+        <div id="la-edit-modal" style="display:none;position:fixed;inset:0;z-index:9999;">
+            <div class="la-edit-overlay" style="position:absolute;inset:0;background:rgba(0,0,0,0.75);"></div>
+            <div class="la-edit-box" style="position:relative;z-index:1;background:#1a1a1a;border:1px solid #b8972f;border-radius:10px;padding:24px 20px;width:92%;max-width:480px;margin:10vh auto;max-height:80vh;overflow-y:auto;">
+                <h3 style="color:#b8972f;font-size:15px;letter-spacing:1px;margin-bottom:16px;">EDIT LIVE APPEARANCE</h3>
+                <input type="hidden" id="la-edit-post-id">
+                <p class="live-label">Request Day &amp; Start Time (1 hour)</p>
+                <?php
+                $la_edit_choices = [ ['1st','1'], ['2nd','2'], ['3rd','3'] ];
+                foreach ( $la_edit_choices as [ $la_ord, $la_n ] ) :
+                ?>
+                <div class="live-input-row live-input-row-choice">
+                    <span class="live-choice-label"><?php echo esc_html( $la_ord ); ?> Choice</span>
+                    <div class="live-field">
+                        <select id="la_edit_c<?php echo $la_n; ?>_month" class="live-input">
+                            <option value="">month</option>
+                            <?php foreach ( $la_months_map as $la_mi => $la_mn ) : if ( $la_mi === 0 ) continue; ?>
+                            <option value="<?php echo $la_mi; ?>"><?php echo esc_html( $la_mn ); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="live-field">
+                        <select id="la_edit_c<?php echo $la_n; ?>_day" class="live-input">
+                            <option value="">day</option>
+                            <?php for ( $la_di = 1; $la_di <= 31; $la_di++ ) : ?>
+                            <option value="<?php echo $la_di; ?>"><?php echo $la_di; ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                    <div class="live-field">
+                        <input type="time" id="la_edit_c<?php echo $la_n; ?>_time" class="live-input">
+                    </div>
+                </div>
+                <?php endforeach; ?>
+                <div class="live-input-row live-input-row-2">
+                    <div class="live-field">
+                        <input type="text" id="la-edit-opp" class="live-input" placeholder="opponent name">
+                    </div>
+                    <div class="live-field">
+                        <input type="text" id="la-edit-bkopp" class="live-input" placeholder="backup opponent name">
+                    </div>
+                </div>
+                <div class="live-input-row live-input-row-2">
+                    <div class="live-field">
+                        <input type="email" id="la-edit-oppemail" class="live-input" placeholder="opponent email">
+                    </div>
+                    <div class="live-field">
+                        <input type="email" id="la-edit-bkoppemail" class="live-input" placeholder="backup opponent email">
+                    </div>
+                </div>
+                <div class="live-submit-row" style="gap:12px;">
+                    <button type="button" class="live-submit" id="la-edit-save-btn">SAVE</button>
+                    <button type="button" class="live-inline-btn" id="la-edit-close-btn" style="font-size:13px;">close</button>
+                </div>
+                <div id="la-edit-msg" class="live-request-msg" style="display:none;margin-top:10px;"></div>
+            </div>
+        </div>
+
+        <style>
+        .la-schedule-wrap { background:#111; border:1px solid #b8972f33; border-radius:8px; overflow:hidden; margin-bottom:4px; }
+        .la-schedule-header { padding:10px 16px; font-size:13px; color:#888; border-bottom:1px solid #b8972f22; }
+        .la-schedule-item { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #1e1e1e; }
+        .la-schedule-item:last-child { border-bottom:none; }
+        .la-schedule-name { color:#ccc; font-size:14px; flex:1; }
+        .la-schedule-actions { display:flex; gap:8px; }
+        </style>
+
         <!-- Fixed Footer Links -->
         <div class="footer-links-fixed">
             <a href="#" class="footer-link">Terms</a>
@@ -547,6 +694,129 @@ $_schedule_nonce = wp_create_nonce( 'kick_schedule_nonce' );
                 });
         });
     }
+
+    // ── Live Appearance Schedule — edit & cancel ──────────────────────────────
+
+    var laModal     = document.getElementById('la-edit-modal');
+    var laPostIdEl  = document.getElementById('la-edit-post-id');
+    var laSaveBtn   = document.getElementById('la-edit-save-btn');
+    var laCloseBtn  = document.getElementById('la-edit-close-btn');
+    var laOverlay   = laModal ? laModal.querySelector('.la-edit-overlay') : null;
+
+    function laSetSel(id, val) {
+        var el = document.getElementById(id);
+        if (el) el.value = val || '';
+    }
+
+    function laOpenModal(btn) {
+        if (!laModal) return;
+        var d = btn.dataset;
+        laPostIdEl.value = d.id;
+        laSetSel('la_edit_c1_month', d.c1m);
+        laSetSel('la_edit_c1_day',   d.c1d);
+        laSetSel('la_edit_c1_time',  d.c1t);
+        laSetSel('la_edit_c2_month', d.c2m);
+        laSetSel('la_edit_c2_day',   d.c2d);
+        laSetSel('la_edit_c2_time',  d.c2t);
+        laSetSel('la_edit_c3_month', d.c3m);
+        laSetSel('la_edit_c3_day',   d.c3d);
+        laSetSel('la_edit_c3_time',  d.c3t);
+        laSetSel('la-edit-opp',        d.opp);
+        laSetSel('la-edit-bkopp',      d.bkopp);
+        laSetSel('la-edit-oppemail',   d.oppemail);
+        laSetSel('la-edit-bkoppemail', d.bkoppemail);
+        var msg = document.getElementById('la-edit-msg');
+        if (msg) msg.style.display = 'none';
+        laModal.style.display = '';
+    }
+
+    function laCloseModal() {
+        if (laModal) laModal.style.display = 'none';
+    }
+
+    if (laCloseBtn) laCloseBtn.addEventListener('click', laCloseModal);
+    if (laOverlay)  laOverlay.addEventListener('click', laCloseModal);
+
+    var laList = document.getElementById('la-schedule-list');
+    if (laList) {
+        laList.addEventListener('click', function (e) {
+            var editBtn   = e.target.closest('.la-edit-btn');
+            var cancelBtn = e.target.closest('.la-cancel-btn');
+
+            if (editBtn) {
+                laOpenModal(editBtn);
+            }
+
+            if (cancelBtn) {
+                var pid = cancelBtn.getAttribute('data-id');
+                if (!confirm('Cancel this live appearance? This cannot be undone.')) return;
+                cancelBtn.disabled = true;
+                var fd = new FormData();
+                fd.append('action',  'delete_live_appearance');
+                fd.append('nonce',   _liveNonce);
+                fd.append('post_id', pid);
+                fetch(_liveAjaxUrl, { method: 'POST', body: fd })
+                    .then(function (r) { return r.json(); })
+                    .then(function (res) {
+                        if (res.success) {
+                            var row = laList.querySelector('.la-schedule-item[data-id="' + pid + '"]');
+                            if (row) row.remove();
+                            if (!laList.querySelector('.la-schedule-item')) {
+                                laList.innerHTML = '<p class="live-copy-muted la-schedule-empty">No confirmed appearances yet.</p>';
+                            }
+                        } else {
+                            cancelBtn.disabled = false;
+                            alert((res.data && res.data.message) ? res.data.message : 'Error cancelling.');
+                        }
+                    }).catch(function () { cancelBtn.disabled = false; });
+            }
+        });
+    }
+
+    if (laSaveBtn) {
+        laSaveBtn.addEventListener('click', function () {
+            laSaveBtn.disabled   = true;
+            laSaveBtn.textContent = 'SAVING...';
+            var pid = laPostIdEl.value;
+            var fd  = new FormData();
+            fd.append('action',                  'update_live_appearance');
+            fd.append('nonce',                   _liveNonce);
+            fd.append('post_id',                 pid);
+            fd.append('la_choice_1_month',       document.getElementById('la_edit_c1_month').value);
+            fd.append('la_choice_1_day',         document.getElementById('la_edit_c1_day').value);
+            fd.append('la_choice_1_time',        document.getElementById('la_edit_c1_time').value);
+            fd.append('la_choice_2_month',       document.getElementById('la_edit_c2_month').value);
+            fd.append('la_choice_2_day',         document.getElementById('la_edit_c2_day').value);
+            fd.append('la_choice_2_time',        document.getElementById('la_edit_c2_time').value);
+            fd.append('la_choice_3_month',       document.getElementById('la_edit_c3_month').value);
+            fd.append('la_choice_3_day',         document.getElementById('la_edit_c3_day').value);
+            fd.append('la_choice_3_time',        document.getElementById('la_edit_c3_time').value);
+            fd.append('la_opponent_name',        document.getElementById('la-edit-opp').value);
+            fd.append('la_backup_opponent_name', document.getElementById('la-edit-bkopp').value);
+            fd.append('la_opponent_email',       document.getElementById('la-edit-oppemail').value);
+            fd.append('la_backup_opponent_email', document.getElementById('la-edit-bkoppemail').value);
+            fetch(_liveAjaxUrl, { method: 'POST', body: fd })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    laSaveBtn.disabled   = false;
+                    laSaveBtn.textContent = 'SAVE';
+                    if (res.success) {
+                        laCloseModal();
+                    } else {
+                        var msg = document.getElementById('la-edit-msg');
+                        if (msg) {
+                            msg.textContent   = (res.data && res.data.message) ? res.data.message : 'Error saving.';
+                            msg.className     = 'live-request-msg live-request-msg--error';
+                            msg.style.display = '';
+                        }
+                    }
+                }).catch(function () {
+                    laSaveBtn.disabled   = false;
+                    laSaveBtn.textContent = 'SAVE';
+                });
+        });
+    }
+
 })();
 </script>
 <?php

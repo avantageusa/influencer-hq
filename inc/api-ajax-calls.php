@@ -409,6 +409,86 @@ function get_live_appearance_status_ajax() {
 }
 
 // ---------------------------------------------------------------------------
+// Live Appearance — user-facing edit & delete
+// Nonce: request_live_appearance_nonce
+// Actions: update_live_appearance | delete_live_appearance
+// ---------------------------------------------------------------------------
+
+add_action( 'wp_ajax_update_live_appearance', 'update_live_appearance_ajax' );
+
+function update_live_appearance_ajax() {
+    if ( ! check_ajax_referer( 'request_live_appearance_nonce', 'nonce', false ) ) {
+        wp_send_json_error( array( 'message' => 'Security check failed.' ), 403 );
+    }
+    $user_id = get_current_user_id();
+    if ( ! $user_id ) {
+        wp_send_json_error( array( 'message' => 'Not logged in.' ), 403 );
+    }
+
+    $post_id = intval( $_POST['post_id'] ?? 0 );
+    if ( ! $post_id ) {
+        wp_send_json_error( array( 'message' => 'Invalid post.' ) );
+    }
+
+    $post = get_post( $post_id );
+    if ( ! $post || $post->post_type !== 'live_appearance' || (int) $post->post_author !== $user_id ) {
+        wp_send_json_error( array( 'message' => 'Not authorised.' ), 403 );
+    }
+
+    $day              = sanitize_text_field( wp_unslash( $_POST['la_choice_1_month'] ?? '' ) ) . '/' . sanitize_text_field( wp_unslash( $_POST['la_choice_1_day'] ?? '' ) );
+    $backup_day       = sanitize_text_field( wp_unslash( $_POST['la_choice_2_month'] ?? '' ) ) . '/' . sanitize_text_field( wp_unslash( $_POST['la_choice_2_day'] ?? '' ) );
+    $start_time       = sanitize_text_field( wp_unslash( $_POST['la_choice_1_time']  ?? '' ) );
+    $backup_time      = sanitize_text_field( wp_unslash( $_POST['la_choice_2_time']  ?? '' ) );
+    $choice_3_month   = sanitize_text_field( wp_unslash( $_POST['la_choice_3_month'] ?? '' ) );
+    $choice_3_day     = sanitize_text_field( wp_unslash( $_POST['la_choice_3_day']   ?? '' ) );
+    $choice_3_time    = sanitize_text_field( wp_unslash( $_POST['la_choice_3_time']  ?? '' ) );
+    $opponent         = sanitize_text_field( wp_unslash( $_POST['la_opponent_name']        ?? '' ) );
+    $backup_opponent  = sanitize_text_field( wp_unslash( $_POST['la_backup_opponent_name'] ?? '' ) );
+    $opponent_email   = sanitize_email( wp_unslash( $_POST['la_opponent_email']        ?? '' ) );
+    $backup_opp_email = sanitize_email( wp_unslash( $_POST['la_backup_opponent_email'] ?? '' ) );
+
+    update_post_meta( $post_id, '_live_appearance_day',                    $day );
+    update_post_meta( $post_id, '_live_appearance_backup_day',             $backup_day );
+    update_post_meta( $post_id, '_live_appearance_start_time',             $start_time );
+    update_post_meta( $post_id, '_live_appearance_backup_start_time',      $backup_time );
+    update_post_meta( $post_id, '_live_appearance_choice_3_month',         $choice_3_month );
+    update_post_meta( $post_id, '_live_appearance_choice_3_day',           $choice_3_day );
+    update_post_meta( $post_id, '_live_appearance_choice_3_time',          $choice_3_time );
+    update_post_meta( $post_id, '_live_appearance_opponent_handle',        $opponent );
+    update_post_meta( $post_id, '_live_appearance_backup_opponent_handle', $backup_opponent );
+    update_post_meta( $post_id, '_live_appearance_opponent_email',         $opponent_email );
+    update_post_meta( $post_id, '_live_appearance_backup_opponent_email',  $backup_opp_email );
+    update_post_meta( $post_id, '_live_appearance_status',                 'pending' );
+
+    wp_send_json_success( array( 'message' => 'Updated and set back to pending.' ) );
+}
+
+add_action( 'wp_ajax_delete_live_appearance', 'delete_live_appearance_ajax' );
+
+function delete_live_appearance_ajax() {
+    if ( ! check_ajax_referer( 'request_live_appearance_nonce', 'nonce', false ) ) {
+        wp_send_json_error( array( 'message' => 'Security check failed.' ), 403 );
+    }
+    $user_id = get_current_user_id();
+    if ( ! $user_id ) {
+        wp_send_json_error( array( 'message' => 'Not logged in.' ), 403 );
+    }
+
+    $post_id = intval( $_POST['post_id'] ?? 0 );
+    if ( ! $post_id ) {
+        wp_send_json_error( array( 'message' => 'Invalid post.' ) );
+    }
+
+    $post = get_post( $post_id );
+    if ( ! $post || $post->post_type !== 'live_appearance' || (int) $post->post_author !== $user_id ) {
+        wp_send_json_error( array( 'message' => 'Not authorised.' ), 403 );
+    }
+
+    wp_delete_post( $post_id, true );
+    wp_send_json_success( array( 'message' => 'Live appearance cancelled.' ) );
+}
+
+// ---------------------------------------------------------------------------
 // Referral Link — nonce: request_live_appearance_nonce
 // Action: get_referral_link
 // Returns the user's share URL from GET /referral/user/{userId}/link
