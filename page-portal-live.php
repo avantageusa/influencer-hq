@@ -134,7 +134,7 @@ if ( ! empty( $la_calendar_posts ) ) {
                         <form id="live-request-form">
                             <div class="live-calendar-launch-row">
                                 <span class="live-calendar-launch-label">Available time slots:</span>
-                                <button type="button" id="live-calendar-open-btn" class="live-calendar-open-btn" aria-haspopup="dialog" aria-controls="live-calendar-modal" aria-label="Open available time slots calendar">📅</button>
+                                <button type="button" id="live-calendar-open-btn" class="live-calendar-open-btn" aria-haspopup="dialog" aria-controls="live-calendar-modal" aria-label="Open available time slots calendar"><img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/calendar.png" alt="Calendar" style="width:24px;height:24px;"></button>
                             </div>
                             <p class="live-label">Request Day &amp; Start Time (1 hour)</p>
                             <?php
