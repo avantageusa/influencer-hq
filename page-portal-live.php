@@ -134,7 +134,7 @@ if ( ! empty( $la_calendar_posts ) ) {
                         <form id="live-request-form">
                             <div class="live-calendar-launch-row">
                                 <span class="live-calendar-launch-label">Available time slots:</span>
-                                <button type="button" id="live-calendar-open-btn" class="live-calendar-open-btn" aria-haspopup="dialog" aria-controls="live-calendar-modal" aria-label="Open available time slots calendar"><img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/calendar.png" alt="Calendar" style="width:24px;height:24px;"></button>
+                                <button type="button" id="live-calendar-open-btn" class="live-calendar-open-btn" aria-haspopup="dialog" aria-controls="live-calendar-modal" aria-label="Open available time slots calendar"><img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/calendar.png" alt="Calendar" style="width:45px;height:45px;"></button>
                             </div>
                             <p class="live-label">Request Day &amp; Start Time (1 hour)</p>
                             <?php
@@ -614,63 +614,6 @@ if ( ! empty( $la_calendar_posts ) ) {
             </div>
         </div>
 
-        <style>
-        .la-schedule-wrap { background:#111; border:1px solid #b8972f33; border-radius:8px; overflow:hidden; margin-bottom:4px; }
-        .la-schedule-header { padding:10px 16px; font-size:13px; color:#888; border-bottom:1px solid #b8972f22; }
-        .la-schedule-item { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #1e1e1e; }
-        .la-schedule-item:last-child { border-bottom:none; }
-        .la-schedule-name { color:#ccc; font-size:14px; flex:1; }
-        .la-schedule-actions { display:flex; gap:8px; }
-
-        .live-calendar-launch-row { display:flex; align-items:center; gap:12px; margin:2px 0 14px; }
-        .live-calendar-launch-label { color:#dcdcdc; font-size:16px; }
-        .live-calendar-open-btn {
-            border:0;
-            background:transparent;
-            font-size:52px;
-            line-height:1;
-            cursor:pointer;
-            padding:0;
-            transition:transform .15s ease;
-        }
-        .live-calendar-open-btn:hover { transform:scale(1.04); }
-
-        .live-calendar-modal {
-            position:fixed;
-            inset:0;
-            z-index:10000;
-        }
-        .live-calendar-modal__overlay {
-            position:absolute;
-            inset:0;
-            background:rgba(0,0,0,.76);
-        }
-        .live-calendar-modal__box {
-            position:relative;
-            z-index:1;
-            width:min(960px,94vw);
-            max-height:84vh;
-            overflow:auto;
-            margin:6vh auto;
-            padding:18px;
-            border:1px solid #b8972f;
-            border-radius:12px;
-            background:#060606;
-        }
-        .live-calendar-modal__head {
-            display:flex;
-            align-items:center;
-            justify-content:space-between;
-            gap:12px;
-            margin-bottom:12px;
-        }
-        .live-calendar-modal__title {
-            margin:0;
-            color:#b8972f;
-            font-size:14px;
-            letter-spacing:1px;
-        }
-        </style>
 
         <!-- Fixed Footer Links -->
         <div class="footer-links-fixed">

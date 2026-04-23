@@ -2073,6 +2073,21 @@
         cursor: pointer;
     }
 
+    body.page-template-page-portal-live-php .la-schedule-wrap { background:#111; border:1px solid #b8972f33; border-radius:8px; overflow:hidden; margin-bottom:4px; }
+    body.page-template-page-portal-live-php .la-schedule-header { padding:10px 16px; font-size:13px; color:#888; border-bottom:1px solid #b8972f22; }
+    body.page-template-page-portal-live-php .la-schedule-item { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #1e1e1e; }
+    body.page-template-page-portal-live-php .la-schedule-item:last-child { border-bottom:none; }
+    body.page-template-page-portal-live-php .la-schedule-name { color:#ccc; font-size:14px; flex:1; }
+    body.page-template-page-portal-live-php .la-schedule-actions { display:flex; gap:8px; }
+    body.page-template-page-portal-live-php .live-calendar-launch-row { display:flex; align-items:center; gap:12px; margin:2px 0 14px; }
+    body.page-template-page-portal-live-php .live-calendar-launch-label { color:#dcdcdc; font-size:16px; }
+    body.page-template-page-portal-live-php .live-calendar-open-btn { border:0; background:transparent; cursor:pointer; padding:0; }
+    body.page-template-page-portal-live-php .live-calendar-modal { position:fixed; inset:0; z-index:10000; }
+    body.page-template-page-portal-live-php .live-calendar-modal__overlay { position:absolute; inset:0; background:rgba(0,0,0,.76); }
+    body.page-template-page-portal-live-php .live-calendar-modal__box { position:relative; z-index:1; width:min(960px,94vw); max-height:84vh; overflow:auto; margin:6vh auto; padding:18px; border:1px solid #b8972f; border-radius:12px; background:#060606; }
+    body.page-template-page-portal-live-php .live-calendar-modal__head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+    body.page-template-page-portal-live-php .live-calendar-modal__title { margin:0; color:#b8972f; font-size:14px; letter-spacing:1px; }
+
     @media (max-width: 900px) {
         body.page-template-page-portal-live-php .live-page-content {
             max-width: 100%;
