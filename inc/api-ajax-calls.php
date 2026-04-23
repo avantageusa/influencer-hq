@@ -602,6 +602,10 @@ function delete_kick_schedule_ajax() {
 
 add_action( 'wp_ajax_save_settings_field',  'save_settings_field_ajax' );
 
+function ihq_allowed_contact_keys() {
+    return [ 'email', 'kakaotalk', 'kick', 'line', 'tiktok', 'twitch', 'wechat', 'whatsapp' ];
+}
+
 function save_settings_field_ajax() {
     if ( ! check_ajax_referer( 'settings_save_nonce', 'nonce', false ) ) {
         wp_send_json_error( [ 'message' => 'Security check failed.' ], 403 );
@@ -634,8 +638,16 @@ function save_settings_field_ajax() {
             }
         }
     } elseif ( $group === 'social' ) {
+        $allowed_keys = ihq_allowed_contact_keys();
+        if ( ! in_array( $field, $allowed_keys, true ) ) {
+            wp_send_json_error( [ 'message' => 'Invalid social field.' ], 400 );
+        }
+
         $handles = get_user_meta( $user_id, '_ihq_social_handles', true );
         if ( ! is_array( $handles ) ) { $handles = []; }
+
+        // Keep only active communication methods in stored handles.
+        $handles = array_intersect_key( $handles, array_flip( $allowed_keys ) );
         $handles[ $field ] = $value;
         update_user_meta( $user_id, '_ihq_social_handles', $handles );
     } elseif ( $group === 'comm' ) {
@@ -666,6 +678,16 @@ function save_settings_toggle_ajax() {
     if ( isset( $meta_map[ $group ] ) ) {
         $data = get_user_meta( $user_id, $meta_map[ $group ], true );
         if ( ! is_array( $data ) ) { $data = []; }
+
+        if ( $group === 'comm' ) {
+            $allowed_keys = ihq_allowed_contact_keys();
+            if ( ! in_array( $key, $allowed_keys, true ) ) {
+                wp_send_json_error( [ 'message' => 'Invalid communication key.' ], 400 );
+            }
+            // Remove toggles for methods no longer available.
+            $data = array_intersect_key( $data, array_flip( $allowed_keys ) );
+        }
+
         if ( $val ) {
             $data[ $key ] = 1;
         } else {

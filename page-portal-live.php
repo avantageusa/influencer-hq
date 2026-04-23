@@ -9,6 +9,68 @@ get_header();
 
 // Load styles before content to prevent FOUC
 get_template_part( 'template-parts/portal-styles' );
+
+$la_calendar_occupied = [];
+$la_calendar_posts    = get_posts( [
+    'post_type'      => 'live_appearance',
+    'post_status'    => 'publish',
+    'posts_per_page' => -1,
+    'fields'         => 'ids',
+    'meta_query'     => [
+        [
+            'key'     => '_live_appearance_status',
+            'value'   => [ 'confirmed', '1st_choice_accepted', '2nd_choice_accepted', '3rd_choice_accepted' ],
+            'compare' => 'IN',
+        ],
+    ],
+] );
+
+if ( ! empty( $la_calendar_posts ) ) {
+    foreach ( $la_calendar_posts as $la_post_id ) {
+        $la_date_candidates = [];
+        $la_date_created    = get_post_meta( $la_post_id, '_live_appearance_date_created', true );
+        $la_year            = $la_date_created ? (int) date( 'Y', strtotime( $la_date_created ) ) : (int) current_time( 'Y' );
+
+        $la_day_raw   = get_post_meta( $la_post_id, '_live_appearance_day', true );
+        $la_bkday_raw = get_post_meta( $la_post_id, '_live_appearance_backup_day', true );
+        $la_c3m       = absint( get_post_meta( $la_post_id, '_live_appearance_choice_3_month', true ) );
+        $la_c3d       = absint( get_post_meta( $la_post_id, '_live_appearance_choice_3_day', true ) );
+
+        if ( $la_day_raw ) {
+            $la_date_candidates[] = $la_day_raw;
+        }
+        if ( $la_bkday_raw ) {
+            $la_date_candidates[] = $la_bkday_raw;
+        }
+        if ( $la_c3m >= 1 && $la_c3m <= 12 && $la_c3d >= 1 && $la_c3d <= 31 ) {
+            $la_date_candidates[] = $la_c3m . '/' . $la_c3d;
+        }
+
+        foreach ( $la_date_candidates as $la_md ) {
+            $la_parts = explode( '/', (string) $la_md );
+            if ( count( $la_parts ) < 2 ) {
+                continue;
+            }
+
+            $la_month = absint( trim( $la_parts[0] ) );
+            $la_day   = absint( trim( $la_parts[1] ) );
+            if ( $la_month < 1 || $la_month > 12 || $la_day < 1 || $la_day > 31 ) {
+                continue;
+            }
+
+            $la_key = $la_year . '-' . $la_month;
+            if ( ! isset( $la_calendar_occupied[ $la_key ] ) ) {
+                $la_calendar_occupied[ $la_key ] = [];
+            }
+            $la_calendar_occupied[ $la_key ][ $la_day ] = $la_day;
+        }
+    }
+
+    foreach ( $la_calendar_occupied as $la_key => $la_days ) {
+        sort( $la_days, SORT_NUMERIC );
+        $la_calendar_occupied[ $la_key ] = array_values( $la_days );
+    }
+}
 ?>
 
     <main id="primary" class="site-main">
@@ -70,6 +132,10 @@ get_template_part( 'template-parts/portal-styles' );
 
                     <div class="live-form-block">
                         <form id="live-request-form">
+                            <div class="live-calendar-launch-row">
+                                <span class="live-calendar-launch-label">Available time slots:</span>
+                                <button type="button" id="live-calendar-open-btn" class="live-calendar-open-btn" aria-haspopup="dialog" aria-controls="live-calendar-modal" aria-label="Open available time slots calendar">📅</button>
+                            </div>
                             <p class="live-label">Request Day &amp; Start Time (1 hour)</p>
                             <?php
                             $la_months  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -150,6 +216,17 @@ get_template_part( 'template-parts/portal-styles' );
                                     Works on any iPhone or Android from 2017 or newer. No app needed.
                                 </span>
                             </span>
+                        </div>
+                    </div>
+
+                    <div id="live-calendar-modal" class="live-calendar-modal" style="display:none;">
+                        <div class="live-calendar-modal__overlay"></div>
+                        <div class="live-calendar-modal__box" role="dialog" aria-modal="true" aria-labelledby="live-calendar-modal-title">
+                            <div class="live-calendar-modal__head">
+                                <h3 id="live-calendar-modal-title" class="live-calendar-modal__title">AVAILABLE TIME SLOTS</h3>
+                                <button type="button" id="live-calendar-close-btn" class="live-inline-btn">close</button>
+                            </div>
+                            <?php ihq_calendar( $la_calendar_occupied ); ?>
                         </div>
                     </div>
 
@@ -522,6 +599,55 @@ get_template_part( 'template-parts/portal-styles' );
         .la-schedule-item:last-child { border-bottom:none; }
         .la-schedule-name { color:#ccc; font-size:14px; flex:1; }
         .la-schedule-actions { display:flex; gap:8px; }
+
+        .live-calendar-launch-row { display:flex; align-items:center; gap:12px; margin:2px 0 14px; }
+        .live-calendar-launch-label { color:#dcdcdc; font-size:16px; }
+        .live-calendar-open-btn {
+            border:0;
+            background:transparent;
+            font-size:52px;
+            line-height:1;
+            cursor:pointer;
+            padding:0;
+            transition:transform .15s ease;
+        }
+        .live-calendar-open-btn:hover { transform:scale(1.04); }
+
+        .live-calendar-modal {
+            position:fixed;
+            inset:0;
+            z-index:10000;
+        }
+        .live-calendar-modal__overlay {
+            position:absolute;
+            inset:0;
+            background:rgba(0,0,0,.76);
+        }
+        .live-calendar-modal__box {
+            position:relative;
+            z-index:1;
+            width:min(960px,94vw);
+            max-height:84vh;
+            overflow:auto;
+            margin:6vh auto;
+            padding:18px;
+            border:1px solid #b8972f;
+            border-radius:12px;
+            background:#060606;
+        }
+        .live-calendar-modal__head {
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:12px;
+            margin-bottom:12px;
+        }
+        .live-calendar-modal__title {
+            margin:0;
+            color:#b8972f;
+            font-size:14px;
+            letter-spacing:1px;
+        }
         </style>
 
         <!-- Fixed Footer Links -->
@@ -541,6 +667,28 @@ $_schedule_nonce = wp_create_nonce( 'kick_schedule_nonce' );
     var _liveAjaxUrl    = <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
     var _liveNonce      = <?php echo wp_json_encode( $_live_nonce ); ?>;
     var _scheduleNonce  = <?php echo wp_json_encode( $_schedule_nonce ); ?>;
+
+    var calendarModal     = document.getElementById('live-calendar-modal');
+    var calendarOpenBtn   = document.getElementById('live-calendar-open-btn');
+    var calendarCloseBtn  = document.getElementById('live-calendar-close-btn');
+    var calendarOverlay   = calendarModal ? calendarModal.querySelector('.live-calendar-modal__overlay') : null;
+
+    function openCalendarModal() {
+        if (!calendarModal) return;
+        calendarModal.style.display = '';
+    }
+
+    function closeCalendarModal() {
+        if (!calendarModal) return;
+        calendarModal.style.display = 'none';
+    }
+
+    if (calendarOpenBtn) { calendarOpenBtn.addEventListener('click', openCalendarModal); }
+    if (calendarCloseBtn) { calendarCloseBtn.addEventListener('click', closeCalendarModal); }
+    if (calendarOverlay) { calendarOverlay.addEventListener('click', closeCalendarModal); }
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeCalendarModal();
+    });
 
     function setStatus(label, statusKey) {
         var el = document.getElementById('live-request-status');

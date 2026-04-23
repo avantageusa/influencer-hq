@@ -48,8 +48,7 @@ $celebrity_selections = [
 
 $intl_league_team = get_user_meta( $user->ID, '_ihq_intl_league_team', true ) ?: '';
 
-$social_platforms = ['Kick','YouTube','X','TikTok','Discord','WeChat','LINE','KakaoTalk','WhatsApp','Instagram','LinkedIn','Facebook','Snapchat','Reddit','Viber','Twitch'];
-$comm_platforms   = ['Email','Kick','YouTube','X','TikTok','Discord','WeChat','LINE','KakaoTalk','WhatsApp','Instagram','LinkedIn','Facebook','Snapchat','Reddit','Viber','Twitch'];
+$contact_platforms = ['Email','KakaoTalk','KICK','Line','TikTok','Twitch','WeChat','WhatsApp'];
 
 $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
 ?>
@@ -230,7 +229,6 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                 <div id="contactBody">
                     <div class="sett-card contact-card">
                         <?php
-                        $contact_platforms = ['Discord','Email','Facebook','Instagram','KakaoTalk','Kick','LINE','LinkedIn','Reddit','Snapchat','TikTok','Twitch','Viber','WeChat','WhatsApp','X','YouTube'];
                         foreach ( $contact_platforms as $cp ) :
                             $ckey  = strtolower( $cp );
                             $cval  = $social_handles[ $ckey ] ?? '';
