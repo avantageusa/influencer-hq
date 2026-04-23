@@ -315,6 +315,10 @@ function request_live_appearance_ajax() {
     $backup_opp_email = sanitize_email( $_POST['la_backup_opponent_email'] ?? '' );
     $url_raw         = sanitize_text_field( $_POST['la_url']                    ?? '' );
     $url             = $url_raw ? esc_url_raw( $url_raw ) : '';
+    $la_type         = sanitize_text_field( $_POST['la_type'] ?? '' );
+    if ( $la_type && ! in_array( $la_type, array( 'single', 'regular' ), true ) ) {
+        $la_type = '';
+    }
 
     if ( $url && ! filter_var( $url, FILTER_VALIDATE_URL ) ) {
         wp_send_json_error( array( 'message' => 'Invalid URL provided.' ) );
@@ -349,6 +353,7 @@ function request_live_appearance_ajax() {
     update_post_meta( $post_id, '_live_appearance_opponent_email',         $opponent_email );
     update_post_meta( $post_id, '_live_appearance_backup_opponent_email',  $backup_opp_email );
     update_post_meta( $post_id, '_live_appearance_url',                    $url );
+    update_post_meta( $post_id, '_live_appearance_type',                   $la_type );
     update_post_meta( $post_id, '_live_appearance_date_created',           current_time( 'mysql' ) );
 
     wp_send_json_success( array(
@@ -550,6 +555,10 @@ function add_kick_schedule_ajax() {
     $day        = sanitize_text_field( wp_unslash( $_POST['ks_day']        ?? '' ) );
     $start_time = sanitize_text_field( wp_unslash( $_POST['ks_start_time'] ?? '' ) );
     $end_time   = sanitize_text_field( wp_unslash( $_POST['ks_end_time']   ?? '' ) );
+    $type       = sanitize_text_field( wp_unslash( $_POST['ks_type']       ?? '' ) );
+    if ( $type && ! in_array( $type, array( 'single', 'regular' ), true ) ) {
+        $type = '';
+    }
 
     if ( ! $day || ! $start_time || ! $end_time ) {
         wp_send_json_error( array( 'message' => 'Day, start time, and end time are required.' ) );
@@ -564,6 +573,7 @@ function add_kick_schedule_ajax() {
         'day'        => $day,
         'start_time' => $start_time,
         'end_time'   => $end_time,
+        'type'       => $type,
     );
 
     update_user_meta( $user_id, '_kick_broadcasting_schedule', $schedule );

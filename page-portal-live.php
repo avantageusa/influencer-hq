@@ -181,6 +181,16 @@ if ( ! empty( $la_calendar_posts ) ) {
                                     <input type="email" name="la_backup_opponent_email" id="la_backup_opponent_email" class="live-input" placeholder="backup opponent email">
                                 </div>
                             </div>
+                            <div class="live-type-row">
+                                <label class="live-type-opt">
+                                    <input type="radio" name="la_type" value="single" class="live-type-radio">
+                                    <span class="live-type-label">Single</span>
+                                </label>
+                                <label class="live-type-opt">
+                                    <input type="radio" name="la_type" value="regular" class="live-type-radio">
+                                    <span class="live-type-label">Regular</span>
+                                </label>
+                            </div>
                             <div class="live-submit-row">
                                 <button type="submit" class="live-submit" id="live-request-btn">REQUEST</button>
                             </div>
@@ -205,6 +215,7 @@ if ( ! empty( $la_calendar_posts ) ) {
                         </div>                        <div id="live-url-qr" style="display:none;margin-top:12px;"></div>
                         <div id="live-qr-caption" style="display:none;margin-top:8px;font-size:13px;color:#ccc;display:none;align-items:center;gap:6px;">
                             Scan to share QR code with opponent
+                            <a id="live-qr-download-btn" download="qr-code.png" href="#" style="background:#b8972f;color:#fff;font-size:13px;font-weight:600;text-decoration:none;padding:6px 14px;border-radius:4px;margin-left:6px;">Download and share your QR image</a>
                             <span class="live-qr-info-icon" tabindex="0" aria-label="How to scan" style="position:relative;cursor:pointer;display:inline-flex;align-items:center;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                                 <span class="live-qr-tooltip" role="tooltip" style="display:none;position:absolute;left:24px;top:-8px;background:#1a1a1a;border:1px solid #555;border-radius:6px;padding:14px 16px;width:260px;font-size:12px;line-height:1.6;color:#ddd;z-index:9999;pointer-events:none;">
@@ -363,7 +374,8 @@ if ( ! empty( $la_calendar_posts ) ) {
                                 $ks_day_fmt   = ! empty( $ks_item['day'] )        ? date_i18n( 'D, M j', strtotime( $ks_item['day'] ) )        : '';
                                 $ks_start_fmt = ! empty( $ks_item['start_time'] ) ? date_i18n( 'g:i A',   strtotime( $ks_item['start_time'] ) ) : '';
                                 $ks_end_fmt   = ! empty( $ks_item['end_time'] )   ? date_i18n( 'g:i A',   strtotime( $ks_item['end_time'] ) )   : '';
-                                $ks_label     = trim( $ks_day_fmt . ( $ks_start_fmt ? ', ' . $ks_start_fmt : '' ) . ( $ks_end_fmt ? ' - ' . $ks_end_fmt : '' ) );
+                                $ks_type_fmt  = ! empty( $ks_item['type'] )       ? '[' . ucfirst( esc_html( $ks_item['type'] ) ) . '] '        : '';
+                                $ks_label     = trim( $ks_type_fmt . $ks_day_fmt . ( $ks_start_fmt ? ', ' . $ks_start_fmt : '' ) . ( $ks_end_fmt ? ' - ' . $ks_end_fmt : '' ) );
                         ?>
                         <div class="live-schedule-item" data-index="<?php echo esc_attr( $ks_i ); ?>">
                             <span><?php echo esc_html( $ks_label ); ?></span>
@@ -391,6 +403,16 @@ if ( ! empty( $la_calendar_posts ) ) {
                                 <label class="live-field-label" for="ks_end_time">End Time</label>
                                 <input type="time" name="ks_end_time" id="ks_end_time" class="live-input live-input-md">
                             </div>
+                        </div>
+                        <div class="live-type-row">
+                            <label class="live-type-opt">
+                                <input type="radio" name="ks_type" value="single" class="live-type-radio">
+                                <span class="live-type-label">Single</span>
+                            </label>
+                            <label class="live-type-opt">
+                                <input type="radio" name="ks_type" value="regular" class="live-type-radio">
+                                <span class="live-type-label">Regular</span>
+                            </label>
                         </div>
                         <div class="live-submit-row">
                             <button type="submit" class="live-submit" id="kick-schedule-btn">SUBMIT</button>
@@ -708,6 +730,17 @@ $_schedule_nonce = wp_create_nonce( 'kick_schedule_nonce' );
                 qrWrap.innerHTML = '';
                 qrWrap.style.display = '';
                 new QRCode(qrWrap, { text: url, width: 150, height: 150, correctLevel: QRCode.CorrectLevel.M });
+                setTimeout(function() {
+                    var dlBtn = document.getElementById('live-qr-download-btn');
+                    if (!dlBtn) return;
+                    var canvas = qrWrap.querySelector('canvas');
+                    if (canvas) {
+                        dlBtn.href = canvas.toDataURL('image/png');
+                    } else {
+                        var img = qrWrap.querySelector('img');
+                        if (img) { dlBtn.href = img.src; }
+                    }
+                }, 200);
             }
             var cap = document.getElementById('live-qr-caption');
             if (cap) { cap.style.display = 'flex'; }
@@ -829,7 +862,7 @@ $_schedule_nonce = wp_create_nonce( 'kick_schedule_nonce' );
             return;
         }
         schedule.forEach(function(item, i) {
-            var label = fmtDay(item.day);
+        var label = (item.type ? '[' + item.type.charAt(0).toUpperCase() + item.type.slice(1) + '] ' : '') + fmtDay(item.day);
             if (item.start_time) label += ', ' + fmtTime(item.start_time);
             if (item.end_time)   label += ' - ' + fmtTime(item.end_time);
             var div = document.createElement('div');

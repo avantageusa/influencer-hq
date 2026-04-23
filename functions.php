@@ -604,6 +604,7 @@ function live_appearance_meta_box_callback($post) {
     $la_backup_opponent = get_post_meta( $post->ID, '_live_appearance_backup_opponent_handle', true );
     $la_url             = get_post_meta( $post->ID, '_live_appearance_url', true );
     $la_date_created    = get_post_meta( $post->ID, '_live_appearance_date_created', true );
+    $la_type            = get_post_meta( $post->ID, '_live_appearance_type', true );
 
     // Status dropdown
     $la_status = get_post_meta( $post->ID, '_live_appearance_status', true ) ?: 'pending';
@@ -630,6 +631,7 @@ function live_appearance_meta_box_callback($post) {
 
     // Portal form fields (read-only)
     $fields = array(
+        'Type'                   => $la_type ? ucfirst( $la_type ) : '—',
         'Day'                    => $la_day,
         'Backup Day'             => $la_backup_day,
         'Start Time'             => $la_start_time,
@@ -693,6 +695,7 @@ function add_live_appearance_admin_columns($columns) {
     $new_columns['cb']             = $columns['cb'];
     $new_columns['title']          = $columns['title'];
     $new_columns['live_status']    = __( 'Status', 'avantage-baccarat' );
+    $new_columns['live_type']      = __( 'Type', 'avantage-baccarat' );
     $new_columns['live_user']      = __( 'User', 'avantage-baccarat' );
     $new_columns['live_day']       = __( 'Day', 'avantage-baccarat' );
     $new_columns['live_backup_day']= __( 'Backup Day', 'avantage-baccarat' );
@@ -715,6 +718,11 @@ function display_live_appearance_admin_columns($column, $post_id) {
             $label  = $status === 'confirmed' ? 'Confirmed' : 'Pending';
             $color  = $status === 'confirmed' ? '#1a9e1a' : '#b8972f';
             echo '<strong style="color:' . esc_attr( $color ) . '">' . esc_html( $label ) . '</strong>';
+            break;
+
+        case 'live_type':
+            $type = get_post_meta( $post_id, '_live_appearance_type', true );
+            echo $type ? esc_html( ucfirst( $type ) ) : '<span style="color:#666">—</span>';
             break;
 
         case 'live_user':

@@ -1995,6 +1995,43 @@
         color: #fff;
     }
 
+    body.page-template-page-portal-live-php .live-type-row {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    body.page-template-page-portal-live-php .live-type-opt {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    body.page-template-page-portal-live-php .live-type-radio {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 25px;
+        height: 25px;
+        border: 2px solid #b8972f;
+        border-radius: 2px;
+        background: transparent;
+        cursor: pointer;
+        flex-shrink: 0;
+        margin: 0;
+        transition: background 0.15s;
+    }
+
+    body.page-template-page-portal-live-php .live-type-radio:checked {
+        background: #b8972f;
+    }
+
+    body.page-template-page-portal-live-php .live-type-label {
+        font-size: 13px;
+        color: #ccc;
+    }
+
     body.page-template-page-portal-live-php .live-inline-btn {
         border: 1px solid #b8972f;
         border-radius: 2px;
