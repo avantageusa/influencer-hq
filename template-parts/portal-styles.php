@@ -1815,6 +1815,15 @@
         color: #fff;
     }
 
+    body.page-template-page-portal-live-php .live-label--opponent {
+        margin-top: 24px;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #b8972f;
+    }
+
     body.page-template-page-portal-live-php .live-input-row {
         display: flex;
         gap: 10px;
@@ -2676,6 +2685,15 @@
 }
 .celeb-select:focus { border-color:#b8972f; }
 .celeb-select option { background:#1a1a1a; }
+.sett-timezone-select {
+    background:#000; color:#fff;
+    border:1px solid rgba(184,151,47,.5); border-radius:3px;
+    font-size:14px; padding:3px 4px;
+    outline:none; cursor:pointer; width:100%;
+    max-width:260px;
+}
+.sett-timezone-select:focus { border-color:#b8972f; }
+.sett-timezone-select option { background:#1a1a1a; }
 @media (max-width:600px) {
     .celeb-grid-layout { grid-template-columns:1fr; }
     .celeb-col-label { text-align:left; }

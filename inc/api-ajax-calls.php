@@ -309,10 +309,11 @@ function request_live_appearance_ajax() {
     $choice_3_month  = sanitize_text_field( $_POST['la_choice_3_month'] ?? '' );
     $choice_3_day    = sanitize_text_field( $_POST['la_choice_3_day']   ?? '' );
     $choice_3_time   = sanitize_text_field( $_POST['la_choice_3_time']  ?? '' );
-    $opponent        = sanitize_text_field( $_POST['la_opponent_name']        ?? '' );
-    $backup_opponent = sanitize_text_field( $_POST['la_backup_opponent_name'] ?? '' );
-    $opponent_email  = sanitize_email( $_POST['la_opponent_email']        ?? '' );
-    $backup_opp_email = sanitize_email( $_POST['la_backup_opponent_email'] ?? '' );
+    $opponent         = sanitize_text_field( $_POST['la_opponent_handle']        ?? '' );
+    $backup_opponent  = sanitize_text_field( $_POST['la_backup_opponent_handle'] ?? '' );
+    $allowed_comms    = [ 'email', 'whatsapp', 'kakaotalk', 'line', 'wechat', 'telegram' ];
+    $opponent_comm    = in_array( sanitize_text_field( $_POST['la_opponent_comm']        ?? '' ), $allowed_comms, true ) ? sanitize_text_field( $_POST['la_opponent_comm'] ) : '';
+    $backup_opp_comm  = in_array( sanitize_text_field( $_POST['la_backup_opponent_comm'] ?? '' ), $allowed_comms, true ) ? sanitize_text_field( $_POST['la_backup_opponent_comm'] ) : '';
     $url_raw         = sanitize_text_field( $_POST['la_url']                    ?? '' );
     $url             = $url_raw ? esc_url_raw( $url_raw ) : '';
     $la_type         = sanitize_text_field( $_POST['la_type'] ?? '' );
@@ -350,8 +351,8 @@ function request_live_appearance_ajax() {
     update_post_meta( $post_id, '_live_appearance_choice_3_time',          $choice_3_time );
     update_post_meta( $post_id, '_live_appearance_opponent_handle',        $opponent );
     update_post_meta( $post_id, '_live_appearance_backup_opponent_handle', $backup_opponent );
-    update_post_meta( $post_id, '_live_appearance_opponent_email',         $opponent_email );
-    update_post_meta( $post_id, '_live_appearance_backup_opponent_email',  $backup_opp_email );
+    update_post_meta( $post_id, '_live_appearance_opponent_comm',          $opponent_comm );
+    update_post_meta( $post_id, '_live_appearance_backup_opponent_comm',   $backup_opp_comm );
     update_post_meta( $post_id, '_live_appearance_url',                    $url );
     update_post_meta( $post_id, '_live_appearance_type',                   $la_type );
     update_post_meta( $post_id, '_live_appearance_date_created',           current_time( 'mysql' ) );
@@ -447,10 +448,11 @@ function update_live_appearance_ajax() {
     $choice_3_month   = sanitize_text_field( wp_unslash( $_POST['la_choice_3_month'] ?? '' ) );
     $choice_3_day     = sanitize_text_field( wp_unslash( $_POST['la_choice_3_day']   ?? '' ) );
     $choice_3_time    = sanitize_text_field( wp_unslash( $_POST['la_choice_3_time']  ?? '' ) );
-    $opponent         = sanitize_text_field( wp_unslash( $_POST['la_opponent_name']        ?? '' ) );
-    $backup_opponent  = sanitize_text_field( wp_unslash( $_POST['la_backup_opponent_name'] ?? '' ) );
-    $opponent_email   = sanitize_email( wp_unslash( $_POST['la_opponent_email']        ?? '' ) );
-    $backup_opp_email = sanitize_email( wp_unslash( $_POST['la_backup_opponent_email'] ?? '' ) );
+    $opponent         = sanitize_text_field( wp_unslash( $_POST['la_opponent_handle']        ?? '' ) );
+    $backup_opponent  = sanitize_text_field( wp_unslash( $_POST['la_backup_opponent_handle'] ?? '' ) );
+    $allowed_comms    = [ 'email', 'whatsapp', 'kakaotalk', 'line', 'wechat', 'telegram' ];
+    $opponent_comm    = in_array( sanitize_text_field( wp_unslash( $_POST['la_opponent_comm']        ?? '' ) ), $allowed_comms, true ) ? sanitize_text_field( wp_unslash( $_POST['la_opponent_comm'] ) ) : '';
+    $backup_opp_comm  = in_array( sanitize_text_field( wp_unslash( $_POST['la_backup_opponent_comm'] ?? '' ) ), $allowed_comms, true ) ? sanitize_text_field( wp_unslash( $_POST['la_backup_opponent_comm'] ) ) : '';
 
     update_post_meta( $post_id, '_live_appearance_day',                    $day );
     update_post_meta( $post_id, '_live_appearance_backup_day',             $backup_day );
@@ -461,8 +463,8 @@ function update_live_appearance_ajax() {
     update_post_meta( $post_id, '_live_appearance_choice_3_time',          $choice_3_time );
     update_post_meta( $post_id, '_live_appearance_opponent_handle',        $opponent );
     update_post_meta( $post_id, '_live_appearance_backup_opponent_handle', $backup_opponent );
-    update_post_meta( $post_id, '_live_appearance_opponent_email',         $opponent_email );
-    update_post_meta( $post_id, '_live_appearance_backup_opponent_email',  $backup_opp_email );
+    update_post_meta( $post_id, '_live_appearance_opponent_comm',          $opponent_comm );
+    update_post_meta( $post_id, '_live_appearance_backup_opponent_comm',   $backup_opp_comm );
     update_post_meta( $post_id, '_live_appearance_status',                 'pending' );
 
     wp_send_json_success( array( 'message' => 'Updated and set back to pending.' ) );

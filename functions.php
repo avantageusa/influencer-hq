@@ -600,8 +600,13 @@ function live_appearance_meta_box_callback($post) {
     $la_backup_day      = get_post_meta( $post->ID, '_live_appearance_backup_day', true );
     $la_start_time      = get_post_meta( $post->ID, '_live_appearance_start_time', true );
     $la_backup_time     = get_post_meta( $post->ID, '_live_appearance_backup_start_time', true );
+    $la_choice_3_month  = get_post_meta( $post->ID, '_live_appearance_choice_3_month', true );
+    $la_choice_3_day    = get_post_meta( $post->ID, '_live_appearance_choice_3_day',   true );
+    $la_choice_3_time   = get_post_meta( $post->ID, '_live_appearance_choice_3_time',  true );
     $la_opponent        = get_post_meta( $post->ID, '_live_appearance_opponent_handle', true );
     $la_backup_opponent = get_post_meta( $post->ID, '_live_appearance_backup_opponent_handle', true );
+    $la_opp_comm        = get_post_meta( $post->ID, '_live_appearance_opponent_comm', true );
+    $la_bkopp_comm      = get_post_meta( $post->ID, '_live_appearance_backup_opponent_comm', true );
     $la_url             = get_post_meta( $post->ID, '_live_appearance_url', true );
     $la_date_created    = get_post_meta( $post->ID, '_live_appearance_date_created', true );
     $la_type            = get_post_meta( $post->ID, '_live_appearance_type', true );
@@ -636,8 +641,11 @@ function live_appearance_meta_box_callback($post) {
         'Backup Day'             => $la_backup_day,
         'Start Time'             => $la_start_time,
         'Backup Start Time'      => $la_backup_time,
+        '3rd Choice'             => trim( $la_choice_3_month . '/' . $la_choice_3_day ) !== '/' ? $la_choice_3_month . '/' . $la_choice_3_day . ( $la_choice_3_time ? ' @ ' . $la_choice_3_time : '' ) : '',
         'Opponent Handle'        => $la_opponent,
+        'Opponent Comm Method'   => $la_opp_comm ? ucfirst( $la_opp_comm ) : '',
         'Backup Opponent Handle' => $la_backup_opponent,
+        'Backup Opp Comm Method' => $la_bkopp_comm ? ucfirst( $la_bkopp_comm ) : '',
     );
     foreach ( $fields as $label => $value ) {
         echo '<tr>';
@@ -752,10 +760,21 @@ function display_live_appearance_admin_columns($column, $post_id) {
             break;
 
         case 'live_opponent':
-            $opp  = get_post_meta( $post_id, '_live_appearance_opponent_handle', true );
-            $back = get_post_meta( $post_id, '_live_appearance_backup_opponent_handle', true );
-            echo esc_html( $opp ?: '—' );
-            if ( $back ) echo '<br><small style="color:#aaa">backup: ' . esc_html( $back ) . '</small>';
+            $opp      = get_post_meta( $post_id, '_live_appearance_opponent_handle', true );
+            $back     = get_post_meta( $post_id, '_live_appearance_backup_opponent_handle', true );
+            $opp_comm = get_post_meta( $post_id, '_live_appearance_opponent_comm', true );
+            $bk_comm  = get_post_meta( $post_id, '_live_appearance_backup_opponent_comm', true );
+            if ( $opp ) {
+                echo esc_html( $opp );
+                if ( $opp_comm ) echo ' <small style="color:#b8972f">(' . esc_html( ucfirst( $opp_comm ) ) . ')</small>';
+            } else {
+                echo '—';
+            }
+            if ( $back ) {
+                echo '<br><small style="color:#aaa">backup: ' . esc_html( $back );
+                if ( $bk_comm ) echo ' <span style="color:#b8972f">(' . esc_html( ucfirst( $bk_comm ) ) . ')</span>';
+                echo '</small>';
+            }
             break;
 
         case 'live_url':

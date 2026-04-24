@@ -165,20 +165,37 @@ if ( ! empty( $la_calendar_posts ) ) {
                                 </div>
                             </div>
                             <?php endforeach; ?>
+                            <p class="live-label live-label--opponent">State your opponent</p>
                             <div class="live-input-row live-input-row-2">
                                 <div class="live-field">
-                                    <input type="text" name="la_opponent_name" id="la_opponent_name" class="live-input" placeholder="opponent name">
+                                    <input type="text" name="la_opponent_handle" id="la_opponent_handle" class="live-input" placeholder="opponent handle">
                                 </div>
                                 <div class="live-field">
-                                    <input type="text" name="la_backup_opponent_name" id="la_backup_opponent_name" class="live-input" placeholder="backup opponent name">
+                                    <select name="la_opponent_comm" id="la_opponent_comm" class="live-input live-select">
+                                        <option value="" disabled selected>select comm method</option>
+                                        <option value="email">Email</option>
+                                        <option value="whatsapp">WhatsApp</option>
+                                        <option value="kakaotalk">KakaoTalk</option>
+                                        <option value="line">Line</option>
+                                        <option value="wechat">WeChat</option>
+                                        <option value="telegram">Telegram</option>
+                                    </select>
                                 </div>
                             </div>
                             <div class="live-input-row live-input-row-2">
                                 <div class="live-field">
-                                    <input type="email" name="la_opponent_email" id="la_opponent_email" class="live-input" placeholder="opponent email">
+                                    <input type="text" name="la_backup_opponent_handle" id="la_backup_opponent_handle" class="live-input" placeholder="backup opponent handle">
                                 </div>
                                 <div class="live-field">
-                                    <input type="email" name="la_backup_opponent_email" id="la_backup_opponent_email" class="live-input" placeholder="backup opponent email">
+                                    <select name="la_backup_opponent_comm" id="la_backup_opponent_comm" class="live-input live-select">
+                                        <option value="" disabled selected>select comm method</option>
+                                        <option value="email">Email</option>
+                                        <option value="whatsapp">WhatsApp</option>
+                                        <option value="kakaotalk">KakaoTalk</option>
+                                        <option value="line">Line</option>
+                                        <option value="wechat">WeChat</option>
+                                        <option value="telegram">Telegram</option>
+                                    </select>
                                 </div>
                             </div>
                             <div class="live-type-row">
@@ -287,8 +304,8 @@ if ( ! empty( $la_calendar_posts ) ) {
                                 $la_c3t         = get_post_meta( $la_cid, '_live_appearance_choice_3_time',          true );
                                 $la_opp         = get_post_meta( $la_cid, '_live_appearance_opponent_handle',        true );
                                 $la_bkopp       = get_post_meta( $la_cid, '_live_appearance_backup_opponent_handle', true );
-                                $la_oppemail    = get_post_meta( $la_cid, '_live_appearance_opponent_email',         true );
-                                $la_bkoppemail  = get_post_meta( $la_cid, '_live_appearance_backup_opponent_email',  true );
+                                $la_oppcomm     = get_post_meta( $la_cid, '_live_appearance_opponent_comm',          true );
+                                $la_bkoppcomm   = get_post_meta( $la_cid, '_live_appearance_backup_opponent_comm',   true );
                                 $la_day_parts   = $la_day_raw   ? explode( '/', $la_day_raw )   : [ '', '' ];
                                 $la_bkday_parts = $la_bkday_raw ? explode( '/', $la_bkday_raw ) : [ '', '' ];
                                 $la_c1m = $la_day_parts[0]   ?? '';
@@ -330,8 +347,8 @@ if ( ! empty( $la_calendar_posts ) ) {
                                         data-c3t="<?php echo esc_attr( $la_c3t ); ?>"
                                         data-opp="<?php echo esc_attr( $la_opp ); ?>"
                                         data-bkopp="<?php echo esc_attr( $la_bkopp ); ?>"
-                                        data-oppemail="<?php echo esc_attr( $la_oppemail ); ?>"
-                                        data-bkoppemail="<?php echo esc_attr( $la_bkoppemail ); ?>"
+                                        data-oppcomm="<?php echo esc_attr( $la_oppcomm ); ?>"
+                                        data-bkoppcomm="<?php echo esc_attr( $la_bkoppcomm ); ?>"
                                     >Edit</button>
                                     <button type="button" class="live-inline-btn la-cancel-btn"
                                         data-id="<?php echo esc_attr( $la_cid ); ?>"
@@ -592,18 +609,34 @@ if ( ! empty( $la_calendar_posts ) ) {
                 <?php endforeach; ?>
                 <div class="live-input-row live-input-row-2">
                     <div class="live-field">
-                        <input type="text" id="la-edit-opp" class="live-input" placeholder="opponent name">
+                        <input type="text" id="la-edit-opp" class="live-input" placeholder="opponent handle">
                     </div>
                     <div class="live-field">
-                        <input type="text" id="la-edit-bkopp" class="live-input" placeholder="backup opponent name">
+                        <input type="text" id="la-edit-bkopp" class="live-input" placeholder="backup opponent handle">
                     </div>
                 </div>
                 <div class="live-input-row live-input-row-2">
                     <div class="live-field">
-                        <input type="email" id="la-edit-oppemail" class="live-input" placeholder="opponent email">
+                        <select id="la-edit-oppcomm" class="live-input live-select">
+                            <option value="" disabled selected>select comm method</option>
+                            <option value="email">Email</option>
+                            <option value="whatsapp">WhatsApp</option>
+                            <option value="kakaotalk">KakaoTalk</option>
+                            <option value="line">Line</option>
+                            <option value="wechat">WeChat</option>
+                            <option value="telegram">Telegram</option>
+                        </select>
                     </div>
                     <div class="live-field">
-                        <input type="email" id="la-edit-bkoppemail" class="live-input" placeholder="backup opponent email">
+                        <select id="la-edit-bkoppcomm" class="live-input live-select">
+                            <option value="" disabled selected>select comm method</option>
+                            <option value="email">Email</option>
+                            <option value="whatsapp">WhatsApp</option>
+                            <option value="kakaotalk">KakaoTalk</option>
+                            <option value="line">Line</option>
+                            <option value="wechat">WeChat</option>
+                            <option value="telegram">Telegram</option>
+                        </select>
                     </div>
                 </div>
                 <div class="live-submit-row" style="gap:12px;">
@@ -908,8 +941,10 @@ $_schedule_nonce = wp_create_nonce( 'kick_schedule_nonce' );
         laSetSel('la_edit_c3_time',  d.c3t);
         laSetSel('la-edit-opp',        d.opp);
         laSetSel('la-edit-bkopp',      d.bkopp);
-        laSetSel('la-edit-oppemail',   d.oppemail);
-        laSetSel('la-edit-bkoppemail', d.bkoppemail);
+        var oppCommEl   = document.getElementById('la-edit-oppcomm');
+        var bkoppCommEl = document.getElementById('la-edit-bkoppcomm');
+        if (oppCommEl)   oppCommEl.value   = d.oppcomm   || '';
+        if (bkoppCommEl) bkoppCommEl.value = d.bkoppcomm || '';
         var msg = document.getElementById('la-edit-msg');
         if (msg) msg.style.display = 'none';
         laModal.style.display = '';
@@ -976,10 +1011,10 @@ $_schedule_nonce = wp_create_nonce( 'kick_schedule_nonce' );
             fd.append('la_choice_3_month',       document.getElementById('la_edit_c3_month').value);
             fd.append('la_choice_3_day',         document.getElementById('la_edit_c3_day').value);
             fd.append('la_choice_3_time',        document.getElementById('la_edit_c3_time').value);
-            fd.append('la_opponent_name',        document.getElementById('la-edit-opp').value);
-            fd.append('la_backup_opponent_name', document.getElementById('la-edit-bkopp').value);
-            fd.append('la_opponent_email',       document.getElementById('la-edit-oppemail').value);
-            fd.append('la_backup_opponent_email', document.getElementById('la-edit-bkoppemail').value);
+            fd.append('la_opponent_handle',        document.getElementById('la-edit-opp').value);
+            fd.append('la_backup_opponent_handle', document.getElementById('la-edit-bkopp').value);
+            fd.append('la_opponent_comm',          document.getElementById('la-edit-oppcomm').value);
+            fd.append('la_backup_opponent_comm',   document.getElementById('la-edit-bkoppcomm').value);
             fetch(_liveAjaxUrl, { method: 'POST', body: fd })
                 .then(function (r) { return r.json(); })
                 .then(function (res) {

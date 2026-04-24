@@ -136,7 +136,7 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                         [ 'key' => 'email',    'label' => 'Email',                  'value' => $user_email,    'type' => 'email'  ],
                         [ 'key' => 'country',  'label' => 'Country',                'value' => $user_country,  'type' => 'text'   ],
                         [ 'key' => 'city',     'label' => 'City',                   'value' => $user_city,     'type' => 'text'   ],
-                        [ 'key' => 'timezone', 'label' => 'Time Zone',              'value' => $user_timezone, 'type' => 'text'   ],
+                        [ 'key' => 'timezone', 'label' => 'Time Zone',              'value' => $user_timezone, 'type' => 'timezone' ],
                         [ 'key' => 'handle',   'label' => 'InfluencerHQ Handle',    'value' => $user_handle,   'type' => 'text'   ],
                         [ 'key' => 'avatar',   'label' => 'Profile Photo or Avatar','value' => '',             'type' => 'avatar' ],
                     ];
@@ -147,6 +147,31 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                         <div class="sett-row-val">
                             <?php if ( $row['type'] === 'avatar' ) : ?>
                                 <button type="button" class="sett-change-photo" id="sett-avatar-btn">Add or Change Photo</button>
+                            <?php elseif ( $row['type'] === 'timezone' ) : ?>
+                                <?php
+                                $now = new DateTime('now', new DateTimeZone('UTC'));
+                                $tz_list = [];
+                                foreach ( DateTimeZone::listIdentifiers( DateTimeZone::ALL ) as $tz_id ) {
+                                    $dtz    = new DateTimeZone( $tz_id );
+                                    $offset = $dtz->getOffset( $now );
+                                    $hours  = (int) floor( abs( $offset ) / 3600 );
+                                    $mins   = (int) ( ( abs( $offset ) % 3600 ) / 60 );
+                                    $sign   = $offset >= 0 ? '+' : '-';
+                                    $parts  = explode( '/', $tz_id );
+                                    $city   = str_replace( '_', ' ', end( $parts ) );
+                                    $region = count( $parts ) > 1 ? str_replace( '_', ' ', $parts[0] ) : '';
+                                    $city_label = $region ? $city . ' (' . $region . ')' : $city;
+                                    $label  = sprintf( '%s — UTC%s%02d:%02d', $city_label, $sign, $hours, $mins );
+                                    $tz_list[] = [ 'id' => $tz_id, 'offset' => $offset, 'label' => $label, 'city' => $city ];
+                                }
+                                usort( $tz_list, function( $a, $b ) { return strcasecmp( $a['city'], $b['city'] ); } );
+                                ?>
+                                <select class="sett-timezone-select" data-group="account" data-field="timezone" data-saved="<?php echo esc_attr( $row['value'] ); ?>">
+                                    <option value="">-- Detecting... --</option>
+                                    <?php foreach ( $tz_list as $tz_item ) : ?>
+                                    <option value="<?php echo esc_attr( $tz_item['id'] ); ?>"<?php selected( $row['value'], $tz_item['id'] ); ?>><?php echo esc_html( $tz_item['label'] ); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
                             <?php else : ?>
                                 <span class="sett-editable" data-group="account" data-field="<?php echo esc_attr( $row['key'] ); ?>"><?php echo esc_html( $row['value'] ); ?></span>
                             <?php endif; ?>
@@ -484,6 +509,38 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
     if (intlLeagueSelect) {
         intlLeagueSelect.addEventListener('change', function(){
             save('save_settings_field', { group: 'account', field: 'intl_league_team', value: intlLeagueSelect.value });
+        });
+    }
+
+    /* ── Timezone dropdown ────────────────────────────── */
+    var tzSelect = document.querySelector('.sett-timezone-select');
+    if (tzSelect) {
+        var savedTz = tzSelect.dataset.saved || '';
+
+        if (savedTz) {
+            // Use the value stored in user meta
+            console.log('[Timezone] Loaded from user meta:', savedTz);
+            tzSelect.value = savedTz;
+        } else {
+            // No saved value — detect from browser and write to DB
+            try {
+                var detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                var matchOpt = Array.from(tzSelect.options).find(function(o){ return o.value === detected; });
+                if (matchOpt) {
+                    console.log('[Timezone] None saved in DB. Browser detected:', detected, '— saving now.');
+                    tzSelect.value = detected;
+                    save('save_settings_field', { group: 'account', field: 'timezone', value: detected });
+                } else {
+                    console.warn('[Timezone] Browser detected "' + detected + '" but no matching option found in list.');
+                }
+            } catch(e) {
+                console.error('[Timezone] Detection failed:', e);
+            }
+        }
+
+        tzSelect.addEventListener('change', function(){
+            console.log('[Timezone] User changed to:', tzSelect.value);
+            save('save_settings_field', { group: 'account', field: 'timezone', value: tzSelect.value });
         });
     }
 
