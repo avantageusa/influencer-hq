@@ -17,6 +17,23 @@ get_header();
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&display=swap" rel="stylesheet">
 
+<style>
+.field-error {
+  box-sizing: border-box;
+  border: 2px solid rgba(255, 75, 75, 0.95) !important;
+  box-shadow: 0 0 0 4px rgba(255, 75, 75, 0.16);
+  animation: field-error-pulse 0.9s ease both;
+}
+@keyframes field-error-pulse {
+  0%,100% { transform: translateX(0); }
+  15% { transform: translateX(-4px); }
+  30% { transform: translateX(4px); }
+  45% { transform: translateX(-2px); }
+  60% { transform: translateX(2px); }
+  75% { transform: translateX(-1px); }
+}
+</style>
+
 <main id="primary" class="site-main">
 
 <nav>
@@ -35,7 +52,7 @@ get_header();
   <div class="hero-lines"></div>
   <div class="hero-glow"></div>
   <span class="hero-eye">Influencer Headquarters</span>
-  <h1>Influence.<br><em>Compete.</em><br>Own the Future.</h1>
+  <h1>Influence was never meant to be rented.</h1>
   <p class="hero-sub">We believe those who drive the energy deserve to share in what they help build.</p>
   <div class="hero-btns">
     <button class="btn-gold" onclick="openModal()">Yes — Let's Start the Conversation</button>
@@ -168,7 +185,7 @@ get_header();
       </div>
       <div class="comp-list comp-list--s7">
         <div class="comp-card" id="cw2" onclick="pickComp('cw2')"><div class="comp-chk"><span class="chk-in">✓</span></div><div class="comp-body"><span class="comp-tag">Global Stage</span><div class="comp-title">Influencer World Competition</div><div class="comp-desc">Join thousands of Influencers and their followers. Compete Thursday night through Sunday night.</div></div></div>
-        <div class="comp-card" id="cp2" onclick="pickComp('cp2')"><div class="comp-chk"><span class="chk-in">✓</span></div><div class="comp-body"><span class="comp-tag">Community Competition</span><div class="comp-title">Community Competition</div><div class="comp-desc">A one week get acquainted competition between your followers who choose to participate with you at the helm cheering them all on to victory.</div></div></div>
+        <div class="comp-card" id="cp2" onclick="pickComp('cp2')"><div class="comp-chk"><span class="chk-in">✓</span></div><div class="comp-body"><span class="comp-tag">Community Competition</span><div class="comp-title">Community Competition</div><div class="comp-desc">A one week competition between your followers who choose to participate with you at the helm cheering them all on to victory.</div></div></div>
       </div>
       <p class="sec-p">Influencers are automatically invited to appear on our partners' International Competition Series — a 24-hour global competition stage. Head-to-head competition features two Influencers from their own locations streaming reactions, commentary, and competitive energy in real time.</p>
       <p class="sec-p" style="color:var(--gl)">English · Mandarin · Cantonese · Korean · Japanese · Thai · Vietnamese</p>
@@ -189,7 +206,7 @@ get_header();
       <p style="font-family:'Be Vietnam Pro',sans-serif;font-size:.7rem;letter-spacing:.4em;text-transform:uppercase;color:var(--gl);font-weight:700;margin-bottom:12px">Start Here — Community Competition</p>
       <div class="path-card">
         <div class="path-title">One Week. Your Community.</div>
-        <p class="path-desc">A one week get acquainted competition between your followers who choose to participate with you at the helm cheering them all on to victory.<br><br>Welcome to the stage that was built for you.</p>
+        <p class="path-desc">A one week competition between your followers who choose to participate with you at the helm cheering them all on to victory.<br><br>Welcome to the stage that was built for you.</p>
       </div>
 
       <div style="height:1px;background:rgba(240,201,58,.2);margin:32px 0"></div>
@@ -285,7 +302,7 @@ get_header();
         <input style="width:100%;padding:14px 16px;background:rgba(0,0,0,.6);border:2px solid rgba(240,201,58,.6);font-family:'Be Vietnam Pro',sans-serif;font-size:1rem;color:#fff;outline:none" type="text" placeholder="@yourhandle" id="socialHandle">
       </div>
 
-      <button onclick="chosen()" style="margin-top:16px;width:100%;padding:20px;background:var(--gl);border:none;font-family:'Be Vietnam Pro',sans-serif;font-size:.75rem;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:#000;cursor:pointer;opacity:.35;transition:opacity .3s" id="ch-continue" disabled>Continue →</button>
+      <button onclick="onContinue()" style="margin-top:16px;width:100%;padding:20px;background:var(--gl);border:none;font-family:'Be Vietnam Pro',sans-serif;font-size:.75rem;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:#000;cursor:pointer;transition:opacity .3s" id="ch-continue">Continue →</button>
 
       <p class="m-note">All conversations are private and confidential.<br>We operate across time zones. Expect a reply within minutes.</p>
     </div>
@@ -296,9 +313,9 @@ get_header();
       <div class="ms2-quote">When your followers watch you play, cheer, and celebrate, they become part of a shared experience that unites people the same way great sports, music, and global competitions always have.</div>
       <div class="comp-list">
         <div class="comp-card" id="cw" onclick="pickComp('cw')"><div class="comp-chk"><span class="chk-in">✓</span></div><div class="comp-body"><span class="comp-tag">Global Stage</span><div class="comp-title">Influencer World Competition</div><div class="comp-desc">Join thousands of Influencers and their followers. Compete Thursday night through Sunday night.</div></div></div>
-        <div class="comp-card" id="cp" onclick="pickComp('cp')"><div class="comp-chk"><span class="chk-in">✓</span></div><div class="comp-body"><span class="comp-tag">Community Competition</span><div class="comp-title">Community Competition</div><div class="comp-desc">A one week get acquainted competition between your followers who choose to participate with you at the helm cheering them all on to victory.</div></div></div>
+        <div class="comp-card" id="cp" onclick="pickComp('cp')"><div class="comp-chk"><span class="chk-in">✓</span></div><div class="comp-body"><span class="comp-tag">Community Competition</span><div class="comp-title">Community Competition</div><div class="comp-desc">A one week competition between your followers who choose to participate with you at the helm cheering them all on to victory.</div></div></div>
       </div>
-      <button class="send-btn" id="sendbtn" onclick="submit()" disabled>Send Me the Details</button>
+      <button class="send-btn" id="sendbtn" onclick="redirectLogin()">Send Me the Details</button>
       <button class="back-btn" onclick="goBack()">← Back</button>
     </div>
     <div class="mstep" id="ms3">
@@ -564,6 +581,41 @@ function show(id) {
   document.getElementById(id).classList.add('on');
 }
 
+function clearFieldErrors() {
+  document.querySelectorAll('.field-error').forEach(function(el) {
+    el.classList.remove('field-error');
+  });
+}
+
+function showFieldError(el) {
+  if (!el) return;
+  el.classList.add('field-error');
+  window.setTimeout(function() {
+    el.classList.remove('field-error');
+  }, 1200);
+}
+
+function onContinue() {
+  clearFieldErrors();
+  var valid = true;
+  var handle = document.getElementById('socialHandle');
+  if (!handle || !handle.value.trim()) {
+    showFieldError(handle);
+    valid = false;
+  }
+  document.querySelectorAll('.ch-sel.selected').forEach(function(sel) {
+    var fieldId = sel.id.replace('sel-', '');
+    var input = document.querySelector('#entry-' + fieldId + ' input');
+    if (input && !input.value.trim()) {
+      showFieldError(sel);
+      showFieldError(input);
+      valid = false;
+    }
+  });
+  if (!valid) return;
+  chosen();
+}
+
 function toggleCh(id) {
   var sel = document.getElementById('sel-' + id);
   var entry = document.getElementById('entry-' + id);
@@ -573,13 +625,6 @@ function toggleCh(id) {
   } else {
     sel.classList.add('selected');
     entry.style.display = 'block';
-  }
-  var anySelected = document.querySelectorAll('.ch-sel.selected').length > 0;
-  var btn = document.getElementById('ch-continue');
-  if (btn) {
-    btn.disabled = !anySelected;
-    btn.style.opacity = anySelected ? '1' : '.35';
-    btn.style.cursor = anySelected ? 'pointer' : 'default';
   }
 }
 
@@ -595,11 +640,14 @@ function chosen() {
 
 function pickComp(id) {
   document.getElementById(id).classList.toggle('sel');
-  var any = document.querySelectorAll('.comp-card.sel').length > 0;
-  document.getElementById('sendbtn').disabled = !any;
 }
 
-function submit() { show('ms3'); }
+function redirectLogin() {
+  show('ms3');
+  setTimeout(function() {
+    window.location.href = '/influencer-login/';
+  }, 3000);
+}
 function goBack() { show('ms1'); }
 
 document.getElementById('mainModal').addEventListener('click', function(e) {
