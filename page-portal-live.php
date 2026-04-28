@@ -11,6 +11,7 @@ get_header();
 get_template_part( 'template-parts/portal-styles' );
 
 $la_calendar_occupied = [];
+$la_calendar_details  = [];
 $la_calendar_posts    = get_posts( [
     'post_type'      => 'live_appearance',
     'post_status'    => 'publish',
@@ -69,6 +70,72 @@ if ( ! empty( $la_calendar_posts ) ) {
     foreach ( $la_calendar_occupied as $la_key => $la_days ) {
         sort( $la_days, SORT_NUMERIC );
         $la_calendar_occupied[ $la_key ] = array_values( $la_days );
+    }
+
+    foreach ( $la_calendar_posts as $la_post_id ) {
+        $la_day_raw   = get_post_meta( $la_post_id, '_live_appearance_day', true );
+        $la_bkday_raw = get_post_meta( $la_post_id, '_live_appearance_backup_day', true );
+        $la_c3m       = absint( get_post_meta( $la_post_id, '_live_appearance_choice_3_month', true ) );
+        $la_c3d       = absint( get_post_meta( $la_post_id, '_live_appearance_choice_3_day', true ) );
+        $la_choice3   = ( $la_c3m >= 1 && $la_c3m <= 12 && $la_c3d >= 1 && $la_c3d <= 31 ) ? $la_c3m . '/' . $la_c3d : '';
+
+        $la_time_map = [
+            $la_day_raw   => get_post_meta( $la_post_id, '_live_appearance_start_time', true ),
+            $la_bkday_raw => get_post_meta( $la_post_id, '_live_appearance_backup_start_time', true ),
+            $la_choice3   => get_post_meta( $la_post_id, '_live_appearance_choice_3_time', true ),
+        ];
+
+        $la_opp   = get_post_meta( $la_post_id, '_live_appearance_opponent_handle', true );
+        $la_bkopp = get_post_meta( $la_post_id, '_live_appearance_backup_opponent_handle', true );
+        $la_status = get_post_meta( $la_post_id, '_live_appearance_status', true );
+        $la_status_label = $la_status;
+        if ( $la_status === 'confirmed' ) {
+            $la_status_label = 'Confirmed';
+        } elseif ( strpos( $la_status, 'choice' ) !== false ) {
+            $la_status_label = ucwords( str_replace( '_', ' ', $la_status ) );
+        }
+
+        $la_opp_label = $la_opp ? $la_opp : 'Opponent TBD';
+        $la_display_name = $la_opp_label;
+        if ( ! empty( $la_bkopp ) ) {
+            $la_display_name .= ' (backup: ' . $la_bkopp . ')';
+        }
+
+        $la_date_candidates = array_filter( [ $la_day_raw, $la_bkday_raw, $la_choice3 ] );
+        foreach ( $la_date_candidates as $la_md ) {
+            $la_parts = explode( '/', (string) $la_md );
+            if ( count( $la_parts ) < 2 ) {
+                continue;
+            }
+
+            $la_month = absint( trim( $la_parts[0] ) );
+            $la_day   = absint( trim( $la_parts[1] ) );
+            if ( $la_month < 1 || $la_month > 12 || $la_day < 1 || $la_day > 31 ) {
+                continue;
+            }
+
+            $la_time = isset( $la_time_map[ $la_md ] ) ? $la_time_map[ $la_md ] : '';
+            $la_hour = 12;
+            if ( preg_match( '/^(\d{1,2}):\d{2}$/', $la_time, $la_match ) ) {
+                $la_hour = min( 23, max( 0, absint( $la_match[1] ) ) );
+            }
+
+            $la_key_date = $la_year . '-' . $la_month . '-' . $la_day;
+            if ( ! isset( $la_calendar_details[ $la_key_date ] ) ) {
+                $la_calendar_details[ $la_key_date ] = [];
+            }
+            $la_calendar_details[ $la_key_date ][] = [
+                'post_id'      => $la_post_id,
+                'time'         => $la_time ?: 'TBD',
+                'hour'         => $la_hour,
+                'opp'          => $la_opp_label,
+                'bkopp'        => $la_bkopp ? $la_bkopp : 'Backup TBD',
+                'display'      => $la_display_name,
+                'request_type' => $la_status_label,
+                'month'        => $la_month,
+                'day'          => $la_day,
+            ];
+        }
     }
 }
 ?>
@@ -231,8 +298,8 @@ if ( ! empty( $la_calendar_posts ) ) {
                             })()">copy</button>
                         </div>                        <div id="live-url-qr" style="display:none;margin-top:12px;"></div>
                         <div id="live-qr-caption" style="display:none;margin-top:8px;font-size:13px;color:#ccc;display:none;align-items:center;gap:6px;">
-                            Scan to share QR code with opponent
-                            <a id="live-qr-download-btn" download="qr-code.png" href="#" style="background:#b8972f;color:#fff;font-size:13px;font-weight:600;text-decoration:none;padding:6px 14px;border-radius:4px;margin-left:6px;">Download and share your QR image</a>
+                            Download and share your QR image
+                            <a id="live-qr-download-btn" download="qr-code.png" href="#" style="background:#b8972f;color:#fff;font-size:13px;font-weight:600;text-decoration:none;padding:6px 14px;border-radius:4px;margin-left:6px;">Download</a>
                             <span class="live-qr-info-icon" tabindex="0" aria-label="How to scan" style="position:relative;cursor:pointer;display:inline-flex;align-items:center;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                                 <span class="live-qr-tooltip" role="tooltip" style="display:none;position:absolute;left:24px;top:-8px;background:#1a1a1a;border:1px solid #555;border-radius:6px;padding:14px 16px;width:260px;font-size:12px;line-height:1.6;color:#ddd;z-index:9999;pointer-events:none;">
@@ -254,7 +321,22 @@ if ( ! empty( $la_calendar_posts ) ) {
                                 <h3 id="live-calendar-modal-title" class="live-calendar-modal__title">AVAILABLE TIME SLOTS</h3>
                                 <button type="button" id="live-calendar-close-btn" class="live-inline-btn">close</button>
                             </div>
-                            <?php ihq_calendar( $la_calendar_occupied ); ?>
+                            <?php ihq_calendar( $la_calendar_occupied, $la_calendar_details ); ?>
+                        </div>
+                    </div>
+
+                    <div id="live-calendar-day-modal" class="live-calendar-modal" style="display:none;">
+                        <div class="live-calendar-modal__overlay"></div>
+                        <div class="live-calendar-modal__box" role="dialog" aria-modal="true" aria-labelledby="live-calendar-day-modal-title">
+                            <div class="live-calendar-modal__head">
+                                <div>
+                                    <h3 id="live-calendar-day-modal-title" class="live-calendar-modal__title">Day Schedule</h3>
+                                    <div id="live-calendar-day-subtitle" style="color:#ccc;font-size:13px;margin-top:4px;"></div>
+                                <button type="button" id="live-calendar-day-time-toggle" class="live-inline-btn" style="font-size:13px;margin-top:8px;">AM/PM</button>
+                                </div>
+                                <button type="button" id="live-calendar-day-close-btn" class="live-inline-btn">back</button>
+                            </div>
+                            <div id="live-calendar-hour-grid" style="display:grid;gap:10px;"></div>
                         </div>
                     </div>
 
@@ -670,6 +752,16 @@ $_schedule_nonce = wp_create_nonce( 'kick_schedule_nonce' );
     var calendarOpenBtn   = document.getElementById('live-calendar-open-btn');
     var calendarCloseBtn  = document.getElementById('live-calendar-close-btn');
     var calendarOverlay   = calendarModal ? calendarModal.querySelector('.live-calendar-modal__overlay') : null;
+    var dayModal          = document.getElementById('live-calendar-day-modal');
+    var dayCloseBtn       = document.getElementById('live-calendar-day-close-btn');
+    var dayOverlay        = dayModal ? dayModal.querySelector('.live-calendar-modal__overlay') : null;
+    var daySubtitle       = document.getElementById('live-calendar-day-subtitle');
+    var dayTimeToggle     = document.getElementById('live-calendar-day-time-toggle');
+    var dayHourGrid       = document.getElementById('live-calendar-hour-grid');
+    var liveCalendarDayDetails = <?php echo wp_json_encode( $la_calendar_details ); ?>;
+    var liveCalendarMonthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var liveCalendarTimeFormat = window.ihqCalTimeFormat || '12';
+    var currentDayInfo = { year: null, month: null, day: null };
 
     function openCalendarModal() {
         if (!calendarModal) return;
@@ -681,11 +773,150 @@ $_schedule_nonce = wp_create_nonce( 'kick_schedule_nonce' );
         calendarModal.style.display = 'none';
     }
 
+    function openDayModal() {
+        if (!dayModal) return;
+        dayModal.style.display = '';
+    }
+
+    function updateLiveCalendarTimeToggle() {
+        if (!dayTimeToggle) return;
+        dayTimeToggle.textContent = liveCalendarTimeFormat === '24' ? '24h' : 'AM/PM';
+    }
+
+    function setLiveCalendarTimeFormat(format) {
+        if (format !== '24' && format !== '12') return;
+        liveCalendarTimeFormat = format;
+        updateLiveCalendarTimeToggle();
+        document.dispatchEvent(new CustomEvent('ihqCalTimeFormatRequest', { detail: { format: format } }));
+        if (dayModal && dayModal.style.display !== 'none') {
+            populateDayModal(currentDayInfo.year, currentDayInfo.month, currentDayInfo.day);
+        }
+    }
+
+    document.addEventListener('ihqCalTimeFormatChange', function(e) {
+        if (!e.detail || !e.detail.format) return;
+        liveCalendarTimeFormat = e.detail.format;
+        updateLiveCalendarTimeToggle();
+        if (dayModal && dayModal.style.display !== 'none') {
+            populateDayModal(currentDayInfo.year, currentDayInfo.month, currentDayInfo.day);
+        }
+    });
+
+    function closeDayModal() {
+        if (!dayModal) return;
+        dayModal.style.display = 'none';
+        currentDayInfo.year = null;
+        currentDayInfo.month = null;
+        currentDayInfo.day = null;
+    }
+
+    function pad2(num) {
+        return (num < 10 ? '0' : '') + num;
+    }
+
+    function formatHourLabel(hour, use24) {
+        if (use24) {
+            return pad2(hour) + ':00';
+        }
+        var label = hour % 12 || 12;
+        return label + ' ' + (hour < 12 ? 'AM' : 'PM');
+    }
+
+    function parseDayTime(value) {
+        if (!value || typeof value !== 'string') {
+            return null;
+        }
+        var trimmed = value.trim();
+        var ampmMatch = trimmed.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
+        if (ampmMatch) {
+            var hour = parseInt(ampmMatch[1], 10);
+            var minute = parseInt(ampmMatch[2] || '0', 10);
+            var ampm = ampmMatch[3].toUpperCase();
+            if (ampm === 'PM' && hour < 12) {
+                hour += 12;
+            }
+            if (ampm === 'AM' && hour === 12) {
+                hour = 0;
+            }
+            return { hour: hour, minute: minute };
+        }
+        var timeMatch = trimmed.match(/^(\d{1,2})(?::(\d{2}))$/);
+        if (timeMatch) {
+            return { hour: parseInt(timeMatch[1], 10), minute: parseInt(timeMatch[2], 10) };
+        }
+        return null;
+    }
+
+    function formatDayTime(value, fallbackHour, use24) {
+        var parsed = parseDayTime(value);
+        var hour = fallbackHour;
+        var minute = 0;
+        if (parsed) {
+            hour = parsed.hour;
+            minute = parsed.minute;
+        }
+        if (hour == null || isNaN(hour)) {
+            return 'TBD';
+        }
+        if (use24) {
+            return pad2(hour) + ':' + pad2(minute);
+        }
+        var label = hour % 12 || 12;
+        return label + ':' + pad2(minute) + (hour < 12 ? ' AM' : ' PM');
+    }
+
+    function populateDayModal(year, month, day) {
+        currentDayInfo.year = year;
+        currentDayInfo.month = month;
+        currentDayInfo.day = day;
+        if (!dayHourGrid || !dayModal) return;
+        var key = year + '-' + (month + 1) + '-' + day;
+        var entries = liveCalendarDayDetails[key] || [];
+        if (daySubtitle) {
+            daySubtitle.textContent = liveCalendarMonthNames[month] + ' ' + day + ', ' + year;
+        }
+        var html = '';
+        for (var hour = 0; hour < 24; hour++) {
+            var hourLabel = formatHourLabel(hour, liveCalendarTimeFormat === '24');
+            var slotEntries = entries.filter(function(item) {
+                return parseInt(item.hour, 10) === hour;
+            });
+            if (slotEntries.length) {
+                html += '<div style="display:grid;grid-template-columns:80px minmax(0,1fr);gap:10px;align-items:start;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;"><div style="color:#b8972f;font-weight:700;font-size:13px;">' + hourLabel + '</div><div style="display:grid;gap:6px;color:#ddd;font-size:13px;">';
+                slotEntries.forEach(function(item) {
+                    var displayTime = formatDayTime(item.time, parseInt(item.hour, 10), liveCalendarTimeFormat === '24');
+                    html += '<div style="color:#fff;font-size:14px;font-weight:600;">' + (item.request_type || 'Live Appearance') + '</div>';
+                    html += '<div style="color:#bbb;font-size:12px;line-height:1.4;">' + displayTime + ' · ' + (item.opp || 'Opponent TBD') + ' · ' + (item.bkopp || 'Backup TBD') + '</div>';
+                });
+                html += '</div></div>';
+            } else {
+                html += '<div style="display:grid;grid-template-columns:80px minmax(0,1fr);gap:10px;align-items:start;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;"><div style="color:#b8972f;font-weight:700;font-size:13px;">' + hourLabel + '</div><div style="color:#ddd;font-size:13px;">No scheduled appearance.</div></div>';
+            }
+        }
+        dayHourGrid.innerHTML = html;
+        openDayModal();
+    }
+
+    document.addEventListener('ihqCalDayClick', function(e) {
+        if (!e.detail) return;
+        populateDayModal(e.detail.year, e.detail.month, e.detail.day);
+    });
+
     if (calendarOpenBtn) { calendarOpenBtn.addEventListener('click', openCalendarModal); }
     if (calendarCloseBtn) { calendarCloseBtn.addEventListener('click', closeCalendarModal); }
     if (calendarOverlay) { calendarOverlay.addEventListener('click', closeCalendarModal); }
+    if (dayCloseBtn) { dayCloseBtn.addEventListener('click', closeDayModal); }
+    if (dayOverlay) { dayOverlay.addEventListener('click', closeDayModal); }
+    if (dayTimeToggle) { dayTimeToggle.addEventListener('click', function() { setLiveCalendarTimeFormat(liveCalendarTimeFormat === '24' ? '12' : '24'); }); }
+    updateLiveCalendarTimeToggle();
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') closeCalendarModal();
+        if (e.key === 'Escape') {
+            if (dayModal && dayModal.style.display !== 'none') {
+                closeDayModal();
+                return;
+            }
+            closeCalendarModal();
+        }
     });
 
     function setStatus(label, statusKey) {

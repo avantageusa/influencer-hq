@@ -15,8 +15,10 @@
  *   Month is 1-based with no leading zero. e.g. '2026-4' = April 2026.
  */
 
-$occupied     = $args['occupied'] ?? [];
+$occupied      = $args['occupied'] ?? [];
+$details       = $args['details']  ?? [];
 $occupied_json = wp_json_encode( $occupied );
+$details_json  = wp_json_encode( $details );
 
 // Unique ID so multiple instances on the same page don't clash
 static $ihq_cal_instance = 0;
@@ -191,6 +193,14 @@ $uid = 'ihqCal' . $ihq_cal_instance;
         border-radius: 2px;
     }
 
+    .cal-day.occupied {
+        cursor: pointer;
+    }
+    .cal-day.occupied:focus {
+        outline: 2px solid #b8972f;
+        outline-offset: -2px;
+    }
+
     .cal-card-footer {
         height: 6px;
         background: #b8972f;
@@ -225,6 +235,39 @@ $uid = 'ihqCal' . $ihq_cal_instance;
         color: #fff;
         min-width: 80px;
     }
+
+    .cal-list-header,
+    .cal-list-row {
+        display: grid;
+        grid-template-columns: 70px 90px 60px 90px 1.3fr 1fr 1fr;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .cal-list-header {
+        color: rgba(255,255,255,.55);
+        font-size: .75rem;
+        font-weight: 700;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(255,255,255,.12);
+        margin-bottom: 12px;
+    }
+
+    .cal-list-row {
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(255,255,255,.08);
+        color: rgba(255,255,255,.85);
+        font-size: .84rem;
+    }
+
+    .cal-list-row:last-child { border-bottom: none; }
+    .cal-list-cell {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
 </style>
 
 <div class="cal-card" id="<?php echo esc_attr( $uid ); ?>">
@@ -237,6 +280,7 @@ $uid = 'ihqCal' . $ihq_cal_instance;
                 <span class="cal-tab-sep">|</span>
                 <button class="cal-tab-link active" id="<?php echo esc_attr( $uid ); ?>TabCalendar" onclick="ihqCalSwitchTab('<?php echo esc_js( $uid ); ?>','calendar')">Calendar</button>
             </div>
+            <button class="cal-filter-btn" id="<?php echo esc_attr( $uid ); ?>TimeFormatBtn" type="button" title="Toggle time format">AM/PM</button>
             <button class="cal-filter-btn" title="Filter">
                 <svg viewBox="0 0 24 24"><path d="M3 6h18M7 12h10M11 18h2"/></svg>
             </button>
@@ -259,6 +303,7 @@ $uid = 'ihqCal' . $ihq_cal_instance;
 (function () {
     var occupiedDays = <?php echo $occupied_json; ?>;
     var uid = <?php echo wp_json_encode( $uid ); ?>;
+    var dayDetails = <?php echo $details_json; ?>;
 
     var MONTHS = ['January','February','March','April','May','June',
                   'July','August','September','October','November','December'];
@@ -267,6 +312,8 @@ $uid = 'ihqCal' . $ihq_cal_instance;
     var today    = new Date();
     var curYear  = today.getFullYear();
     var curMonth = today.getMonth(); // 0-based
+    var timeFormat = window.ihqCalTimeFormat || '12';
+    window.ihqCalTimeFormat = timeFormat;
 
     function getOccupied(year, month) {
         var key = year + '-' + (month + 1);
@@ -295,7 +342,10 @@ $uid = 'ihqCal' . $ihq_cal_instance;
             var isToday    = (d === today.getDate() && month === today.getMonth() && year === today.getFullYear());
             var isOccupied = occupied.indexOf(d) !== -1;
             var cls = 'cal-day ' + (isOccupied ? 'occupied' : 'free') + (isToday ? ' today' : '');
-            html += '<div class="' + cls + '"><span class="cal-day-num">' + d + '</span></div>';
+            var onclick = isOccupied ? ' onclick="ihqCalDayClick(' + year + ',' + month + ',' + d + ')"' : '';
+            var keydown = isOccupied ? ' tabindex="0" role="button" onkeydown="if(event.key===\'Enter\' || event.key===\' \') ihqCalDayClick(' + year + ',' + month + ',' + d + ')"' : '';
+            var aria = isOccupied ? ' aria-label="View details for ' + MONTHS[month] + ' ' + d + '"' : '';
+            html += '<div class="' + cls + '"' + onclick + keydown + aria + '><span class="cal-day-num">' + d + '</span></div>';
         }
 
         var remainder = (firstDay + daysInMonth) % 7;
@@ -308,21 +358,121 @@ $uid = 'ihqCal' . $ihq_cal_instance;
         grid.innerHTML = html;
     }
 
+    function getMonthDetails(year, month) {
+        var keyPrefix = year + '-' + (month + 1) + '-';
+        var details = [];
+        for (var key in dayDetails) {
+            if (key.indexOf(keyPrefix) === 0) {
+                details = details.concat(dayDetails[key]);
+            }
+        }
+        return details;
+    }
+
+    function pad2(num) {
+        return (num < 10 ? '0' : '') + num;
+    }
+
+    function formatHourLabel(hour, use24) {
+        if (use24) {
+            return pad2(hour) + ':00';
+        }
+        var label = hour % 12 || 12;
+        return label + (hour < 12 ? ' AM' : ' PM');
+    }
+
+    function parseTimeString(value) {
+        if (!value || typeof value !== 'string') {
+            return null;
+        }
+        var trimmed = value.trim();
+        var ampmMatch = trimmed.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
+        if (ampmMatch) {
+            var hour = parseInt(ampmMatch[1], 10);
+            var minute = parseInt(ampmMatch[2] || '0', 10);
+            var ampm = ampmMatch[3].toUpperCase();
+            if (ampm === 'PM' && hour < 12) {
+                hour += 12;
+            }
+            if (ampm === 'AM' && hour === 12) {
+                hour = 0;
+            }
+            return { hour: hour, minute: minute };
+        }
+        var timeMatch = trimmed.match(/^(\d{1,2})(?::(\d{2}))$/);
+        if (timeMatch) {
+            return { hour: parseInt(timeMatch[1], 10), minute: parseInt(timeMatch[2], 10) };
+        }
+        return null;
+    }
+
+    function formatTimeValue(value, fallbackHour, use24) {
+        var parsed = parseTimeString(value);
+        var hour = fallbackHour;
+        var minute = 0;
+        if (parsed) {
+            hour = parsed.hour;
+            minute = parsed.minute;
+        }
+        if (hour == null || isNaN(hour)) {
+            return 'TBD';
+        }
+        if (use24) {
+            return pad2(hour) + ':' + pad2(minute);
+        }
+        var label = hour % 12 || 12;
+        return label + ':' + pad2(minute) + (hour < 12 ? ' AM' : ' PM');
+    }
+
     function renderList(year, month) {
         var listView = document.getElementById(uid + 'ListView');
-        var occupied = getOccupied(year, month);
-        if (!occupied.length) {
-            listView.innerHTML = '<p style="color:rgba(255,255,255,.5);font-size:.85rem;padding:14px 0;">No challenges scheduled this month.</p>';
+        var monthDetails = getMonthDetails(year, month);
+        if (!monthDetails.length) {
+            var occupied = getOccupied(year, month);
+            if (!occupied.length) {
+                listView.innerHTML = '<p style="color:rgba(255,255,255,.5);font-size:.85rem;padding:14px 0;">No challenges scheduled this month.</p>';
+                return;
+            }
+            var html = '';
+            occupied.slice().sort(function (a, b) { return a - b; }).forEach(function (d) {
+                var date  = new Date(year, month, d);
+                var lbl   = DAYS[date.getDay()] + ', ' + MONTHS[month] + ' ' + d;
+                html += '<div class="cal-list-item">'
+                      + '<span class="cal-list-dot"></span>'
+                      + '<span class="cal-list-date">' + lbl + '</span>'
+                      + '<span>Private Challenge</span>'
+                      + '</div>';
+            });
+            listView.innerHTML = html;
             return;
         }
-        var html = '';
-        occupied.slice().sort(function (a, b) { return a - b; }).forEach(function (d) {
-            var date  = new Date(year, month, d);
-            var lbl   = DAYS[date.getDay()] + ', ' + MONTHS[month] + ' ' + d;
-            html += '<div class="cal-list-item">'
-                  + '<span class="cal-list-dot"></span>'
-                  + '<span class="cal-list-date">' + lbl + '</span>'
-                  + '<span>Private Challenge</span>'
+
+        var html = '<div class="cal-list-header">'
+                 + '<span>Day</span>'
+                 + '<span>Month</span>'
+                 + '<span>Date</span>'
+                 + '<span>Time</span>'
+                 + '<span>Live Appearance</span>'
+                 + '<span>Opponent Handle</span>'
+                 + '<span>Backup Handle</span>'
+                 + '</div>';
+
+        monthDetails.slice().sort(function(a, b) {
+            if (a.month !== b.month) return a.month - b.month;
+            if (a.day !== b.day) return a.day - b.day;
+            return a.hour - b.hour;
+        }).forEach(function (item) {
+            var date = new Date(year, month, item.day);
+            var dayLabel = DAYS[date.getDay()];
+            var timeLabel = formatTimeValue(item.time, item.hour, timeFormat === '24');
+            html += '<div class="cal-list-row">'
+                  + '<span class="cal-list-cell">' + dayLabel + '</span>'
+                  + '<span class="cal-list-cell">' + MONTHS[month] + '</span>'
+                  + '<span class="cal-list-cell">' + item.day + '</span>'
+                  + '<span class="cal-list-cell">' + timeLabel + '</span>'
+                  + '<span class="cal-list-cell">' + (item.request_type || 'Live Appearance') + '</span>'
+                  + '<span class="cal-list-cell">' + (item.opp || 'Opponent TBD') + '</span>'
+                  + '<span class="cal-list-cell">' + (item.bkopp || 'Backup TBD') + '</span>'
                   + '</div>';
         });
         listView.innerHTML = html;
@@ -354,6 +504,56 @@ $uid = 'ihqCal' . $ihq_cal_instance;
             _origChangeMonth(id, delta);
         }
     };
+
+    window.ihqCalDayClick = window.ihqCalDayClick || function (year, month, day) {
+        document.dispatchEvent(new CustomEvent('ihqCalDayClick', {
+            detail: {
+                calendarId: uid,
+                year: year,
+                month: month,
+                day: day,
+            }
+        }));
+    };
+
+    function updateTimeFormatButton() {
+        var btn = document.getElementById(uid + 'TimeFormatBtn');
+        if (!btn) return;
+        btn.textContent = timeFormat === '24' ? '24h' : 'AM/PM';
+    }
+
+    function notifyTimeFormatChange() {
+        document.dispatchEvent(new CustomEvent('ihqCalTimeFormatChange', { detail: { format: timeFormat } }));
+    }
+
+    function setTimeFormat(format) {
+        if (format !== '24' && format !== '12') {
+            return;
+        }
+        if (timeFormat === format) {
+            return;
+        }
+        timeFormat = format;
+        window.ihqCalTimeFormat = timeFormat;
+        updateTimeFormatButton();
+        render();
+        notifyTimeFormatChange();
+    }
+
+    window.addEventListener('ihqCalTimeFormatRequest', function (event) {
+        if (!event.detail || !event.detail.format) return;
+        setTimeFormat(event.detail.format);
+    });
+
+    render();
+    updateTimeFormatButton();
+
+    var timeFormatBtn = document.getElementById(uid + 'TimeFormatBtn');
+    if (timeFormatBtn) {
+        timeFormatBtn.addEventListener('click', function () {
+            setTimeFormat(timeFormat === '24' ? '12' : '24');
+        });
+    }
 
     window.ihqCalSwitchTab = window.ihqCalSwitchTab || function () {};
     var _origSwitchTab = window.ihqCalSwitchTab;

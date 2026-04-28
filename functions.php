@@ -269,9 +269,10 @@ require_once get_template_directory() . '/inc/api-ajax-calls.php';
  * @param array $occupied Occupied days keyed by 'YYYY-M' (1-based month, no leading zero).
  *                        e.g. [ '2026-4' => [2, 3, 15], '2026-5' => [10, 20] ]
  */
-function ihq_calendar( array $occupied = [] ) {
+function ihq_calendar( array $occupied = [], array $details = [] ) {
     get_template_part( 'template-parts/ihq-calendar', null, [
         'occupied' => $occupied,
+        'details'  => $details,
     ]);
 }
 

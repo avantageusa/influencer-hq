@@ -57,7 +57,6 @@ get_header();
   <div class="hero-btns">
     <button class="btn-gold" onclick="openModal()">Yes — Let's Start the Conversation</button>
   </div>
-  <button id="claudeTalkBtn" type="button">Let's Talk</button>
   <div class="scroll-hint"><span>Discover</span><div class="scroll-line"></div></div>
 </section>
 
@@ -315,7 +314,17 @@ get_header();
         <div class="comp-card" id="cw" onclick="pickComp('cw')"><div class="comp-chk"><span class="chk-in">✓</span></div><div class="comp-body"><span class="comp-tag">Global Stage</span><div class="comp-title">Influencer World Competition</div><div class="comp-desc">Join thousands of Influencers and their followers. Compete Thursday night through Sunday night.</div></div></div>
         <div class="comp-card" id="cp" onclick="pickComp('cp')"><div class="comp-chk"><span class="chk-in">✓</span></div><div class="comp-body"><span class="comp-tag">Community Competition</span><div class="comp-title">Community Competition</div><div class="comp-desc">A one week competition between your followers who choose to participate with you at the helm cheering them all on to victory.</div></div></div>
       </div>
-      <button class="send-btn" id="sendbtn" onclick="redirectLogin()">Send Me the Details</button>
+      <button class="send-btn" id="sendbtn" onclick="redirectLogin()">Continue</button>
+      <div class="dealer-row" style="margin-top:24px;">
+        <div class="dealer-image-container">
+          <p class="concierge-text-above" style="font-size:20px;text-align:center;margin:0 0 12px;">We believe conversations should be easy.</p>
+          <div class="dealer-image-wrap">
+            <div class="dealer-gradient-overlay" style="position:absolute;inset:0;width: 100px;pointer-events:none;z-index:2;"></div>
+            <img style="width: 100%;" src="<?php echo get_template_directory_uri(); ?>/images/concierge.png" alt="Casino Dealer" class="dealer-image" style="position:relative;z-index:1;">
+          </div>
+          <a href="#" class="concierge-title" style="color:white;font-size:20px;display:block;text-align:center;margin-top:12px;">Talk Now - Executive Concierge</a>
+        </div>
+      </div>
       <button class="back-btn" onclick="goBack()">← Back</button>
     </div>
     <div class="mstep" id="ms3">
@@ -847,12 +856,13 @@ function handleAuthRegister(e) {
 <script>
 (function () {
     document.addEventListener('DOMContentLoaded', function () {
-        var btn          = document.getElementById('claudeTalkBtn');
+        var btn          = document.querySelector('.concierge-title');
         var activeSession = null;
-        var originalText  = "Let's Talk";
+        var originalText  = "Talk Now - Executive Concierge";
         if (!btn) return;
 
-        btn.addEventListener('click', function () {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
             if (activeSession) {
                 activeSession.endSession();
                 return;
