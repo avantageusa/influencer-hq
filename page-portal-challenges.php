@@ -9,6 +9,21 @@ get_header();
 
 // Load styles before content to prevent FOUC
 get_template_part( 'template-parts/portal-styles' );
+
+$user            = wp_get_current_user();
+$celebrity_selections = [
+    'movie_stars'   => get_user_meta( $user->ID, '_ihq_cel_movie_stars',   true ) ?: '',
+    'music_artists' => get_user_meta( $user->ID, '_ihq_cel_music_artists', true ) ?: '',
+    'sports_icons'  => get_user_meta( $user->ID, '_ihq_cel_sports_icons',  true ) ?: '',
+];
+$intl_league_team = get_user_meta( $user->ID, '_ihq_intl_league_team', true ) ?: '';
+$celeb_lists = [
+    'movie_stars'   => ['Leonardo DiCaprio','Fan Bingbing','Scarlett Johansson','Tony Leung','Anya Wong','Maggie Cheung','Iko Uwais','Tom Cruise','Hyun Bin','Chow Yun-fat','Zhang Ziyi','Song Hye-kyo','Gong Yoo','Michelle Yeoh','Donnie Yen','Vicky Chen','Bruce Lee','Gong Li','Liu Yifei','Jackie Chan'],
+    'music_artists' => ['Jolin Tsai','Namewee','IU (Lee Ji-eun)','BTS','Ariana Grande','Bruno Mars','PSY','Blackpink','Twice','Tomorrow X Together','Billie Eilish','Jay Chou','Lisa (BLACKPINK)','Zhou Shen','G-Dragon','Lady Gaga','Taylor Swift','Deng Liqi','Justin Bieber','Ed Sheeran'],
+    'sports_icons'  => ['Son Heung-min','Lionel Messi','Roger Federer','Naomi Osaka','Ding Junhui','Jeremy Lin','Cristiano Ronaldo','Stephen Curry','Michael Jordan','Novak Djokovic','Kento Momota','Sachin Tendulkar','Rafael Nadal','Virat Kohli','Manny Pacquiao','Shohei Ohtani','Yao Ming','LeBron James','Kylian Mbappé','Lee Chong Wei'],
+];
+$celeb_labels = ['movie_stars' => 'Movie Stars', 'music_artists' => 'Music Artists', 'sports_icons' => 'Sports Icons'];
+$intl_league_regions = ['South Korea','Europe','Malaysia','Thailand','Africa','Singapore','Asia','India','China','Hong Kong','Philippines','Taiwan','United States','Canada','Macao','Pakistan','South America','Japan','Australia','South Africa'];
 ?>
 
     <main id="primary" class="site-main">
@@ -972,6 +987,95 @@ get_template_part( 'template-parts/portal-styles' );
                         </div>
                     </div>
 
+                    <div class="competition-dropdown">
+                        <div class="competition-dropdown-header">Celebrity Followers Leagues</div>
+                        <div class="competition-dropdown-body">
+                            <p class="competition-dropdown-label">Choose your favorite celebrity in each category. These selections are saved to your profile the same way they are on the Portal Profile page.</p>
+                            <div class="sett-card">
+                                <div class="celeb-grid-layout">
+                                    <?php foreach ( $celeb_labels as $cat => $label ) :
+                                        $saved = $celebrity_selections[ $cat ] ?? '';
+                                    ?>
+                                    <div class="celeb-col">
+                                        <span class="celeb-col-label"><?php echo esc_html( $label ); ?></span>
+                                        <select class="celeb-select" data-category="<?php echo esc_attr( $cat ); ?>">
+                                            <option value="">Open</option>
+                                            <?php foreach ( $celeb_lists[ $cat ] as $name ) : ?>
+                                            <option value="<?php echo esc_attr( $name ); ?>"<?php selected( $saved, $name ); ?>><?php echo esc_html( $name ); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="competition-dropdown">
+                        <div class="competition-dropdown-header">International League Team</div>
+                        <div class="competition-dropdown-body">
+                            <p class="competition-dropdown-label">Select your country or region for the International League. This choice saves to the same profile field as Portal Profile.</p>
+                            <div class="sett-card">
+                                <div class="celeb-grid-layout" style="grid-template-columns:1fr;">
+                                    <div class="celeb-col">
+                                        <span class="celeb-col-label">Country / Region</span>
+                                        <select class="celeb-select" id="intlLeagueSelect">
+                                            <option value="">Open</option>
+                                            <?php foreach ( $intl_league_regions as $region ) : ?>
+                                            <option value="<?php echo esc_attr( $region ); ?>"<?php selected( $intl_league_team, $region ); ?>><?php echo esc_html( $region ); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <style>
+                        .celeb-grid-layout {
+                            display: grid;
+                            grid-template-columns: 1fr 1fr 1fr;
+                            gap: 10px;
+                            padding: 10px;
+                        }
+                        .celeb-col {
+                            display: flex;
+                            flex-direction: column;
+                            gap: 6px;
+                        }
+                        .celeb-col-label {
+                            font-size: 15px;
+                            color: #e5e5e5;
+                            text-align: center;
+                            font-weight: 600;
+                        }
+                        .celeb-select {
+                            background: #000;
+                            color: #fff;
+                            border: 1px solid rgba(184, 151, 47, 0.5);
+                            border-radius: 3px;
+                            font-size: 14px;
+                            padding: 3px 4px;
+                            outline: none;
+                            cursor: pointer;
+                            width: 100%;
+                        }
+                        .celeb-select:focus {
+                            border-color: #b8972f;
+                        }
+                        .celeb-select option {
+                            background: #1a1a1a;
+                        }
+                        @media (max-width: 600px) {
+                            .celeb-grid-layout {
+                                grid-template-columns: 1fr;
+                            }
+                            .celeb-col-label {
+                                text-align: left;
+                            }
+                        }
+                    </style>
+
                     <div class="competition-rule-block">
                         <div class="competition-rule-header">League Medals</div>
                         <p class="competition-rule-note">Points are awarded at the end of each week. Medals are awarded to Team Captains based on total points at the end of each 23-week season.</p>
@@ -1009,6 +1113,8 @@ get_template_part( 'template-parts/portal-styles' );
     </main><!-- #main -->
 
 <script>
+var _ajax            = <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
+var _nonce           = <?php echo wp_json_encode( wp_create_nonce( 'settings_save_nonce' ) ); ?>;
 var _compAjaxUrl      = <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
 var _compPointsNonce  = <?php echo wp_json_encode( wp_create_nonce( 'rankings_summary_for_player_nonce' ) ); ?>;
 var _challengeNonce   = <?php echo wp_json_encode( wp_create_nonce( 'challenge_api_nonce' ) ); ?>;
@@ -1127,6 +1233,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 cfg.btn.textContent = cfg.label;
             });
     }
+
+    function save(action, params){
+        var fd = new FormData();
+        fd.append('action', action);
+        fd.append('nonce',  _nonce);
+        Object.keys(params).forEach(function(k){ fd.append(k, params[k]); });
+        fetch(_ajax, { method:'POST', body:fd }).catch(function(){});
+    }
+
+    document.querySelectorAll('.celeb-select').forEach(function(sel){
+        sel.addEventListener('change', function(){
+            if (!sel.dataset.category && sel.id !== 'intlLeagueSelect') {
+                return;
+            }
+            if (sel.id === 'intlLeagueSelect') {
+                save('save_settings_field', { group: 'account', field: 'intl_league_team', value: sel.value });
+                return;
+            }
+            save('save_settings_field', { group: 'account', field: 'celebrity_' + sel.dataset.category, value: sel.value });
+        });
+    });
 
     // 1. Get My Challenges
     var chaGetBtn = document.getElementById('cha-get-btn');

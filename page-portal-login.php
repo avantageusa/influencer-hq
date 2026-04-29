@@ -16,7 +16,7 @@ get_template_part( 'template-parts/portal-styles' );
 
             <!-- Logo -->
             <div class="text-center mb-4">
-                <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-tm.png"
+                <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hq.png"
                      alt="influencerHQ"
                      style="max-width: 160px;">
             </div>
@@ -421,17 +421,46 @@ get_template_part( 'template-parts/portal-styles' );
         btn.disabled = true;
         btn.textContent = 'Creating account…';
 
-        var fd = new FormData();
-        fd.append('action',       'influencer_register_ajax');
-        fd.append('nonce',        REGISTER_NONCE);
-        fd.append('first_name',   document.getElementById('reg-first-name').value);
-        fd.append('last_name',    document.getElementById('reg-last-name').value);
-        fd.append('email',        document.getElementById('reg-email').value);
-        fd.append('password',     document.getElementById('reg-password').value);
-        fd.append('redirect_url', PORTAL_URL);
+        var payload = {
+            action: 'influencer_register_ajax',
+            nonce: REGISTER_NONCE,
+            first_name: document.getElementById('reg-first-name').value,
+            last_name: document.getElementById('reg-last-name').value,
+            email: document.getElementById('reg-email').value,
+            password: document.getElementById('reg-password').value,
+            redirect_url: PORTAL_URL,
+        };
 
-        fetch(AJAX_URL, { method: 'POST', body: fd })
-            .then(function (r) { return r.json(); })
+        console.log('Register payload:', payload, 'AJAX URL:', AJAX_URL);
+
+        var params = new URLSearchParams();
+        Object.keys(payload).forEach(function (key) {
+            params.append(key, payload[key]);
+        });
+
+        fetch(AJAX_URL, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: params.toString(),
+        })
+            .then(function (r) {
+                return r.text().then(function (text) {
+                    if (!r.ok) {
+                        console.error('Register request failed:', r.status, r.statusText, text);
+                        throw new Error(text || 'Request failed with status ' + r.status);
+                    }
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        console.error('Register response is not valid JSON:', text);
+                        throw new Error('Unexpected server response: ' + text);
+                    }
+                });
+            })
             .then(function (data) {
                 if (data.success) {
                     window.location.href = data.data.redirect;
@@ -442,8 +471,9 @@ get_template_part( 'template-parts/portal-styles' );
                     btn.textContent      = 'Create Account';
                 }
             })
-            .catch(function () {
-                errBox.textContent   = 'Network error. Please try again.';
+            .catch(function (error) {
+                console.error('Register error:', error);
+                errBox.textContent   = error.message || 'Network error. Please try again.';
                 errBox.style.display = 'block';
                 btn.disabled         = false;
                 btn.textContent      = 'Create Account';
