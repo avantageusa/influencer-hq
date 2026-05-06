@@ -872,6 +872,7 @@ function ihq_create_private_challenge_ajax() {
     $email      = sanitize_email( wp_unslash( $_POST['email']           ?? '' ) );
     $month      = absint( $_POST['month'] ?? 0 );
     $day        = absint( $_POST['day']   ?? 0 );
+    $year       = absint( $_POST['year']  ?? 0 );
 
     if ( ! $first_name || ! $last_name ) {
         wp_send_json_error( array( 'message' => 'First and last name are required.' ) );
@@ -881,13 +882,14 @@ function ihq_create_private_challenge_ajax() {
         wp_send_json_error( array( 'message' => 'A valid email address is required.' ) );
         return;
     }
-    if ( $month < 1 || $month > 12 || $day < 1 || $day > 31 ) {
+    $current_year = (int) date( 'Y' );
+    if ( $month < 1 || $month > 12 || $day < 1 || $day > 31 || $year < $current_year || $year > $current_year + 2 ) {
         wp_send_json_error( array( 'message' => 'A valid challenge start date is required.' ) );
         return;
     }
 
     $token          = wp_generate_password( 32, false );
-    $challenge_date = sprintf( '%04d-%02d-%02d', (int) date( 'Y' ), $month, $day );
+    $challenge_date = sprintf( '%04d-%02d-%02d', $year, $month, $day );
 
     $challenger = get_userdata( $challenger_id );
     $c_name     = trim(
@@ -916,14 +918,27 @@ function ihq_create_private_challenge_ajax() {
     update_post_meta( $post_id, '_invitee_email',      $email );
     update_post_meta( $post_id, '_start_month',        $month );
     update_post_meta( $post_id, '_start_day',          $day );
+    update_post_meta( $post_id, '_start_year',         $year );
     update_post_meta( $post_id, '_challenge_date',     $challenge_date );
     update_post_meta( $post_id, '_challenge_status',   'pending' );
     update_post_meta( $post_id, '_challenge_token',    $token );
     update_post_meta( $post_id, '_accepted_user_id',   '' );
 
+    $invitee_user   = get_user_by( 'email', $email );
+    $invitee_handle = '';
+    if ( $invitee_user ) {
+        $invitee_handle = get_user_meta( $invitee_user->ID, '_ihq_handle', true );
+        if ( ! $invitee_handle ) {
+            $invitee_handle = '@' . $invitee_user->user_login;
+        }
+    }
+    if ( ! $invitee_handle ) {
+        $invitee_handle = trim( $first_name . ' ' . $last_name );
+    }
+
     wp_send_json_success( array(
         'post_id' => $post_id,
         'link'    => add_query_arg( 'token', $token, home_url( '/challenge-handler/' ) ),
-        'handle'  => trim( $first_name . ' ' . $last_name ),
+        'handle'  => $invitee_handle,
     ) );
 }

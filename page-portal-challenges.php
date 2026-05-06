@@ -816,7 +816,7 @@ $intl_league_regions = ['South Korea','Europe','Malaysia','Thailand','Africa','S
                                         <?php if (empty($cpc_issued)) : ?>
                                         <div class="cpc-table-row cpc-table-empty"><span>No challenges issued yet.</span></div>
                                         <?php else : foreach ($cpc_issued as $ci) :
-                                            $ci_email  = get_post_meta($ci->ID, '_invitee_email',    true);
+                                            $ci_email  = get_post_meta($ci->ID, '_invitee_email',  true);
                                             $ci_status = get_post_meta($ci->ID, '_challenge_status', true);
                                             $ci_date   = get_post_meta($ci->ID, '_challenge_date',   true)
                                                          ?: get_the_date('M j', $ci->ID);
@@ -876,7 +876,7 @@ $intl_league_regions = ['South Korea','Europe','Malaysia','Thailand','Africa','S
                             </div>
                             <div id="cpcCollapse2" class="collapse">
                                 <div class="cpc-accordion-body">
-                                    <p class="cpc-desc">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+                                    <p class="cpc-desc">Invite Influencers to compete in a private competition.</p>
 
                                     <div class="competition-block-title">Influencer</div>
                                     <input class="cpc-input" id="cpc-fname" type="text" placeholder="First Name">
@@ -898,7 +898,14 @@ $intl_league_regions = ['South Korea','Europe','Malaysia','Thailand','Africa','S
                                             </select>
                                             <svg class="cpc-select-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#b8972f" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
                                         </div>
-                                        <span class="cpc-info-icon" title="Challenge runs for 24 hours from the selected start date.">
+                                        <div class="cpc-select-wrap">
+                                            <select class="cpc-select" id="cpc-year">
+                                                <option value="">year</option>
+                                                <?php for($y=(int)date('Y');$y<=(int)date('Y')+2;$y++) echo '<option value="'.$y.'">'.$y.'</option>'; ?>
+                                            </select>
+                                            <svg class="cpc-select-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#b8972f" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                                        </div>
+                                        <span class="cpc-info-icon" title="Start time and end time for all Private Challenges are 00:01 HK time (24 clock) through midnight each night.">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="#b8972f" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"/><text x="12" y="16" text-anchor="middle" font-size="13" font-family="serif" fill="#000">i</text></svg>
                                         </span>
                                         <button id="cpc-create-btn" type="button" class="cpc-btn-create">Create</button>
@@ -908,7 +915,7 @@ $intl_league_regions = ['South Korea','Europe','Malaysia','Thailand','Africa','S
 
                                     <div class="competition-block-title" style="margin-top:14px;">Shareable Link</div>
                                     <input class="cpc-input cpc-input-muted" id="cpc-share-link" type="text" placeholder="(Invitation URL appears here)" readonly>
-                                    <input class="cpc-input cpc-input-muted" id="cpc-invitee-handle" type="text" placeholder="(Invitee name appears here)" readonly>
+                                    <input class="cpc-input cpc-input-muted" id="cpc-invitee-handle" type="text" placeholder="(Invitee handle appears here)" readonly>
                                 </div>
                             </div>
                         </div>
@@ -1452,14 +1459,15 @@ document.addEventListener('DOMContentLoaded', function() {
     var cpcCreateBtn = document.getElementById('cpc-create-btn');
     if (cpcCreateBtn) {
         cpcCreateBtn.addEventListener('click', function () {
-            var fname   = (document.getElementById('cpc-fname')  || {}).value || '';
-            var lname   = (document.getElementById('cpc-lname')  || {}).value || '';
-            var email   = (document.getElementById('cpc-email')  || {}).value || '';
-            var month   = (document.getElementById('cpc-month')  || {}).value || '';
-            var day     = (document.getElementById('cpc-day')    || {}).value || '';
-            var linkEl  = document.getElementById('cpc-share-link');
+            var fname    = (document.getElementById('cpc-fname')  || {}).value || '';
+            var lname    = (document.getElementById('cpc-lname')  || {}).value || '';
+            var email    = (document.getElementById('cpc-email')  || {}).value || '';
+            var month    = (document.getElementById('cpc-month')  || {}).value || '';
+            var day      = (document.getElementById('cpc-day')    || {}).value || '';
+            var year     = (document.getElementById('cpc-year')   || {}).value || '';
+            var linkEl   = document.getElementById('cpc-share-link');
             var handleEl = document.getElementById('cpc-invitee-handle');
-            var msgEl   = document.getElementById('cpc-form-msg');
+            var msgEl    = document.getElementById('cpc-form-msg');
 
             fname = fname.trim(); lname = lname.trim(); email = email.trim();
 
@@ -1470,7 +1478,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 msgEl.style.color = isError ? '#f87b87' : '#b8972f';
             }
 
-            if (!fname || !lname || !email || !month || !day) {
+            if (!fname || !lname || !email || !month || !day || !year) {
                 cpcMsg('Please fill in all fields before creating the challenge.', true);
                 return;
             }
@@ -1487,6 +1495,7 @@ document.addEventListener('DOMContentLoaded', function() {
             fd.append('email',      email);
             fd.append('month',      month);
             fd.append('day',        day);
+            fd.append('year',       year);
 
             fetch(_compAjaxUrl, { method: 'POST', body: fd })
                 .then(function (r) { return r.json(); })
