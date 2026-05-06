@@ -203,27 +203,27 @@ $intl_league_regions = ['South Korea','Europe','Malaysia','Thailand','Africa','S
                 <div class="competition-types">
                     <div class="competition-types-label">Competition Types</div>
                     <div class="competition-tabs">
-                        <button class="competition-tab-btn active" data-tab="world">
-                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-world.png" alt="World" class="competition-tab-icon">
-                            <span>World</span>
+                        <button class="competition-tab-btn active" data-tab="private">
+                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-private.png" alt="Private" class="competition-tab-icon">
+                            <span>Private</span>
                         </button>
                         <button class="competition-tab-btn" data-tab="community">
                             <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-community.png" alt="Community" class="competition-tab-icon">
                             <span>Community</span>
                         </button>
+                        <button class="competition-tab-btn" data-tab="world">
+                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-world.png" alt="World" class="competition-tab-icon">
+                            <span>World</span>
+                        </button>
                         <button class="competition-tab-btn" data-tab="leagues">
                             <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-leagues.png" alt="Leagues" class="competition-tab-icon">
                             <span>Leagues</span>
-                        </button>
-                        <button class="competition-tab-btn" data-tab="private">
-                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-private.png" alt="Private" class="competition-tab-icon">
-                            <span>Private</span>
                         </button>
                     </div>
                 </div>
 
                 <!-- World Tab -->
-                <div class="competition-panel active" id="world-tab">
+                <div class="competition-panel" id="world-tab">
                     <div class="competition-card">
                         <p>We believe competition reveals character.</p>
                         <p>For three days, the world is watching. Not in silence - but in real time.</p>
@@ -622,7 +622,7 @@ $intl_league_regions = ['South Korea','Europe','Malaysia','Thailand','Africa','S
                 </div>
 
                 <!-- Private Tab -->
-                <div class="competition-panel" id="private-tab">
+                <div class="competition-panel active" id="private-tab">
                     <div class="competition-card">
                         <p>We believe leadership is personal. Sometimes it is strategic. Sometimes it is personal.</p>
                         <p>In a Private Challenge, there is no crowd to hide behind. Your followers versus theirs.</p>
@@ -678,7 +678,7 @@ $intl_league_regions = ['South Korea','Europe','Malaysia','Thailand','Africa','S
                     </div>
 
                     <!-- Challenge API Debug Panel -->
-                    <div class="competition-panel-card" id="challenge-api-debug">
+                    <div class="competition-panel-card" id="challenge-api-debug" style="display:none;">
                         <div class="competition-panel-title">Challenge API</div>
 
                         <!-- 1. Get My Challenges -->
@@ -749,93 +749,171 @@ $intl_league_regions = ['South Korea','Europe','Malaysia','Thailand','Africa','S
                         </div>
                     </div>
 
-                    <div class="competition-panel-card">
-                        <div class="competition-panel-title">Create Private Challenge</div>
-                        <p class="competition-panel-subtitle">Invite other Influencers to compete in a private competition.</p>
-                        <div class="competition-form">
-                            <input class="competition-input" type="text" placeholder="Search Influencer Handles...">
-                            <button class="competition-btn">Invite</button>
-                        </div>
-                    </div>
+                    <!-- Create Private Challenge Section -->
+                    <div class="cpc-wrap">
 
-                    <div class="competition-panel-card">
-                        <div class="competition-panel-title">View Pending Invitations</div>
-                        <p class="competition-panel-subtitle">See your pending invitations from other Influencers.</p>
-                        <div class="competition-invite-list">
-                            <div class="competition-invite-item">
-                                <img src="http://localhost:3845/assets/700bfea491e5253e658c457475a85462f07fed96.png" alt="Rachel Kim">
-                                <div>
-                                    <strong>Rachel Kim</strong>
-                                    <span>rachelkim@email.com</span>
+                        <!-- Section header -->
+                        <div class="cpc-header">
+                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-competition.png" alt="" class="cpc-icon">
+                            <span class="cpc-title">CREATE PRIVATE CHALLENGE</span>
+                        </div>
+                        <div class="cpc-divider"></div>
+                        <p class="cpc-subtitle">Invite Influencers to compete in a private competition.</p>
+
+                        <!-- Accordion 1: See Current Challenges -->
+                        <?php
+                        $cpc_uid   = get_current_user_id();
+                        $cpc_email = wp_get_current_user()->user_email;
+
+                        $cpc_issued = get_posts(array(
+                            'post_type'      => 'challenge',
+                            'post_status'    => 'publish',
+                            'posts_per_page' => -1,
+                            'orderby'        => 'date',
+                            'order'          => 'DESC',
+                            'meta_query'     => array(
+                                array('key' => '_challenger_id', 'value' => $cpc_uid, 'compare' => '='),
+                            ),
+                        ));
+
+                        $cpc_received = get_posts(array(
+                            'post_type'      => 'challenge',
+                            'post_status'    => 'publish',
+                            'posts_per_page' => -1,
+                            'orderby'        => 'date',
+                            'order'          => 'DESC',
+                            'meta_query'     => array(
+                                'relation' => 'OR',
+                                array('key' => '_invitee_email',    'value' => $cpc_email, 'compare' => '='),
+                                array('key' => '_accepted_user_id', 'value' => $cpc_uid,   'compare' => '='),
+                            ),
+                        ));
+
+                        // Helper: render a status tick for each column
+                        function cpc_status_cell($status, $match) {
+                            return $status === $match ? '<span style="color:#b8972f;">&#10003;</span>' : '—';
+                        }
+                        ?>
+                        <div class="cpc-accordion" id="cpcAccordion1">
+                            <div class="cpc-accordion-header collapsed" data-bs-toggle="collapse" data-bs-target="#cpcCollapse1" aria-expanded="false" aria-controls="cpcCollapse1">
+                                <svg class="cpc-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b8972f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                                <span class="competition-block-title" style="margin:0;">See Current Challenges</span>
+                            </div>
+                            <div id="cpcCollapse1" class="collapse">
+                                <div class="cpc-accordion-body">
+
+                                    <div class="competition-block-title">Invitations You've Issued</div>
+                                    <div class="cpc-divider-thin"></div>
+                                    <div class="cpc-table">
+                                        <div class="cpc-table-head">
+                                            <span class="cpc-col-date">Date</span>
+                                            <span class="cpc-col-email">Email</span>
+                                            <span class="cpc-col-yn">Yes</span>
+                                            <span class="cpc-col-yn">Maybe</span>
+                                            <span class="cpc-col-yn">No</span>
+                                        </div>
+                                        <div class="cpc-divider-thin"></div>
+                                        <?php if (empty($cpc_issued)) : ?>
+                                        <div class="cpc-table-row cpc-table-empty"><span>No challenges issued yet.</span></div>
+                                        <?php else : foreach ($cpc_issued as $ci) :
+                                            $ci_email  = get_post_meta($ci->ID, '_invitee_email',    true);
+                                            $ci_status = get_post_meta($ci->ID, '_challenge_status', true);
+                                            $ci_date   = get_post_meta($ci->ID, '_challenge_date',   true)
+                                                         ?: get_the_date('M j', $ci->ID);
+                                        ?>
+                                        <div class="cpc-table-row">
+                                            <span class="cpc-col-date"><?php echo esc_html(date('M j', strtotime($ci_date))); ?></span>
+                                            <a class="cpc-col-email cpc-email-link" href="mailto:<?php echo esc_attr($ci_email); ?>"><?php echo esc_html($ci_email); ?></a>
+                                            <span class="cpc-col-yn"><?php echo cpc_status_cell($ci_status, 'accepted'); ?></span>
+                                            <span class="cpc-col-yn"><?php echo cpc_status_cell($ci_status, 'pending'); ?></span>
+                                            <span class="cpc-col-yn"><?php echo cpc_status_cell($ci_status, 'declined'); ?></span>
+                                        </div>
+                                        <?php endforeach; endif; ?>
+                                    </div>
+
+                                    <div class="competition-block-title" style="margin-top:18px;">Invitations You've Received</div>
+                                    <div class="cpc-divider-thin"></div>
+                                    <div class="cpc-table">
+                                        <div class="cpc-table-head">
+                                            <span class="cpc-col-date">Date</span>
+                                            <span class="cpc-col-email">From</span>
+                                            <span class="cpc-col-yn">Yes</span>
+                                            <span class="cpc-col-yn">Maybe</span>
+                                            <span class="cpc-col-yn">No</span>
+                                        </div>
+                                        <div class="cpc-divider-thin"></div>
+                                        <?php if (empty($cpc_received)) : ?>
+                                        <div class="cpc-table-row cpc-table-empty"><span>No invitations received yet.</span></div>
+                                        <?php else : foreach ($cpc_received as $cr) :
+                                            $cr_chal_id = (int) get_post_meta($cr->ID, '_challenger_id', true);
+                                            $cr_chal    = get_userdata($cr_chal_id);
+                                            $cr_from    = $cr_chal
+                                                          ? trim(get_user_meta($cr_chal_id,'first_name',true).' '.get_user_meta($cr_chal_id,'last_name',true)) ?: $cr_chal->display_name
+                                                          : '—';
+                                            $cr_status  = get_post_meta($cr->ID, '_challenge_status', true);
+                                            $cr_date    = get_post_meta($cr->ID, '_challenge_date', true)
+                                                          ?: get_the_date('M j', $cr->ID);
+                                        ?>
+                                        <div class="cpc-table-row">
+                                            <span class="cpc-col-date"><?php echo esc_html(date('M j', strtotime($cr_date))); ?></span>
+                                            <span class="cpc-col-email" title="<?php echo esc_attr($cr_chal ? $cr_chal->user_email : ''); ?>"><?php echo esc_html($cr_from); ?></span>
+                                            <span class="cpc-col-yn"><?php echo cpc_status_cell($cr_status, 'accepted'); ?></span>
+                                            <span class="cpc-col-yn"><?php echo cpc_status_cell($cr_status, 'pending'); ?></span>
+                                            <span class="cpc-col-yn"><?php echo cpc_status_cell($cr_status, 'declined'); ?></span>
+                                        </div>
+                                        <?php endforeach; endif; ?>
+                                    </div>
+
                                 </div>
-                                <span class="competition-tag">Accepted</span>
                             </div>
-                            <div class="competition-invite-item">
-                                <img src="http://localhost:3845/assets/78c59f17c48313054e6001211b71003c1b33e20b.png" alt="Michael Lee">
-                                <div>
-                                    <strong>Michael Lee</strong>
-                                    <span>michael.lee@email.com</span>
+                        </div>
+
+                        <!-- Accordion 2: Create New Challenges -->
+                        <div class="cpc-accordion" id="cpcAccordion2">
+                            <div class="cpc-accordion-header collapsed" data-bs-toggle="collapse" data-bs-target="#cpcCollapse2" aria-expanded="false" aria-controls="cpcCollapse2">
+                                <svg class="cpc-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b8972f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                                <span class="competition-block-title" style="margin:0;">Create New Challenges</span>
+                            </div>
+                            <div id="cpcCollapse2" class="collapse">
+                                <div class="cpc-accordion-body">
+                                    <p class="cpc-desc">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+
+                                    <div class="competition-block-title">Influencer</div>
+                                    <input class="cpc-input" id="cpc-fname" type="text" placeholder="First Name">
+                                    <input class="cpc-input" id="cpc-lname" type="text" placeholder="Last Name">
+                                    <input class="cpc-input" id="cpc-email" type="email" placeholder="Email Address">
+
+                                    <div class="cpc-row-controls">
+                                        <div class="cpc-select-wrap">
+                                            <select class="cpc-select" id="cpc-month">
+                                                <option value="">month</option>
+                                                <?php for($m=1;$m<=12;$m++) echo '<option value="'.$m.'">'.date('F', mktime(0,0,0,$m,1)).'</option>'; ?>
+                                            </select>
+                                            <svg class="cpc-select-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#b8972f" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                                        </div>
+                                        <div class="cpc-select-wrap">
+                                            <select class="cpc-select" id="cpc-day">
+                                                <option value="">day</option>
+                                                <?php for($d=1;$d<=31;$d++) echo '<option value="'.$d.'">'.$d.'</option>'; ?>
+                                            </select>
+                                            <svg class="cpc-select-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#b8972f" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                                        </div>
+                                        <span class="cpc-info-icon" title="Challenge runs for 24 hours from the selected start date.">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="#b8972f" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"/><text x="12" y="16" text-anchor="middle" font-size="13" font-family="serif" fill="#000">i</text></svg>
+                                        </span>
+                                        <button id="cpc-create-btn" type="button" class="cpc-btn-create">Create</button>
+                                    </div>
+
+                                    <div id="cpc-form-msg" style="display:none;font-family:'Be Vietnam Pro',sans-serif;font-size:13px;margin-bottom:6px;"></div>
+
+                                    <div class="competition-block-title" style="margin-top:14px;">Shareable Link</div>
+                                    <input class="cpc-input cpc-input-muted" id="cpc-share-link" type="text" placeholder="(Invitation URL appears here)" readonly>
+                                    <input class="cpc-input cpc-input-muted" id="cpc-invitee-handle" type="text" placeholder="(Invitee name appears here)" readonly>
                                 </div>
-                                <span class="competition-tag">Accepted</span>
-                            </div>
-                            <div class="competition-invite-item">
-                                <img src="http://localhost:3845/assets/863a772a113002700470f0b06baed3c64e7ffaa9.png" alt="Kevin Chatupitak">
-                                <div>
-                                    <strong>Kevin Chatupitak</strong>
-                                    <span>kevinchats@email.com</span>
-                                </div>
-                                <span class="competition-tag">Pending</span>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="competition-panel-card">
-                        <div class="competition-panel-title">Accept Challenge</div>
-                        <div class="competition-tab-row">
-                            <span class="competition-pill active">Active</span>
-                            <span class="competition-pill">Pending</span>
-                            <span class="competition-pill">Completed</span>
-                        </div>
-                        <div class="competition-accept-list">
-                            <div class="competition-accept-item">
-                                <span>[Influencer Name]</span>
-                                <span>Accepted</span>
-                                <span>Deny</span>
-                            </div>
-                            <div class="competition-accept-item">
-                                <span>[Influencer Name]</span>
-                                <span>Accept</span>
-                                <span>Deny</span>
-                            </div>
-                            <div class="competition-accept-item">
-                                <span>[Influencer Name]</span>
-                                <span>Accept</span>
-                                <span>Denied</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="competition-panel-card">
-                        <div class="competition-panel-title">Choose how to share your Private Challenge here</div>
-                        <div class="competition-share-grid">
-                            <span>LINE</span>
-                            <span>Telegram</span>
-                            <span>WhatsApp</span>
-                            <span>WeChat</span>
-                        </div>
-                    </div>
-
-                    <div class="competition-panel-card">
-                        <div class="competition-panel-title">Challenge Schedule</div>
-                        <div class="competition-schedule">
-                            <div class="competition-schedule-row"><span>Private Challenge #1</span><button class="competition-btn">Take Me There</button></div>
-                            <div class="competition-schedule-row"><span>Private Challenge #2</span><button class="competition-btn">Take Me There</button></div>
-                            <div class="competition-schedule-row"><span>Private Challenge #3</span><button class="competition-btn">Take Me There</button></div>
-                            <div class="competition-schedule-row"><span>Private Challenge #4</span><button class="competition-btn">Take Me There</button></div>
-                            <div class="competition-schedule-row"><span>Private Challenge #5</span><button class="competition-btn">Take Me There</button></div>
-                            <div class="competition-schedule-row"><span>Private Challenge #6</span><button class="competition-btn">Take Me There</button></div>
-                        </div>
-                    </div>
+                    </div><!-- /.cpc-wrap -->
                 </div>
 
                 <!-- Community Tab -->
@@ -1369,8 +1447,78 @@ document.addEventListener('DOMContentLoaded', function() {
             this.textContent = isOpen ? '+' : '×';
         });
     });
+
+    // ── CPC: Create Private Challenge ──────────────────────────────────────────
+    var cpcCreateBtn = document.getElementById('cpc-create-btn');
+    if (cpcCreateBtn) {
+        cpcCreateBtn.addEventListener('click', function () {
+            var fname   = (document.getElementById('cpc-fname')  || {}).value || '';
+            var lname   = (document.getElementById('cpc-lname')  || {}).value || '';
+            var email   = (document.getElementById('cpc-email')  || {}).value || '';
+            var month   = (document.getElementById('cpc-month')  || {}).value || '';
+            var day     = (document.getElementById('cpc-day')    || {}).value || '';
+            var linkEl  = document.getElementById('cpc-share-link');
+            var handleEl = document.getElementById('cpc-invitee-handle');
+            var msgEl   = document.getElementById('cpc-form-msg');
+
+            fname = fname.trim(); lname = lname.trim(); email = email.trim();
+
+            function cpcMsg(text, isError) {
+                if (!msgEl) return;
+                msgEl.textContent = text;
+                msgEl.style.display = text ? 'block' : 'none';
+                msgEl.style.color = isError ? '#f87b87' : '#b8972f';
+            }
+
+            if (!fname || !lname || !email || !month || !day) {
+                cpcMsg('Please fill in all fields before creating the challenge.', true);
+                return;
+            }
+
+            cpcCreateBtn.disabled    = true;
+            cpcCreateBtn.textContent = 'Creating…';
+            cpcMsg('', false);
+
+            var fd = new FormData();
+            fd.append('action',     'ihq_create_private_challenge');
+            fd.append('nonce',      _challengeNonce);
+            fd.append('first_name', fname);
+            fd.append('last_name',  lname);
+            fd.append('email',      email);
+            fd.append('month',      month);
+            fd.append('day',        day);
+
+            fetch(_compAjaxUrl, { method: 'POST', body: fd })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    if (res.success) {
+                        if (linkEl) {
+                            linkEl.value = res.data.link;
+                            linkEl.classList.remove('cpc-input-muted');
+                        }
+                        if (handleEl) {
+                            handleEl.value = res.data.handle;
+                            handleEl.classList.remove('cpc-input-muted');
+                        }
+                        if (linkEl) { linkEl.select(); }
+                        cpcMsg('Challenge created! Copy and share the link below.', false);
+                    } else {
+                        var msg = (res.data && res.data.message) ? res.data.message : 'Could not create challenge.';
+                        cpcMsg(msg, true);
+                    }
+                })
+                .catch(function (err) {
+                    cpcMsg('Request failed: ' + (err.message || err), true);
+                })
+                .finally(function () {
+                    cpcCreateBtn.disabled    = false;
+                    cpcCreateBtn.textContent = 'Create';
+                });
+        });
+    }
 });
 </script>
+
 
 <?php 
 get_template_part( 'template-parts/portal-scripts' );

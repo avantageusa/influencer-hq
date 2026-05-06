@@ -297,77 +297,104 @@ function render_challenge_meta_box($post) {
     wp_nonce_field('challenge_meta_box', 'challenge_meta_box_nonce');
     
     // Get current values
-    $challenger_id = get_post_meta($post->ID, '_challenger_id', true);
-    $challenged_id = get_post_meta($post->ID, '_challenged_id', true);
-    $challenge_type = get_post_meta($post->ID, '_challenge_type', true);
-    $challenge_date = get_post_meta($post->ID, '_challenge_date', true);
-    $challenge_status = get_post_meta($post->ID, '_challenge_status', true);
-    
-    // Get all influencers for dropdowns
-    $influencers = get_users(array(
-        'role' => 'influencer',
-        'orderby' => 'display_name',
-        'order' => 'ASC'
-    ));
-    
+    $challenger_id      = get_post_meta($post->ID, '_challenger_id',      true);
+    $challenge_type     = get_post_meta($post->ID, '_challenge_type',     true);
+    $challenge_date     = get_post_meta($post->ID, '_challenge_date',     true);
+    $challenge_status   = get_post_meta($post->ID, '_challenge_status',   true);
+    $invitee_first_name = get_post_meta($post->ID, '_invitee_first_name', true);
+    $invitee_last_name  = get_post_meta($post->ID, '_invitee_last_name',  true);
+    $invitee_email      = get_post_meta($post->ID, '_invitee_email',      true);
+    $challenge_token    = get_post_meta($post->ID, '_challenge_token',    true);
+    $accepted_user_id   = get_post_meta($post->ID, '_accepted_user_id',   true);
+
+    $influencers = get_users(array('role' => 'influencer', 'orderby' => 'display_name', 'order' => 'ASC'));
+    $lbl = 'display:inline-block;width:150px;font-weight:bold;vertical-align:top;padding-top:4px;';
     ?>
-    <div style="padding: 10px 0;">
+    <div style="padding:10px 0;">
+
         <p>
-            <label for="challenger_id" style="display: inline-block; width: 150px; font-weight: bold;">Challenger:</label>
-            <select name="challenger_id" id="challenger_id" style="width: 300px;">
-                <option value="">Select Challenger</option>
-                <?php foreach ($influencers as $influencer) : 
-                    $first_name = get_user_meta($influencer->ID, 'first_name', true);
-                    $last_name = get_user_meta($influencer->ID, 'last_name', true);
-                    $display_name = trim($first_name . ' ' . $last_name) ?: $influencer->display_name;
+            <label for="challenger_id" style="<?php echo $lbl; ?>">Challenger:</label>
+            <select name="challenger_id" id="challenger_id" style="width:300px;">
+                <option value="">— Select Challenger —</option>
+                <?php foreach ($influencers as $u) :
+                    $dn = trim(get_user_meta($u->ID,'first_name',true).' '.get_user_meta($u->ID,'last_name',true)) ?: $u->display_name;
                 ?>
-                    <option value="<?php echo esc_attr($influencer->ID); ?>" <?php selected($challenger_id, $influencer->ID); ?>>
-                        <?php echo esc_html($display_name . ' (' . $influencer->user_email . ')'); ?>
-                    </option>
+                <option value="<?php echo esc_attr($u->ID); ?>" <?php selected($challenger_id, $u->ID); ?>>
+                    <?php echo esc_html($dn . ' (' . $u->user_email . ')'); ?>
+                </option>
                 <?php endforeach; ?>
             </select>
         </p>
-        
+
+        <hr style="margin:14px 0 10px;">
+        <strong style="display:block;margin-bottom:10px;">Invitee (Challenged)</strong>
+
         <p>
-            <label for="challenged_id" style="display: inline-block; width: 150px; font-weight: bold;">Challenged:</label>
-            <select name="challenged_id" id="challenged_id" style="width: 300px;">
-                <option value="">Select Challenged</option>
-                <?php foreach ($influencers as $influencer) : 
-                    $first_name = get_user_meta($influencer->ID, 'first_name', true);
-                    $last_name = get_user_meta($influencer->ID, 'last_name', true);
-                    $display_name = trim($first_name . ' ' . $last_name) ?: $influencer->display_name;
-                ?>
-                    <option value="<?php echo esc_attr($influencer->ID); ?>" <?php selected($challenged_id, $influencer->ID); ?>>
-                        <?php echo esc_html($display_name . ' (' . $influencer->user_email . ')'); ?>
-                    </option>
-                <?php endforeach; ?>
+            <label style="<?php echo $lbl; ?>">First Name:</label>
+            <input type="text" name="invitee_first_name"
+                   value="<?php echo esc_attr($invitee_first_name); ?>"
+                   style="width:300px;">
+        </p>
+        <p>
+            <label style="<?php echo $lbl; ?>">Last Name:</label>
+            <input type="text" name="invitee_last_name"
+                   value="<?php echo esc_attr($invitee_last_name); ?>"
+                   style="width:300px;">
+        </p>
+        <p>
+            <label style="<?php echo $lbl; ?>">Email:</label>
+            <input type="email" name="invitee_email"
+                   value="<?php echo esc_attr($invitee_email); ?>"
+                   style="width:300px;">
+        </p>
+
+        <?php if ($accepted_user_id) :
+            $acc = get_userdata($accepted_user_id);
+            $acc_label = $acc ? esc_html($acc->display_name . ' (#' . $accepted_user_id . ')') : '#' . esc_html($accepted_user_id);
+        ?>
+        <p>
+            <label style="<?php echo $lbl; ?>">Accepted By:</label>
+            <span style="display:inline-block;padding-top:4px;"><?php echo $acc_label; ?></span>
+        </p>
+        <?php endif; ?>
+
+        <?php if ($challenge_token) :
+            $challenge_link = add_query_arg('token', $challenge_token, home_url('/challenge-handler/'));
+        ?>
+        <p>
+            <label style="<?php echo $lbl; ?>">Challenge Link:</label>
+            <input type="text" value="<?php echo esc_attr($challenge_link); ?>"
+                   style="width:400px;" readonly onclick="this.select()">
+        </p>
+        <?php endif; ?>
+
+        <hr style="margin:14px 0 10px;">
+        <strong style="display:block;margin-bottom:10px;">Challenge Details</strong>
+
+        <p>
+            <label for="challenge_type" style="<?php echo $lbl; ?>">Type:</label>
+            <select name="challenge_type" id="challenge_type" style="width:300px;">
+                <option value="">— Select Type —</option>
+                <option value="speed"     <?php selected($challenge_type,'speed');     ?>>Speed</option>
+                <option value="endurance" <?php selected($challenge_type,'endurance'); ?>>Endurance</option>
+                <option value="accuracy"  <?php selected($challenge_type,'accuracy');  ?>>Accuracy</option>
             </select>
         </p>
-        
         <p>
-            <label for="challenge_type" style="display: inline-block; width: 150px; font-weight: bold;">Challenge Type:</label>
-            <select name="challenge_type" id="challenge_type" style="width: 300px;">
-                <option value="">Select Challenge Type</option>
-                <option value="speed" <?php selected($challenge_type, 'speed'); ?>>Speed Challenge</option>
-                <option value="endurance" <?php selected($challenge_type, 'endurance'); ?>>Endurance Challenge</option>
-                <option value="accuracy" <?php selected($challenge_type, 'accuracy'); ?>>Accuracy Challenge</option>
+            <label for="challenge_date" style="<?php echo $lbl; ?>">Date:</label>
+            <input type="date" name="challenge_date" id="challenge_date"
+                   value="<?php echo esc_attr($challenge_date); ?>" style="width:300px;">
+        </p>
+        <p>
+            <label for="challenge_status" style="<?php echo $lbl; ?>">Status:</label>
+            <select name="challenge_status" id="challenge_status" style="width:300px;">
+                <option value="pending"   <?php selected($challenge_status,'pending');   ?>>Pending</option>
+                <option value="accepted"  <?php selected($challenge_status,'accepted');  ?>>Accepted</option>
+                <option value="declined"  <?php selected($challenge_status,'declined');  ?>>Declined</option>
+                <option value="completed" <?php selected($challenge_status,'completed'); ?>>Completed</option>
             </select>
         </p>
-        
-        <p>
-            <label for="challenge_date" style="display: inline-block; width: 150px; font-weight: bold;">Challenge Date:</label>
-            <input type="date" name="challenge_date" id="challenge_date" value="<?php echo esc_attr($challenge_date); ?>" style="width: 300px;">
-        </p>
-        
-        <p>
-            <label for="challenge_status" style="display: inline-block; width: 150px; font-weight: bold;">Status:</label>
-            <select name="challenge_status" id="challenge_status" style="width: 300px;">
-                <option value="pending" <?php selected($challenge_status, 'pending'); ?>>Pending</option>
-                <option value="accepted" <?php selected($challenge_status, 'accepted'); ?>>Accepted</option>
-                <option value="declined" <?php selected($challenge_status, 'declined'); ?>>Declined</option>
-                <option value="completed" <?php selected($challenge_status, 'completed'); ?>>Completed</option>
-            </select>
-        </p>
+
     </div>
     <?php
 }
@@ -396,27 +423,24 @@ function save_challenge_meta_box($post_id) {
         return;
     }
     
-    // Save Challenger ID
     if (isset($_POST['challenger_id'])) {
-        update_post_meta($post_id, '_challenger_id', sanitize_text_field($_POST['challenger_id']));
+        update_post_meta($post_id, '_challenger_id', absint($_POST['challenger_id']));
     }
-    
-    // Save Challenged ID
-    if (isset($_POST['challenged_id'])) {
-        update_post_meta($post_id, '_challenged_id', sanitize_text_field($_POST['challenged_id']));
+    if (isset($_POST['invitee_first_name'])) {
+        update_post_meta($post_id, '_invitee_first_name', sanitize_text_field($_POST['invitee_first_name']));
     }
-    
-    // Save Challenge Type
+    if (isset($_POST['invitee_last_name'])) {
+        update_post_meta($post_id, '_invitee_last_name', sanitize_text_field($_POST['invitee_last_name']));
+    }
+    if (isset($_POST['invitee_email'])) {
+        update_post_meta($post_id, '_invitee_email', sanitize_email($_POST['invitee_email']));
+    }
     if (isset($_POST['challenge_type'])) {
         update_post_meta($post_id, '_challenge_type', sanitize_text_field($_POST['challenge_type']));
     }
-    
-    // Save Challenge Date
     if (isset($_POST['challenge_date'])) {
         update_post_meta($post_id, '_challenge_date', sanitize_text_field($_POST['challenge_date']));
     }
-    
-    // Save Challenge Status
     if (isset($_POST['challenge_status'])) {
         update_post_meta($post_id, '_challenge_status', sanitize_text_field($_POST['challenge_status']));
     }
