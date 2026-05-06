@@ -296,9 +296,87 @@ get_header();
         <div class="ch-entry" id="entry-telegram" style="display:none"><input class="ch-input" type="text" placeholder="@username"></div>
       </div>
 
-      <div style="margin:20px 0 4px">
-        <div style="font-family:'Be Vietnam Pro',sans-serif;font-size:.7rem;letter-spacing:.25em;text-transform:uppercase;color:var(--gl);font-weight:600;margin-bottom:10px">Favorite Social Media Handle</div>
-        <input style="width:100%;padding:14px 16px;background:rgba(0,0,0,.6);border:2px solid rgba(240,201,58,.6);font-family:'Be Vietnam Pro',sans-serif;font-size:1rem;color:#fff;outline:none" type="text" placeholder="@yourhandle" id="socialHandle">
+      <div class="m-belief-block">
+        <h4>How We Will Promote You</h4>
+        <p>You built something real. Your audience follows you because of you — your voice, your eye, your way of seeing the world.</p>
+      </div>
+
+      <div class="m-belief-block">
+        <h4>We Believe In</h4>
+        <ul>
+          <li>Creating true partnerships</li>
+          <li>Standing alongside you</li>
+          <li>Building alongside you</li>
+          <li>Growing alongside you</li>
+        </ul>
+      </div>
+
+      <div class="m-belief-block">
+        <h4>We Also Believe</h4>
+        <p>It's our responsibility to promote your reach, your growth, and your visibility.</p>
+      </div>
+
+      <div class="m-belief-block">
+        <h4>What We Do</h4>
+        <ul>
+          <li>Put platform marketing dollars behind your visibility across the channels you already use.</li>
+          <li>Run paid campaigns featuring your content on Instagram, TikTok, YouTube, X, and regional platforms through formal creator partnership tools.</li>
+          <li>Drive new followers to your handles through targeted follow campaigns and lookalike audiences seeded from your existing fans.</li>
+        </ul>
+      </div>
+
+      <div class="m-belief-block">
+        <h4>What We Report Back To You</h4>
+        <ul>
+          <li>New followers gained, by platform, every month</li>
+          <li>Views and engagement delivered to your content</li>
+          <li>The full picture of growth measured, transparent, and yours</li>
+        </ul>
+      </div>
+
+      <div class="m-belief-block">
+        <h4>What Stays Yours</h4>
+        <ul>
+          <li>Every follower we help you gain stays your follower, on your platform, forever</li>
+          <li>Your content remains yours</li>
+          <li>Your audience remains yours</li>
+          <li>The relationship with your fans is yours alone — we build the bridge, you keep what's built</li>
+        </ul>
+      </div>
+
+      <div style="margin:24px 0 4px">
+        <div style="font-family:'Cinzel',serif;font-size:1.6rem;line-height:1.4;color:var(--white);margin-bottom:14px">Favorite Social Media</div>
+        <div class="ch-list social-list">
+          <div class="ch-sel" id="sel-social-facebook" onclick="toggleCh('social-facebook')">
+            <div class="ch-chk" id="chk-social-facebook"></div>
+            <div class="ch-info"><div class="ch-name">Facebook</div></div>
+            <input class="ch-input social-inline-input" type="text" placeholder="paste your channel link">
+          </div>
+
+          <div class="ch-sel" id="sel-social-instagram" onclick="toggleCh('social-instagram')">
+            <div class="ch-chk" id="chk-social-instagram"></div>
+            <div class="ch-info"><div class="ch-name">Instagram</div></div>
+            <input class="ch-input social-inline-input" type="text" placeholder="@yourhandle">
+          </div>
+
+          <div class="ch-sel" id="sel-social-tiktok" onclick="toggleCh('social-tiktok')">
+            <div class="ch-chk" id="chk-social-tiktok"></div>
+            <div class="ch-info"><div class="ch-name">TikTok</div></div>
+            <input class="ch-input social-inline-input" type="text" placeholder="@yourhandle">
+          </div>
+
+          <div class="ch-sel" id="sel-social-x" onclick="toggleCh('social-x')">
+            <div class="ch-chk" id="chk-social-x"></div>
+            <div class="ch-info"><div class="ch-name">X</div></div>
+            <input class="ch-input social-inline-input" type="text" placeholder="@yourhandle">
+          </div>
+
+          <div class="ch-sel" id="sel-social-youtube" onclick="toggleCh('social-youtube')">
+            <div class="ch-chk" id="chk-social-youtube"></div>
+            <div class="ch-info"><div class="ch-name">YouTube</div></div>
+            <input class="ch-input social-inline-input" type="text" placeholder="paste your channel link">
+          </div>
+        </div>
       </div>
 
       <button onclick="onContinue()" style="margin-top:16px;width:100%;padding:20px;background:var(--gl);border:none;font-family:'Be Vietnam Pro',sans-serif;font-size:.75rem;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:#000;cursor:pointer;transition:opacity .3s" id="ch-continue">Continue →</button>
@@ -607,14 +685,9 @@ function showFieldError(el) {
 function onContinue() {
   clearFieldErrors();
   var valid = true;
-  var handle = document.getElementById('socialHandle');
-  if (!handle || !handle.value.trim()) {
-    showFieldError(handle);
-    valid = false;
-  }
   document.querySelectorAll('.ch-sel.selected').forEach(function(sel) {
     var fieldId = sel.id.replace('sel-', '');
-    var input = document.querySelector('#entry-' + fieldId + ' input');
+    var input = sel.querySelector('input') || document.querySelector('#entry-' + fieldId + ' input');
     if (input && !input.value.trim()) {
       showFieldError(sel);
       showFieldError(input);

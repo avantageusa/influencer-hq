@@ -12,7 +12,7 @@
         margin: 0;
         padding: 0;
         font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        background-color: var(--dark-bg);
+        background-color: #000000;
         color: #fff;
     }
 
@@ -140,8 +140,8 @@
         border-radius: 8px;
     }
     .the-gradient {
-        background: radial-gradient(50% 50% at 50% 50%, #363847 38%, #1F2027 100%);
-            }
+        background: #000000 ;
+    }
     
     /* Hide footer */
     footer {
@@ -195,7 +195,7 @@
         top: 60px;
         left: 0;
         width: 100%;
-        background: rgba(48, 49, 62, 0.95);
+        background: #000000;
         backdrop-filter: blur(10px);
         z-index: 1000;
         padding: 15px 0;
@@ -206,7 +206,7 @@
         top: 173px;
         left: 0;
         width: 100%;
-        background: rgba(48, 49, 62, 0.9);
+        background: #000000;
         backdrop-filter: blur(10px);
         z-index: 999;
         padding: 10px 0;
@@ -230,6 +230,10 @@
 
     .dealer-image-wrap {
         position: relative;
+    }
+
+    .dealer-row-mobile {
+        display: none;
     }
 
     .concierge-text-above {
@@ -2154,7 +2158,7 @@
     @media (min-width: 1025px) {
 
         body {
-            background: black;
+            background: #000000;
         }
 
         .the-gradient {
@@ -2167,12 +2171,12 @@
         }
 
         .sticky-header {
-            background: black;
+            background: #000000;
             backdrop-filter: none;
         }
 
         .sticky-nav {
-            background: black;
+            background: #000000;
             backdrop-filter: none;
             border-top: 1px solid transparent;
             border-bottom: 1px solid transparent;
@@ -2182,12 +2186,6 @@
 
         .accordion-gradient-container {
             background: black;
-        }
-
-        .custom-accordion .accordion-item {
-            background: radial-gradient(50% 50% at 50% 50%, #363847 38%, #1F2027 100%);
-            border: 1px solid #b8972f;
-            border-radius: 30px;
         }
 
         .custom-accordion .accordion-button {
@@ -2238,10 +2236,49 @@
             padding-right: 20px;
         }
 
+        .dealer-row-mobile {
+            display: none;
+        }
+
         .dealer-row .dealer-image-container {
             flex: 0 0 50%;
             max-width: 50%;
             margin-top: 0;
+        }
+
+        .dealer-row-mobile-inner {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .dealer-row-mobile .dealer-image-wrap {
+            flex: 0 0 110px;
+            max-width: 110px;
+            min-width: 110px;
+        }
+
+        .dealer-row-mobile .concierge-title-mobile {
+            color: #fff;
+            font-family: 'Be Vietnam Pro', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            text-decoration: underline;
+            white-space: nowrap;
+        }
+
+        .dealer-row-mobile .concierge-subtitle {
+            color: #fff;
+            font-family: 'Be Vietnam Pro', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            margin: 10px 0 0;
+            text-align: center;
+            width: 100%;
         }
 
         .dealer-image-wrap {
@@ -2287,6 +2324,55 @@
             gap: 50px;
         }
 
+    }
+
+    @media (max-width: 1024px) {
+        .dealer-row {
+            display: none;
+        }
+
+        .dealer-row-mobile {
+            display: block;
+            max-width: 1024px;
+            margin: 20px auto 0;
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+
+        .dealer-row-mobile-inner {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .dealer-row-mobile .dealer-image-wrap {
+            flex: 0 0 110px;
+            max-width: 110px;
+            min-width: 110px;
+        }
+
+        .dealer-row-mobile .concierge-title-mobile {
+            color: #fff;
+            font-family: 'Be Vietnam Pro', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            text-decoration: underline;
+            white-space: nowrap;
+        }
+
+        .dealer-row-mobile .concierge-subtitle {
+            color: #fff;
+            font-family: 'Be Vietnam Pro', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            margin: 10px 0 0;
+            text-align: center;
+            width: 100%;
+        }
     }
 
     /* Sailboat wrap labels */
