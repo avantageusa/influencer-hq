@@ -254,6 +254,11 @@ require get_template_directory() . '/inc/influencer-role.php';
  */
 require_once get_template_directory() . '/inc/email-verification-handler.php';
 /**
+ * Cloudflare Turnstile (optional; keys in wp-config.php).
+ */
+require_once get_template_directory() . '/inc/turnstile-verify.php';
+
+/**
  * Influencer Authentication Handler
  */
 require_once get_template_directory() . '/inc/influencer-auth-handler.php';

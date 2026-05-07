@@ -104,12 +104,12 @@ function influencer_register_ajax() {
 add_action('wp_ajax_nopriv_influencer_login_ajax', 'influencer_login_ajax');
 add_action('wp_ajax_influencer_login_ajax', 'influencer_login_ajax');
 
-function influencer_login_ajax() {
-    if (!check_ajax_referer('influencer_login_ajax', 'nonce', false)) {
-        wp_send_json_error('Security verification failed.');
-        return;
-    }
-
+/**
+ * Shared influencer AJAX login body after nonce (and optional Turnstile) checks.
+ *
+ * @return void Sends JSON and exits.
+ */
+function ihq_influencer_login_after_nonce_checks() {
     $email    = sanitize_email($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
     $redirect = isset($_POST['redirect_url']) ? esc_url_raw($_POST['redirect_url']) : home_url('/portal/portal-home/');
@@ -158,6 +158,39 @@ function influencer_login_ajax() {
     // ─────────────────────────────────────────────────────────────────────────
 
     wp_send_json_success(array('redirect' => $redirect));
+}
+
+function influencer_login_ajax() {
+    if (!check_ajax_referer('influencer_login_ajax', 'nonce', false)) {
+        wp_send_json_error('Security verification failed.');
+        return;
+    }
+
+    ihq_influencer_login_after_nonce_checks();
+}
+
+// ---------------------------------------------------------------------------
+// AJAX Login — Portal Login template only (Cloudflare Turnstile when configured)
+// ---------------------------------------------------------------------------
+add_action('wp_ajax_nopriv_influencer_login_portal_ajax', 'influencer_login_portal_ajax');
+add_action('wp_ajax_influencer_login_portal_ajax', 'influencer_login_portal_ajax');
+
+function influencer_login_portal_ajax() {
+    if (!check_ajax_referer('influencer_login_portal_ajax', 'nonce', false)) {
+        wp_send_json_error('Security verification failed.');
+        return;
+    }
+
+    if (function_exists('ihq_turnstile_is_configured') && ihq_turnstile_is_configured()) {
+        $token = isset($_POST['cf-turnstile-response']) ? sanitize_text_field(wp_unslash($_POST['cf-turnstile-response'])) : '';
+        $verify = ihq_turnstile_verify_response($token);
+        if (empty($verify['success'])) {
+            wp_send_json_error('Human verification failed. Please try again.', 403);
+            return;
+        }
+    }
+
+    ihq_influencer_login_after_nonce_checks();
 }
 
 // ---------------------------------------------------------------------------

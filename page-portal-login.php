@@ -97,6 +97,10 @@ get_template_part( 'template-parts/portal-styles' );
 
                         <div id="login-error" class="portal-alert portal-alert-error" style="display:none;"></div>
 
+                        <?php if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_configured() ) : ?>
+                            <div id="portal-login-turnstile" class="mt-3" aria-hidden="true"></div>
+                        <?php endif; ?>
+
                         <button type="submit" id="login-btn" class="portal-btn-primary w-100 mt-3">
                             Login
                         </button>
@@ -343,14 +347,101 @@ get_template_part( 'template-parts/portal-styles' );
 .mt-3  { margin-top: 1rem; }
 </style>
 
+<?php
+$ihq_portal_turnstile_site_key = ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_configured() )
+	? CF_TURNSTILE_SITE_KEY
+	: '';
+?>
+<?php if ( $ihq_portal_turnstile_site_key !== '' ) : ?>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"></script>
+<?php endif; ?>
+
 <script>
 (function () {
     'use strict';
 
     const AJAX_URL   = <?php echo json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
     const PORTAL_URL = <?php echo json_encode( home_url( '/portal-home/' ) ); ?>;
-    const LOGIN_NONCE    = <?php echo json_encode( wp_create_nonce( 'influencer_login_ajax' ) ); ?>;
+    const TURNSTILE_SITE_KEY = <?php echo wp_json_encode( $ihq_portal_turnstile_site_key ); ?>;
+    const PORTAL_LOGIN_NONCE = <?php echo json_encode( wp_create_nonce( 'influencer_login_portal_ajax' ) ); ?>;
     const REGISTER_NONCE = <?php echo json_encode( wp_create_nonce( 'influencer_register_ajax' ) ); ?>;
+
+    var turnstileWidgetId = null;
+    var pendingPortalLogin = null;
+
+    if (TURNSTILE_SITE_KEY && typeof window.turnstile !== 'undefined') {
+        turnstileWidgetId = window.turnstile.render('#portal-login-turnstile', {
+            sitekey: TURNSTILE_SITE_KEY,
+            size: 'invisible',
+            callback: function (token) {
+                if (!pendingPortalLogin) {
+                    return;
+                }
+                var p = pendingPortalLogin;
+                pendingPortalLogin = null;
+                if (token) {
+                    p.fd.append('cf-turnstile-response', token);
+                }
+                sendPortalLogin(p.fd, p.btn, p.errBox);
+            },
+            'error-callback': function () {
+                pendingPortalLogin = null;
+                var errBox = document.getElementById('login-error');
+                var btn = document.getElementById('login-btn');
+                if (errBox) {
+                    errBox.textContent = 'Verification failed to load. Please refresh the page.';
+                    errBox.style.display = 'block';
+                }
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Login';
+                }
+            }
+        });
+    }
+
+    function sendPortalLogin(fd, btn, errBox) {
+        fetch(AJAX_URL, {
+            method: 'POST',
+            body: fd,
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(function (r) {
+                return r.json().then(function (data) {
+                    return { ok: r.ok, status: r.status, data: data };
+                });
+            })
+            .then(function (result) {
+                if (result.data && result.data.success) {
+                    window.location.href = result.data.data.redirect;
+                    return;
+                }
+                var payload = result.data && result.data.data;
+                var msg = typeof payload === 'string' ? payload : 'Login failed. Please try again.';
+                if (result.status === 403) {
+                    msg = 'Human verification failed. Please try again.';
+                }
+                errBox.textContent = msg;
+                errBox.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Login';
+                if (TURNSTILE_SITE_KEY && typeof window.turnstile !== 'undefined' && turnstileWidgetId !== null) {
+                    window.turnstile.reset(turnstileWidgetId);
+                }
+            })
+            .catch(function () {
+                errBox.textContent = 'Network error. Please try again.';
+                errBox.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Login';
+                if (TURNSTILE_SITE_KEY && typeof window.turnstile !== 'undefined' && turnstileWidgetId !== null) {
+                    window.turnstile.reset(turnstileWidgetId);
+                }
+            });
+    }
 
     // ── Tab switching ────────────────────────────────────────────
     window.switchPortalTab = function (tab) {
@@ -372,7 +463,7 @@ get_template_part( 'template-parts/portal-styles' );
         }
     };
 
-    // ── AJAX Login ───────────────────────────────────────────────
+    // ── AJAX Login (portal template — Turnstile when keys configured) ──
     window.handlePortalLogin = function (e) {
         e.preventDefault();
 
@@ -383,30 +474,19 @@ get_template_part( 'template-parts/portal-styles' );
         btn.textContent = 'Logging in…';
 
         var fd = new FormData();
-        fd.append('action',       'influencer_login_ajax');
-        fd.append('nonce',        LOGIN_NONCE);
+        fd.append('action',       'influencer_login_portal_ajax');
+        fd.append('nonce',        PORTAL_LOGIN_NONCE);
         fd.append('email',        document.getElementById('login-email').value);
         fd.append('password',     document.getElementById('login-password').value);
         fd.append('redirect_url', PORTAL_URL);
 
-        fetch(AJAX_URL, { method: 'POST', body: fd })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                if (data.success) {
-                    window.location.href = data.data.redirect;
-                } else {
-                    errBox.textContent   = data.data || 'Login failed. Please try again.';
-                    errBox.style.display = 'block';
-                    btn.disabled         = false;
-                    btn.textContent      = 'Login';
-                }
-            })
-            .catch(function () {
-                errBox.textContent   = 'Network error. Please try again.';
-                errBox.style.display = 'block';
-                btn.disabled         = false;
-                btn.textContent      = 'Login';
-            });
+        if (TURNSTILE_SITE_KEY && typeof window.turnstile !== 'undefined' && turnstileWidgetId !== null) {
+            pendingPortalLogin = { fd: fd, btn: btn, errBox: errBox };
+            window.turnstile.execute(turnstileWidgetId);
+            return;
+        }
+
+        sendPortalLogin(fd, btn, errBox);
     };
 
     // ── AJAX Register ────────────────────────────────────────────
