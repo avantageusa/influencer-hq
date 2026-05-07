@@ -946,7 +946,7 @@ function handleAuthRegister(e) {
             fetch(ihqElevenLabs.ajax_url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'action=ihq_elevenlabs_signed_url&nonce=' + encodeURIComponent(ihqElevenLabs.nonce),
+                body: 'action=ihq_elevenlabs_signed_url&nonce=' + encodeURIComponent(ihqElevenLabs.nonce) + '&agent_id=' + encodeURIComponent(ihqElevenLabs.agent_id_portal_home_claude),
             })
             .then(function (r) { return r.json(); })
             .then(function (data) {

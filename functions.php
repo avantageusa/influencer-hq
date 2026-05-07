@@ -155,8 +155,9 @@ function avantage_baccarat_scripts() {
 	// ElevenLabs Conversational AI
 	wp_enqueue_script( 'elevenlabs-client', 'https://cdn.jsdelivr.net/npm/@elevenlabs/client@latest/dist/lib.iife.js', array(), null, true );
 	wp_localize_script( 'elevenlabs-client', 'ihqElevenLabs', [
-		'ajax_url' => admin_url( 'admin-ajax.php' ),
-		'nonce'    => wp_create_nonce( 'ihq_elevenlabs_nonce' ),
+		'ajax_url'                   => admin_url( 'admin-ajax.php' ),
+		'nonce'                      => wp_create_nonce( 'ihq_elevenlabs_nonce' ),
+		'agent_id_portal_home_claude' => IHQ_ELEVENLABS_AGENT_PORTAL_HOME_CLAUDE_ID,
 	] );
 
 	if ( is_singular() && comments_open() && get_option( 'thread_comments' ) ) {
@@ -922,6 +923,29 @@ function ihq_api_proxy() {
 add_action('wp_ajax_ihq_api_proxy',        'ihq_api_proxy');
 add_action('wp_ajax_nopriv_ihq_api_proxy', 'ihq_api_proxy');
 
+/** Default ConvAI agent (e.g. portal home legacy concierge). */
+const IHQ_ELEVENLABS_AGENT_DEFAULT_ID = 'agent_2401kn7brtx3fdn93j5f4mxh70fa';
+
+/** ConvAI agent for Talk Now on page-portal-home-claude.php */
+const IHQ_ELEVENLABS_AGENT_PORTAL_HOME_CLAUDE_ID = 'agent_6201kqzp5qxbeycvq88e6hy4fwq1';
+
+/**
+ * Resolve ElevenLabs agent_id from POST allowlist.
+ *
+ * @return string
+ */
+function ihq_elevenlabs_resolve_agent_id() {
+	$requested = isset( $_POST['agent_id'] ) ? sanitize_text_field( wp_unslash( $_POST['agent_id'] ) ) : '';
+	$allowed   = array(
+		IHQ_ELEVENLABS_AGENT_DEFAULT_ID,
+		IHQ_ELEVENLABS_AGENT_PORTAL_HOME_CLAUDE_ID,
+	);
+	if ( in_array( $requested, $allowed, true ) ) {
+		return $requested;
+	}
+	return IHQ_ELEVENLABS_AGENT_DEFAULT_ID;
+}
+
 /**
  * ElevenLabs Conversational AI — get a signed conversation URL.
  * Requires ELEVENLABS_AGENT_ID and ELEVENLABS_API_KEY defined in wp-config.php.
@@ -929,7 +953,7 @@ add_action('wp_ajax_nopriv_ihq_api_proxy', 'ihq_api_proxy');
 function ihq_elevenlabs_signed_url() {
 	check_ajax_referer( 'ihq_elevenlabs_nonce', 'nonce' );
 
-	$agent_id = 'agent_2401kn7brtx3fdn93j5f4mxh70fa';
+	$agent_id = ihq_elevenlabs_resolve_agent_id();
 	$api_key  = 'sk_99f22f038088cf701582493e92891178398568d33c60770d';
 
 	$response = wp_remote_get(
