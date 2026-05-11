@@ -284,11 +284,7 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
         </div>
         
         <!-- Fixed Footer Links -->
-        <div class="footer-links-fixed">
-            <a href="#" class="footer-link">Terms</a>
-            <span class="footer-separator">|</span>
-            <a href="#" class="footer-link">Privacy</a>
-        </div>
+        <?php get_template_part( 'template-parts/portal-footer' ); ?>
 
         <!-- API Debug Panel -->
         <div id="ihq-api-debug" style="margin:24px 16px;background:#111;border:1px solid #444;border-radius:8px;padding:16px;font-family:monospace;font-size:12px;color:#ccc;">

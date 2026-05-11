@@ -1,6 +1,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Inter:ital,wght@0,300;0,700;1,300&display=swap" rel="stylesheet">
 <style>
     :root {
         --gold: #E6CFA0;
@@ -19,10 +19,7 @@
     .site-main {
         position: relative;
         min-height: 100vh;
-        padding-bottom: 80px; /* Account for fixed footer */
     }
-    
-    
 
     .text-gold {
         color: var(--gold) !important;
@@ -232,8 +229,51 @@
         position: relative;
     }
 
-    .dealer-row-mobile {
-        display: none;
+    /* Portal home: same dealer layout as desktop on all viewports */
+    body.page-template-page-portal-home-php .dealer-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        max-width: 1024px;
+        margin: 280px auto 0;
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+
+    body.page-template-page-portal-home-php .dealer-row .dealer-image-container {
+        flex: 0 0 50%;
+        max-width: 50%;
+        margin-top: 0;
+    }
+
+    body.page-template-page-portal-home-php .dealer-image-wrap {
+        padding-bottom: 10px;
+    }
+
+    body.page-template-page-portal-home-php .dealer-image-container {
+        margin-top: 0;
+    }
+
+    /* Dealer portrait: slight transparency fade at bottom (blend into black page) */
+    body.page-template-page-portal-home-php .dealer-image-wrap .dealer-image--fade-bottom {
+        position: relative;
+        display: block;
+        -webkit-mask-image: linear-gradient(
+            to bottom,
+            #000 0,
+            #000 92%,
+            transparent 100%
+        );
+        mask-image: linear-gradient(
+            to bottom,
+            #000 0,
+            #000 92%,
+            transparent 100%
+        );
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-size: 100% 100%;
+        mask-size: 100% 100%;
     }
 
     .concierge-text-above {
@@ -250,19 +290,139 @@
         max-height: 30px;
     }
     
-    /* Fixed Footer Links */
-    .footer-links-fixed {
-        position: fixed;
-        bottom: 0;
-        left: 0;
+    /* Portal footer — in document flow; full viewport width band */
+    .portal-footer {
+        position: relative;
         width: 100%;
-        background: rgba(48, 49, 62, 0.95);
-        backdrop-filter: blur(10px);
-        color: rgba(255, 255, 255, 0.6);
-        font-size: 0.9rem;
+        margin: 0;
+        padding: 0;
+        left: auto;
+        right: auto;
+        box-sizing: border-box;
+        z-index: 1;
+        flex-shrink: 0;
+    }
+
+    .portal-footer-inner {
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        background: #170000;
+        padding: clamp(24px, 4.5vw, 48px) clamp(12px, 3vw, 20px);
+        box-sizing: border-box;
+    }
+
+    .portal-footer-headline {
+        margin: 0 0 clamp(12px, 2.5vw, 24px);
+        font-family: 'Inter', 'Be Vietnam Pro', sans-serif;
+        font-size: clamp(1.25rem, 4vw, 2.45rem);
+        font-weight: 700;
         text-align: center;
-        padding: 15px 0;
-        z-index: 998;
+        color: #fff;
+        line-height: 1.15;
+    }
+
+    .portal-footer-social {
+        list-style: none;
+        margin: 0 auto clamp(18px, 3vw, 28px);
+        padding: 0;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: clamp(10px, 2vw, 18px);
+    }
+
+    .portal-footer-social-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: clamp(44px, 12vw, 52px);
+        height: clamp(44px, 12vw, 52px);
+        background: #212529;
+        border-radius: 3.3px;
+        text-decoration: none;
+        transition: background 0.2s ease, transform 0.1s ease;
+    }
+
+    .portal-footer-social-link:hover {
+        background: #2f353a;
+    }
+
+    .portal-footer-social-thumb {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+    }
+
+    .portal-footer-social-thumb img {
+        max-width: 70%;
+        max-height: 55%;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        display: block;
+    }
+
+    .portal-footer-nav {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: clamp(8px, 2.4vw, 28px);
+        margin: 0 auto clamp(18px, 3vw, 26px);
+        font-family: 'Inter', 'Be Vietnam Pro', sans-serif;
+        font-size: clamp(10px, 2.1vw, 11px);
+        font-weight: 700;
+        line-height: 1.35;
+    }
+
+    .portal-footer-nav a {
+        color: #fff;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .portal-footer-nav a:hover {
+        text-decoration: underline;
+    }
+
+    .portal-footer-logos {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: clamp(16px, 4vw, 32px);
+        margin-bottom: clamp(14px, 2.5vw, 22px);
+    }
+
+    .portal-footer-logo-img {
+        height: clamp(40px, 8vw, 60px);
+        width: auto;
+        max-width: min(100%, 280px);
+        object-fit: contain;
+    }
+
+    .portal-footer-rule {
+        border: none;
+        height: 1px;
+        margin: 0 0 clamp(12px, 2vw, 18px);
+        background: #f5f8fc;
+        border-radius: 1px;
+        opacity: 0.95;
+    }
+
+    .portal-footer-legal {
+        margin: 0;
+        font-family: 'Inter', 'Be Vietnam Pro', sans-serif;
+        font-size: clamp(9px, 1.9vw, 10.5px);
+        font-weight: 300;
+        font-style: italic;
+        color: #fff;
+        line-height: 1.55;
+        max-width: 100%;
     }
 
     /* Hamburger Menu */
@@ -355,21 +515,6 @@
     .icon-settings::before { content: '⚙️'; }
     .icon-logout::before { content: '🚪'; }
     
-    /* Footer Link Styles */
-    .footer-links-fixed .footer-link {
-        color: rgba(255, 255, 255, 0.6);
-        text-decoration: none;
-        transition: color 0.2s;
-    }
-    
-    .footer-links-fixed .footer-link:hover {
-        color: #fff;
-    }
-    
-    .footer-links-fixed .footer-separator {
-        margin: 0 8px;
-    }
-
     /* Page Header Styles */
     .page-header {
         margin-bottom: 30px;
@@ -407,21 +552,12 @@
         font-weight: 600;
         text-align: center;
         text-decoration: underline;
-        margin: -40px 0 0;
+        margin: 12px 0 0;
         cursor: pointer;
     }
 
     body.page-template-page-portal-home-php .concierge-title:hover {
         opacity: 0.8;
-    }
-
-    body.page-template-page-portal-home-php .concierge-text {
-        margin-top:0;
-        color: white;
-        font-family: 'Be Vietnam Pro', sans-serif;
-        font-size: 20px;
-        font-weight: 600;
-        margin-bottom: 40px;
     }
     
     body.page-template-page-portal-home-php #appointmentModal .modal-content {
@@ -2250,90 +2386,8 @@
             padding-left: 20px;
         }
 
-        .dealer-gradient-overlay {
-            display: none;
-        }
-
         .logo-container img {
             max-height: 60px;
-        }
-
-        /* Concierge text — flanking the dealer image */
-        .concierge-text-mobile {
-            display: none;
-        }
-
-        .dealer-row {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            max-width: 1024px;
-            margin: 280px auto 0;
-            padding-left: 20px;
-            padding-right: 20px;
-        }
-
-        .dealer-row-mobile {
-            display: none;
-        }
-
-        .dealer-row .dealer-image-container {
-            flex: 0 0 50%;
-            max-width: 50%;
-            margin-top: 0;
-        }
-
-        .dealer-row-mobile-inner {
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            gap: 12px;
-            width: 100%;
-        }
-
-        .dealer-row-mobile .dealer-image-wrap {
-            flex: 0 0 110px;
-            max-width: 110px;
-            min-width: 110px;
-        }
-
-        .dealer-row-mobile .concierge-title-mobile {
-            color: #fff;
-            font-family: 'Be Vietnam Pro', sans-serif;
-            font-size: 20px;
-            font-weight: 700;
-            display: inline-flex;
-            align-items: center;
-            text-decoration: underline;
-            white-space: nowrap;
-        }
-
-        .dealer-row-mobile .concierge-subtitle {
-            color: #fff;
-            font-family: 'Be Vietnam Pro', sans-serif;
-            font-size: 16px;
-            font-weight: 700;
-            margin: 10px 0 0;
-            text-align: center;
-            width: 100%;
-        }
-
-        .dealer-image-wrap {
-            padding-bottom: 10px;
-        }
-
-        .dealer-image-container {
-            margin-top: 0;
-        }
-
-        body.page-template-page-portal-home-php .concierge-title {
-            position: static;
-            transform: none;
-            left: auto;
-            bottom: auto;
-            display: block;
-            text-align: center;
-            margin-top: 12px;
         }
 
         .accordion-next-btn,
@@ -2364,51 +2418,13 @@
     }
 
     @media (max-width: 1024px) {
-        .dealer-row {
-            display: none;
+        body.page-template-page-portal-home-php .dealer-row {
+            margin: -45px auto 0;
         }
 
-        .dealer-row-mobile {
-            display: block;
-            max-width: 1024px;
-            margin: 20px auto 0;
-            padding-left: 20px;
-            padding-right: 20px;
-        }
-
-        .dealer-row-mobile-inner {
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            gap: 12px;
-            width: 100%;
-        }
-
-        .dealer-row-mobile .dealer-image-wrap {
-            flex: 0 0 110px;
-            max-width: 110px;
-            min-width: 110px;
-        }
-
-        .dealer-row-mobile .concierge-title-mobile {
-            color: #fff;
-            font-family: 'Be Vietnam Pro', sans-serif;
-            font-size: 20px;
-            font-weight: 700;
-            display: inline-flex;
-            align-items: center;
-            text-decoration: underline;
-            white-space: nowrap;
-        }
-
-        .dealer-row-mobile .concierge-subtitle {
-            color: #fff;
-            font-family: 'Be Vietnam Pro', sans-serif;
-            font-size: 16px;
-            font-weight: 700;
-            margin: 10px 0 0;
-            text-align: center;
-            width: 100%;
+        body.page-template-page-portal-home-php .dealer-row .dealer-image-container {
+            flex: 0 1 auto;
+            max-width: 100%;
         }
     }
 

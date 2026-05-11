@@ -30,23 +30,10 @@ get_template_part( 'template-parts/portal-styles' );
             <div class="dealer-image-container">
                 <p class="concierge-text-above">We believe conversations should be easy.</p>
                 <div class="dealer-image-wrap">
-                    <div class="dealer-gradient-overlay" style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(48,49,62,0) 0%,rgba(48,49,62,0) 55%,rgba(8,4,4,1) 100%);pointer-events:none;z-index:2;"></div>
-                    <img src="<?php echo get_template_directory_uri(); ?>/images/concierge.png" alt="Casino Dealer" class="dealer-image" style="position:relative;z-index:1;">
+                    <img src="<?php echo get_template_directory_uri(); ?>/images/concierge.png" alt="Casino Dealer" class="dealer-image dealer-image--fade-bottom">
                 </div>
                 <a href="#" class="concierge-title">Talk Now - Executive Concierge</a>
             </div>
-        </div>
-
-        <div class="dealer-row-mobile">
-            <p class="concierge-text-above">We believe conversations should be easy.</p>
-            <div class="dealer-row-mobile-inner">
-                <div class="dealer-image-wrap">
-                    <div class="dealer-gradient-overlay" style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(48,49,62,0) 0%,rgba(48,49,62,0) 55%,rgba(8,4,4,1) 100%);pointer-events:none;z-index:2;"></div>
-                    <img src="<?php echo get_template_directory_uri(); ?>/images/concierge.png" alt="Casino Dealer" class="dealer-image" style="position:relative;z-index:1;">
-                </div>
-                <a href="#" class="concierge-title-mobile">Talk Now</a>
-            </div>
-            <p class="concierge-subtitle">Executive Concierge</p>
         </div>
         
         <div class="container py-2 the-gradient" style="max-width: 1024px; padding-left: 20px; padding-right: 20px;padding-top:20px!important;">
@@ -125,9 +112,6 @@ get_template_part( 'template-parts/portal-styles' );
                     <?php endif; ?>
                     
                     <div class="accordion-gradient-container">
-                        <p class="concierge-text concierge-text-mobile" style="text-align:center;">We believe conversations should be easy.</p>
-                        
-                        <p class="concierge-text concierge-text-mobile" style="text-align:center;margin-top:8px;">Booking an appointment is always open to you. </p>
                         
                         <!-- Accordion Questions -->
                         <div class="accordion custom-accordion" id="equityAccordion">
@@ -349,17 +333,9 @@ get_template_part( 'template-parts/portal-styles' );
 
                         </div>
                     </div>
+        </div><!-- /.container.the-gradient -->
 
-
-
-                    
-        
-        <!-- Fixed Footer Links -->
-        <div class="footer-links-fixed">
-            <a href="#" class="footer-link">Terms</a>
-            <span class="footer-separator">|</span>
-            <a href="#" class="footer-link">Privacy</a>
-        </div>
+        <?php get_template_part( 'template-parts/portal-footer' ); ?>
     </main><!-- #main -->
 
 <script>
@@ -367,7 +343,7 @@ get_template_part( 'template-parts/portal-styles' );
     console.log('[ElevenLabs] Script block running');
     console.log('[ElevenLabs] ihqElevenLabs defined:', typeof ihqElevenLabs !== 'undefined' ? ihqElevenLabs : 'NOT DEFINED');
     document.addEventListener('DOMContentLoaded', function () {
-        var buttons = document.querySelectorAll('.concierge-title, .concierge-title-mobile');
+        var buttons = document.querySelectorAll('.concierge-title');
         if (!buttons.length) return;
         console.log('[ElevenLabs] Buttons found:', buttons.length);
 
@@ -473,10 +449,10 @@ get_template_part( 'template-parts/portal-styles' );
 </script>
 
 <script>
-// Auto-click .concierge-title or .concierge-title-mobile if arriving with ?open=concierge
+// Auto-click .concierge-title if arriving with ?open=concierge
 if (window.location.search.indexOf('open=concierge') !== -1) {
     window.addEventListener('load', function () {
-        var el = document.querySelector('.concierge-title, .concierge-title-mobile');
+        var el = document.querySelector('.concierge-title');
         if (el) el.click();
     });
 }

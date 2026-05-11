@@ -127,11 +127,7 @@ get_template_part( 'template-parts/portal-styles' );
         </div>
         
         <!-- Fixed Footer Links -->
-        <div class="footer-links-fixed">
-            <a href="#" class="footer-link">Terms</a>
-            <span class="footer-separator">|</span>
-            <a href="#" class="footer-link">Privacy</a>
-        </div>
+        <?php get_template_part( 'template-parts/portal-footer' ); ?>
     </main><!-- #main -->
 
 <style>
