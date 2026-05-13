@@ -197,7 +197,7 @@ if ( ! empty( $la_calendar_posts ) ) {
                         </div>
                     </div>
 
-                    <div class="live-form-block">
+                    <div class="live-form-block" id="live-request">
                         <form id="live-request-form">
                             <div class="live-calendar-launch-row">
                                 <span class="live-calendar-launch-label">Available time slots:</span>
@@ -461,7 +461,7 @@ if ( ! empty( $la_calendar_posts ) ) {
                     </div>
 
                     <div class="live-separator"></div>
-                    <h2 class="live-section-heading">KICK BROADCASTING SCHEDULE</h2>
+                    <h2 class="live-section-heading" id="kick-schedule">KICK BROADCASTING SCHEDULE</h2>
 
                     <p class="live-copy">Current Schedule</p>
 

@@ -27,11 +27,11 @@
     <div class="container" style="max-width: 1024px; padding-left: 20px; padding-right: 20px; margin-top: 20px; padding-bottom: 30px;">
         <div class="d-flex align-items-center">
             <div style="flex: 1; display: flex; align-items: center; gap: 12px;">
-                <button class="hamburger-menu bg-transparent border-0 p-0">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3B9FFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="3" y1="6" x2="21" y2="6"></line>
-                        <line x1="3" y1="12" x2="21" y2="12"></line>
-                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                <button type="button" class="hamburger-menu bg-transparent border-0 p-0" id="hamburgerMenuBtn" aria-expanded="false" aria-controls="hamburgerDropdown" aria-label="Open menu">
+                    <svg class="hamburger-menu-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <line x1="3" y1="6" x2="21" y2="6" stroke="#b7962f" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="3" y1="12" x2="21" y2="12" stroke="#b7962f" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="3" y1="18" x2="21" y2="18" stroke="#b7962f" stroke-width="2" stroke-linecap="round"/>
                     </svg>
                 </button>
                 <!-- Desktop-only: Help & Language -->
@@ -122,17 +122,116 @@
     </div>
 </div>
 
-<!-- Hamburger Dropdown Menu -->
-<div class="hamburger-dropdown" id="hamburgerDropdown">
-    <ul class="dropdown-menu">
-        <li><a href="<?php echo home_url('/portal-home'); ?>" class="dropdown-link <?php echo (is_page('portal-home')) ? 'active' : ''; ?>"><i class="icon-home"></i> Executive Concierge</a></li>
-        <li><a href="<?php echo home_url('/portal/equity'); ?>" class="dropdown-link <?php echo (is_page('portal/equity')) ? 'active' : ''; ?>"><i class="icon-equity"></i> Equity</a></li>
-        <li><a href="<?php echo home_url('/portal/challenges'); ?>" class="dropdown-link <?php echo (is_page('portal/challenges')) ? 'active' : ''; ?>"><i class="icon-challenges"></i> Competition</a></li>
-        <li><a href="<?php echo home_url('/portal/live'); ?>" class="dropdown-link <?php echo (is_page('portal/live')) ? 'active' : ''; ?>"><i class="icon-live"></i> Live Appearance</a></li>
-        
-        <li><a href="<?php echo home_url('/portal/rankings'); ?>" class="dropdown-link <?php echo (is_page('portal/rankings')) ? 'active' : ''; ?>"><i class="icon-ranking"></i> Rankings</a></li>
-        <li><a href="<?php echo home_url('/portal/account'); ?>" class="dropdown-link <?php echo (is_page('portal/account')) ? 'active' : ''; ?>"><i class="icon-profile"></i> Settings</a></li>
-        <li><a href="<?php echo home_url('/portal/more'); ?>" class="dropdown-link <?php echo (is_page('portal/more')) ? 'active' : ''; ?>"><i class="icon-more"></i> More</a></li>
+<?php
+$hm_ic = function ( $file ) {
+    return esc_url( get_template_directory_uri() . '/images/hamburger-icons/' . $file );
+};
+$hm_ch = function ( $tab, $hash = '' ) {
+    $u = esc_url( add_query_arg( 'tab', $tab, home_url( '/portal/challenges/' ) ) );
+    if ( $hash !== '' ) {
+        $u .= '#' . $hash;
+    }
+    return $u;
+};
+?>
+<div class="hamburger-overlay" id="hamburgerOverlay" aria-hidden="true"></div>
+<div class="hamburger-dropdown" id="hamburgerDropdown" role="dialog" aria-modal="true" aria-label="<?php echo esc_attr__( 'Main navigation', 'avantage-baccarat' ); ?>">
+    <div class="hamburger-drawer-scroll">
+        <div class="hamburger-drawer-logo-wrap">
+            <a href="<?php echo esc_url( home_url( '/' ) ); ?>">
+                <img src="<?php echo esc_url( get_template_directory_uri() . '/images/logo-tm.png' ); ?>" alt="influencerHQ" class="hamburger-drawer-logo">
+            </a>
+        </div>
+        <nav class="hm-nav" aria-label="<?php echo esc_attr__( 'Portal navigation', 'avantage-baccarat' ); ?>">
+            <div class="hm-top-link-wrap">
+                <a href="<?php echo esc_url( home_url( '/portal-home' ) ); ?>" class="hm-top-link <?php echo ( is_page( 'portal-home' ) ) ? 'is-active' : ''; ?>">
+                    <img class="hm-ico-img" src="<?php echo $hm_ic( 'icon-concierge.png' ); ?>" width="19" height="19" alt="">
+                    <span><?php esc_html_e( 'Executive Concierge', 'avantage-baccarat' ); ?></span>
+                </a>
+            </div>
+
+            <section class="hm-section">
+                <a href="<?php echo esc_url( home_url( '/portal/equity' ) ); ?>" class="hm-sum">
+                    <img class="hm-ico-img" src="<?php echo $hm_ic( 'icon-equity.png' ); ?>" width="19" height="19" alt="">
+                    <span><?php esc_html_e( 'Equity', 'avantage-baccarat' ); ?></span>
+                </a>
+                <div class="hm-details-body">
+                    <a href="<?php echo esc_url( home_url( '/portal/equity' ) ); ?>#equity-results" class="hm-link hm-bullet"><?php esc_html_e( 'Equity results', 'avantage-baccarat' ); ?></a>
+                    <a href="<?php echo esc_url( home_url( '/portal/equity' ) ); ?>#equity-referrals" class="hm-link hm-bullet"><?php esc_html_e( 'My Referrals results', 'avantage-baccarat' ); ?></a>
+                </div>
+            </section>
+
+            <section class="hm-section">
+                <a href="<?php echo esc_url( home_url( '/portal/challenges/' ) ); ?>" class="hm-sum">
+                    <img class="hm-ico-img" src="<?php echo $hm_ic( 'icon-competitions.png' ); ?>" width="19" height="19" alt="">
+                    <span><?php esc_html_e( 'Competitions', 'avantage-baccarat' ); ?></span>
+                </a>
+                <div class="hm-details-body hm-tree">
+                    <a href="<?php echo $hm_ch( 'private' ); ?>" class="hm-subhead hm-subhead-link">
+                        <img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-private.png' ); ?>" width="19" height="19" alt="">
+                        <span><?php esc_html_e( 'Private', 'avantage-baccarat' ); ?></span>
+                    </a>
+                    <a href="<?php echo $hm_ch( 'private', 'cpc-create-btn' ); ?>" class="hm-link hm-bullet hm-indent-1"><?php esc_html_e( 'Create Private Challenge', 'avantage-baccarat' ); ?></a>
+                    <a href="<?php echo $hm_ch( 'private', 'private-results' ); ?>" class="hm-link hm-icon-row hm-indent-1"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-chart.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Results', 'avantage-baccarat' ); ?></a>
+                    <a href="<?php echo $hm_ch( 'private', 'private-leaderboards' ); ?>" class="hm-link hm-icon-row hm-indent-1"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-leaderboard.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Leaderboards', 'avantage-baccarat' ); ?></a>
+                    <a href="<?php echo $hm_ch( 'private', 'private-influencer' ); ?>" class="hm-link hm-micro hm-indent-2 hm-icon-row"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-influencer.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Influencer', 'avantage-baccarat' ); ?></a>
+                    <a href="<?php echo $hm_ch( 'private', 'private-follower' ); ?>" class="hm-link hm-micro hm-indent-2 hm-icon-row"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-follower.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Follower', 'avantage-baccarat' ); ?></a>
+
+                    <a href="<?php echo $hm_ch( 'community' ); ?>" class="hm-subhead hm-subhead-link">
+                        <img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-community.png' ); ?>" width="16" height="16" alt="">
+                        <span><?php esc_html_e( 'Community', 'avantage-baccarat' ); ?></span>
+                    </a>
+                    <a href="<?php echo $hm_ch( 'community', 'community-results' ); ?>" class="hm-link hm-icon-row hm-indent-1"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-chart.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Results', 'avantage-baccarat' ); ?></a>
+                    <a href="<?php echo $hm_ch( 'community', 'community-leaderboards' ); ?>" class="hm-link hm-icon-row hm-indent-1"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-leaderboard.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Leaderboards', 'avantage-baccarat' ); ?></a>
+                    <a href="<?php echo $hm_ch( 'community', 'community-influencer' ); ?>" class="hm-link hm-micro hm-indent-2 hm-icon-row"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-influencer.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Influencer', 'avantage-baccarat' ); ?></a>
+                    <a href="<?php echo $hm_ch( 'community', 'community-follower' ); ?>" class="hm-link hm-micro hm-indent-2 hm-icon-row"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-follower.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Follower', 'avantage-baccarat' ); ?></a>
+
+                    <a href="<?php echo $hm_ch( 'world' ); ?>" class="hm-subhead hm-subhead-link">
+                        <img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-globe.png' ); ?>" width="16" height="16" alt="">
+                        <span><?php esc_html_e( 'World', 'avantage-baccarat' ); ?></span>
+                    </a>
+                    <a href="<?php echo $hm_ch( 'world', 'world-results' ); ?>" class="hm-link hm-icon-row hm-indent-1"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-chart.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Results', 'avantage-baccarat' ); ?></a>
+                    <a href="<?php echo $hm_ch( 'world', 'world-leaderboards' ); ?>" class="hm-link hm-icon-row hm-indent-1"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-leaderboard.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Leaderboards', 'avantage-baccarat' ); ?></a>
+                    <a href="<?php echo $hm_ch( 'world', 'world-influencer' ); ?>" class="hm-link hm-micro hm-indent-2 hm-icon-row"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-influencer.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Influencer', 'avantage-baccarat' ); ?></a>
+                    <a href="<?php echo $hm_ch( 'world', 'world-follower' ); ?>" class="hm-link hm-micro hm-indent-2 hm-icon-row"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-follower.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Follower', 'avantage-baccarat' ); ?></a>
+
+                    <a href="<?php echo $hm_ch( 'leagues' ); ?>" class="hm-subhead hm-subhead-link">
+                        <img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-leagues.png' ); ?>" width="16" height="16" alt="">
+                        <span><?php esc_html_e( 'Leagues', 'avantage-baccarat' ); ?></span>
+                    </a>
+                    <a href="<?php echo $hm_ch( 'leagues', 'leagues-international' ); ?>" class="hm-link hm-icon-row hm-indent-1"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-globe-sm.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'International League', 'avantage-baccarat' ); ?></a>
+                    <div class="hm-nested-block hm-indent-1">
+                        <span class="hm-celeb-label"><?php esc_html_e( 'Celebrity Follower Leagues', 'avantage-baccarat' ); ?></span>
+                        <a href="<?php echo $hm_ch( 'leagues', 'leagues-movie-stars' ); ?>" class="hm-link hm-micro hm-indent-2 hm-icon-row"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-movie.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Movie Stars', 'avantage-baccarat' ); ?></a>
+                        <a href="<?php echo $hm_ch( 'leagues', 'leagues-music-artists' ); ?>" class="hm-link hm-micro hm-indent-2 hm-icon-row"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-music.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Music Artists', 'avantage-baccarat' ); ?></a>
+                        <a href="<?php echo $hm_ch( 'leagues', 'leagues-sports-icons' ); ?>" class="hm-link hm-micro hm-indent-2 hm-icon-row"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-sport.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Sports Icons', 'avantage-baccarat' ); ?></a>
+                    </div>
+                </div>
+            </section>
+
+            <section class="hm-section">
+                <a href="<?php echo esc_url( home_url( '/portal/live' ) ); ?>" class="hm-sum">
+                    <img class="hm-ico-img" src="<?php echo $hm_ic( 'icon-live.png' ); ?>" width="19" height="19" alt="">
+                    <span><?php esc_html_e( 'Live Appearance', 'avantage-baccarat' ); ?></span>
+                </a>
+                <div class="hm-details-body">
+                    <a href="<?php echo esc_url( home_url( '/portal/live' ) ); ?>#live-request" class="hm-link hm-bullet"><?php esc_html_e( 'Request A Live Appearance', 'avantage-baccarat' ); ?></a>
+                    <a href="<?php echo esc_url( home_url( '/portal/live' ) ); ?>#kick-schedule" class="hm-link hm-bullet"><?php esc_html_e( 'Report KICK Broadcast Schedule', 'avantage-baccarat' ); ?></a>
+                </div>
+            </section>
+
+            <div class="hm-top-link-wrap hm-top-link-wrap--spaced">
+                <a href="<?php echo esc_url( home_url( '/portal/account' ) ); ?>" class="hm-top-link <?php echo ( is_page( 'portal/account' ) ) ? 'is-active' : ''; ?>">
+                    <img class="hm-ico-img" src="<?php echo $hm_ic( 'icon-profile.png' ); ?>" width="19" height="19" alt="">
+                    <span><?php esc_html_e( 'Profile', 'avantage-baccarat' ); ?></span>
+                </a>
+                <a href="<?php echo esc_url( home_url( '/portal/more' ) ); ?>" class="hm-top-link <?php echo ( is_page( 'portal/more' ) ) ? 'is-active' : ''; ?>">
+                    <img class="hm-ico-img" src="<?php echo $hm_ic( 'icon-more.png' ); ?>" width="19" height="19" alt="">
+                    <span><?php esc_html_e( 'More', 'avantage-baccarat' ); ?></span>
+                </a>
+            </div>
+        </nav>
+    </div>
 </div>
 <script>
 (function () {

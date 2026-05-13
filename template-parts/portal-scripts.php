@@ -49,26 +49,65 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Hamburger dropdown menu functionality
-    var hamburger = document.querySelector('.hamburger-menu');
+    // Hamburger drawer + overlay (IHQ menu)
+    var hamburger = document.getElementById('hamburgerMenuBtn') || document.querySelector('.hamburger-menu');
     var dropdown = document.getElementById('hamburgerDropdown');
+    var overlay = document.getElementById('hamburgerOverlay');
 
-    function toggleDropdown() {
-        dropdown.classList.toggle('open');
+    function setHmOpen(isOpen) {
+        if (!dropdown) return;
+        if (overlay) {
+            overlay.classList.toggle('open', isOpen);
+            overlay.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+        }
+        dropdown.classList.toggle('open', isOpen);
+        if (hamburger) {
+            hamburger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            hamburger.setAttribute('aria-label', isOpen ? 'Close menu' : 'Open menu');
+        }
+        document.body.classList.toggle('hm-drawer-open', isOpen);
+    }
+
+    function toggleHm() {
+        if (!dropdown) return;
+        var next = !dropdown.classList.contains('open');
+        setHmOpen(next);
     }
 
     if (hamburger) {
-        hamburger.addEventListener('click', function(e) {
+        hamburger.addEventListener('click', function (e) {
             e.preventDefault();
-            toggleDropdown();
+            e.stopPropagation();
+            toggleHm();
         });
     }
 
-    // Close dropdown when clicking outside
-    document.addEventListener('click', function(e) {
-        if (dropdown && !dropdown.contains(e.target) && !hamburger.contains(e.target)) {
-            dropdown.classList.remove('open');
+    if (overlay) {
+        overlay.addEventListener('click', function () {
+            setHmOpen(false);
+        });
+    }
+
+    document.addEventListener('click', function (e) {
+        if (!dropdown || !dropdown.classList.contains('open')) return;
+        if (hamburger && hamburger.contains(e.target)) return;
+        if (dropdown.contains(e.target)) return;
+        if (overlay && overlay.contains(e.target)) return;
+        setHmOpen(false);
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && dropdown && dropdown.classList.contains('open')) {
+            setHmOpen(false);
         }
     });
+
+    if (dropdown) {
+        dropdown.querySelectorAll('a').forEach(function (a) {
+            a.addEventListener('click', function () {
+                setHmOpen(false);
+            });
+        });
+    }
 });
 </script>

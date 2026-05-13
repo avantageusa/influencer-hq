@@ -27,6 +27,7 @@ get_template_part( 'template-parts/portal-styles' );
                         <h1 class="equity-title">Equity</h1>
                     </div>
                 </div>
+                <div id="equity-results" class="hm-scroll-anchor" aria-hidden="true"></div>
                 <div class="equity-intro">
                     <p>We believe influence deserves more than short-term payouts.</p>
                     <p>We believe your voice should create long-term value.</p>
@@ -50,6 +51,7 @@ get_template_part( 'template-parts/portal-styles' );
                         <p style="margin:0;">Equity Grows with Every Layer of Play</p>
                     </div>
                 </div>
+                <div id="equity-referrals" class="hm-scroll-anchor" aria-hidden="true"></div>
 
                 <!-- Equity Accordion -->
                 <div class="accordion-gradient-container">

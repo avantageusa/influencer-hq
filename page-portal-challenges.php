@@ -358,8 +358,8 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                     .icr-user-label{font-size:.72rem;font-weight:700;line-height:1.2;text-align:center;width:44px;flex-shrink:0;color:#fff}
                     .icr-points{font-weight:700;font-size:1rem}
                     </style>
-                    <div class="icr-wrap">
-                        <div class="icr-title">Influencer Competition Results</div>
+                    <div class="icr-wrap" id="world-results">
+                        <div class="icr-title" id="world-influencer">Influencer Competition Results</div>
 
                         <div class="icr-type-tabs">
                             <button class="icr-type-btn active" data-icr-type="world">World</button>
@@ -452,7 +452,7 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                         </div>
 
                         <!-- Current user pinned row -->
-                        <div class="icr-user-row">
+                        <div class="icr-user-row" id="world-follower">
                             <span class="icr-user-label">Top<br>20%</span>
                             <span class="icr-flag">🇺🇸</span>
                             <div class="icr-avatar">👤</div>
@@ -490,7 +490,7 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                         </div>
                     </div>
 
-                    <div class="competition-dropdown">
+                    <div class="competition-dropdown" id="world-leaderboards">
                         <div class="competition-dropdown-header">See My Results</div>
                         <div class="competition-dropdown-body">
                             <div class="competition-pill-center">
@@ -634,7 +634,7 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
 
                     <h2 class="competition-section-title">Private</h2>
 
-                    <div class="competition-block">
+                    <div class="competition-block" id="private-results">
                         <div class="competition-block-title">Private Challenges</div>
                         <div class="accordion custom-accordion" id="privateAccordion">
                             <div class="accordion-item mb-3">
@@ -924,7 +924,10 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
 
                     </div><!-- /.cpc-wrap -->
 
-                    <div class="portal-leaderboards-iframe-wrap">
+                    <span id="private-influencer" class="hm-scroll-anchor" aria-hidden="true"></span>
+                    <span id="private-follower" class="hm-scroll-anchor" aria-hidden="true"></span>
+
+                    <div class="portal-leaderboards-iframe-wrap" id="private-leaderboards">
                         <iframe
                             title="<?php echo esc_attr__( 'Avantage Baccarat leaderboards', 'avantage-baccarat' ); ?>"
                             src="<?php echo esc_url( $portal_leaderboards_iframe_url ); ?>"
@@ -945,7 +948,10 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                         <p>A community that plays together rises together.</p>
                     </div>
 
-                    <h2 class="competition-section-title">Community Competitions</h2>
+                    <h2 class="competition-section-title" id="community-results">Community Competitions</h2>
+
+                    <span id="community-influencer" class="hm-scroll-anchor" aria-hidden="true"></span>
+                    <span id="community-follower" class="hm-scroll-anchor" aria-hidden="true"></span>
 
                     <div class="competition-block">
                         <div class="competition-block-title">Community Competition</div>
@@ -992,7 +998,7 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                         </div>
                     </div>
 
-                    <div class="competition-rule-block">
+                    <div class="competition-rule-block" id="community-leaderboards">
                         <div class="competition-rule-header">Scoring System</div>
                         <p class="competition-rule-note">Points are awarded at the end of each contest. Medals are awarded based on total points at the end of each quarter.</p>
                         <div class="competition-rule-grid">
@@ -1028,10 +1034,10 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                     <h2 class="competition-section-title">Leagues</h2>
 
                     <div class="competition-panel-card">
-                        <div class="competition-panel-title">Celebrity Follower Leagues</div>
+                        <div class="competition-panel-title" id="leagues-celebrity">Celebrity Follower Leagues</div>
                         <p class="competition-panel-subtitle">Belong to something bigger. Lead a team. Structured, weekly competitions are organized around celebrity teams, where Influencers step in as team leaders and rally their followers to compete under banners inspired by Movie Stars, Sports Icons, and Music Artists.</p>
                         <p class="competition-panel-link">View Profile to Choose Your Celebrity &gt;&gt;</p>
-                        <div class="competition-panel-title">International League</div>
+                        <div class="competition-panel-title" id="leagues-international">International League</div>
                         <p class="competition-panel-subtitle">When you select an International League Team, you are not just joining global competition - you are planting your flag on the world stage.</p>
                         <p class="competition-panel-link">View Profile to Choose Your International Team &gt;&gt;</p>
                     </div>
@@ -1093,7 +1099,7 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                                     <?php foreach ( $celeb_labels as $cat => $label ) :
                                         $saved = $celebrity_selections[ $cat ] ?? '';
                                     ?>
-                                    <div class="celeb-col">
+                                    <div class="celeb-col" id="leagues-<?php echo esc_attr( str_replace( '_', '-', $cat ) ); ?>">
                                         <span class="celeb-col-label"><?php echo esc_html( $label ); ?></span>
                                         <select class="celeb-select" data-category="<?php echo esc_attr( $cat ); ?>">
                                             <option value="">Open</option>
@@ -1419,8 +1425,92 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     const tabContents = document.querySelectorAll('.competition-panel');
 
+    var COMP_HASH_SCROLL_MAX_ATTEMPTS = 48;
+    var COMP_HASH_SCROLL_INTERVAL_MS = 50;
+    var PORTAL_ANCHOR_OFFSET_FALLBACK_PX = 240;
+
+    function readPortalAnchorOffsetPx() {
+        var raw = window.getComputedStyle(document.documentElement).getPropertyValue('--portal-anchor-scroll-margin').trim();
+        var parsed = parseFloat(raw);
+        if (isFinite(parsed)) {
+            return parsed;
+        }
+        return PORTAL_ANCHOR_OFFSET_FALLBACK_PX;
+    }
+
+    function portalScrollSmoothToElement(el) {
+        if (!el || typeof el.getBoundingClientRect !== 'function') {
+            return;
+        }
+        var rect = el.getBoundingClientRect();
+        var y = window.pageYOffset + rect.top - readPortalAnchorOffsetPx();
+        if (y < 0) {
+            y = 0;
+        }
+        window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+
+    function scrollCompetitionPanelIntoView(tabName) {
+        if (!tabName) {
+            return;
+        }
+        var panel = document.getElementById(tabName + '-tab');
+        if (!panel) {
+            return;
+        }
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+                portalScrollSmoothToElement(panel);
+            });
+        });
+    }
+
+    function scheduleScrollToCompetitionHash(hash) {
+        if (!hash) {
+            return;
+        }
+        var target = document.getElementById(hash);
+        if (!target) {
+            return;
+        }
+        var attempts = 0;
+
+        function tryScroll() {
+            var panel = target.closest('.competition-panel');
+            if (!panel) {
+                requestAnimationFrame(function () {
+                    requestAnimationFrame(function () {
+                        portalScrollSmoothToElement(target);
+                    });
+                });
+                return;
+            }
+            var isActive = panel.classList.contains('active');
+            var display = window.getComputedStyle(panel).display;
+            var panelVisible = isActive && display !== 'none';
+
+            if (!panelVisible) {
+                attempts += 1;
+                if (attempts <= COMP_HASH_SCROLL_MAX_ATTEMPTS) {
+                    setTimeout(tryScroll, COMP_HASH_SCROLL_INTERVAL_MS);
+                    return;
+                }
+            }
+
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    portalScrollSmoothToElement(target);
+                });
+            });
+        }
+
+        requestAnimationFrame(function () {
+            setTimeout(tryScroll, 0);
+        });
+    }
+
     tabButtons.forEach(button => {
-        button.addEventListener('click', function() {
+        button.addEventListener('click', function(ev) {
             const tabName = this.getAttribute('data-tab');
             
             // Remove active class from all buttons and contents
@@ -1430,8 +1520,30 @@ document.addEventListener('DOMContentLoaded', function() {
             // Add active class to clicked button and corresponding content
             this.classList.add('active');
             document.getElementById(tabName + '-tab').classList.add('active');
+            if (ev && ev.isTrusted) {
+                scrollCompetitionPanelIntoView(tabName);
+            }
         });
     });
+
+    (function applyCompetitionTabFromQuery() {
+        var params = new URLSearchParams(window.location.search);
+        var tab = params.get('tab');
+        var appliedTabFromQuery = false;
+        if (tab && /^(private|community|world|leagues)$/.test(tab)) {
+            var btn = document.querySelector('.competition-tab-btn[data-tab="' + tab + '"]');
+            if (btn) {
+                btn.click();
+                appliedTabFromQuery = true;
+            }
+        }
+        var hashKey = window.location.hash.replace(/^#/, '');
+        if (hashKey) {
+            scheduleScrollToCompetitionHash(hashKey);
+        } else if (appliedTabFromQuery && tab) {
+            scrollCompetitionPanelIntoView(tab);
+        }
+    })();
 
     // ICR — type tabs (World / Community / Private)
     document.querySelectorAll('.icr-type-btn').forEach(function(btn) {
