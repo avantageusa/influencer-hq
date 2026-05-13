@@ -1793,6 +1793,8 @@
 
     /* ── Create Private Challenge (cpc) ── */
     body.page-template-page-portal-challenges-php .cpc-wrap{background:#000;border:1px solid #b8972f;border-radius:5px;padding:20px 18px 24px;margin-top:24px}
+    body.page-template-page-portal-challenges-php .portal-leaderboards-iframe-wrap{width:100%;max-width:100%;margin:24px 0 12px}
+    body.page-template-page-portal-challenges-php .portal-leaderboards-iframe-wrap iframe{display:block;width:100%;height:600px;border:0;background:#111}
     body.page-template-page-portal-challenges-php .cpc-header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
     body.page-template-page-portal-challenges-php .cpc-icon{width:28px;height:28px;object-fit:contain;flex-shrink:0}
     body.page-template-page-portal-challenges-php .cpc-title{font-family:'Cinzel',serif;font-size:20px;font-weight:600;color:#fff;letter-spacing:.1em;text-transform:uppercase;margin:0}
@@ -2671,6 +2673,53 @@
 }
 .hq-game-url-save-btn:hover { background: rgba(184,151,47,.15); }
 
+/* Gameplay video URL + YouTube thumbnail preview */
+.sett-gameplay-promo {
+    margin-bottom: 14px;
+    text-align: left;
+}
+.sett-gameplay-promo-text {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    font-weight: 700;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 14px;
+    max-width: 640px;
+    text-align: left;
+}
+.sett-gameplay-promo-card { margin-bottom: 8px; }
+.sett-gameplay-promo-row { text-align: left; }
+.sett-gameplay-promo-input-wrap {
+    width: auto;
+    flex: 1;
+    min-width: 0;
+}
+.sett-gameplay-promo-feedback {
+    font-size: 13px;
+    margin: -4px 0 10px;
+}
+.sett-gameplay-promo-feedback--ok { color: #7CCA8A; }
+.sett-gameplay-promo-feedback--err { color: #ff6b6b; }
+.sett-gameplay-embed-wrap {
+    margin: 16px 0 0;
+    width: 100%;
+    max-width: 100%;
+    border: 1px solid #b8972f;
+    border-radius: 10px;
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+    background: #111;
+}
+.sett-gameplay-embed-wrap .sett-gameplay-embed {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+}
+
 /* Separators */
 .sett-sep {
     height: 1px;
@@ -2679,11 +2728,20 @@
 }
 
 /* Header */
-.sett-header { display:flex; align-items:center; gap:12px; padding:10px 0 6px; }
+.sett-header {
+	display:flex;
+	flex-wrap:wrap;
+	align-items:center;
+	justify-content:center;
+	gap:12px;
+	padding:10px 0 6px;
+	width:100%;
+	text-align:center;
+}
 .sett-header-icon { width:44px; height:44px; object-fit:contain; }
 .sett-title {
     font-family: 'Cinzel', serif;
-    font-size: 22px; font-weight:700; color:#fff;
+    font-size: 36px; font-weight:700; color:#fff;
     margin:0; letter-spacing:.05em;
 }
 
@@ -2699,9 +2757,6 @@
 .sett-user-handle  { font-size:16px; color:#616161; }
 .sett-social-row   { display:flex; align-items:center; gap:7px; margin-top:4px; }
 .sett-soc-icon     { width:11px; height:11px; object-fit:contain; opacity:.9; }
-.sett-identity-right { display:flex; flex-direction:column; align-items:center; gap:4px; }
-.sett-lang         { font-size:16px; font-weight:600; color:#fff; text-transform:uppercase; }
-.sett-country-icon { width:24px; height:24px; object-fit:contain; }
 
 /* Section headers */
 .sett-section-head {

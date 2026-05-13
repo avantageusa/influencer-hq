@@ -6,12 +6,51 @@
  * @package Avantage_Baccarat
  */
 
+if ( ! function_exists( 'ihq_extract_youtube_video_id' ) ) {
+    /**
+     * Returns the 11-character YouTube video ID or an empty string.
+     *
+     * @param string $url Video URL or pasted link.
+     */
+    function ihq_extract_youtube_video_id( $url ) {
+        $url = trim( (string) $url );
+        if ( $url === '' ) {
+            return '';
+        }
+        $pattern = '~(?:youtube\.com/(?:watch\?v=|embed/|shorts/)|youtu\.be/)([a-zA-Z0-9_-]{11})~';
+        if ( preg_match( $pattern, $url, $matches ) ) {
+            return $matches[1];
+        }
+        return '';
+    }
+}
+
 // Handle Game Portal URL form submission
 if ( isset( $_POST['hq_game_url_submit'] ) && is_user_logged_in() ) {
     check_admin_referer( 'hq_game_url_save' );
     $url = isset( $_POST['hq_game_url'] ) ? esc_url_raw( wp_unslash( $_POST['hq_game_url'] ) ) : '';
     update_user_meta( get_current_user_id(), 'hq_game_url', $url );
     wp_safe_redirect( add_query_arg( 'hq_saved', '1', get_permalink() ) );
+    exit;
+}
+
+// Handle gameplay YouTube URL (stored in user meta; thumbnail derived from ID).
+if ( isset( $_POST['ihq_gameplay_video_submit'] ) && is_user_logged_in() ) {
+    check_admin_referer( 'ihq_gameplay_video_save' );
+    $raw = isset( $_POST['ihq_gameplay_video_url'] ) ? wp_unslash( $_POST['ihq_gameplay_video_url'] ) : '';
+    $raw = trim( (string) $raw );
+    if ( $raw === '' ) {
+        update_user_meta( get_current_user_id(), '_ihq_gameplay_video_url', '' );
+        wp_safe_redirect( add_query_arg( 'ihq_video_saved', '1', get_permalink() ) );
+        exit;
+    }
+    $url = esc_url_raw( $raw );
+    if ( ! $url || ihq_extract_youtube_video_id( $url ) === '' ) {
+        wp_safe_redirect( add_query_arg( 'ihq_video_err', '1', get_permalink() ) );
+        exit;
+    }
+    update_user_meta( get_current_user_id(), '_ihq_gameplay_video_url', $url );
+    wp_safe_redirect( add_query_arg( 'ihq_video_saved', '1', get_permalink() ) );
     exit;
 }
 
@@ -47,6 +86,9 @@ $celebrity_selections = [
 ];
 
 $intl_league_team = get_user_meta( $user->ID, '_ihq_intl_league_team', true ) ?: '';
+
+$gameplay_video_url = get_user_meta( $user->ID, '_ihq_gameplay_video_url', true );
+$gameplay_yt_id     = ihq_extract_youtube_video_id( $gameplay_video_url );
 
 $contact_platforms = ['Email','KakaoTalk','KICK','Line','TikTok','Twitch','WeChat','WhatsApp'];
 
@@ -116,10 +158,61 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                             <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/kick.png" alt="Kick" class="sett-soc-icon">
                         </div>
                     </div>
-                    <div class="sett-identity-right">
-                        <span class="sett-lang">EN</span>
-                        <img src="http://localhost:3845/assets/2bc209382386079bf713baaee5d9f59d18a81c36.png" alt="Country" class="sett-country-icon">
-                    </div>
+                </div>
+
+                <!-- GAMEPLAY VIDEO PROMOTION -->
+                <div class="sett-gameplay-promo">
+                    <p class="sett-gameplay-promo-text">
+                        <?php esc_html_e( 'Post a link of your favorite gameplay video stream to enable immediate worldwide promotion by Influencer Headquarters.', 'avantage-baccarat' ); ?>
+                    </p>
+                    <form method="post" action="" class="ihq-gameplay-video-form">
+                        <?php wp_nonce_field( 'ihq_gameplay_video_save' ); ?>
+                        <div class="sett-card sett-gameplay-promo-card">
+                            <div class="sett-row sett-gameplay-promo-row">
+                                <label for="ihq_gameplay_video_url" class="sett-row-lbl"><?php esc_html_e( 'YouTube video', 'avantage-baccarat' ); ?></label>
+                                <div class="sett-row-val sett-gameplay-promo-input-wrap">
+                                    <input
+                                        type="url"
+                                        id="ihq_gameplay_video_url"
+                                        name="ihq_gameplay_video_url"
+                                        value="<?php echo esc_attr( $gameplay_video_url ); ?>"
+                                        placeholder="https://www.youtube.com/watch?v=..."
+                                        class="hq-game-url-input"
+                                        autocomplete="url"
+                                    >
+                                </div>
+                                <button type="submit" name="ihq_gameplay_video_submit" class="hq-game-url-save-btn"><?php esc_html_e( 'Save', 'avantage-baccarat' ); ?></button>
+                            </div>
+                        </div>
+                        <?php if ( isset( $_GET['ihq_video_saved'] ) ) : ?>
+                            <p class="sett-gameplay-promo-feedback sett-gameplay-promo-feedback--ok">&#10003; <?php esc_html_e( 'Saved.', 'avantage-baccarat' ); ?></p>
+                        <?php endif; ?>
+                        <?php if ( isset( $_GET['ihq_video_err'] ) ) : ?>
+                            <p class="sett-gameplay-promo-feedback sett-gameplay-promo-feedback--err"><?php esc_html_e( 'Enter a valid YouTube link, or clear the field and save.', 'avantage-baccarat' ); ?></p>
+                        <?php endif; ?>
+                    </form>
+                    <?php if ( $gameplay_yt_id !== '' ) : ?>
+                        <?php
+                        $embed_base = 'https://www.youtube.com/embed/' . $gameplay_yt_id;
+                        $embed_src  = add_query_arg(
+                            [
+                                'playsinline' => '1',
+                                'controls'    => '1',
+                            ],
+                            $embed_base
+                        );
+                        ?>
+                        <div class="sett-gameplay-embed-wrap">
+                            <iframe
+                                class="sett-gameplay-embed"
+                                src="<?php echo esc_url( $embed_src ); ?>"
+                                title="<?php echo esc_attr__( 'Gameplay video preview', 'avantage-baccarat' ); ?>"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                allowfullscreen
+                                loading="lazy"
+                            ></iframe>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- ACCOUNT INFORMATION -->
@@ -283,17 +376,7 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
             
         </div>
         
-        <!-- Fixed Footer Links -->
         <?php get_template_part( 'template-parts/portal-footer' ); ?>
-
-        <!-- API Debug Panel -->
-        <div id="ihq-api-debug" style="margin:24px 16px;background:#111;border:1px solid #444;border-radius:8px;padding:16px;font-family:monospace;font-size:12px;color:#ccc;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                <strong style="color:#b8972f;">API Debug</strong>
-                <button onclick="document.getElementById('ihq-api-debug-log').innerHTML='';" style="background:none;border:1px solid #555;color:#aaa;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:11px;">Clear</button>
-            </div>
-            <div id="ihq-api-debug-log" style="max-height:400px;overflow-y:auto;"></div>
-        </div>
 
     </main><!-- #main -->
 
@@ -407,24 +490,6 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
         });
     }
 
-    /* ── API Debug log ────────────────────────────────── */
-    function dbg(label, sent, received) {
-        var log = document.getElementById('ihq-api-debug-log');
-        if (!log) return;
-        var ts = new Date().toLocaleTimeString();
-        var color = (received && received.success) ? '#53FC18' : '#ff6b6b';
-        var html = '<div style="border-bottom:1px solid #333;padding:8px 0;">';
-        html += '<div style="color:' + color + ';margin-bottom:4px;">▶ ' + label + ' <span style="color:#666;font-size:11px;">' + ts + '</span></div>';
-        if (sent !== null) {
-            html += '<div style="color:#aaa;margin-bottom:2px;">SENT:</div>';
-            html += '<pre style="color:#e0c97f;white-space:pre-wrap;word-break:break-all;margin:0 0 6px 0;">' + JSON.stringify(sent, null, 2) + '</pre>';
-        }
-        html += '<div style="color:#aaa;margin-bottom:2px;">RECEIVED:</div>';
-        html += '<pre style="color:#ccc;white-space:pre-wrap;word-break:break-all;margin:0;">' + JSON.stringify(received, null, 2) + '</pre>';
-        html += '</div>';
-        log.innerHTML = html + log.innerHTML;
-    }
-
     function saveFullname() {
         var fn = document.querySelector('.sett-editable[data-field="first_name"]');
         var ln = document.querySelector('.sett-editable[data-field="last_name"]');
@@ -440,8 +505,7 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
         fd.append('lastName',  payload.lastName);
         fetch(_ajax, { method:'POST', body:fd })
             .then(function(r){ return r.json(); })
-            .then(function(res){ dbg('PATCH /account/players/fullname', payload, res); })
-            .catch(function(e){ dbg('PATCH /account/players/fullname', payload, {error: String(e)}); });
+            .catch(function(){});
     }
 
     function save(action, params){
@@ -453,7 +517,6 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
     }
 
     // Read first/last name from API on load
-    var getPayload = { action: 'ihq_get_player_me', nonce: _nonce };
     fetch(_ajax, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -461,7 +524,6 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
     })
     .then(function(r){ return r.json(); })
     .then(function(res) {
-        dbg('GET /account/players/me', getPayload, res);
         if (res.success && res.data) {
             var d = res.data;
             var fn = document.querySelector('.sett-editable[data-field="first_name"]');
@@ -469,7 +531,7 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
             if (fn && d.firstName !== undefined) fn.textContent = d.firstName;
             if (ln && d.lastName  !== undefined) ln.textContent = d.lastName;
         }
-    }).catch(function(e){ dbg('GET /account/players/me', getPayload, {error: String(e)}); });
+    }).catch(function(){});
 
     /* ── Celebrity Followers Leagues ──────────────────── */
     var celebHead  = document.getElementById('celebLeaguesHead');

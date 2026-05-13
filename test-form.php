@@ -10,6 +10,8 @@
  */
 
 get_header();
+
+$portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.games/av-baccarat/external/leaderboards';
 ?>
 
     <main id="primary" class="site-main" style="padding: 50px;">
@@ -20,6 +22,17 @@ get_header();
                     <div class="col-12" style="margin:0 auto;min-height: 80vh;">
                         
                         <h2>Genius Referrals API Test</h2>
+
+                        <div class="portal-leaderboards-iframe-wrap" style="margin-top: 1.25rem; width: 100%; max-width: 100%;">
+                            <iframe
+                                title="<?php echo esc_attr__( 'Avantage Baccarat leaderboards', 'avantage-baccarat' ); ?>"
+                                src="<?php echo esc_url( $portal_leaderboards_iframe_url ); ?>"
+                                style="display: block; width: 100%; min-height: 75vh; border: 0; background: #111;"
+                                loading="lazy"
+                                referrerpolicy="strict-origin-when-cross-origin"
+                                allowfullscreen
+                            ></iframe>
+                        </div>
                         
                         <form method="post" style="margin-bottom: 20px;">
                             <input type="submit" name="list_accounts" value="List Accounts" class="btn btn-secondary">

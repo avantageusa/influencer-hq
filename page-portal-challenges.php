@@ -24,6 +24,8 @@ $celeb_lists = [
 ];
 $celeb_labels = ['movie_stars' => 'Movie Stars', 'music_artists' => 'Music Artists', 'sports_icons' => 'Sports Icons'];
 $intl_league_regions = ['South Korea','Europe','Malaysia','Thailand','Africa','Singapore','Asia','India','China','Hong Kong','Philippines','Taiwan','United States','Canada','Macao','Pakistan','South America','Japan','Australia','South Africa'];
+
+$portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.games/av-baccarat/external/leaderboards';
 ?>
 
     <main id="primary" class="site-main">
@@ -921,6 +923,16 @@ $intl_league_regions = ['South Korea','Europe','Malaysia','Thailand','Africa','S
                         </div>
 
                     </div><!-- /.cpc-wrap -->
+
+                    <div class="portal-leaderboards-iframe-wrap">
+                        <iframe
+                            title="<?php echo esc_attr__( 'Avantage Baccarat leaderboards', 'avantage-baccarat' ); ?>"
+                            src="<?php echo esc_url( $portal_leaderboards_iframe_url ); ?>"
+                            loading="lazy"
+                            referrerpolicy="strict-origin-when-cross-origin"
+                            allowfullscreen
+                        ></iframe>
+                    </div>
                 </div>
 
                 <!-- Community Tab -->
@@ -1189,8 +1201,8 @@ $intl_league_regions = ['South Korea','Europe','Malaysia','Thailand','Africa','S
             
         </div>
         
-        <!-- Fixed Footer Links -->
         <?php get_template_part( 'template-parts/portal-footer' ); ?>
+
     </main><!-- #main -->
 
 <script>
