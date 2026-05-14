@@ -114,7 +114,7 @@
                 <a href="<?php echo home_url('/portal/live'); ?>" class="nav-link-inline <?php echo (is_page('portal/live')) ? 'active' : ''; ?>">Live Appearance</a>
                 <span class="nav-separator">|</span>
                 
-                <a href="<?php echo home_url('/portal/account'); ?>" class="nav-link-inline <?php echo (is_page('portal/account')) ? 'active' : ''; ?>">Settings</a>
+                <a href="<?php echo home_url('/portal/account'); ?>" class="nav-link-inline <?php echo (is_page('portal/account')) ? 'active' : ''; ?>">Profile</a>
                 <span class="nav-separator">|</span>
                 <a href="<?php echo home_url('/portal/more'); ?>" class="nav-link-inline <?php echo (is_page('portal/more')) ? 'active' : ''; ?>">More</a>
             </div>

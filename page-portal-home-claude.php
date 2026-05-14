@@ -18,6 +18,12 @@ get_header();
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&display=swap" rel="stylesheet">
 
 <style>
+:root {
+  color-scheme: dark;
+  --gl: #F0C93A;
+  --bg3: #161612;
+  --warm: #EAD9B0;
+}
 .field-error {
   box-sizing: border-box;
   border: 2px solid rgba(255, 75, 75, 0.95) !important;
@@ -32,30 +38,64 @@ get_header();
   60% { transform: translateX(2px); }
   75% { transform: translateX(-1px); }
 }
+
+/* Language dropdown (portal-header parity) */
+.header-lang-wrap{position:relative;display:flex;align-items:center;flex-shrink:0}
+.header-lang-btn{background:transparent;border:none;padding:4px 6px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:0;border-radius:6px;color:var(--gl);transition:opacity .2s,background .2s}
+.header-lang-btn:hover{opacity:.9;background:rgba(240,201,58,.08)}
+.header-lang-btn:focus-visible{outline:2px solid var(--gl);outline-offset:2px}
+.header-lang-btn svg{display:block}
+.header-lang-dropdown{position:absolute;top:calc(100% + 8px);right:0;min-width:188px;background:var(--bg3);border:1px solid rgba(240,201,58,.35);border-radius:8px;padding:6px 0;box-shadow:0 12px 40px rgba(0,0,0,.55);z-index:120;opacity:0;visibility:hidden;transform:translateY(-6px);transition:opacity .25s ease,visibility .25s ease,transform .25s ease;pointer-events:none}
+.header-lang-dropdown.open{opacity:1;visibility:visible;transform:translateY(0);pointer-events:auto}
+.header-lang-option{display:block;padding:12px 18px;font-family:'Be Vietnam Pro',sans-serif;font-size:.82rem;font-weight:500;color:var(--warm);text-decoration:none;letter-spacing:.04em;border-bottom:1px solid rgba(240,201,58,.12);transition:background .15s,color .15s}
+.header-lang-option:last-child{border-bottom:none}
+.header-lang-option:hover,.header-lang-option:focus{background:rgba(240,201,58,.1);color:var(--gl);outline:none}
 </style>
 
 <main id="primary" class="site-main">
 
 <nav>
-  <a class="logo" href="#"><span style="font-family:'Be Vietnam Pro',sans-serif;font-weight:700;color:var(--gl)">influencer</span><span style="font-family:'Be Vietnam Pro',sans-serif;font-weight:700;color:var(--gl)">HQ</span></a>
+  <a class="logo" href="<?php echo esc_url(home_url('/')); ?>"><img style="max-width: 50%;" src="<?php echo get_template_directory_uri(); ?>/images/logo-home-claude.jpg" alt="influencerHQ"></a>
   <div style="display:flex;align-items:center;gap:10px">
-    <?php if (is_user_logged_in()): ?>
-      <a style="display:none;" href="<?php echo esc_url(home_url('/portal/portal-home/')); ?>" class="nav-auth-btn portal">Go to Portal</a>
-    <?php else: ?>
-      <button style="display:none;" class="nav-auth-btn login" id="navLoginBtn" onclick="openAuthModal('login')">Login / Register</button>
-    <?php endif; ?>
-    <button class="nav-cta" id="navCta" onclick="openModal()">Yes — Let's Talk</button>
+    <div class="header-lang-wrap">
+      <button type="button" class="header-lang-btn" id="headerLangBtn" aria-label="<?php esc_attr_e( 'Select language', 'avantage-baccarat' ); ?>" aria-expanded="false" aria-haspopup="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="2" y1="12" x2="22" y2="12"></line>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+        </svg>
+      </button>
+      <div class="header-lang-dropdown" id="headerLangDropdown" role="menu">
+        <a href="#" class="header-lang-option" role="menuitem">English</a>
+        <a href="#" class="header-lang-option" role="menuitem">Español</a>
+        <a href="#" class="header-lang-option" role="menuitem">Français</a>
+        <a href="#" class="header-lang-option" role="menuitem">Deutsch</a>
+        <a href="#" class="header-lang-option" role="menuitem">中文</a>
+      </div>
+    </div>
+   
+    
   </div>
 </nav>
 
 <section class="hero">
   <div class="hero-lines"></div>
   <div class="hero-glow"></div>
-  <span class="hero-eye">Influencer Headquarters</span>
+  <!-- <span class="hero-eye">Influencer Headquarters</span> -->
   <h1>Influence was never meant to be rented.</h1>
   <p class="hero-sub">We believe those who drive the energy deserve to share in what they help build.</p>
   <div class="hero-btns">
     <button class="btn-gold" onclick="openModal()">Yes — Let's Start the Conversation</button>
+  </div>
+  <div class="hero-dealer-row dealer-row">
+    <div class="dealer-image-container">
+      <p class="concierge-text-above hero-dealer-text">We believe conversations should be easy.</p>
+      <div class="dealer-image-wrap">
+        <div class="dealer-gradient-overlay" aria-hidden="true"></div>
+        <img src="<?php echo esc_url( get_template_directory_uri() . '/images/concierge.png' ); ?>" alt="" class="dealer-image dealer-image--hero">
+      </div>
+      <a href="#" class="concierge-title hero-dealer-link">Talk Now - Executive Concierge</a>
+    </div>
   </div>
   <div class="scroll-hint"><span>Discover</span><div class="scroll-line"></div></div>
 </section>
@@ -171,8 +211,8 @@ get_header();
     </div></div>
   </div>
 
-  <div class="acc-sec" id="s7">
-    <div class="acc-hd" onclick="tog('s7')">
+  <div class="acc-sec open" id="s7">
+    <div class="acc-hd">
       <span class="acc-eye">The Global Stage</span>
       <span class="acc-title">International Competition Series</span>
       <div class="acc-chev"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg></div>
@@ -251,7 +291,7 @@ get_header();
       <span class="m-eye">Get in Touch</span>
       <h3 class="m-title">Let's Start the Conversation</h3>
       <p class="m-sub">Select your favorite communication methods. Choose as many as you like.</p>
-      <p class="m-benefit">We believe that communication is the foundation of all business relationships and all success.</p>
+      <p class="m-benefit">We believe true partnership means standing beside you — helping more people discover your voice, your content, and your audience.</p>
       <div class="ch-list">
         <div class="ch-sel" id="sel-email" onclick="toggleCh('email')">
           <div class="ch-chk" id="chk-email"></div>
@@ -296,54 +336,6 @@ get_header();
         <div class="ch-entry" id="entry-telegram" style="display:none"><input class="ch-input" type="text" placeholder="@username"></div>
       </div>
 
-      <div class="m-belief-block">
-        <h4>How We Will Promote You</h4>
-        <p>You built something real. Your audience follows you because of you — your voice, your eye, your way of seeing the world.</p>
-      </div>
-
-      <div class="m-belief-block">
-        <h4>We Believe In</h4>
-        <ul>
-          <li>Creating true partnerships</li>
-          <li>Standing alongside you</li>
-          <li>Building alongside you</li>
-          <li>Growing alongside you</li>
-        </ul>
-      </div>
-
-      <div class="m-belief-block">
-        <h4>We Also Believe</h4>
-        <p>It's our responsibility to promote your reach, your growth, and your visibility.</p>
-      </div>
-
-      <div class="m-belief-block">
-        <h4>What We Do</h4>
-        <ul>
-          <li>Put platform marketing dollars behind your visibility across the channels you already use.</li>
-          <li>Run paid campaigns featuring your content on Instagram, TikTok, YouTube, X, and regional platforms through formal creator partnership tools.</li>
-          <li>Drive new followers to your handles through targeted follow campaigns and lookalike audiences seeded from your existing fans.</li>
-        </ul>
-      </div>
-
-      <div class="m-belief-block">
-        <h4>What We Report Back To You</h4>
-        <ul>
-          <li>New followers gained, by platform, every month</li>
-          <li>Views and engagement delivered to your content</li>
-          <li>The full picture of growth measured, transparent, and yours</li>
-        </ul>
-      </div>
-
-      <div class="m-belief-block">
-        <h4>What Stays Yours</h4>
-        <ul>
-          <li>Every follower we help you gain stays your follower, on your platform, forever</li>
-          <li>Your content remains yours</li>
-          <li>Your audience remains yours</li>
-          <li>The relationship with your fans is yours alone — we build the bridge, you keep what's built</li>
-        </ul>
-      </div>
-
       <div style="margin:24px 0 4px">
         <div style="font-family:'Cinzel',serif;font-size:1.6rem;line-height:1.4;color:var(--white);margin-bottom:14px">Favorite Social Media</div>
         <div class="ch-list social-list">
@@ -379,31 +371,20 @@ get_header();
         </div>
       </div>
 
-      <button onclick="onContinue()" style="margin-top:16px;width:100%;padding:20px;background:var(--gl);border:none;font-family:'Be Vietnam Pro',sans-serif;font-size:.75rem;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:#000;cursor:pointer;transition:opacity .3s" id="ch-continue">Continue →</button>
-
-      <p class="m-note">All conversations are private and confidential.<br>We operate across time zones. Expect a reply within minutes.</p>
-    </div>
-    <div class="mstep" id="ms2">
-      <span class="m-eye">One More Thing</span>
-      <h3 class="m-title">Glory is earned one weekend at a time.</h3>
-      <p class="m-ctx">Yours starts now. Choose your competition and we'll send you and your followers everything you need to get started.</p>
-      <div class="ms2-quote">When your followers watch you play, cheer, and celebrate, they become part of a shared experience that unites people the same way great sports, music, and global competitions always have.</div>
-      <div class="comp-list">
-        <div class="comp-card" id="cw" onclick="pickComp('cw')"><div class="comp-chk"><span class="chk-in">✓</span></div><div class="comp-body"><span class="comp-tag">Global Stage</span><div class="comp-title">Influencer World Competition</div><div class="comp-desc">Join thousands of Influencers and their followers. Compete Thursday night through Sunday night.</div></div></div>
-        <div class="comp-card" id="cp" onclick="pickComp('cp')"><div class="comp-chk"><span class="chk-in">✓</span></div><div class="comp-body"><span class="comp-tag">Community Competition</span><div class="comp-title">Community Competition</div><div class="comp-desc">A one week competition between your followers who choose to participate with you at the helm cheering them all on to victory.</div></div></div>
-      </div>
-      <button class="send-btn" id="sendbtn" onclick="redirectLogin()">Continue</button>
-      <div class="dealer-row" style="margin-top:24px;">
-        <div class="dealer-image-container">
-          <p class="concierge-text-above" style="font-size:20px;text-align:center;margin:0 0 12px;">We believe conversations should be easy.</p>
-          <div class="dealer-image-wrap">
-            <div class="dealer-gradient-overlay" style="position:absolute;inset:0;width: 100px;pointer-events:none;z-index:2;"></div>
-            <img style="width: 100%;" src="<?php echo get_template_directory_uri(); ?>/images/concierge.png" alt="Casino Dealer" class="dealer-image" style="position:relative;z-index:1;">
-          </div>
-          <a href="#" class="concierge-title" style="color:white;font-size:20px;display:block;text-align:center;margin-top:12px;">Talk Now - Executive Concierge</a>
+      <div class="modal-lower-panel">
+        <span class="m-eye">One More Thing</span>
+        <h3 class="m-title">Glory is earned one weekend at a time.</h3>
+        <p class="m-ctx">Yours starts now. Choose your competition and we'll send you and your followers everything you need to get started.</p>
+        <div class="ms2-quote">When your followers watch you play, cheer, and celebrate, they become part of a shared experience that unites people the same way great sports, music, and global competitions always have.</div>
+        <div class="comp-list">
+          <div class="comp-card" id="cw" onclick="pickComp('cw')"><div class="comp-chk"><span class="chk-in">✓</span></div><div class="comp-body"><span class="comp-tag">Global Stage</span><div class="comp-title">Influencer World Competition</div><div class="comp-desc">Join thousands of Influencers and their followers. Compete Thursday night through Sunday night.</div></div></div>
+          <div class="comp-card" id="cp" onclick="pickComp('cp')"><div class="comp-chk"><span class="chk-in">✓</span></div><div class="comp-body"><span class="comp-tag">Community Competition</span><div class="comp-title">Community Competition</div><div class="comp-desc">A one week competition between your followers who choose to participate with you at the helm cheering them all on to victory.</div></div></div>
         </div>
       </div>
-      <button class="back-btn" onclick="goBack()">← Back</button>
+
+      <button type="button" class="send-btn" id="sendbtn" onclick="onModalSubmit()">Continue</button>
+
+      <p class="m-note">All conversations are private and confidential.<br>We operate across time zones. Expect a reply within minutes.</p>
     </div>
     <div class="mstep" id="ms3">
       <div class="confirm-wrap">
@@ -592,6 +573,7 @@ var src = null;
 window.addEventListener('scroll', function() {
   var hero = document.querySelector('.hero');
   var navCta = document.getElementById('navCta');
+  if (!hero || !navCta) return;
   if (window.pageYOffset > hero.offsetHeight * 0.7) navCta.classList.add('visible');
   else navCta.classList.remove('visible');
 });
@@ -617,6 +599,9 @@ function smoothScrollTo(target, duration) {
 }
 
 function tog(id) {
+  if (id === 's7') {
+    return;
+  }
   var sec = document.getElementById(id);
   var isOpen = sec.classList.contains('open');
   var hint = document.getElementById('tapHint');
@@ -638,8 +623,12 @@ function tog(id) {
       }, 800);
     }
   } else {
-    var body = sec.querySelector('.acc-body');
-    if (body) body.style.maxHeight = '0';
+    var bodyClose = sec.querySelector('.acc-body');
+    if (bodyClose) {
+      bodyClose.style.maxHeight = bodyClose.scrollHeight + 'px';
+      bodyClose.offsetHeight;
+      bodyClose.style.maxHeight = '0';
+    }
     sec.classList.remove('open');
   }
 }
@@ -655,7 +644,7 @@ function openCompetition() {
   src = null;
   document.getElementById('mainModal').classList.add('open');
   document.body.style.overflow = 'hidden';
-  show('ms2');
+  show('ms1');
 }
 
 function closeModal() {
@@ -682,8 +671,7 @@ function showFieldError(el) {
   }, 1200);
 }
 
-function onContinue() {
-  clearFieldErrors();
+function validateModalContacts() {
   var valid = true;
   document.querySelectorAll('.ch-sel.selected').forEach(function(sel) {
     var fieldId = sel.id.replace('sel-', '');
@@ -694,19 +682,38 @@ function onContinue() {
       valid = false;
     }
   });
-  if (!valid) return;
+  return valid;
+}
+
+function onModalSubmit() {
+  clearFieldErrors();
+  if (!validateModalContacts()) {
+    var modal = document.querySelector('#mainModal .modal');
+    if (modal) {
+      modal.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    return;
+  }
   chosen();
+  redirectLogin();
 }
 
 function toggleCh(id) {
   var sel = document.getElementById('sel-' + id);
+  if (!sel) {
+    return;
+  }
   var entry = document.getElementById('entry-' + id);
   if (sel.classList.contains('selected')) {
     sel.classList.remove('selected');
-    entry.style.display = 'none';
+    if (entry) {
+      entry.style.display = 'none';
+    }
   } else {
     sel.classList.add('selected');
-    entry.style.display = 'block';
+    if (entry) {
+      entry.style.display = 'block';
+    }
   }
 }
 
@@ -717,7 +724,6 @@ function chosen() {
   });
   var cfinal = document.getElementById('cfinal');
   if (cfinal) cfinal.innerHTML = '<p class="cta-done">Details coming your way shortly.</p>';
-  show('ms2');
 }
 
 function pickComp(id) {
@@ -730,8 +736,6 @@ function redirectLogin() {
     window.location.href = '/influencer-login/';
   }, 3000);
 }
-function goBack() { show('ms1'); }
-
 document.getElementById('mainModal').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
@@ -778,6 +782,20 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Comm method toggles for register form (challenge section only — genius section stays once shown)
+
+  var langBtn = document.getElementById('headerLangBtn');
+  var langDropdown = document.getElementById('headerLangDropdown');
+  if (langBtn && langDropdown) {
+    langBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var open = langDropdown.classList.toggle('open');
+      langBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    document.addEventListener('click', function () {
+      langDropdown.classList.remove('open');
+      langBtn.setAttribute('aria-expanded', 'false');
+    });
+  }
 });
 
 function switchAuthTab(tab) {
