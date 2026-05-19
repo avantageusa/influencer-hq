@@ -384,7 +384,11 @@ $ihq_portal_turnstile_site_key = ( function_exists( 'ihq_turnstile_is_configured
                 }
                 sendPortalLogin(p.fd, p.btn, p.errBox);
             },
-            'error-callback': function () {
+            'error-callback': function (errorCode) {
+                console.warn('[Cloudflare Turnstile] error-callback', {
+                    errorCode: errorCode,
+                    arguments: Array.prototype.slice.call(arguments)
+                });
                 pendingPortalLogin = null;
                 var errBox = document.getElementById('login-error');
                 var btn = document.getElementById('login-btn');
@@ -396,6 +400,7 @@ $ihq_portal_turnstile_site_key = ( function_exists( 'ihq_turnstile_is_configured
                     btn.disabled = false;
                     btn.textContent = 'Login';
                 }
+                return true;
             }
         });
     }
