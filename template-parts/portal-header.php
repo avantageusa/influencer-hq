@@ -46,11 +46,11 @@
                             </svg>
                         </button>
                         <div class="header-lang-dropdown" id="headerLangDropdown">
-                            <a href="#" class="header-lang-option">English</a>
-                            <a href="#" class="header-lang-option">Español</a>
-                            <a href="#" class="header-lang-option">Français</a>
-                            <a href="#" class="header-lang-option">Deutsch</a>
-                            <a href="#" class="header-lang-option">中文</a>
+                            <a href="#" class="header-lang-option" data-lang="en">English</a>
+                            <a href="#" class="header-lang-option" data-lang="es">Español</a>
+                            <a href="#" class="header-lang-option" data-lang="fr">Français</a>
+                            <a href="#" class="header-lang-option" data-lang="de">Deutsch</a>
+                            <a href="#" class="header-lang-option" data-lang="zh">中文</a>
                         </div>
                     </div>
                 </div>
@@ -245,6 +245,19 @@ $hm_ch = function ( $tab, $hash = '' ) {
         });
         document.addEventListener('click', function () {
             langDropdown.classList.remove('open');
+        });
+        // Client-only `<html lang>` for testing ConvAI overrides (portal ElevenLabs session reads primary tag).
+        langDropdown.querySelectorAll('.header-lang-option[data-lang]').forEach(function (opt) {
+            opt.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var code = opt.getAttribute('data-lang');
+                if (!code || !/^[a-z]{2}$/i.test(code)) {
+                    return;
+                }
+                document.documentElement.setAttribute('lang', code.toLowerCase());
+                langDropdown.classList.remove('open');
+            });
         });
     }
 

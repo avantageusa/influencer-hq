@@ -66,11 +66,11 @@ get_header();
         </svg>
       </button>
       <div class="header-lang-dropdown" id="headerLangDropdown" role="menu">
-        <a href="#" class="header-lang-option" role="menuitem">English</a>
-        <a href="#" class="header-lang-option" role="menuitem">Español</a>
-        <a href="#" class="header-lang-option" role="menuitem">Français</a>
-        <a href="#" class="header-lang-option" role="menuitem">Deutsch</a>
-        <a href="#" class="header-lang-option" role="menuitem">中文</a>
+        <a href="#" class="header-lang-option" role="menuitem" data-lang="en">English</a>
+        <a href="#" class="header-lang-option" role="menuitem" data-lang="es">Español</a>
+        <a href="#" class="header-lang-option" role="menuitem" data-lang="fr">Français</a>
+        <a href="#" class="header-lang-option" role="menuitem" data-lang="de">Deutsch</a>
+        <a href="#" class="header-lang-option" role="menuitem" data-lang="zh">中文</a>
       </div>
     </div>
    
@@ -795,6 +795,19 @@ document.addEventListener('DOMContentLoaded', function() {
       langDropdown.classList.remove('open');
       langBtn.setAttribute('aria-expanded', 'false');
     });
+    langDropdown.querySelectorAll('.header-lang-option[data-lang]').forEach(function (opt) {
+      opt.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var code = opt.getAttribute('data-lang');
+        if (!code || !/^[a-z]{2}$/i.test(code)) {
+          return;
+        }
+        document.documentElement.setAttribute('lang', code.toLowerCase());
+        langDropdown.classList.remove('open');
+        langBtn.setAttribute('aria-expanded', 'false');
+      });
+    });
   }
 });
 
@@ -947,9 +960,28 @@ function handleAuthRegister(e) {
 <script>
 (function () {
     document.addEventListener('DOMContentLoaded', function () {
-        var btn          = document.querySelector('.concierge-title');
-        var activeSession = null;
-        var originalText  = "Talk Now - Executive Concierge";
+        var btn             = document.querySelector('.concierge-title');
+        var activeSession    = null;
+        var originalText     = 'Talk Now - Executive Concierge';
+        var DEFAULT_CONVAI_PAGE_LANGUAGE_CODE = 'en';
+
+        /** Primary ISO 639-1 tag from `<html lang>` — passed as ConvAI overrides per ElevenLabs language docs */
+        function pagePrimaryLangForElevenLabs() {
+            var raw = document.documentElement ? document.documentElement.getAttribute('lang') : '';
+            if (typeof raw !== 'string') {
+                raw = '';
+            }
+            raw = raw.trim();
+            if (!raw) {
+                return DEFAULT_CONVAI_PAGE_LANGUAGE_CODE;
+            }
+            var primary = raw.split(/[-_\s]/)[0].toLowerCase();
+            if (!/^[a-z]{2,10}$/.test(primary)) {
+                return DEFAULT_CONVAI_PAGE_LANGUAGE_CODE;
+            }
+            return primary;
+        }
+
         if (!btn) return;
 
         btn.addEventListener('click', function (e) {
@@ -971,6 +1003,11 @@ function handleAuthRegister(e) {
                 if (data.success && data.data && data.data.signed_url) {
                     ElevenLabsClient.Conversation.startSession({
                         signedUrl: data.data.signed_url,
+                        overrides: {
+                            agent: {
+                                language: pagePrimaryLangForElevenLabs(),
+                            },
+                        },
                         onConnect: function () {
                             btn.textContent = 'End Talk';
                             btn.style.pointerEvents = '';
@@ -1003,7 +1040,7 @@ function handleAuthRegister(e) {
             });
         });
     });
-}());
+})();
 </script>
 
 <div style="display:none">

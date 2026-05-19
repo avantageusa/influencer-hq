@@ -350,6 +350,24 @@ get_template_part( 'template-parts/portal-styles' );
         var activeSession = null;
         var buttonOriginalTexts = Array.from(buttons).map(function (button) { return button.textContent; });
         var errMsg = null;
+        var DEFAULT_CONVAI_PAGE_LANGUAGE_CODE = 'en';
+
+        /** Primary ISO 639-1 tag from `<html lang>` — matches ElevenLabs agent language codes when possible. See https://elevenlabs.io/docs/eleven-agents/customization/voice/customization/language */
+        function pagePrimaryLangForElevenLabs() {
+            var raw = document.documentElement ? document.documentElement.getAttribute('lang') : '';
+            if (typeof raw !== 'string') {
+                raw = '';
+            }
+            raw = raw.trim();
+            if (!raw) {
+                return DEFAULT_CONVAI_PAGE_LANGUAGE_CODE;
+            }
+            var primary = raw.split(/[-_\s]/)[0].toLowerCase();
+            if (!/^[a-z]{2,10}$/.test(primary)) {
+                return DEFAULT_CONVAI_PAGE_LANGUAGE_CODE;
+            }
+            return primary;
+        }
 
         function createErrorElement(target) {
             if (!errMsg) {
@@ -405,9 +423,14 @@ get_template_part( 'template-parts/portal-styles' );
                     console.log('[ElevenLabs] Raw ElevenLabs data:', data.data);
                     if (data.success && data.data && data.data.signed_url) {
                         var signedUrl = data.data.signed_url;
-                        console.log('[ElevenLabs] Starting session with:', signedUrl);
+                        console.log('[ElevenLabs] Starting session with:', signedUrl, 'lang=', pagePrimaryLangForElevenLabs());
                         ElevenLabsClient.Conversation.startSession({
                             signedUrl: signedUrl,
+                            overrides: {
+                                agent: {
+                                    language: pagePrimaryLangForElevenLabs(),
+                                },
+                            },
                             onConnect: function () {
                                 console.log('[ElevenLabs] Connected');
                                 setAllButtonText('End Talk');
