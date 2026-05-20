@@ -10,6 +10,7 @@
  */
 
 get_header();
+$ihq_home_login_nonce = wp_create_nonce( 'ihq_login_code_nonce' );
 ?>
 <?php wp_enqueue_style('homepage-style', get_template_directory_uri() . '/css/homepage-style.css'); ?>
     <main id="primary" class="site-main">
@@ -210,22 +211,33 @@ get_header();
                                 </button>
                             </div>
 
-                            <!-- Login form -->
+                            <!-- Login (6-digit email code) -->
                             <div id="pane-login">
-                                <form id="login-form" class="simple-form" style="max-width:480px;margin:0 auto;" onsubmit="handleLogin(event)">
+                                <div id="home-login-step-email" class="simple-form" style="max-width:480px;margin:0 auto;">
+                                    <p class="lead mb-3">We’ll email you a one-time code. No password.</p>
                                     <div class="mb-4">
                                         <label for="login-email" class="form-label">Email:</label>
-                                        <input type="email" class="form-control" id="login-email" name="email" required placeholder="your@email.com">
-                                    </div>
-                                    <div class="mb-4">
-                                        <label for="login-password" class="form-label">Password:</label>
-                                        <input type="password" class="form-control" id="login-password" name="password" required placeholder="Your password">
+                                        <input type="email" class="form-control" id="login-email" placeholder="your@email.com" autocomplete="email">
                                     </div>
                                     <div id="login-error" style="color:#ff4d4d;margin-bottom:1rem;display:none;"></div>
+                                    <div id="login-info" style="color:#7dcea0;margin-bottom:1rem;display:none;"></div>
                                     <div class="text-center">
-                                        <button type="submit" class="btn btn-primary btn-lg px-5" id="login-btn">Login</button>
+                                        <button type="button" class="btn btn-primary btn-lg px-5" id="login-send-code-btn">Send sign-in code</button>
                                     </div>
-                                </form>
+                                </div>
+                                <div id="home-login-step-code" class="simple-form" style="max-width:480px;margin:0 auto;display:none;">
+                                    <p class="lead mb-3">Enter the code from your email.</p>
+                                    <div class="mb-4">
+                                        <label for="login-code" class="form-label">6-digit code:</label>
+                                        <input type="text" class="form-control" id="login-code" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="000000" style="letter-spacing:0.35em;text-align:center;">
+                                    </div>
+                                    <p id="home-login-code-expires" style="color:#ffd700;font-size:0.95rem;"></p>
+                                    <div id="login-code-error" style="color:#ff4d4d;margin-bottom:1rem;display:none;"></div>
+                                    <div class="text-center">
+                                        <button type="button" class="btn btn-primary btn-lg px-5 me-2" id="login-verify-btn">Verify & sign in</button>
+                                        <button type="button" class="btn btn-outline-light btn-lg px-4" id="login-back-btn">Back</button>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Register form -->
@@ -341,13 +353,9 @@ get_header();
                                             <p class="lead mb-4 text-center" style="font-weight: 600;">After your email is verified, you will receive the key to enter your private influencer portal.</p>
                                             
                                             <div class="row mb-4">
-                                                <div class="col-md-6 mb-3">
+                                                <div class="col-12 mb-3">
                                                     <label for="email" class="form-label">Email:</label>
                                                     <input type="email" class="form-control" id="email" name="email" required placeholder="your@email.com">
-                                                </div>
-                                                <div class="col-md-6 mb-3">
-                                                    <label for="password" class="form-label">Create Password:</label>
-                                                    <input type="password" class="form-control" id="password" name="password" required placeholder="Enter your password (min 6 characters)">
                                                 </div>
                                             </div>
                                             
@@ -431,6 +439,35 @@ get_header();
 // ---------------------------------------------------------------------------
 // Tab switching
 // ---------------------------------------------------------------------------
+var homeLoginSignupToken = '';
+
+function homeLoginJsonErr(data) {
+    if (!data || !data.data) return 'Something went wrong.';
+    var d = data.data;
+    if (typeof d === 'string') return d;
+    return d.message ? d.message : 'Something went wrong.';
+}
+
+function resetHomeLoginPane() {
+    homeLoginSignupToken = '';
+    var stepE = document.getElementById('home-login-step-email');
+    var stepC = document.getElementById('home-login-step-code');
+    if (stepE) stepE.style.display = 'block';
+    if (stepC) stepC.style.display = 'none';
+    var em = document.getElementById('login-email');
+    var cd = document.getElementById('login-code');
+    if (em) em.value = '';
+    if (cd) cd.value = '';
+    var er = document.getElementById('login-error');
+    var inf = document.getElementById('login-info');
+    var cer = document.getElementById('login-code-error');
+    if (er) { er.style.display = 'none'; er.textContent = ''; }
+    if (inf) { inf.style.display = 'none'; inf.textContent = ''; }
+    if (cer) { cer.style.display = 'none'; cer.textContent = ''; }
+    var ex = document.getElementById('home-login-code-expires');
+    if (ex) ex.textContent = '';
+}
+
 function switchTab(tab) {
     const loginPane    = document.getElementById('pane-login');
     const registerPane = document.getElementById('pane-register');
@@ -445,6 +482,7 @@ function switchTab(tab) {
         loginTab.style.borderBottomColor = '#ffd700';
         registerTab.style.color   = '#888';
         registerTab.style.borderBottomColor = 'transparent';
+        resetHomeLoginPane();
     } else {
         loginPane.style.display    = 'none';
         registerPane.style.display = 'block';
@@ -455,43 +493,110 @@ function switchTab(tab) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// AJAX Login
-// ---------------------------------------------------------------------------
-function handleLogin(e) {
-    e.preventDefault();
-    const errBox = document.getElementById('login-error');
-    const btn    = document.getElementById('login-btn');
+function homeLoginSendCode() {
+    var errBox = document.getElementById('login-error');
+    var infoBox = document.getElementById('login-info');
     errBox.style.display = 'none';
+    infoBox.style.display = 'none';
+    var email = document.getElementById('login-email').value.trim();
+    if (!email || email.indexOf('@') === -1) {
+        errBox.textContent = 'Please enter a valid email address.';
+        errBox.style.display = 'block';
+        return;
+    }
+    var btn = document.getElementById('login-send-code-btn');
     btn.disabled = true;
-    btn.textContent = 'Logging in…';
-
-    const fd = new FormData();
-    fd.append('action',       'influencer_login_ajax');
-    fd.append('nonce',        '<?php echo wp_create_nonce("influencer_login_ajax"); ?>');
-    fd.append('email',        document.getElementById('login-email').value);
-    fd.append('password',     document.getElementById('login-password').value);
-    fd.append('redirect_url', '<?php echo esc_js(home_url("/portal/portal-home/")); ?>');
-
+    var fd = new FormData();
+    fd.append('action', 'ihq_send_login_code');
+    fd.append('nonce', '<?php echo esc_js($ihq_home_login_nonce); ?>');
+    fd.append('email', email);
+    fd.append('cf-turnstile-response', '');
     fetch('<?php echo admin_url("admin-ajax.php"); ?>', { method: 'POST', body: fd })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                window.location.href = data.data.redirect;
-            } else {
-                errBox.textContent      = data.data || 'Login failed. Please try again.';
-                errBox.style.display    = 'block';
-                btn.disabled            = false;
-                btn.textContent         = 'Login';
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            btn.disabled = false;
+            if (!data.success) {
+                errBox.textContent = homeLoginJsonErr(data);
+                errBox.style.display = 'block';
+                return;
             }
+            var d = data.data;
+            infoBox.textContent = d.message || 'If that email matches an account, you will receive a code.';
+            infoBox.style.display = 'block';
+            if (!d.signup_token || d.skipped) {
+                return;
+            }
+            homeLoginSignupToken = d.signup_token;
+            var minutes = d.expires_minutes || 15;
+            document.getElementById('home-login-code-expires').textContent =
+                'Code expires in ' + minutes + ' minute' + (minutes === 1 ? '' : 's') + '.';
+            document.getElementById('login-code-error').style.display = 'none';
+            document.getElementById('home-login-step-email').style.display = 'none';
+            document.getElementById('home-login-step-code').style.display = 'block';
         })
-        .catch(() => {
-            errBox.textContent   = 'Network error. Please try again.';
+        .catch(function () {
+            btn.disabled = false;
+            errBox.textContent = 'Network error. Please try again.';
             errBox.style.display = 'block';
-            btn.disabled         = false;
-            btn.textContent      = 'Login';
         });
 }
+
+function homeLoginVerify() {
+    var errEl = document.getElementById('login-code-error');
+    errEl.style.display = 'none';
+    var raw = document.getElementById('login-code').value.replace(/\D/g, '');
+    if (raw.length !== 6) {
+        errEl.textContent = 'Enter the 6-digit code from your email.';
+        errEl.style.display = 'block';
+        return;
+    }
+    if (!homeLoginSignupToken) {
+        errEl.textContent = 'Send a code first.';
+        errEl.style.display = 'block';
+        return;
+    }
+    var btn = document.getElementById('login-verify-btn');
+    btn.disabled = true;
+    var fd = new FormData();
+    fd.append('action', 'ihq_verify_login_code');
+    fd.append('nonce', '<?php echo esc_js($ihq_home_login_nonce); ?>');
+    fd.append('signup_token', homeLoginSignupToken);
+    fd.append('code', raw);
+    fd.append('redirect_url', '<?php echo esc_js(home_url("/portal/portal-home/")); ?>');
+    fetch('<?php echo admin_url("admin-ajax.php"); ?>', { method: 'POST', body: fd })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            btn.disabled = false;
+            if (!data.success) {
+                errEl.textContent = homeLoginJsonErr(data);
+                errEl.style.display = 'block';
+                return;
+            }
+            window.location.href = data.data.redirect_url || '<?php echo esc_js(home_url("/portal/portal-home/")); ?>';
+        })
+        .catch(function () {
+            btn.disabled = false;
+            errEl.textContent = 'Network error. Please try again.';
+            errEl.style.display = 'block';
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    var sendBtn = document.getElementById('login-send-code-btn');
+    var verifyBtn = document.getElementById('login-verify-btn');
+    var backBtn = document.getElementById('login-back-btn');
+    if (sendBtn) sendBtn.addEventListener('click', homeLoginSendCode);
+    if (verifyBtn) verifyBtn.addEventListener('click', homeLoginVerify);
+    if (backBtn) {
+        backBtn.addEventListener('click', function () {
+            homeLoginSignupToken = '';
+            document.getElementById('home-login-step-code').style.display = 'none';
+            document.getElementById('home-login-step-email').style.display = 'block';
+            document.getElementById('login-code-error').style.display = 'none';
+        });
+    }
+});
+
 
 document.addEventListener("DOMContentLoaded", function() {
     function revealOnScroll() {
@@ -610,7 +715,6 @@ document.addEventListener("DOMContentLoaded", function() {
             e.preventDefault();
             
             const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
             const firstName = document.getElementById('first_name').value;
             const lastName = document.getElementById('last_name').value;
             const platformHandle = document.getElementById('platform_handle').value;
@@ -619,16 +723,6 @@ document.addEventListener("DOMContentLoaded", function() {
             
             if (!email) {
                 alert('Please enter your email address.');
-                return;
-            }
-            
-            if (!password) {
-                alert('Please enter a password.');
-                return;
-            }
-            
-            if (password.length < 6) {
-                alert('Password must be at least 6 characters.');
                 return;
             }
             
@@ -670,7 +764,6 @@ document.addEventListener("DOMContentLoaded", function() {
             const formData = new FormData();
             formData.append('action', 'send_verification_email');
             formData.append('email', email);
-            formData.append('password', password);
             formData.append('first_name', firstName);
             formData.append('last_name', lastName);
             formData.append('platform_handle', platformHandle);

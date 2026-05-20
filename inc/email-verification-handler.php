@@ -31,8 +31,8 @@ function handle_verification_email() {
         return;
     }
     
-    if (empty($password) || strlen($password) < 6) {
-        wp_send_json_error('Password must be at least 6 characters');
+    if ( $password !== '' && strlen( $password ) < 6 ) {
+        wp_send_json_error( 'Password must be at least 6 characters' );
         return;
     }
     
@@ -48,7 +48,7 @@ function handle_verification_email() {
     // Store registration data temporarily in options (expires in 24 hours)
     $registration_data = array(
         'email' => $email,
-        'password' => $password, // Will be hashed when user is created
+        'password' => $password,
         'first_name' => $first_name,
         'last_name' => $last_name,
         'platform_handle' => $platform_handle,
@@ -142,6 +142,567 @@ function handle_verification_email() {
     }
 }
 
+/** Registration / login email code validity in seconds. */
+const IHQ_REG_CODE_EXPIRY_SECONDS = 900;
+
+/** Login-only email code uses the same TTL as registration. */
+const IHQ_LOGIN_CODE_EXPIRY_SECONDS = 900;
+
+/**
+ * Whether the WP user has the influencer role.
+ *
+ * @param WP_User $user User object.
+ * @return bool
+ */
+function ihq_user_has_influencer_role( $user ) {
+    return $user instanceof WP_User && in_array( 'influencer', (array) $user->roles, true );
+}
+
+/**
+ * Create influencer user + meta + OAuth from pending registration data.
+ *
+ * @param array $registration_data Keys: email, password (optional — auto-generated if missing/short), first_name, last_name, platform_handle, comm_methods, challenge_type.
+ * @return int|WP_Error User ID or error.
+ */
+function ihq_create_influencer_user_from_registration_data( array $registration_data ) {
+    $email = isset( $registration_data['email'] ) ? sanitize_email( $registration_data['email'] ) : '';
+    $password = isset( $registration_data['password'] ) ? (string) $registration_data['password'] : '';
+    if ( $password === '' ) {
+        $password = wp_generate_password( 32, true, true );
+    }
+    $first_name       = isset( $registration_data['first_name'] ) ? $registration_data['first_name'] : '';
+    $last_name        = isset( $registration_data['last_name'] ) ? $registration_data['last_name'] : '';
+    $platform_handle  = isset( $registration_data['platform_handle'] ) ? $registration_data['platform_handle'] : '';
+    $comm_methods     = isset( $registration_data['comm_methods'] ) && is_array( $registration_data['comm_methods'] ) ? $registration_data['comm_methods'] : array();
+    $challenge_type   = isset( $registration_data['challenge_type'] ) ? $registration_data['challenge_type'] : '';
+
+    if ( ! is_email( $email ) ) {
+        return new WP_Error( 'invalid_email', 'Invalid email address' );
+    }
+
+    if ( email_exists( $email ) ) {
+        return new WP_Error( 'email_exists', 'This email is already registered' );
+    }
+
+    $username = sanitize_user( current( explode( '@', $email ) ) );
+    $original_username = $username;
+    $counter           = 1;
+    while ( username_exists( $username ) ) {
+        $username = $original_username . $counter;
+        ++$counter;
+    }
+
+    $user_id = wp_create_user( $username, $password, $email );
+    if ( is_wp_error( $user_id ) ) {
+        return $user_id;
+    }
+
+    if ( $first_name ) {
+        update_user_meta( $user_id, 'first_name', $first_name );
+    }
+    if ( $last_name ) {
+        update_user_meta( $user_id, 'last_name', $last_name );
+    }
+    if ( $platform_handle ) {
+        update_user_meta( $user_id, 'platform_handle', $platform_handle );
+    }
+
+    $user = new WP_User( $user_id );
+    $user->set_role( 'influencer' );
+
+    if ( ! empty( $comm_methods ) ) {
+        update_user_meta( $user_id, 'communication_methods', $comm_methods );
+        $first_method = array_key_first( $comm_methods );
+        if ( $first_method ) {
+            update_user_meta( $user_id, 'preferred_communication', $first_method );
+            update_user_meta( $user_id, 'communication_username', $comm_methods[ $first_method ] );
+        }
+    }
+
+    if ( ! empty( $challenge_type ) ) {
+        update_user_meta( $user_id, 'challenge_type', $challenge_type );
+    }
+
+    update_user_meta( $user_id, 'registration_date', current_time( 'mysql' ) );
+    update_user_meta( $user_id, 'email_verified', true );
+
+    $ihq_oauth_response = ihq_register_oauth_user( $user_id, $first_name, $last_name, $email );
+    if ( $ihq_oauth_response && ! empty( $ihq_oauth_response['AccessToken'] ) ) {
+        update_user_meta( $user_id, 'ihq_access_token', $ihq_oauth_response['AccessToken'] );
+        update_user_meta( $user_id, 'ihq_id_token', $ihq_oauth_response['IdToken'] );
+        update_user_meta( $user_id, 'ihq_refresh_token', $ihq_oauth_response['RefreshToken'] ?? '' );
+        update_user_meta( $user_id, 'ihq_token_type', $ihq_oauth_response['TokenType'] ?? 'Bearer' );
+        update_user_meta( $user_id, 'ihq_token_expires', time() + (int) ( $ihq_oauth_response['ExpiresIn'] ?? 3600 ) );
+    }
+
+    return (int) $user_id;
+}
+
+/**
+ * Verify Turnstile for registration AJAX when keys are configured.
+ *
+ * @return true|WP_Error
+ */
+function ihq_verify_turnstile_or_error_for_ajax() {
+    if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_configured() ) {
+        $token = isset( $_POST['cf-turnstile-response'] ) ? sanitize_text_field( wp_unslash( $_POST['cf-turnstile-response'] ) ) : '';
+        $check = ihq_turnstile_verify_response( $token );
+        if ( empty( $check['success'] ) ) {
+            return new WP_Error( 'turnstile_failed', __( 'Human verification failed. Please try again.', 'avantage-baccarat' ) );
+        }
+    }
+    return true;
+}
+
+/**
+ * Send 6-digit registration code email (landing-page modal flow).
+ */
+function ihq_handle_send_registration_code_ajax() {
+    if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_reg_code_nonce' ) ) {
+        wp_send_json_error( array( 'message' => __( 'Invalid security token', 'avantage-baccarat' ) ) );
+        return;
+    }
+
+    $turn = ihq_verify_turnstile_or_error_for_ajax();
+    if ( is_wp_error( $turn ) ) {
+        wp_send_json_error( array( 'message' => $turn->get_error_message() ) );
+        return;
+    }
+
+    $email           = isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '';
+    $first_name      = isset( $_POST['first_name'] ) ? sanitize_text_field( wp_unslash( $_POST['first_name'] ) ) : '';
+    $last_name       = isset( $_POST['last_name'] ) ? sanitize_text_field( wp_unslash( $_POST['last_name'] ) ) : '';
+    $platform_handle = isset( $_POST['platform_handle'] ) ? sanitize_text_field( wp_unslash( $_POST['platform_handle'] ) ) : '';
+    $challenge_type  = isset( $_POST['challenge_type'] ) ? sanitize_text_field( wp_unslash( $_POST['challenge_type'] ) ) : '';
+    $comm_primary    = isset( $_POST['comm_primary'] ) ? sanitize_text_field( wp_unslash( $_POST['comm_primary'] ) ) : 'email';
+    $telegram_user   = isset( $_POST['telegram_username'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_username'] ) ) : '';
+
+    if ( ! is_email( $email ) ) {
+        wp_send_json_error( array( 'message' => __( 'Invalid email address', 'avantage-baccarat' ) ) );
+        return;
+    }
+
+    if ( $first_name === '' || $last_name === '' ) {
+        wp_send_json_error( array( 'message' => __( 'First and last name are required', 'avantage-baccarat' ) ) );
+        return;
+    }
+
+    if ( $comm_primary === 'telegram' ) {
+        $tu = ltrim( trim( $telegram_user ), '@' );
+        if ( $tu === '' ) {
+            wp_send_json_error( array( 'message' => __( 'Please enter your Telegram username', 'avantage-baccarat' ) ) );
+            return;
+        }
+        $comm_methods = array( 'telegram' => '@' . $tu );
+    } else {
+        $comm_methods = array( 'email' => $email );
+    }
+
+    if ( email_exists( $email ) ) {
+        wp_send_json_error( array( 'message' => __( 'This email is already registered', 'avantage-baccarat' ) ) );
+        return;
+    }
+
+    $throttle_key = 'ihq_reg_send_' . md5( strtolower( $email ) );
+    if ( get_transient( $throttle_key ) ) {
+        wp_send_json_error( array( 'message' => __( 'Please wait a moment before requesting another code', 'avantage-baccarat' ) ) );
+        return;
+    }
+    set_transient( $throttle_key, 1, 45 );
+
+    $email_map_key = 'ihq_pending_reg_email_' . md5( strtolower( $email ) );
+    $old_token     = get_option( $email_map_key, '' );
+    if ( is_string( $old_token ) && $old_token !== '' ) {
+        delete_option( 'pending_reg_code_' . $old_token );
+    }
+
+    $signup_token = wp_generate_password( 32, false, false );
+    $code         = sprintf( '%06d', wp_rand( 0, 999999 ) );
+    $code_hash    = hash_hmac( 'sha256', $code, wp_salt( 'ihq_reg_code' ) . $signup_token );
+
+    $expires = time() + IHQ_REG_CODE_EXPIRY_SECONDS;
+
+    $record = array(
+        'email'            => $email,
+        'first_name'       => $first_name,
+        'last_name'        => $last_name,
+        'platform_handle'  => $platform_handle,
+        'comm_methods'     => $comm_methods,
+        'challenge_type'   => $challenge_type,
+        'code_hash'        => $code_hash,
+        'expires'          => $expires,
+        'timestamp'        => time(),
+    );
+
+    update_option( 'pending_reg_code_' . $signup_token, $record, false );
+    update_option( $email_map_key, $signup_token, false );
+
+    $minutes_left = (int) ceil( IHQ_REG_CODE_EXPIRY_SECONDS / 60 );
+
+    $subject = __( 'Your Influencer HQ registration code', 'avantage-baccarat' );
+    $message = '
+    <!DOCTYPE html>
+    <html><head><meta charset="UTF-8"></head>
+    <body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background:#0a0a0a;color:#f0f0f0;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 20px;">
+        <tr><td align="center">
+          <table width="560" cellpadding="0" cellspacing="0" style="background:#161612;border:1px solid rgba(240,201,58,.35);border-radius:12px;">
+            <tr><td style="padding:40px 32px;text-align:center;">
+              <h1 style="color:#F0C93A;font-size:26px;margin:0 0 16px;">Influencer HQ</h1>
+              <p style="color:#EAD9B0;font-size:16px;line-height:1.6;margin:0 0 24px;">Your registration code is:</p>
+              <div style="font-size:36px;font-weight:700;letter-spacing:12px;color:#fff;margin:16px 0 24px;">' . esc_html( $code ) . '</div>
+              <p style="color:#888;font-size:14px;line-height:1.6;margin:0;">This code expires in ' . (int) $minutes_left . ' minutes.</p>
+            </td></tr>
+          </table>
+        </td></tr>
+      </table>
+    </body></html>';
+
+    $headers = array(
+        'Content-Type: text/html; charset=UTF-8',
+        'From: Influencer HQ <verify@influencerhq.co>',
+    );
+
+    $mail_error = null;
+    $failed_hook = function ( $wp_error ) use ( &$mail_error ) {
+        $mail_error = $wp_error->get_error_message();
+    };
+    add_action( 'wp_mail_failed', $failed_hook );
+
+    $sent = wp_mail( $email, $subject, $message, $headers );
+    remove_action( 'wp_mail_failed', $failed_hook );
+
+    if ( ! $sent ) {
+        delete_option( 'pending_reg_code_' . $signup_token );
+        delete_option( $email_map_key );
+        $err = $mail_error ? $mail_error : __( 'Failed to send email', 'avantage-baccarat' );
+        error_log( 'IHQ send_registration_code failed for ' . $email . ': ' . $err );
+        wp_send_json_error( array( 'message' => $err ) );
+        return;
+    }
+
+    wp_send_json_success(
+        array(
+            'signup_token'     => $signup_token,
+            'expires_minutes'  => $minutes_left,
+        )
+    );
+}
+add_action( 'wp_ajax_ihq_send_registration_code', 'ihq_handle_send_registration_code_ajax' );
+add_action( 'wp_ajax_nopriv_ihq_send_registration_code', 'ihq_handle_send_registration_code_ajax' );
+
+/**
+ * Verify 6-digit code and complete registration (modal flow).
+ */
+function ihq_handle_verify_registration_code_ajax() {
+    if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_reg_code_nonce' ) ) {
+        wp_send_json_error( array( 'message' => __( 'Invalid security token', 'avantage-baccarat' ) ) );
+        return;
+    }
+
+    $signup_token = isset( $_POST['signup_token'] ) ? sanitize_text_field( wp_unslash( $_POST['signup_token'] ) ) : '';
+    $code_raw     = isset( $_POST['code'] ) ? preg_replace( '/\D/', '', (string) wp_unslash( $_POST['code'] ) ) : '';
+
+    if ( $signup_token === '' || strlen( $code_raw ) !== 6 ) {
+        wp_send_json_error( array( 'message' => __( 'Enter the 6-digit code from your email', 'avantage-baccarat' ) ) );
+        return;
+    }
+
+    $opt_key  = 'pending_reg_code_' . $signup_token;
+    $pending  = get_option( $opt_key );
+    if ( ! is_array( $pending ) || empty( $pending['email'] ) ) {
+        wp_send_json_error( array( 'message' => __( 'Invalid or expired code. Please start again', 'avantage-baccarat' ) ) );
+        return;
+    }
+
+    if ( time() > (int) $pending['expires'] ) {
+        delete_option( $opt_key );
+        $emap = 'ihq_pending_reg_email_' . md5( strtolower( $pending['email'] ) );
+        delete_option( $emap );
+        wp_send_json_error( array( 'message' => __( 'This code has expired. Request a new one', 'avantage-baccarat' ) ) );
+        return;
+    }
+
+    $expected_hash = isset( $pending['code_hash'] ) ? $pending['code_hash'] : '';
+    $try_hash      = hash_hmac( 'sha256', $code_raw, wp_salt( 'ihq_reg_code' ) . $signup_token );
+
+    if ( ! hash_equals( $expected_hash, $try_hash ) ) {
+        wp_send_json_error( array( 'message' => __( 'That code does not match. Check your email and try again', 'avantage-baccarat' ) ) );
+        return;
+    }
+
+    $emap    = 'ihq_pending_reg_email_' . md5( strtolower( $pending['email'] ) );
+    $user_id = ihq_create_influencer_user_from_pending_data_normalized( $pending );
+
+    if ( is_wp_error( $user_id ) ) {
+        delete_option( $opt_key );
+        delete_option( $emap );
+        wp_send_json_error( array( 'message' => $user_id->get_error_message() ) );
+        return;
+    }
+
+    delete_option( $opt_key );
+    delete_option( $emap );
+
+    wp_set_current_user( $user_id );
+    wp_set_auth_cookie( $user_id, true );
+
+    wp_send_json_success(
+        array(
+            'redirect_url' => add_query_arg( 'welcome', 'true', home_url( '/portal/portal-home/' ) ),
+        )
+    );
+}
+add_action( 'wp_ajax_ihq_verify_registration_code', 'ihq_handle_verify_registration_code_ajax' );
+add_action( 'wp_ajax_nopriv_ihq_verify_registration_code', 'ihq_handle_verify_registration_code_ajax' );
+
+/**
+ * @param array $pending Row from pending_reg_code_* option.
+ * @return int|WP_Error
+ */
+function ihq_create_influencer_user_from_pending_data_normalized( array $pending ) {
+    $data = array(
+        'email'           => sanitize_email( $pending['email'] ),
+        'password'        => isset( $pending['password'] ) ? $pending['password'] : '',
+        'first_name'      => isset( $pending['first_name'] ) ? $pending['first_name'] : '',
+        'last_name'       => isset( $pending['last_name'] ) ? $pending['last_name'] : '',
+        'platform_handle' => isset( $pending['platform_handle'] ) ? $pending['platform_handle'] : '',
+        'comm_methods'    => isset( $pending['comm_methods'] ) && is_array( $pending['comm_methods'] ) ? $pending['comm_methods'] : array(),
+        'challenge_type'  => isset( $pending['challenge_type'] ) ? $pending['challenge_type'] : '',
+    );
+    return ihq_create_influencer_user_from_registration_data( $data );
+}
+
+/**
+ * Refresh IHQ platform OAuth tokens after sign-in (used by passwordless login).
+ *
+ * @param int $user_id WordPress user ID.
+ */
+function ihq_refresh_influencer_oauth_tokens( $user_id ) {
+    $user_id = (int) $user_id;
+    if ( $user_id <= 0 ) {
+        return;
+    }
+    $user = get_user_by( 'id', $user_id );
+    if ( ! $user ) {
+        return;
+    }
+    $first_name = get_user_meta( $user_id, 'first_name', true );
+    $last_name  = get_user_meta( $user_id, 'last_name', true );
+    $ihq_data   = ihq_register_oauth_user( $user_id, $first_name, $last_name, $user->user_email );
+    if ( $ihq_data && ! empty( $ihq_data['AccessToken'] ) ) {
+        update_user_meta( $user_id, 'ihq_access_token', $ihq_data['AccessToken'] );
+        update_user_meta( $user_id, 'ihq_id_token', $ihq_data['IdToken'] );
+        update_user_meta( $user_id, 'ihq_refresh_token', $ihq_data['RefreshToken'] ?? '' );
+        update_user_meta( $user_id, 'ihq_token_type', $ihq_data['TokenType'] ?? 'Bearer' );
+        update_user_meta( $user_id, 'ihq_token_expires', time() + (int) ( $ihq_data['ExpiresIn'] ?? 3600 ) );
+    }
+}
+
+/**
+ * Passwordless influencer login: send 6-digit email code.
+ */
+function ihq_handle_send_login_code_ajax() {
+    if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_login_code_nonce' ) ) {
+        wp_send_json_error( array( 'message' => __( 'Invalid security token', 'avantage-baccarat' ) ) );
+        return;
+    }
+
+    $turn = ihq_verify_turnstile_or_error_for_ajax();
+    if ( is_wp_error( $turn ) ) {
+        wp_send_json_error( array( 'message' => $turn->get_error_message() ) );
+        return;
+    }
+
+    $email = isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '';
+    if ( ! is_email( $email ) ) {
+        wp_send_json_error( array( 'message' => __( 'Invalid email address', 'avantage-baccarat' ) ) );
+        return;
+    }
+
+    $user = get_user_by( 'email', $email );
+
+    /**
+     * Always return the same success copy if the inbox exists — avoids leaking which emails are registered.
+     * Only deliver a code when the user exists and is an influencer.
+     */
+    $generic_success = __( 'If that email matches an Influencer HQ account, you will receive a sign-in code shortly.', 'avantage-baccarat' );
+
+    if ( ! $user || ! ihq_user_has_influencer_role( $user ) ) {
+        wp_send_json_success(
+            array(
+                'signup_token'    => '',
+                'expires_minutes' => (int) ceil( IHQ_LOGIN_CODE_EXPIRY_SECONDS / 60 ),
+                'message'         => $generic_success,
+                'skipped'         => true,
+            )
+        );
+        return;
+    }
+
+    $throttle_key = 'ihq_login_send_' . md5( strtolower( $email ) );
+    if ( get_transient( $throttle_key ) ) {
+        wp_send_json_error( array( 'message' => __( 'Please wait a moment before requesting another code', 'avantage-baccarat' ) ) );
+        return;
+    }
+    set_transient( $throttle_key, 1, 45 );
+
+    $email_map_key = 'ihq_pending_login_email_' . md5( strtolower( $email ) );
+    $old_token     = get_option( $email_map_key, '' );
+    if ( is_string( $old_token ) && $old_token !== '' ) {
+        delete_option( 'pending_login_code_' . $old_token );
+    }
+
+    $signup_token = wp_generate_password( 32, false, false );
+    $code         = sprintf( '%06d', wp_rand( 0, 999999 ) );
+    $code_hash    = hash_hmac( 'sha256', $code, wp_salt( 'ihq_login_code' ) . $signup_token );
+
+    $expires = time() + IHQ_LOGIN_CODE_EXPIRY_SECONDS;
+
+    $record = array(
+        'email'       => $email,
+        'user_id'     => (int) $user->ID,
+        'code_hash'   => $code_hash,
+        'expires'     => $expires,
+        'timestamp'   => time(),
+    );
+
+    update_option( 'pending_login_code_' . $signup_token, $record, false );
+    update_option( $email_map_key, $signup_token, false );
+
+    $minutes_left = (int) ceil( IHQ_LOGIN_CODE_EXPIRY_SECONDS / 60 );
+
+    $subject = __( 'Your Influencer HQ sign-in code', 'avantage-baccarat' );
+    $message = '
+    <!DOCTYPE html>
+    <html><head><meta charset="UTF-8"></head>
+    <body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background:#0a0a0a;color:#f0f0f0;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 20px;">
+        <tr><td align="center">
+          <table width="560" cellpadding="0" cellspacing="0" style="background:#161612;border:1px solid rgba(240,201,58,.35);border-radius:12px;">
+            <tr><td style="padding:40px 32px;text-align:center;">
+              <h1 style="color:#F0C93A;font-size:26px;margin:0 0 16px;">Influencer HQ</h1>
+              <p style="color:#EAD9B0;font-size:16px;line-height:1.6;margin:0 0 24px;">Your sign-in code is:</p>
+              <div style="font-size:36px;font-weight:700;letter-spacing:12px;color:#fff;margin:16px 0 24px;">' . esc_html( $code ) . '</div>
+              <p style="color:#888;font-size:14px;line-height:1.6;margin:0;">This code expires in ' . (int) $minutes_left . ' minutes.</p>
+            </td></tr>
+          </table>
+        </td></tr>
+      </table>
+    </body></html>';
+
+    $headers = array(
+        'Content-Type: text/html; charset=UTF-8',
+        'From: Influencer HQ <verify@influencerhq.co>',
+    );
+
+    $mail_error = null;
+    $failed_hook = function ( $wp_error ) use ( &$mail_error ) {
+        $mail_error = $wp_error->get_error_message();
+    };
+    add_action( 'wp_mail_failed', $failed_hook );
+
+    $sent = wp_mail( $email, $subject, $message, $headers );
+    remove_action( 'wp_mail_failed', $failed_hook );
+
+    if ( ! $sent ) {
+        delete_option( 'pending_login_code_' . $signup_token );
+        delete_option( $email_map_key );
+        $err = $mail_error ? $mail_error : __( 'Failed to send email', 'avantage-baccarat' );
+        error_log( 'IHQ send_login_code failed for ' . $email . ': ' . $err );
+        wp_send_json_error( array( 'message' => $err ) );
+        return;
+    }
+
+    wp_send_json_success(
+        array(
+            'signup_token'    => $signup_token,
+            'expires_minutes' => $minutes_left,
+            'message'         => $generic_success,
+        )
+    );
+}
+add_action( 'wp_ajax_ihq_send_login_code', 'ihq_handle_send_login_code_ajax' );
+add_action( 'wp_ajax_nopriv_ihq_send_login_code', 'ihq_handle_send_login_code_ajax' );
+
+/**
+ * Passwordless influencer login: verify 6-digit email code.
+ */
+function ihq_handle_verify_login_code_ajax() {
+    if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_login_code_nonce' ) ) {
+        wp_send_json_error( array( 'message' => __( 'Invalid security token', 'avantage-baccarat' ) ) );
+        return;
+    }
+
+    $signup_token = isset( $_POST['signup_token'] ) ? sanitize_text_field( wp_unslash( $_POST['signup_token'] ) ) : '';
+    $code_raw     = isset( $_POST['code'] ) ? preg_replace( '/\D/', '', (string) wp_unslash( $_POST['code'] ) ) : '';
+
+    if ( $signup_token === '' || strlen( $code_raw ) !== 6 ) {
+        wp_send_json_error( array( 'message' => __( 'Enter the 6-digit code from your email', 'avantage-baccarat' ) ) );
+        return;
+    }
+
+    $opt_key = 'pending_login_code_' . $signup_token;
+    $pending = get_option( $opt_key );
+    if ( ! is_array( $pending ) || empty( $pending['email'] ) ) {
+        wp_send_json_error( array( 'message' => __( 'Invalid or expired code. Request a new one', 'avantage-baccarat' ) ) );
+        return;
+    }
+
+    if ( time() > (int) $pending['expires'] ) {
+        delete_option( $opt_key );
+        $emap = 'ihq_pending_login_email_' . md5( strtolower( $pending['email'] ) );
+        delete_option( $emap );
+        wp_send_json_error( array( 'message' => __( 'This code has expired. Request a new one', 'avantage-baccarat' ) ) );
+        return;
+    }
+
+    $expected_hash = isset( $pending['code_hash'] ) ? $pending['code_hash'] : '';
+    $try_hash      = hash_hmac( 'sha256', $code_raw, wp_salt( 'ihq_login_code' ) . $signup_token );
+
+    if ( ! hash_equals( $expected_hash, $try_hash ) ) {
+        wp_send_json_error( array( 'message' => __( 'That code does not match. Check your email and try again', 'avantage-baccarat' ) ) );
+        return;
+    }
+
+    $user_id = isset( $pending['user_id'] ) ? (int) $pending['user_id'] : 0;
+    $user    = ( $user_id > 0 ) ? get_user_by( 'id', $user_id ) : null;
+
+    if ( ! $user || ! ihq_user_has_influencer_role( $user ) ) {
+        $user = get_user_by( 'email', sanitize_email( $pending['email'] ) );
+        if ( ! $user || ! ihq_user_has_influencer_role( $user ) ) {
+            delete_option( $opt_key );
+            $emap = 'ihq_pending_login_email_' . md5( strtolower( $pending['email'] ) );
+            delete_option( $emap );
+            wp_send_json_error( array( 'message' => __( 'Invalid or expired code. Request a new one', 'avantage-baccarat' ) ) );
+            return;
+        }
+        $user_id = (int) $user->ID;
+    }
+
+    $emap = 'ihq_pending_login_email_' . md5( strtolower( $pending['email'] ) );
+    delete_option( $opt_key );
+    delete_option( $emap );
+
+    wp_set_current_user( $user_id );
+    wp_set_auth_cookie( $user_id, true );
+
+    ihq_refresh_influencer_oauth_tokens( $user_id );
+
+    $redirect = isset( $_POST['redirect_url'] ) ? esc_url_raw( wp_unslash( $_POST['redirect_url'] ) ) : home_url( '/portal/portal-home/' );
+    if ( $redirect === '' ) {
+        $redirect = home_url( '/portal/portal-home/' );
+    }
+
+    wp_send_json_success(
+        array(
+            'redirect_url' => $redirect,
+        )
+    );
+}
+add_action( 'wp_ajax_ihq_verify_login_code', 'ihq_handle_verify_login_code_ajax' );
+add_action( 'wp_ajax_nopriv_ihq_verify_login_code', 'ihq_handle_verify_login_code_ajax' );
+
 // Handle email verification and user creation
 add_action('template_redirect', 'handle_email_verification_and_user_creation');
 
@@ -168,86 +729,40 @@ function handle_email_verification_and_user_creation() {
         return;
     }
     
-    $email = $registration_data['email'];
-    $password = $registration_data['password'];
-    $first_name = isset($registration_data['first_name']) ? $registration_data['first_name'] : '';
-    $last_name = isset($registration_data['last_name']) ? $registration_data['last_name'] : '';
-    $platform_handle = isset($registration_data['platform_handle']) ? $registration_data['platform_handle'] : '';
-    $comm_methods = $registration_data['comm_methods'];
-    $challenge_type = $registration_data['challenge_type'];
-    
+    $comm_methods      = isset( $registration_data['comm_methods'] ) && is_array( $registration_data['comm_methods'] ) ? $registration_data['comm_methods'] : array();
+    $challenge_type    = isset( $registration_data['challenge_type'] ) ? $registration_data['challenge_type'] : '';
+
     // Check if email already exists
-    if (email_exists($email)) {
-        delete_option('pending_registration_' . $token);
-        wp_die('This email is already registered. Please login instead.', 'Already Registered', array('response' => 400));
+    if ( email_exists( $registration_data['email'] ) ) {
+        delete_option( 'pending_registration_' . $token );
+        wp_die( 'This email is already registered. Please login instead.', 'Already Registered', array( 'response' => 400 ) );
         return;
     }
-    
-    // Create username from email (part before @)
-    $username = sanitize_user(current(explode('@', $email)));
-    
-    // Make username unique if it exists
-    $original_username = $username;
-    $counter = 1;
-    while (username_exists($username)) {
-        $username = $original_username . $counter;
-        $counter++;
-    }
-    
-    // Create the user
-    $user_id = wp_create_user($username, $password, $email);
-    
-    if (is_wp_error($user_id)) {
-        wp_die('Failed to create account: ' . $user_id->get_error_message(), 'Registration Failed', array('response' => 500));
+
+    $result = ihq_create_influencer_user_from_registration_data(
+        array(
+            'email'           => $registration_data['email'],
+            'password'        => $registration_data['password'],
+            'first_name'      => isset( $registration_data['first_name'] ) ? $registration_data['first_name'] : '',
+            'last_name'       => isset( $registration_data['last_name'] ) ? $registration_data['last_name'] : '',
+            'platform_handle' => isset( $registration_data['platform_handle'] ) ? $registration_data['platform_handle'] : '',
+            'comm_methods'    => $comm_methods,
+            'challenge_type'  => $challenge_type,
+        )
+    );
+
+    if ( is_wp_error( $result ) ) {
+        wp_die( 'Failed to create account: ' . esc_html( $result->get_error_message() ), 'Registration Failed', array( 'response' => 500 ) );
         return;
     }
-    
-    // Store name and handle
-    if ($first_name) update_user_meta($user_id, 'first_name', $first_name);
-    if ($last_name) update_user_meta($user_id, 'last_name', $last_name);
-    if ($platform_handle) update_user_meta($user_id, 'platform_handle', $platform_handle);
 
-    // Set user role to influencer
-    $user = new WP_User($user_id);
-    $user->set_role('influencer');
-    
-    // Store communication methods in user meta
-    if (!empty($comm_methods) && is_array($comm_methods)) {
-        update_user_meta($user_id, 'communication_methods', $comm_methods);
-        
-        // Also store the first method as preferred method for backwards compatibility
-        $first_method = array_key_first($comm_methods);
-        if ($first_method) {
-            update_user_meta($user_id, 'preferred_communication', $first_method);
-            update_user_meta($user_id, 'communication_username', $comm_methods[$first_method]);
-        }
-    }
-    
-    // Store challenge type
-    if (!empty($challenge_type)) {
-        update_user_meta($user_id, 'challenge_type', $challenge_type);
-    }
-    
-    // Store registration date
-    update_user_meta($user_id, 'registration_date', current_time('mysql'));
-    update_user_meta($user_id, 'email_verified', true);
-
-    // ── Register user in InfluencerHQ platform via OAuth ─────────────────────
-    $ihq_oauth_response = ihq_register_oauth_user($user_id, $first_name, $last_name, $email);
-    if ($ihq_oauth_response && !empty($ihq_oauth_response['AccessToken'])) {
-        update_user_meta($user_id, 'ihq_access_token',   $ihq_oauth_response['AccessToken']);
-        update_user_meta($user_id, 'ihq_id_token',       $ihq_oauth_response['IdToken']);
-        update_user_meta($user_id, 'ihq_refresh_token',  $ihq_oauth_response['RefreshToken'] ?? '');
-        update_user_meta($user_id, 'ihq_token_type',     $ihq_oauth_response['TokenType']     ?? 'Bearer');
-        update_user_meta($user_id, 'ihq_token_expires',  time() + (int)($ihq_oauth_response['ExpiresIn'] ?? 3600));
-    }
-    // ─────────────────────────────────────────────────────────────────────────
+    $user_id = $result;
 
     // Delete the temporary registration data
-    delete_option('pending_registration_' . $token);
-    
+    delete_option( 'pending_registration_' . $token );
+
     // Log the user in automatically
-    wp_set_current_user($user_id);
+    wp_set_current_user( $user_id );
     wp_set_auth_cookie($user_id, true); // true = remember me
     
     // Redirect to portal with welcome parameter
@@ -309,17 +824,26 @@ function cleanup_expired_registrations() {
     
     // Get all pending registration options
     $results = $wpdb->get_results(
-        "SELECT option_name, option_value FROM {$wpdb->options} 
-        WHERE option_name LIKE 'pending_registration_%'",
+        "SELECT option_name, option_value FROM {$wpdb->options}
+        WHERE option_name LIKE 'pending_registration_%'
+        OR option_name LIKE 'pending_reg_code_%'
+        OR option_name LIKE 'pending_login_code_%'",
         ARRAY_A
     );
-    
+
     $current_time = time();
-    
+
     foreach ($results as $row) {
         $data = maybe_unserialize($row['option_value']);
-        if (isset($data['expires']) && $current_time > $data['expires']) {
-            delete_option($row['option_name']);
+        if ( isset( $data['expires'] ) && $current_time > $data['expires'] ) {
+            delete_option( $row['option_name'] );
+            $name = $row['option_name'];
+            if ( strpos( $name, 'pending_reg_code_' ) === 0 && is_array( $data ) && ! empty( $data['email'] ) ) {
+                delete_option( 'ihq_pending_reg_email_' . md5( strtolower( $data['email'] ) ) );
+            }
+            if ( strpos( $name, 'pending_login_code_' ) === 0 && is_array( $data ) && ! empty( $data['email'] ) ) {
+                delete_option( 'ihq_pending_login_email_' . md5( strtolower( $data['email'] ) ) );
+            }
         }
     }
 }

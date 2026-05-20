@@ -8,6 +8,13 @@
 
 get_header();
 get_template_part( 'template-parts/portal-styles' );
+
+$ihq_portal_login_nonce = wp_create_nonce( 'ihq_login_code_nonce' );
+$ihq_portal_reg_nonce   = wp_create_nonce( 'ihq_reg_code_nonce' );
+$ihq_portal_ts_site_key = '';
+if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_configured() && defined( 'CF_TURNSTILE_SITE_KEY' ) ) {
+	$ihq_portal_ts_site_key = CF_TURNSTILE_SITE_KEY;
+}
 ?>
 
 <main id="primary" class="site-main">
@@ -71,71 +78,77 @@ get_template_part( 'template-parts/portal-styles' );
                     </button>
                 </div>
 
-                <!-- ── LOGIN FORM ────────────────────────────────────────── -->
+                <!-- ── LOGIN (6-digit email code) ───────────────────────────── -->
                 <div id="pane-login">
-                    <form id="portal-login-form" onsubmit="handlePortalLogin(event)" novalidate>
-
+                    <div id="login-step-email">
+                        <p style="color:#aaa;font-size:.9rem;margin-bottom:16px;">We’ll email you a one-time code to sign in. No password needed.</p>
                         <div class="portal-form-group">
                             <label for="login-email" class="portal-label">Email</label>
                             <input type="email"
                                    id="login-email"
-                                   name="email"
                                    class="portal-input"
                                    placeholder="your@email.com"
-                                   required autocomplete="email">
+                                   autocomplete="email">
                         </div>
-
-                        <div class="portal-form-group">
-                            <label for="login-password" class="portal-label">Password</label>
-                            <input type="password"
-                                   id="login-password"
-                                   name="password"
-                                   class="portal-input"
-                                   placeholder="Your password"
-                                   required autocomplete="current-password">
-                        </div>
-
                         <div id="login-error" class="portal-alert portal-alert-error" style="display:none;"></div>
+                        <div id="login-info" class="portal-alert portal-alert-success" style="display:none;background:rgba(255,215,122,.08);border-color:rgba(230,207,160,.35);color:#e8dcb8;"></div>
 
-                        <?php if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_configured() ) : ?>
-                            <div id="portal-login-turnstile" class="mt-3" aria-hidden="true"></div>
+                        <?php if ( $ihq_portal_ts_site_key !== '' ) : ?>
+                        <div id="portal-login-turnstile" class="mt-3" data-sitekey="<?php echo esc_attr( $ihq_portal_ts_site_key ); ?>" style="display:flex;justify-content:center;"></div>
                         <?php endif; ?>
 
-                        <button type="submit" id="login-btn" class="portal-btn-primary w-100 mt-3">
-                            Login
+                        <button type="button" id="login-send-code-btn" class="portal-btn-primary w-100 mt-3">
+                            Send sign-in code
                         </button>
+                    </div>
+
+                    <div id="login-step-code" style="display:none;">
+                        <p style="color:#aaa;font-size:.9rem;margin-bottom:16px;">Enter the code we sent you.</p>
+                        <div class="portal-form-group">
+                            <label for="login-code" class="portal-label">6-digit code</label>
+                            <input type="text"
+                                   id="login-code"
+                                   class="portal-input"
+                                   placeholder="000000"
+                                   maxlength="6"
+                                   inputmode="numeric"
+                                   autocomplete="one-time-code"
+                                   style="letter-spacing:.35em;text-align:center;">
+                        </div>
+                        <p id="login-code-expires" style="color:var(--gold);font-size:.85rem;margin-bottom:8px;"></p>
+                        <div id="login-code-error" class="portal-alert portal-alert-error" style="display:none;"></div>
+                        <button type="button" id="login-verify-btn" class="portal-btn-primary w-100 mt-3">Verify & sign in</button>
+                        <button type="button" id="login-back-btn" class="portal-btn-outline w-100 mt-2">Back</button>
+                    </div>
 
                         <p class="text-center mt-3" style="color:#aaa; font-size:.9rem;">
                             Don't have an account?
                             <a href="#" onclick="switchPortalTab('register'); return false;"
                                style="color: var(--gold); text-decoration:none;">Register here</a>
                         </p>
-
-                    </form>
                 </div>
 
-                <!-- ── REGISTER FORM ─────────────────────────────────────── -->
+                <!-- ── REGISTER (6-digit email code) ───────────────────────── -->
                 <div id="pane-register" style="display:none;">
-                    <form id="portal-register-form" onsubmit="handlePortalRegister(event)" novalidate>
+                    <div id="reg-step-details">
+                        <p style="color:#aaa;font-size:.9rem;margin-bottom:16px;">Tell us who you are. We’ll email a registration code.</p>
 
                         <div class="portal-form-row">
                             <div class="portal-form-group">
                                 <label for="reg-first-name" class="portal-label">First Name</label>
                                 <input type="text"
                                        id="reg-first-name"
-                                       name="first_name"
                                        class="portal-input"
                                        placeholder="First name"
-                                       required autocomplete="given-name">
+                                       autocomplete="given-name">
                             </div>
                             <div class="portal-form-group">
                                 <label for="reg-last-name" class="portal-label">Last Name</label>
                                 <input type="text"
                                        id="reg-last-name"
-                                       name="last_name"
                                        class="portal-input"
                                        placeholder="Last name"
-                                       required autocomplete="family-name">
+                                       autocomplete="family-name">
                             </div>
                         </div>
 
@@ -143,37 +156,47 @@ get_template_part( 'template-parts/portal-styles' );
                             <label for="reg-email" class="portal-label">Email</label>
                             <input type="email"
                                    id="reg-email"
-                                   name="email"
                                    class="portal-input"
                                    placeholder="your@email.com"
-                                   required autocomplete="email">
-                        </div>
-
-                        <div class="portal-form-group">
-                            <label for="reg-password" class="portal-label">Password</label>
-                            <input type="password"
-                                   id="reg-password"
-                                   name="password"
-                                   class="portal-input"
-                                   placeholder="Min 6 characters"
-                                   required autocomplete="new-password"
-                                   minlength="6">
+                                   autocomplete="email">
                         </div>
 
                         <div id="register-error"   class="portal-alert portal-alert-error"   style="display:none;"></div>
                         <div id="register-success" class="portal-alert portal-alert-success" style="display:none;"></div>
 
-                        <button type="submit" id="register-btn" class="portal-btn-primary w-100 mt-3">
-                            Create Account
+                        <?php if ( $ihq_portal_ts_site_key !== '' ) : ?>
+                        <div id="portal-reg-turnstile" class="mt-3" data-sitekey="<?php echo esc_attr( $ihq_portal_ts_site_key ); ?>" style="display:flex;justify-content:center;"></div>
+                        <?php endif; ?>
+
+                        <button type="button" id="register-send-btn" class="portal-btn-primary w-100 mt-3">
+                            Send registration code
                         </button>
+                    </div>
+
+                    <div id="reg-step-code" style="display:none;">
+                        <p style="color:#aaa;font-size:.9rem;margin-bottom:16px;">Enter your code to finish signup.</p>
+                        <div class="portal-form-group">
+                            <label for="reg-code" class="portal-label">6-digit code</label>
+                            <input type="text"
+                                   id="reg-code"
+                                   class="portal-input"
+                                   placeholder="000000"
+                                   maxlength="6"
+                                   inputmode="numeric"
+                                   autocomplete="one-time-code"
+                                   style="letter-spacing:.35em;text-align:center;">
+                        </div>
+                        <p id="reg-code-expires" style="color:var(--gold);font-size:.85rem;"></p>
+                        <div id="reg-code-error" class="portal-alert portal-alert-error" style="display:none;"></div>
+                        <button type="button" id="reg-verify-btn" class="portal-btn-primary w-100 mt-3">Verify & create account</button>
+                        <button type="button" id="reg-back-btn" class="portal-btn-outline w-100 mt-2">Back</button>
+                    </div>
 
                         <p class="text-center mt-3" style="color:#aaa; font-size:.9rem;">
                             Already have an account?
                             <a href="#" onclick="switchPortalTab('login'); return false;"
                                style="color: var(--gold); text-decoration:none;">Login here</a>
                         </p>
-
-                    </form>
                 </div>
 
             <?php endif; ?>
@@ -347,12 +370,7 @@ get_template_part( 'template-parts/portal-styles' );
 .mt-3  { margin-top: 1rem; }
 </style>
 
-<?php
-$ihq_portal_turnstile_site_key = ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_configured() )
-	? CF_TURNSTILE_SITE_KEY
-	: '';
-?>
-<?php if ( $ihq_portal_turnstile_site_key !== '' ) : ?>
+<?php if ( $ihq_portal_ts_site_key !== '' ) : ?>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"></script>
 <?php endif; ?>
 
@@ -360,210 +378,386 @@ $ihq_portal_turnstile_site_key = ( function_exists( 'ihq_turnstile_is_configured
 (function () {
     'use strict';
 
-    const AJAX_URL   = <?php echo json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
-    const PORTAL_URL = <?php echo json_encode( home_url( '/portal-home/' ) ); ?>;
-    const TURNSTILE_SITE_KEY = <?php echo wp_json_encode( $ihq_portal_turnstile_site_key ); ?>;
-    const PORTAL_LOGIN_NONCE = <?php echo json_encode( wp_create_nonce( 'influencer_login_portal_ajax' ) ); ?>;
-    const REGISTER_NONCE = <?php echo json_encode( wp_create_nonce( 'influencer_register_ajax' ) ); ?>;
+    var AJAX_URL = <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
+    var PORTAL_URL = <?php echo wp_json_encode( home_url( '/portal-home/' ) ); ?>;
+    var LOGIN_NONCE = <?php echo wp_json_encode( $ihq_portal_login_nonce ); ?>;
+    var REG_NONCE = <?php echo wp_json_encode( $ihq_portal_reg_nonce ); ?>;
+    var TURNSTILE_SITE_KEY = <?php echo wp_json_encode( $ihq_portal_ts_site_key ); ?>;
 
-    var turnstileWidgetId = null;
-    var pendingPortalLogin = null;
+    var loginTurnstileWidgetId = null;
+    var regTurnstileWidgetId = null;
+    var portalLoginToken = '';
+    var portalRegToken = '';
 
-    if (TURNSTILE_SITE_KEY && typeof window.turnstile !== 'undefined') {
-        turnstileWidgetId = window.turnstile.render('#portal-login-turnstile', {
-            sitekey: TURNSTILE_SITE_KEY,
-            size: 'invisible',
-            callback: function (token) {
-                if (!pendingPortalLogin) {
-                    return;
-                }
-                var p = pendingPortalLogin;
-                pendingPortalLogin = null;
-                if (token) {
-                    p.fd.append('cf-turnstile-response', token);
-                }
-                sendPortalLogin(p.fd, p.btn, p.errBox);
-            },
-            'error-callback': function (errorCode) {
-                console.warn('[Cloudflare Turnstile] error-callback', {
-                    errorCode: errorCode,
-                    arguments: Array.prototype.slice.call(arguments)
-                });
-                pendingPortalLogin = null;
-                var errBox = document.getElementById('login-error');
-                var btn = document.getElementById('login-btn');
-                if (errBox) {
-                    errBox.textContent = 'Verification failed to load. Please refresh the page.';
-                    errBox.style.display = 'block';
-                }
-                if (btn) {
-                    btn.disabled = false;
-                    btn.textContent = 'Login';
-                }
-                return true;
-            }
+    function jsonErrMessage(data) {
+        if (!data || !data.data) {
+            return 'Something went wrong.';
+        }
+        var d = data.data;
+        if (typeof d === 'string') {
+            return d;
+        }
+        return d.message ? d.message : 'Something went wrong.';
+    }
+
+    function removeLoginTs() {
+        var host = document.getElementById('portal-login-turnstile');
+        if (!host || !TURNSTILE_SITE_KEY) {
+            return;
+        }
+        if (loginTurnstileWidgetId !== null && typeof window.turnstile !== 'undefined') {
+            try {
+                window.turnstile.remove(loginTurnstileWidgetId);
+            } catch (e1) {}
+            loginTurnstileWidgetId = null;
+        }
+        host.removeAttribute('data-rendered');
+        host.innerHTML = '';
+    }
+
+    function renderLoginTs() {
+        if (!TURNSTILE_SITE_KEY) {
+            return;
+        }
+        var el = document.getElementById('portal-login-turnstile');
+        if (!el || el.getAttribute('data-rendered') === '1') {
+            return;
+        }
+        if (typeof window.turnstile === 'undefined') {
+            window.setTimeout(renderLoginTs, 200);
+            return;
+        }
+        loginTurnstileWidgetId = window.turnstile.render(el, {
+            sitekey: TURNSTILE_SITE_KEY
         });
+        el.setAttribute('data-rendered', '1');
     }
 
-    function sendPortalLogin(fd, btn, errBox) {
-        fetch(AJAX_URL, {
-            method: 'POST',
-            body: fd,
-            credentials: 'same-origin',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-            .then(function (r) {
-                return r.json().then(function (data) {
-                    return { ok: r.ok, status: r.status, data: data };
-                });
-            })
-            .then(function (result) {
-                if (result.data && result.data.success) {
-                    window.location.href = result.data.data.redirect;
-                    return;
-                }
-                var payload = result.data && result.data.data;
-                var msg = typeof payload === 'string' ? payload : 'Login failed. Please try again.';
-                if (result.status === 403) {
-                    msg = 'Human verification failed. Please try again.';
-                }
-                errBox.textContent = msg;
-                errBox.style.display = 'block';
-                btn.disabled = false;
-                btn.textContent = 'Login';
-                if (TURNSTILE_SITE_KEY && typeof window.turnstile !== 'undefined' && turnstileWidgetId !== null) {
-                    window.turnstile.reset(turnstileWidgetId);
-                }
-            })
-            .catch(function () {
-                errBox.textContent = 'Network error. Please try again.';
-                errBox.style.display = 'block';
-                btn.disabled = false;
-                btn.textContent = 'Login';
-                if (TURNSTILE_SITE_KEY && typeof window.turnstile !== 'undefined' && turnstileWidgetId !== null) {
-                    window.turnstile.reset(turnstileWidgetId);
-                }
-            });
+    function removeRegTs() {
+        var host = document.getElementById('portal-reg-turnstile');
+        if (!host || !TURNSTILE_SITE_KEY) {
+            return;
+        }
+        if (regTurnstileWidgetId !== null && typeof window.turnstile !== 'undefined') {
+            try {
+                window.turnstile.remove(regTurnstileWidgetId);
+            } catch (e2) {}
+            regTurnstileWidgetId = null;
+        }
+        host.removeAttribute('data-rendered');
+        host.innerHTML = '';
     }
 
-    // ── Tab switching ────────────────────────────────────────────
+    function renderRegTs() {
+        if (!TURNSTILE_SITE_KEY) {
+            return;
+        }
+        var el = document.getElementById('portal-reg-turnstile');
+        if (!el || el.getAttribute('data-rendered') === '1') {
+            return;
+        }
+        if (typeof window.turnstile === 'undefined') {
+            window.setTimeout(renderRegTs, 200);
+            return;
+        }
+        regTurnstileWidgetId = window.turnstile.render(el, {
+            sitekey: TURNSTILE_SITE_KEY
+        });
+        el.setAttribute('data-rendered', '1');
+    }
+
+    function resetLoginPane() {
+        portalLoginToken = '';
+        document.getElementById('login-step-email').style.display = 'block';
+        document.getElementById('login-step-code').style.display = 'none';
+        document.getElementById('login-email').value = '';
+        document.getElementById('login-code').value = '';
+        document.getElementById('login-error').style.display = 'none';
+        document.getElementById('login-info').style.display = 'none';
+        document.getElementById('login-code-error').style.display = 'none';
+        document.getElementById('login-code-expires').textContent = '';
+        removeLoginTs();
+        window.setTimeout(renderLoginTs, 80);
+    }
+
+    function resetRegisterPane() {
+        portalRegToken = '';
+        document.getElementById('reg-step-details').style.display = 'block';
+        document.getElementById('reg-step-code').style.display = 'none';
+        document.getElementById('reg-first-name').value = '';
+        document.getElementById('reg-last-name').value = '';
+        document.getElementById('reg-email').value = '';
+        document.getElementById('reg-code').value = '';
+        document.getElementById('register-error').style.display = 'none';
+        document.getElementById('register-success').style.display = 'none';
+        document.getElementById('reg-code-error').style.display = 'none';
+        document.getElementById('reg-code-expires').textContent = '';
+        removeRegTs();
+        window.setTimeout(renderRegTs, 80);
+    }
+
     window.switchPortalTab = function (tab) {
-        var loginPane    = document.getElementById('pane-login');
+        var loginPane = document.getElementById('pane-login');
         var registerPane = document.getElementById('pane-register');
-        var loginTab     = document.getElementById('tab-login');
-        var registerTab  = document.getElementById('tab-register');
-
+        var loginTab = document.getElementById('tab-login');
+        var registerTab = document.getElementById('tab-register');
         if (tab === 'login') {
-            loginPane.style.display    = 'block';
+            loginPane.style.display = 'block';
             registerPane.style.display = 'none';
             loginTab.classList.add('auth-tab-active');
             registerTab.classList.remove('auth-tab-active');
+            resetLoginPane();
         } else {
-            loginPane.style.display    = 'none';
+            loginPane.style.display = 'none';
             registerPane.style.display = 'block';
             loginTab.classList.remove('auth-tab-active');
             registerTab.classList.add('auth-tab-active');
+            resetRegisterPane();
         }
     };
 
-    // ── AJAX Login (portal template — Turnstile when keys configured) ──
-    window.handlePortalLogin = function (e) {
-        e.preventDefault();
-
+    function onLoginSendCode() {
         var errBox = document.getElementById('login-error');
-        var btn    = document.getElementById('login-btn');
+        var infoBox = document.getElementById('login-info');
         errBox.style.display = 'none';
-        btn.disabled = true;
-        btn.textContent = 'Logging in…';
-
-        var fd = new FormData();
-        fd.append('action',       'influencer_login_portal_ajax');
-        fd.append('nonce',        PORTAL_LOGIN_NONCE);
-        fd.append('email',        document.getElementById('login-email').value);
-        fd.append('password',     document.getElementById('login-password').value);
-        fd.append('redirect_url', PORTAL_URL);
-
-        if (TURNSTILE_SITE_KEY && typeof window.turnstile !== 'undefined' && turnstileWidgetId !== null) {
-            pendingPortalLogin = { fd: fd, btn: btn, errBox: errBox };
-            window.turnstile.execute(turnstileWidgetId);
+        infoBox.style.display = 'none';
+        var email = document.getElementById('login-email').value.trim();
+        if (!email || email.indexOf('@') === -1) {
+            errBox.textContent = 'Please enter a valid email address.';
+            errBox.style.display = 'block';
             return;
         }
-
-        sendPortalLogin(fd, btn, errBox);
-    };
-
-    // ── AJAX Register ────────────────────────────────────────────
-    window.handlePortalRegister = function (e) {
-        e.preventDefault();
-
-        var errBox     = document.getElementById('register-error');
-        var successBox = document.getElementById('register-success');
-        var btn        = document.getElementById('register-btn');
-        errBox.style.display     = 'none';
-        successBox.style.display = 'none';
-        btn.disabled = true;
-        btn.textContent = 'Creating account…';
-
-        var payload = {
-            action: 'influencer_register_ajax',
-            nonce: REGISTER_NONCE,
-            first_name: document.getElementById('reg-first-name').value,
-            last_name: document.getElementById('reg-last-name').value,
-            email: document.getElementById('reg-email').value,
-            password: document.getElementById('reg-password').value,
-            redirect_url: PORTAL_URL,
-        };
-
-        console.log('Register payload:', payload, 'AJAX URL:', AJAX_URL);
-
-        var params = new URLSearchParams();
-        Object.keys(payload).forEach(function (key) {
-            params.append(key, payload[key]);
-        });
-
-        fetch(AJAX_URL, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            body: params.toString(),
-        })
-            .then(function (r) {
-                return r.text().then(function (text) {
-                    if (!r.ok) {
-                        console.error('Register request failed:', r.status, r.statusText, text);
-                        throw new Error(text || 'Request failed with status ' + r.status);
-                    }
-                    try {
-                        return JSON.parse(text);
-                    } catch (e) {
-                        console.error('Register response is not valid JSON:', text);
-                        throw new Error('Unexpected server response: ' + text);
-                    }
-                });
-            })
-            .then(function (data) {
-                if (data.success) {
-                    window.location.href = data.data.redirect;
-                } else {
-                    errBox.textContent   = data.data || 'Registration failed. Please try again.';
-                    errBox.style.display = 'block';
-                    btn.disabled         = false;
-                    btn.textContent      = 'Create Account';
-                }
-            })
-            .catch(function (error) {
-                console.error('Register error:', error);
-                errBox.textContent   = error.message || 'Network error. Please try again.';
+        var tsToken = '';
+        if (TURNSTILE_SITE_KEY) {
+            if (typeof window.turnstile === 'undefined' || loginTurnstileWidgetId === null) {
+                errBox.textContent = 'Please wait for the security check to load.';
                 errBox.style.display = 'block';
-                btn.disabled         = false;
-                btn.textContent      = 'Create Account';
+                return;
+            }
+            tsToken = window.turnstile.getResponse(loginTurnstileWidgetId) || '';
+            if (!tsToken) {
+                errBox.textContent = 'Please complete the security verification.';
+                errBox.style.display = 'block';
+                return;
+            }
+        }
+        var btn = document.getElementById('login-send-code-btn');
+        btn.disabled = true;
+        var fd = new FormData();
+        fd.append('action', 'ihq_send_login_code');
+        fd.append('nonce', LOGIN_NONCE);
+        fd.append('email', email);
+        fd.append('cf-turnstile-response', tsToken);
+        fetch(AJAX_URL, { method: 'POST', body: fd, credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                btn.disabled = false;
+                if (!data.success) {
+                    errBox.textContent = jsonErrMessage(data);
+                    errBox.style.display = 'block';
+                    removeLoginTs();
+                    window.setTimeout(renderLoginTs, 80);
+                    return;
+                }
+                var d = data.data;
+                infoBox.textContent = d.message || 'If that email matches an account, you will receive a code.';
+                infoBox.style.display = 'block';
+                if (!d.signup_token || d.skipped) {
+                    removeLoginTs();
+                    window.setTimeout(renderLoginTs, 80);
+                    return;
+                }
+                portalLoginToken = d.signup_token;
+                var minutes = d.expires_minutes || 15;
+                document.getElementById('login-code-expires').textContent =
+                    'Code expires in ' + minutes + ' minute' + (minutes === 1 ? '' : 's') + '.';
+                document.getElementById('login-code').value = '';
+                document.getElementById('login-code-error').style.display = 'none';
+                document.getElementById('login-step-email').style.display = 'none';
+                document.getElementById('login-step-code').style.display = 'block';
+            })
+            .catch(function () {
+                btn.disabled = false;
+                errBox.textContent = 'Network error. Please try again.';
+                errBox.style.display = 'block';
             });
-    };
+    }
+
+    function onLoginVerify() {
+        var errEl = document.getElementById('login-code-error');
+        errEl.style.display = 'none';
+        var raw = document.getElementById('login-code').value.replace(/\D/g, '');
+        if (raw.length !== 6) {
+            errEl.textContent = 'Enter the 6-digit code from your email.';
+            errEl.style.display = 'block';
+            return;
+        }
+        if (!portalLoginToken) {
+            errEl.textContent = 'Send a code first.';
+            errEl.style.display = 'block';
+            return;
+        }
+        var btn = document.getElementById('login-verify-btn');
+        btn.disabled = true;
+        var fd = new FormData();
+        fd.append('action', 'ihq_verify_login_code');
+        fd.append('nonce', LOGIN_NONCE);
+        fd.append('signup_token', portalLoginToken);
+        fd.append('code', raw);
+        fd.append('redirect_url', PORTAL_URL);
+        fetch(AJAX_URL, { method: 'POST', body: fd, credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                btn.disabled = false;
+                if (!data.success) {
+                    errEl.textContent = jsonErrMessage(data);
+                    errEl.style.display = 'block';
+                    return;
+                }
+                window.location.href = data.data.redirect_url || PORTAL_URL;
+            })
+            .catch(function () {
+                btn.disabled = false;
+                errEl.textContent = 'Network error. Please try again.';
+                errEl.style.display = 'block';
+            });
+    }
+
+    function onRegSendCode() {
+        var errBox = document.getElementById('register-error');
+        errBox.style.display = 'none';
+        var first = document.getElementById('reg-first-name').value.trim();
+        var last = document.getElementById('reg-last-name').value.trim();
+        var email = document.getElementById('reg-email').value.trim();
+        if (!first || !last) {
+            errBox.textContent = 'Please enter your first and last name.';
+            errBox.style.display = 'block';
+            return;
+        }
+        if (!email || email.indexOf('@') === -1) {
+            errBox.textContent = 'Please enter a valid email address.';
+            errBox.style.display = 'block';
+            return;
+        }
+        var tsToken = '';
+        if (TURNSTILE_SITE_KEY) {
+            if (typeof window.turnstile === 'undefined' || regTurnstileWidgetId === null) {
+                errBox.textContent = 'Please wait for the security check to load.';
+                errBox.style.display = 'block';
+                return;
+            }
+            tsToken = window.turnstile.getResponse(regTurnstileWidgetId) || '';
+            if (!tsToken) {
+                errBox.textContent = 'Please complete the security verification.';
+                errBox.style.display = 'block';
+                return;
+            }
+        }
+        var btn = document.getElementById('register-send-btn');
+        btn.disabled = true;
+        var fd = new FormData();
+        fd.append('action', 'ihq_send_registration_code');
+        fd.append('nonce', REG_NONCE);
+        fd.append('first_name', first);
+        fd.append('last_name', last);
+        fd.append('email', email);
+        fd.append('platform_handle', '');
+        fd.append('challenge_type', 'maybe_later');
+        fd.append('comm_primary', 'email');
+        fd.append('telegram_username', '');
+        fd.append('cf-turnstile-response', tsToken);
+        fetch(AJAX_URL, { method: 'POST', body: fd, credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                btn.disabled = false;
+                if (!data.success) {
+                    errBox.textContent = jsonErrMessage(data);
+                    errBox.style.display = 'block';
+                    removeRegTs();
+                    window.setTimeout(renderRegTs, 80);
+                    return;
+                }
+                portalRegToken = data.data.signup_token;
+                var minutes = data.data.expires_minutes || 15;
+                document.getElementById('reg-code-expires').textContent =
+                    'Code expires in ' + minutes + ' minute' + (minutes === 1 ? '' : 's') + '.';
+                document.getElementById('reg-code').value = '';
+                document.getElementById('reg-code-error').style.display = 'none';
+                document.getElementById('reg-step-details').style.display = 'none';
+                document.getElementById('reg-step-code').style.display = 'block';
+            })
+            .catch(function () {
+                btn.disabled = false;
+                errBox.textContent = 'Network error. Please try again.';
+                errBox.style.display = 'block';
+            });
+    }
+
+    function onRegVerify() {
+        var errEl = document.getElementById('reg-code-error');
+        errEl.style.display = 'none';
+        var raw = document.getElementById('reg-code').value.replace(/\D/g, '');
+        if (raw.length !== 6) {
+            errEl.textContent = 'Enter the 6-digit code from your email.';
+            errEl.style.display = 'block';
+            return;
+        }
+        if (!portalRegToken) {
+            errEl.textContent = 'Send a code first.';
+            errEl.style.display = 'block';
+            return;
+        }
+        var btn = document.getElementById('reg-verify-btn');
+        btn.disabled = true;
+        var fd = new FormData();
+        fd.append('action', 'ihq_verify_registration_code');
+        fd.append('nonce', REG_NONCE);
+        fd.append('signup_token', portalRegToken);
+        fd.append('code', raw);
+        fetch(AJAX_URL, { method: 'POST', body: fd, credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                btn.disabled = false;
+                if (!data.success) {
+                    errEl.textContent = jsonErrMessage(data);
+                    errEl.style.display = 'block';
+                    return;
+                }
+                window.location.href = data.data.redirect_url;
+            })
+            .catch(function () {
+                btn.disabled = false;
+                errEl.textContent = 'Network error. Please try again.';
+                errEl.style.display = 'block';
+            });
+    }
+
+    document.getElementById('login-send-code-btn').addEventListener('click', onLoginSendCode);
+    document.getElementById('login-verify-btn').addEventListener('click', onLoginVerify);
+    document.getElementById('login-back-btn').addEventListener('click', function () {
+        removeLoginTs();
+        portalLoginToken = '';
+        document.getElementById('login-step-code').style.display = 'none';
+        document.getElementById('login-step-email').style.display = 'block';
+        document.getElementById('login-code-error').style.display = 'none';
+        window.setTimeout(renderLoginTs, 80);
+    });
+
+    document.getElementById('register-send-btn').addEventListener('click', onRegSendCode);
+    document.getElementById('reg-verify-btn').addEventListener('click', onRegVerify);
+    document.getElementById('reg-back-btn').addEventListener('click', function () {
+        removeRegTs();
+        portalRegToken = '';
+        document.getElementById('reg-step-code').style.display = 'none';
+        document.getElementById('reg-step-details').style.display = 'block';
+        document.getElementById('reg-code-error').style.display = 'none';
+        window.setTimeout(renderRegTs, 80);
+    });
+
+    window.setTimeout(function () {
+        renderLoginTs();
+        renderRegTs();
+    }, 100);
 }());
 </script>
 

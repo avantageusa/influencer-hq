@@ -29,73 +29,14 @@ add_action('wp_ajax_nopriv_influencer_register_ajax', 'influencer_register_ajax'
 add_action('wp_ajax_influencer_register_ajax', 'influencer_register_ajax');
 
 function influencer_register_ajax() {
-    error_log('temp influencer_register_ajax called: ' . print_r($_POST, true));
-
     if (!check_ajax_referer('influencer_register_ajax', 'nonce', false)) {
-        error_log('temp influencer_register_ajax nonce failed: ' . print_r($_POST, true));
         wp_send_json_error('Security verification failed.');
         return;
     }
 
-    $first_name = sanitize_text_field($_POST['first_name'] ?? '');
-    $last_name  = sanitize_text_field($_POST['last_name'] ?? '');
-    $email      = sanitize_email($_POST['email'] ?? '');
-    $password   = $_POST['password'] ?? '';
-    $redirect   = isset($_POST['redirect_url']) ? esc_url_raw($_POST['redirect_url']) : home_url('/portal-home/');
-
-    if (empty($first_name)) {
-        wp_send_json_error('First name is required.');
-        return;
-    }
-
-    if (empty($last_name)) {
-        wp_send_json_error('Last name is required.');
-        return;
-    }
-
-    if (!is_email($email)) {
-        wp_send_json_error('Please enter a valid email address.');
-        return;
-    }
-
-    if (email_exists($email)) {
-        wp_send_json_error('An account with this email already exists.');
-        return;
-    }
-
-    if (empty($password) || strlen($password) < 6) {
-        wp_send_json_error('Password must be at least 6 characters.');
-        return;
-    }
-
-    $username = sanitize_user(current(explode('@', $email)), true);
-    if (empty($username)) {
-        $username = 'user';
-    }
-
-    $base    = $username;
-    $counter = 1;
-    while (username_exists($username)) {
-        $username = $base . $counter++;
-    }
-
-    $user_id = wp_create_user($username, $password, $email);
-    if (is_wp_error($user_id)) {
-        wp_send_json_error('Registration failed: ' . $user_id->get_error_message());
-        return;
-    }
-
-    update_user_meta($user_id, 'first_name', $first_name);
-    update_user_meta($user_id, 'last_name',  $last_name);
-    update_user_meta($user_id, 'registration_date', current_time('mysql'));
-
-    $user = new WP_User($user_id);
-    $user->set_role('influencer');
-
-    wp_set_current_user($user_id);
-    wp_set_auth_cookie($user_id, true);
-
-    wp_send_json_success(array('redirect' => $redirect));
+    wp_send_json_error(
+        __('Influencer registration uses a 6-digit code sent to your email. Use the Register flow to request a code.', 'avantage-baccarat')
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -104,69 +45,15 @@ function influencer_register_ajax() {
 add_action('wp_ajax_nopriv_influencer_login_ajax', 'influencer_login_ajax');
 add_action('wp_ajax_influencer_login_ajax', 'influencer_login_ajax');
 
-/**
- * Shared influencer AJAX login body after nonce (and optional Turnstile) checks.
- *
- * @return void Sends JSON and exits.
- */
-function ihq_influencer_login_after_nonce_checks() {
-    $email    = sanitize_email($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
-    $redirect = isset($_POST['redirect_url']) ? esc_url_raw($_POST['redirect_url']) : home_url('/portal/portal-home/');
-
-    if (!is_email($email)) {
-        wp_send_json_error('Please enter a valid email address.');
-        return;
-    }
-
-    if (empty($password)) {
-        wp_send_json_error('Please enter your password.');
-        return;
-    }
-
-    $user = get_user_by('email', $email);
-    if (!$user) {
-        wp_send_json_error('No account found with this email address.');
-        return;
-    }
-
-    $result = wp_signon(
-        array(
-            'user_login'    => $user->user_login,
-            'user_password' => $password,
-            'remember'      => true,
-        ),
-        false
-    );
-
-    if (is_wp_error($result)) {
-        wp_send_json_error('Incorrect password. Please try again.');
-        return;
-    }
-
-    // ── Refresh IHQ platform session on every login ───────────────────────────
-    $first_name = get_user_meta($user->ID, 'first_name', true);
-    $last_name  = get_user_meta($user->ID, 'last_name',  true);
-    $ihq_data   = ihq_register_oauth_user($user->ID, $first_name, $last_name, $user->user_email);
-    if ($ihq_data && !empty($ihq_data['AccessToken'])) {
-        update_user_meta($user->ID, 'ihq_access_token',  $ihq_data['AccessToken']);
-        update_user_meta($user->ID, 'ihq_id_token',      $ihq_data['IdToken']);
-        update_user_meta($user->ID, 'ihq_refresh_token', $ihq_data['RefreshToken'] ?? '');
-        update_user_meta($user->ID, 'ihq_token_type',    $ihq_data['TokenType']    ?? 'Bearer');
-        update_user_meta($user->ID, 'ihq_token_expires', time() + (int)($ihq_data['ExpiresIn'] ?? 3600));
-    }
-    // ─────────────────────────────────────────────────────────────────────────
-
-    wp_send_json_success(array('redirect' => $redirect));
-}
-
 function influencer_login_ajax() {
     if (!check_ajax_referer('influencer_login_ajax', 'nonce', false)) {
         wp_send_json_error('Security verification failed.');
         return;
     }
 
-    ihq_influencer_login_after_nonce_checks();
+    wp_send_json_error(
+        __('Sign in with the 6-digit code emailed to you (request a code first).', 'avantage-baccarat')
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -181,16 +68,9 @@ function influencer_login_portal_ajax() {
         return;
     }
 
-    if (function_exists('ihq_turnstile_is_configured') && ihq_turnstile_is_configured()) {
-        $token = isset($_POST['cf-turnstile-response']) ? sanitize_text_field(wp_unslash($_POST['cf-turnstile-response'])) : '';
-        $verify = ihq_turnstile_verify_response($token);
-        if (empty($verify['success'])) {
-            wp_send_json_error('Human verification failed. Please try again.', 403);
-            return;
-        }
-    }
-
-    ihq_influencer_login_after_nonce_checks();
+    wp_send_json_error(
+        __('Sign in with the 6-digit code emailed to you (request a code first).', 'avantage-baccarat')
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -222,11 +102,9 @@ function process_influencer_auth_forms() {
 
 // Handle Registration
 if ($_POST['action'] === 'influencer_register') {
-    error_log('temp influencer_register called: ' . print_r($_POST, true));
 
     // Verify nonce
     if (!isset($_POST['register_nonce']) || !wp_verify_nonce($_POST['register_nonce'], 'influencer_register')) {
-        error_log('temp influencer_register nonce failed: ' . print_r($_POST, true));
         set_auth_error('Security verification failed. Please try again.');
         wp_redirect(isset($_POST['redirect_url']) ? esc_url_raw($_POST['redirect_url']) : home_url());
         exit;
