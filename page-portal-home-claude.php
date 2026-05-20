@@ -1001,11 +1001,13 @@ function handleAuthRegister(e) {
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (data.success && data.data && data.data.signed_url) {
+                    var elevenLabsLanguageOverride = pagePrimaryLangForElevenLabs();
+                    console.log('[ElevenLabs] overrides.agent.language:', elevenLabsLanguageOverride);
                     ElevenLabsClient.Conversation.startSession({
                         signedUrl: data.data.signed_url,
                         overrides: {
                             agent: {
-                                language: pagePrimaryLangForElevenLabs(),
+                                language: elevenLabsLanguageOverride,
                             },
                         },
                         onConnect: function () {

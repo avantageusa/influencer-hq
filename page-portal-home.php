@@ -423,12 +423,14 @@ get_template_part( 'template-parts/portal-styles' );
                     console.log('[ElevenLabs] Raw ElevenLabs data:', data.data);
                     if (data.success && data.data && data.data.signed_url) {
                         var signedUrl = data.data.signed_url;
-                        console.log('[ElevenLabs] Starting session with:', signedUrl, 'lang=', pagePrimaryLangForElevenLabs());
+                        var elevenLabsLanguageOverride = pagePrimaryLangForElevenLabs();
+                        console.log('[ElevenLabs] Starting session with:', signedUrl);
+                        console.log('[ElevenLabs] overrides.agent.language:', elevenLabsLanguageOverride);
                         ElevenLabsClient.Conversation.startSession({
                             signedUrl: signedUrl,
                             overrides: {
                                 agent: {
-                                    language: pagePrimaryLangForElevenLabs(),
+                                    language: elevenLabsLanguageOverride,
                                 },
                             },
                             onConnect: function () {
