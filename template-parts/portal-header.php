@@ -37,7 +37,7 @@
                 <!-- Desktop-only: Help & Language -->
                 <div class="desktop-header-left-items">
                     <a href="<?php echo esc_url( home_url('/portal/portal-home/') ); ?>?open=concierge" class="header-help-btn">Help</a>
-                    <div class="header-lang-wrap">
+                    <div class="header-lang-wrap" style="display:none" aria-hidden="true">
                         <button class="header-lang-btn" id="headerLangBtn" aria-label="Select Language">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E6CFA0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <circle cx="12" cy="12" r="10"></circle>
@@ -56,7 +56,7 @@
                 </div>
             </div>
             <div class="logo-container text-center">
-                <a href="<?php echo esc_url( home_url( '/' ) ); ?>">
+                <a href="<?php echo esc_url( home_url('/portal/portal-home/') ); ?>">
                     <img src="<?php echo get_template_directory_uri(); ?>/images/logo-tm.png" alt="influencerHQ" class="img-fluid">
                 </a>
             </div>
@@ -78,8 +78,7 @@
                 'hqAvatar'         => $avatar_url,
             ), $base_game_url );
             ?>
-            <div style="flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 14px;">
-                <!-- Desktop-only: Volume, Login, Register -->
+            <div style="flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 10px;">
                 <div class="desktop-header-right-items">
                     <div class="header-volume-wrap">
                         <button class="header-volume-btn" id="headerVolumeBtn" aria-label="Volume">
@@ -91,10 +90,13 @@
                         </button>
                         <input type="range" class="header-volume-slider" id="headerVolumeSlider" min="0" max="100" value="70" aria-label="Volume">
                     </div>
-                    <a href="<?php echo esc_url( home_url('/influencer-login/') ); ?>" class="header-login-link">Login</a>
-                    <a href="<?php echo esc_url( home_url('/influencer-login/') ); ?>" class="header-register-btn">Register Now</a>
+                    <?php if ( is_user_logged_in() ) : ?>
+                        <a href="<?php echo esc_url( wp_logout_url( get_permalink() ) ); ?>" class="header-logout-btn"><?php esc_html_e( 'Log out', 'avantage-baccarat' ); ?></a>
+                    <?php else : ?>
+                        <button type="button" class="header-login-link portal-header-auth-trigger" id="portalHeaderOpenLogin" data-auth-tab="login"><?php esc_html_e( 'Login', 'avantage-baccarat' ); ?></button>
+                    <?php endif; ?>
                 </div>
-                <a href="<?php echo esc_url( $game_url ); ?>" target="_blank" rel="noopener noreferrer" class="go-to-game-btn">PLAY</a>
+                <a href="<?php echo esc_url( $game_url ); ?>" target="_blank" rel="noopener noreferrer" style="display:none;"class="go-to-game-btn">PLAY</a>
             </div>
         </div>
     </div>
@@ -156,8 +158,8 @@ $hm_ch = function ( $tab, $hash = '' ) {
                     <span><?php esc_html_e( 'Equity', 'avantage-baccarat' ); ?></span>
                 </a>
                 <div class="hm-details-body">
-                    <a href="<?php echo esc_url( home_url( '/portal/equity' ) ); ?>#equity-results" class="hm-link hm-bullet"><?php esc_html_e( 'Equity results', 'avantage-baccarat' ); ?></a>
-                    <a href="<?php echo esc_url( home_url( '/portal/equity' ) ); ?>#equity-referrals" class="hm-link hm-bullet"><?php esc_html_e( 'My Referrals results', 'avantage-baccarat' ); ?></a>
+                    <a href="<?php echo esc_url( home_url( '/portal/equity' ) ); ?>#equity-results" class="hm-link hm-icon-row hm-indent-1"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-equity-results.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Equity results', 'avantage-baccarat' ); ?></a>
+                    <a href="<?php echo esc_url( home_url( '/portal/equity' ) ); ?>#equity-referrals" class="hm-link hm-icon-row hm-indent-1"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-referrals-results.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'My Referrals results', 'avantage-baccarat' ); ?></a>
                 </div>
             </section>
 
@@ -171,7 +173,7 @@ $hm_ch = function ( $tab, $hash = '' ) {
                         <img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-private.png' ); ?>" width="19" height="19" alt="">
                         <span><?php esc_html_e( 'Private', 'avantage-baccarat' ); ?></span>
                     </a>
-                    <a href="<?php echo $hm_ch( 'private', 'cpc-create-btn' ); ?>" class="hm-link hm-bullet hm-indent-1"><?php esc_html_e( 'Create Private Challenge', 'avantage-baccarat' ); ?></a>
+                    <a href="<?php echo $hm_ch( 'private', 'cpc-create-btn' ); ?>" class="hm-link hm-icon-row hm-indent-1"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-create-private-challenge.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Create Private Challenge', 'avantage-baccarat' ); ?></a>
                     <a href="<?php echo $hm_ch( 'private', 'private-results' ); ?>" class="hm-link hm-icon-row hm-indent-1"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-chart.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Results', 'avantage-baccarat' ); ?></a>
                     <a href="<?php echo $hm_ch( 'private', 'private-leaderboards' ); ?>" class="hm-link hm-icon-row hm-indent-1"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-leaderboard.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Leaderboards', 'avantage-baccarat' ); ?></a>
                     <a href="<?php echo $hm_ch( 'private', 'private-influencer' ); ?>" class="hm-link hm-micro hm-indent-2 hm-icon-row"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-influencer.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Influencer', 'avantage-baccarat' ); ?></a>
@@ -215,8 +217,8 @@ $hm_ch = function ( $tab, $hash = '' ) {
                     <span><?php esc_html_e( 'Live Appearance', 'avantage-baccarat' ); ?></span>
                 </a>
                 <div class="hm-details-body">
-                    <a href="<?php echo esc_url( home_url( '/portal/live' ) ); ?>#live-request" class="hm-link hm-bullet"><?php esc_html_e( 'Request A Live Appearance', 'avantage-baccarat' ); ?></a>
-                    <a href="<?php echo esc_url( home_url( '/portal/live' ) ); ?>#kick-schedule" class="hm-link hm-bullet"><?php esc_html_e( 'Report KICK Broadcast Schedule', 'avantage-baccarat' ); ?></a>
+                    <a href="<?php echo esc_url( home_url( '/portal/live' ) ); ?>#live-request" class="hm-link hm-icon-row hm-indent-1"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-live-request.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Request A Live Appearance', 'avantage-baccarat' ); ?></a>
+                    <a href="<?php echo esc_url( home_url( '/portal/live' ) ); ?>#kick-schedule" class="hm-link hm-icon-row hm-indent-1"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-kick-schedule.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Report KICK Broadcast Schedule', 'avantage-baccarat' ); ?></a>
                 </div>
             </section>
 
@@ -233,6 +235,7 @@ $hm_ch = function ( $tab, $hash = '' ) {
         </nav>
     </div>
 </div>
+<?php get_template_part( 'template-parts/portal', 'auth-modal' ); ?>
 <script>
 (function () {
     // Language dropdown toggle

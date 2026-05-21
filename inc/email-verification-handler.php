@@ -25,7 +25,10 @@ function handle_verification_email() {
     $comm_methods_json = isset($_POST['comm_methods']) ? $_POST['comm_methods'] : '{}';
     $comm_methods = json_decode(stripslashes($comm_methods_json), true);
     $challenge_type = isset($_POST['challenge_type']) ? sanitize_text_field($_POST['challenge_type']) : '';
-    
+    $competition_preferences = ihq_sanitize_competition_preferences_input(
+        isset( $_POST['competition_preferences'] ) ? wp_unslash( $_POST['competition_preferences'] ) : ''
+    );
+
     if (!is_email($email)) {
         wp_send_json_error('Invalid email address');
         return;
@@ -54,6 +57,7 @@ function handle_verification_email() {
         'platform_handle' => $platform_handle,
         'comm_methods' => $comm_methods,
         'challenge_type' => $challenge_type,
+        'competition_preferences' => $competition_preferences,
         'timestamp' => time(),
         'expires' => time() + (24 * 60 * 60) // 24 hours
     );
@@ -149,6 +153,31 @@ const IHQ_REG_CODE_EXPIRY_SECONDS = 900;
 const IHQ_LOGIN_CODE_EXPIRY_SECONDS = 900;
 
 /**
+ * Normalize comma-separated competition preference slug(s) from portal home (s7).
+ *
+ * @param mixed $raw Raw POST or stored string.
+ * @return string Allowed tokens joined by comma, or empty string.
+ */
+function ihq_sanitize_competition_preferences_input( $raw ) {
+    $allowed = array( 'world-competition', 'community-competition' );
+    $raw     = is_string( $raw ) ? trim( wp_unslash( $raw ) ) : '';
+    if ( $raw === '' ) {
+        return '';
+    }
+    $parts = array_map( 'trim', explode( ',', $raw ) );
+    $out   = array();
+    foreach ( $parts as $p ) {
+        if ( $p === '' ) {
+            continue;
+        }
+        if ( in_array( $p, $allowed, true ) && ! in_array( $p, $out, true ) ) {
+            $out[] = $p;
+        }
+    }
+    return implode( ',', $out );
+}
+
+/**
  * Whether the WP user has the influencer role.
  *
  * @param WP_User $user User object.
@@ -161,7 +190,7 @@ function ihq_user_has_influencer_role( $user ) {
 /**
  * Create influencer user + meta + OAuth from pending registration data.
  *
- * @param array $registration_data Keys: email, password (optional — auto-generated if missing/short), first_name, last_name, platform_handle, comm_methods, challenge_type.
+ * @param array $registration_data Keys: email, password (optional — auto-generated if missing/short), first_name, last_name, platform_handle, comm_methods, challenge_type, competition_preferences (optional).
  * @return int|WP_Error User ID or error.
  */
 function ihq_create_influencer_user_from_registration_data( array $registration_data ) {
@@ -175,6 +204,9 @@ function ihq_create_influencer_user_from_registration_data( array $registration_
     $platform_handle  = isset( $registration_data['platform_handle'] ) ? $registration_data['platform_handle'] : '';
     $comm_methods     = isset( $registration_data['comm_methods'] ) && is_array( $registration_data['comm_methods'] ) ? $registration_data['comm_methods'] : array();
     $challenge_type   = isset( $registration_data['challenge_type'] ) ? $registration_data['challenge_type'] : '';
+    $competition_prefs = isset( $registration_data['competition_preferences'] )
+        ? ihq_sanitize_competition_preferences_input( (string) $registration_data['competition_preferences'] )
+        : '';
 
     if ( ! is_email( $email ) ) {
         return new WP_Error( 'invalid_email', 'Invalid email address' );
@@ -221,6 +253,10 @@ function ihq_create_influencer_user_from_registration_data( array $registration_
 
     if ( ! empty( $challenge_type ) ) {
         update_user_meta( $user_id, 'challenge_type', $challenge_type );
+    }
+
+    if ( $competition_prefs !== '' ) {
+        update_user_meta( $user_id, 'competition_preferences', $competition_prefs );
     }
 
     update_user_meta( $user_id, 'registration_date', current_time( 'mysql' ) );
@@ -468,7 +504,8 @@ function ihq_create_influencer_user_from_pending_data_normalized( array $pending
         'last_name'       => isset( $pending['last_name'] ) ? $pending['last_name'] : '',
         'platform_handle' => isset( $pending['platform_handle'] ) ? $pending['platform_handle'] : '',
         'comm_methods'    => isset( $pending['comm_methods'] ) && is_array( $pending['comm_methods'] ) ? $pending['comm_methods'] : array(),
-        'challenge_type'  => isset( $pending['challenge_type'] ) ? $pending['challenge_type'] : '',
+        'challenge_type'             => isset( $pending['challenge_type'] ) ? $pending['challenge_type'] : '',
+        'competition_preferences'    => isset( $pending['competition_preferences'] ) ? $pending['competition_preferences'] : '',
     );
     return ihq_create_influencer_user_from_registration_data( $data );
 }
@@ -731,6 +768,7 @@ function handle_email_verification_and_user_creation() {
     
     $comm_methods      = isset( $registration_data['comm_methods'] ) && is_array( $registration_data['comm_methods'] ) ? $registration_data['comm_methods'] : array();
     $challenge_type    = isset( $registration_data['challenge_type'] ) ? $registration_data['challenge_type'] : '';
+    $competition_prefs = isset( $registration_data['competition_preferences'] ) ? $registration_data['competition_preferences'] : '';
 
     // Check if email already exists
     if ( email_exists( $registration_data['email'] ) ) {
@@ -747,7 +785,8 @@ function handle_email_verification_and_user_creation() {
             'last_name'       => isset( $registration_data['last_name'] ) ? $registration_data['last_name'] : '',
             'platform_handle' => isset( $registration_data['platform_handle'] ) ? $registration_data['platform_handle'] : '',
             'comm_methods'    => $comm_methods,
-            'challenge_type'  => $challenge_type,
+            'challenge_type'             => $challenge_type,
+            'competition_preferences'    => $competition_prefs,
         )
     );
 

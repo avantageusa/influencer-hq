@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Figma</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="icon" type="image/png" href="https://static.figma.com/app/icon/1/favicon.png" />
+  <!--[if IE]><link rel="shortcut icon" href="https://static.figma.com/app/icon/1/favicon.ico" type="image/vnd.microsoft.icon" /><![endif]-->
+  <meta property="og:title" content="Figma" />
+  <meta property="og:site_name" content="Figma" />
+  <link href='https://fonts.googleapis.com/css?family=Inconsolata' rel='stylesheet' type='text/css'>
+  <script src='https://static.figma.com/scripts/pen-tool-demo-503-2016-09-20-1.js'></script>
+  <style>
+    html {
+      vertical-align: baseline;
+      cursor: default;
+    }
+
+    html, body, div, span, applet, object, iframe,
+    h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+    a, abbr, acronym, address, big, cite, code,
+    del, dfn, em, img, ins, kbd, q, s, samp,
+    small, strike, strong, sub, sup, tt, var,
+    b, u, i, center,
+    dl, dt, dd, ol, ul, li,
+    fieldset, form, label, legend,
+    table, caption, tbody, tfoot, thead, tr, th, td,
+    article, aside, canvas, details, embed,
+    figure, figcaption, footer, header, hgroup,
+    menu, nav, output, ruby, section, summary,
+    time, mark, audio, video,
+    input, select, button, textarea {
+      margin: 0;
+      padding: 0;
+      border: 0;
+      font: inherit;
+      vertical-align: inherit;
+      outline: none;
+      letter-spacing: inherit;
+      text-decoration: none;
+      cursor: inherit;
+    }
+    /* HTML5 display-role reset for older browsers */
+    article, aside, details, figcaption, figure,
+    footer, header, hgroup, menu, nav, section {
+      display: block;
+    }
+    ol, ul {
+      list-style: none;
+    }
+    blockquote, q {
+      quotes: none;
+    }
+    blockquote:before, blockquote:after,
+    q:before, q:after {
+      content: '';
+      content: none;
+    }
+    table {
+      border-collapse: collapse;
+      border-spacing: 0;
+    }
+  </style>
+  <style>
+    @font-face {
+      font-family: "Apercu";
+      font-style: normal;
+      font-weight: 400;
+      src: url(https://static.figma.com/blog/fonts/Apercu-Regular.eot?#iefix) format('embedded-opentype'),
+           url(https://static.figma.com/blog/fonts/Apercu-Regular.woff2) format('woff2'),
+           url(https://static.figma.com/blog/fonts/Apercu-Regular.ttf)  format('truetype');
+    }
+
+    @font-face {
+      font-family: "Apercu";
+      font-style: normal;
+      font-weight: 500;
+      src: url(https://static.figma.com/blog/fonts/Apercu-Medium.eot?#iefix) format('embedded-opentype'),
+           url(https://static.figma.com/blog/fonts/Apercu-Medium.woff2) format('woff2'),
+           url(https://static.figma.com/blog/fonts/Apercu-Medium.ttf)  format('truetype');
+    }
+
+    @font-face {
+      font-family: "Apercu-Mono";
+      font-style: normal;
+      font-weight: 400;
+      src: url(https://static.figma.com/blog/fonts/Apercu-Mono.eot?#iefix) format('embedded-opentype'),
+           url(https://static.figma.com/blog/fonts/Apercu-Mono.woff2) format('woff2'),
+           url(https://static.figma.com/blog/fonts/Apercu-Mono.ttf)  format('truetype');
+    }
+
+    html, body, .space {
+      width: 100%;
+      height: 100%;
+    }
+    body {
+      font-family: 'Apercu';
+      color: #2c2c2c;
+      font-size: 16px;
+    }
+    h2 {
+      font-size: 20px;
+      margin-bottom: 1em;
+      margin-top: 10vh;
+      padding: 0 40px;
+      text-align: center;
+    }
+    a {
+      color: #18A0FB;
+    }
+    .figma-logo {
+      padding: 40px 40px 0;
+    }
+    .figma-logo img {
+      max-width: 72px;
+    }
+    .message p {
+      text-align: center;
+    }
+    .demo {
+      text-align: center;
+    }
+    @media (max-width: 550px) {
+      .demo {
+        display: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="space">
+    <div class="figma-logo">
+      <img src="https://static.figma.com/marketing/wordmark-2016-09-27-1.png" alt="Figma, Inc." />
+    </div>
+    <div class="message">
+      <h2>Sorry, you’ve stumbled upon a temporary technical issue. Please try refreshing this page in a moment.</h2>
+      <p>Check our <a href="http://status.figma.com/">status</a>.</p>
+    </div>
+    <div class="demo"></div>
+  </div>
+  <script>
+    console && console.error("502: Bad Gateway");
+    var element = createDemo503();
+    document.body.getElementsByClassName("demo")[0].appendChild(element);
+  </script>
+</body>
+</html>

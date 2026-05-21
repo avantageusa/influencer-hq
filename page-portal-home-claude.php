@@ -50,7 +50,7 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
 }
 
 /* Language dropdown (portal-header parity) */
-.header-lang-wrap{position:relative;display:flex;align-items:center;flex-shrink:0}
+.header-lang-wrap{display:none}
 .header-lang-btn{background:transparent;border:none;padding:4px 6px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:0;border-radius:6px;color:var(--gl);transition:opacity .2s,background .2s}
 .header-lang-btn:hover{opacity:.9;background:rgba(240,201,58,.08)}
 .header-lang-btn:focus-visible{outline:2px solid var(--gl);outline-offset:2px}
@@ -263,6 +263,13 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
       <div class="comp-list comp-list--s7">
         <div class="comp-card" id="cw2" onclick="pickComp('cw2')"><div class="comp-chk"><span class="chk-in">✓</span></div><div class="comp-body"><span class="comp-tag">Global Stage</span><div class="comp-title">Influencer World Competition</div><div class="comp-desc">Join thousands of Influencers and their followers. Compete Thursday night through Sunday night.</div></div></div>
         <div class="comp-card" id="cp2" onclick="pickComp('cp2')"><div class="comp-chk"><span class="chk-in">✓</span></div><div class="comp-body"><span class="comp-tag">Community Competition</span><div class="comp-title">Community Competition</div><div class="comp-desc">A one week competition between your followers who choose to participate with you at the helm cheering them all on to victory.</div></div></div>
+      </div>
+      <input type="hidden" id="ihq-s7-competition-selection" value="" autocomplete="off">
+      <div id="s7-competition-submit-wrap" class="s7-competition-submit-wrap" style="display:none;text-align:center;margin:24px 0 16px;">
+        <button type="button" class="send-btn" id="s7-competition-submit"><?php esc_html_e( 'Submit', 'avantage-baccarat' ); ?></button>
+      </div>
+      <div id="s7-competition-followup" class="s7-competition-followup" style="display:none;text-align:center;margin-top:8px;margin-bottom:8px;padding:18px 16px;border:1px solid rgba(240,201,58,.28);border-radius:12px;background:rgba(0,0,0,.25);font-family:'Be Vietnam Pro',sans-serif;color:var(--warm);line-height:1.85;">
+        <p style="margin:0;font-size:.95rem;"><?php esc_html_e( 'Provide favorite method of communication first in the', 'avantage-baccarat' ); ?> <a href="#" id="s7-open-registration-modal" style="color:var(--gl);text-decoration:underline;font-weight:600;"><?php esc_html_e( 'registration', 'avantage-baccarat' ); ?></a> <?php esc_html_e( 'form.', 'avantage-baccarat' ); ?></p>
       </div>
       <p class="sec-p">Influencers are automatically invited to appear on our partners' International Competition Series — a 24-hour global competition stage. Head-to-head competition features two Influencers from their own locations streaming reactions, commentary, and competitive energy in real time.</p>
       <p class="sec-p" style="color:var(--gl)">English · Mandarin · Cantonese · Korean · Japanese · Thai · Vietnamese</p>
@@ -522,7 +529,7 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
       <!-- REGISTER PANE -->
       <div class="auth-pane" id="auth-pane-register">
         <form id="auth-register-form" onsubmit="handleAuthRegister(event)">
-
+          <input type="hidden" id="auth-competition-preferences" name="competition_preferences" value="">
           <p class="auth-section-sub">Choose the method(s) you'd like us to use to communicate with you:</p>
 
           <div class="auth-ch-group">
@@ -1235,7 +1242,59 @@ function chosen() {
 }
 
 function pickComp(id) {
-  document.getElementById(id).classList.toggle('sel');
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('sel');
+  if (id === 'cw2' || id === 'cp2') {
+    syncS7CompetitionSubmitVisibility();
+  }
+}
+
+function getS7CompetitionSelectionValue() {
+  var parts = [];
+  var w = document.getElementById('cw2');
+  var c = document.getElementById('cp2');
+  if (w && w.classList.contains('sel')) {
+    parts.push('world-competition');
+  }
+  if (c && c.classList.contains('sel')) {
+    parts.push('community-competition');
+  }
+  return parts.join(',');
+}
+
+function syncS7SelectionToHiddenFields() {
+  var val = getS7CompetitionSelectionValue();
+  var h = document.getElementById('ihq-s7-competition-selection');
+  var ah = document.getElementById('auth-competition-preferences');
+  if (h) h.value = val;
+  if (ah) ah.value = val;
+}
+
+function syncS7CompetitionSubmitVisibility() {
+  var wrap = document.getElementById('s7-competition-submit-wrap');
+  var fu = document.getElementById('s7-competition-followup');
+  var w = document.getElementById('cw2');
+  var c = document.getElementById('cp2');
+  if (!wrap) return;
+  var any = (w && w.classList.contains('sel')) || (c && c.classList.contains('sel'));
+  wrap.style.display = any ? 'block' : 'none';
+  if (!any) {
+    if (fu) fu.style.display = 'none';
+    var h = document.getElementById('ihq-s7-competition-selection');
+    var ah = document.getElementById('auth-competition-preferences');
+    if (h) h.value = '';
+    if (ah) ah.value = '';
+  }
+}
+
+function submitS7CompetitionChoice(ev) {
+  if (ev) ev.preventDefault();
+  var val = getS7CompetitionSelectionValue();
+  if (!val) return;
+  syncS7SelectionToHiddenFields();
+  var fu = document.getElementById('s7-competition-followup');
+  if (fu) fu.style.display = 'block';
 }
 
 document.getElementById('mainModal').addEventListener('click', function(e) {
@@ -1255,6 +1314,20 @@ document.addEventListener('DOMContentLoaded', function() {
   bindMutual(em, tg);
   bindMutual(tg, em);
   syncModalCommCardVisual();
+
+  syncS7CompetitionSubmitVisibility();
+  var s7SubmitBtn = document.getElementById('s7-competition-submit');
+  if (s7SubmitBtn) {
+    s7SubmitBtn.addEventListener('click', submitS7CompetitionChoice);
+  }
+  var s7RegLink = document.getElementById('s7-open-registration-modal');
+  if (s7RegLink) {
+    s7RegLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      syncS7SelectionToHiddenFields();
+      openAuthModal('register');
+    });
+  }
 });
 
 // Drift-in animation for final band button on scroll
@@ -1406,6 +1479,8 @@ function handleAuthRegister(e) {
   fd.append('platform_handle', platformHandle);
   fd.append('comm_methods', JSON.stringify(methodsData));
   fd.append('challenge_type', challengeType.value);
+  var compPrefEl = document.getElementById('auth-competition-preferences');
+  fd.append('competition_preferences', compPrefEl ? compPrefEl.value : '');
   fd.append('nonce', '<?php echo wp_create_nonce("verification_email_nonce"); ?>');
 
   fetch('<?php echo esc_js(admin_url("admin-ajax.php")); ?>', { method: 'POST', body: fd })

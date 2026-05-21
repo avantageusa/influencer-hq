@@ -12,6 +12,11 @@
         --hm-text: #ffffff;
         /* Fixed stack: search bar (~60px) + sticky header (~100px) + sticky nav (~50px); tune if header heights change */
         --portal-anchor-scroll-margin: 240px;
+        /* Shared with portal auth modal (Claude parity) */
+        --bg2: #161612;
+        --gl: #f0c93a;
+        --warm: #ead9b0;
+        --white: #ffffff;
     }
 
     @media (min-width: 1025px) {
@@ -2884,6 +2889,397 @@
         }
 
         .header-register-btn:hover {
+            background: #fff;
+            color: #30313e;
+        }
+    }
+
+    button.header-login-link {
+        background: none;
+        border: none;
+        padding: 0;
+        margin: 0;
+        font: inherit;
+        cursor: pointer;
+        line-height: inherit;
+    }
+    button.header-register-btn {
+        font-family: inherit;
+        cursor: pointer;
+    }
+
+    /* Volume + auth: show on mobile (stack in .desktop-header-right-items) */
+    @media (max-width: 991px) {
+        .desktop-header-right-items {
+            display: flex !important;
+            align-items: center;
+            gap: 6px;
+            margin-right: 0;
+            flex-shrink: 1;
+            min-width: 0;
+        }
+        .header-volume-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .header-volume-btn {
+            background: transparent;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            line-height: 1;
+        }
+        .header-volume-icon {
+            flex-shrink: 0;
+            opacity: 0.9;
+        }
+        .header-volume-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 0;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+            overflow: hidden;
+            opacity: 0;
+            transition: width 0.25s ease, opacity 0.25s ease;
+        }
+        .header-volume-slider.open {
+            width: 64px;
+            opacity: 1;
+        }
+        .header-volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+        }
+        .header-volume-slider::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            border: none;
+        }
+        .header-login-link {
+            color: #fff;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 400;
+        }
+        .header-register-btn {
+            display: inline-block;
+            padding: 4px 12px;
+            border: 1px solid #fff;
+            border-radius: 20px;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .header-logout-btn {
+            display: inline-block;
+            padding: 4px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.85);
+            border-radius: 20px;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 500;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .header-logout-btn:hover {
+            color: var(--gold);
+            border-color: var(--gold);
+        }
+    }
+
+    @keyframes portalFadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes portalFadeUp {
+        from {
+            opacity: 0;
+            transform: translateY(32px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Portal header auth modal (parity with page-portal-home-claude) */
+    .auth-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.95);
+        z-index: 5000;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    .auth-overlay.open {
+        display: flex;
+        animation: portalFadeIn 0.25s;
+    }
+    .auth-modal {
+        background: var(--bg2);
+        border: 2px solid rgba(240, 201, 58, 0.3);
+        width: 100%;
+        max-width: 560px;
+        max-height: 90vh;
+        overflow-y: auto;
+        padding: 52px 28px 60px;
+        border-radius: 24px;
+        animation: portalFadeIn 0.25s;
+        position: relative;
+    }
+    .auth-modal-x {
+        position: absolute;
+        top: 20px;
+        right: 24px;
+        background: none;
+        border: none;
+        color: var(--warm);
+        font-size: 1.4rem;
+        cursor: pointer;
+        line-height: 1;
+    }
+    .auth-tabs {
+        display: flex;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+        margin-bottom: 28px;
+    }
+    .auth-tab-btn {
+        flex: 1;
+        padding: 12px 0;
+        background: transparent;
+        border: none;
+        font-family: 'Be Vietnam Pro', sans-serif;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -2px;
+        transition: color 0.2s, border-color 0.2s;
+    }
+    .auth-tab-btn.active {
+        color: var(--gl);
+        border-bottom-color: var(--gl);
+    }
+    .auth-tab-btn:not(.active) {
+        color: #888;
+    }
+    .auth-pane {
+        display: none;
+    }
+    .auth-pane.active {
+        display: block;
+        animation: portalFadeUp 0.3s both;
+    }
+    .auth-field {
+        margin-bottom: 20px;
+    }
+    .auth-field label {
+        display: block;
+        font-family: 'Be Vietnam Pro', sans-serif;
+        font-size: 0.75rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--warm);
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+    .auth-field input[type='email'],
+    .auth-field input[type='password'],
+    .auth-field input[type='text'] {
+        width: 100%;
+        padding: 14px 16px;
+        background: rgba(0, 0, 0, 0.6);
+        border: 2px solid rgba(240, 201, 58, 0.4);
+        font-family: 'Be Vietnam Pro', sans-serif;
+        font-size: 1rem;
+        color: #fff;
+        outline: none;
+        box-sizing: border-box;
+    }
+    .auth-field input:focus {
+        border-color: var(--gl);
+    }
+    .auth-field input::placeholder {
+        color: rgba(234, 217, 176, 0.5);
+    }
+    .auth-err {
+        color: #ff4d4d;
+        font-size: 0.9rem;
+        margin-bottom: 14px;
+        display: none;
+    }
+    .auth-submit-btn {
+        width: 100%;
+        padding: 20px;
+        background: var(--gl);
+        border: none;
+        font-family: 'Be Vietnam Pro', sans-serif;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        color: #000;
+        cursor: pointer;
+        margin-top: 8px;
+    }
+    .auth-submit-btn:active {
+        background: #ffd700;
+    }
+    .auth-submit-btn:disabled {
+        opacity: 0.4;
+        cursor: default;
+    }
+    .auth-check {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .auth-check input[type='checkbox'] {
+        width: 18px;
+        height: 18px;
+        margin-top: 3px;
+        flex-shrink: 0;
+        accent-color: var(--gl);
+        cursor: pointer;
+    }
+    .auth-check label {
+        font-family: 'Be Vietnam Pro', sans-serif;
+        font-size: 0.95rem;
+        color: var(--warm);
+        line-height: 1.7;
+        cursor: pointer;
+    }
+    .auth-ch-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        margin-bottom: 0;
+    }
+    .auth-ch-input {
+        width: 100%;
+        padding: 14px 16px;
+        background: rgba(0, 0, 0, 0.6);
+        border: 2px solid rgba(240, 201, 58, 0.4);
+        border-top: none;
+        font-family: 'Be Vietnam Pro', sans-serif;
+        font-size: 1rem;
+        color: #fff;
+        outline: none;
+        display: none;
+        box-sizing: border-box;
+    }
+    .auth-ch-input.show {
+        display: block;
+        animation: portalFadeUp 0.2s both;
+    }
+    .auth-ch-input:focus {
+        border-color: var(--gl);
+    }
+    .auth-ch-input::placeholder {
+        color: rgba(234, 217, 176, 0.5);
+    }
+    .auth-section-sep {
+        border: none;
+        border-top: 1px solid rgba(240, 201, 58, 0.18);
+        margin: 28px 0;
+    }
+    .auth-section-title {
+        font-family: 'Cinzel', serif;
+        font-size: 1.35rem;
+        font-weight: 600;
+        color: var(--white);
+        margin-bottom: 12px;
+        line-height: 1.3;
+    }
+    .auth-section-sub {
+        font-family: 'Be Vietnam Pro', sans-serif;
+        font-size: 0.95rem;
+        font-weight: 300;
+        color: var(--warm);
+        line-height: 1.8;
+        margin-bottom: 22px;
+    }
+    .auth-comp-cards {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .auth-comp-card {
+        padding: 20px 22px;
+        border: 2px solid rgba(240, 201, 58, 0.2);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .auth-comp-card.sel {
+        border-color: var(--gl);
+        background: rgba(240, 201, 58, 0.07);
+    }
+    .auth-comp-card input[type='radio'] {
+        display: none;
+    }
+    .auth-comp-card-inner {
+        pointer-events: none;
+    }
+    .auth-comp-card h4 {
+        font-family: 'Cinzel', serif;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--white);
+        margin-bottom: 8px;
+    }
+    .auth-comp-card p {
+        font-family: 'Be Vietnam Pro', sans-serif;
+        font-size: 0.9rem;
+        font-weight: 300;
+        color: var(--warm);
+        line-height: 1.7;
+        margin: 0;
+    }
+    @media (min-width: 768px) {
+        .auth-modal {
+            padding: 56px 44px 64px;
+        }
+    }
+    @media (min-width: 1024px) {
+        .auth-modal {
+            max-width: 640px;
+            margin: 0 auto;
+        }
+    }
+
+    @media (min-width: 992px) {
+        .header-logout-btn {
+            display: inline-block;
+            padding: 6px 18px;
+            border: 1px solid #fff;
+            border-radius: 20px;
+            color: #fff;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .header-logout-btn:hover {
             background: #fff;
             color: #30313e;
         }
