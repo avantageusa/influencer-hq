@@ -14,7 +14,17 @@ get_header();
 
 $ihq_modal_reg_nonce       = wp_create_nonce( 'ihq_reg_code_nonce' );
 $ihq_modal_login_nonce     = wp_create_nonce( 'ihq_login_code_nonce' );
+$ihq_telegram_login_pubkey_nonce = wp_create_nonce( 'ihq_telegram_login_pubkey' );
 $ihq_cf_country_iso_alpha2 = ihq_get_cloudflare_country_iso_alpha2();
+$ihq_telegram_client_id    = 0;
+if ( defined( 'IHQ_TELEGRAM_LOGIN_CLIENT_ID' ) && preg_match( '/^\d+$/', (string) IHQ_TELEGRAM_LOGIN_CLIENT_ID ) ) {
+	$ihq_telegram_client_id = (int) IHQ_TELEGRAM_LOGIN_CLIENT_ID;
+}
+$ihq_modal_telegram_lbl_default = __( 'We\'ll note your @username; code still arrives by email', 'avantage-baccarat' );
+if ( $ihq_telegram_client_id > 0 ) {
+	$ihq_modal_telegram_lbl_default = __( 'Sign in with Telegram to verify your @username — code still arrives by email', 'avantage-baccarat' );
+}
+$ihq_modal_telegram_verified_lbl = __( 'Verified — ', 'avantage-baccarat' );
 $ihq_turnstile_site_modal  = '';
 if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_configured() && defined( 'CF_TURNSTILE_SITE_KEY' ) ) {
 	$ihq_turnstile_site_modal = CF_TURNSTILE_SITE_KEY;
@@ -355,9 +365,10 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
           <div class="modal-comm-ico" style="background:rgba(0,136,204,.18);color:#2AABEE">
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
           </div>
-          <div class="modal-comm-text"><div class="ch-name"><?php esc_html_e( 'Telegram', 'avantage-baccarat' ); ?></div><span class="ch-lbl"><?php esc_html_e( 'We’ll note your @username; code still arrives by email', 'avantage-baccarat' ); ?></span></div>
+          <div class="modal-comm-text"><div class="ch-name"><?php esc_html_e( 'Telegram', 'avantage-baccarat' ); ?></div><span class="ch-lbl" id="modal-comm-telegram-lbl"><?php echo esc_html( $ihq_modal_telegram_lbl_default ); ?></span></div>
         </label>
       </div>
+      <p class="modal-comm-tg-err" id="modal-comm-tg-err" style="display:none;margin:4px 0 0;font-family:'Be Vietnam Pro',sans-serif;font-size:.85rem;color:#f85149;text-align:center"></p>
 
       <div style="margin:24px 0 4px">
         <div style="font-family:'Cinzel',serif;font-size:1.6rem;line-height:1.4;color:var(--white);margin-bottom:14px">Favorite Social Media</div>
@@ -658,8 +669,13 @@ var IHQ_MODAL_REG = {
   ajaxUrl: <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>,
   nonce: <?php echo wp_json_encode( $ihq_modal_reg_nonce ); ?>,
   turnstileSiteKey: <?php echo wp_json_encode( $ihq_turnstile_site_modal ); ?>,
-  codeExpiresMinutes: 15
+  codeExpiresMinutes: 15,
+  telegramClientId: <?php echo (int) $ihq_telegram_client_id; ?>,
+  telegramLoginNonce: <?php echo wp_json_encode( $ihq_telegram_login_pubkey_nonce ); ?>,
+  telegramLblDefault: <?php echo wp_json_encode( $ihq_modal_telegram_lbl_default ); ?>,
+  telegramVerifiedPrefix: <?php echo wp_json_encode( $ihq_modal_telegram_verified_lbl ); ?>
 };
+var ihqTelegramOAuthBusy = false;
 var ihqModalSignupToken = '';
 var ihqModalTurnstileWidgetId = null;
 
@@ -869,6 +885,123 @@ function syncModalCommCardVisual() {
   if (cardTg && tg) cardTg.classList.toggle('is-on', tg.checked);
 }
 
+function ihqClearTelegramLoginErr() {
+  var e = document.getElementById('modal-comm-tg-err');
+  if (e) {
+    e.textContent = '';
+    e.style.display = 'none';
+  }
+}
+
+function ihqShowTelegramLoginErr(msg) {
+  var e = document.getElementById('modal-comm-tg-err');
+  if (e) {
+    e.textContent = msg || '';
+    e.style.display = msg ? 'block' : 'none';
+  }
+}
+
+function ihqEnsureTelegramLoginScript(next) {
+  if (window.Telegram && window.Telegram.Login) {
+    next(true);
+    return;
+  }
+  var s = document.createElement('script');
+  s.async = true;
+  s.src = 'https://telegram.org/js/telegram-login.js';
+  s.onload = function () { next(true); };
+  s.onerror = function () { next(false); };
+  document.head.appendChild(s);
+}
+
+function ihqTryTelegramAccountLink() {
+  if (!IHQ_MODAL_REG.telegramClientId) {
+    return;
+  }
+  if (ihqTelegramOAuthBusy) {
+    return;
+  }
+  ihqClearTelegramLoginErr();
+  ihqTelegramOAuthBusy = true;
+  var fd = new FormData();
+  fd.append('action', 'ihq_telegram_login_nonce');
+  fd.append('nonce', IHQ_MODAL_REG.telegramLoginNonce);
+  fetch(IHQ_MODAL_REG.ajaxUrl, { method: 'POST', body: fd })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (!data.success || !data.data || !data.data.server_nonce) {
+        ihqTelegramOAuthBusy = false;
+        ihqShowTelegramLoginErr(ihqModalAjaxErrMessage(data) || 'Could not start Telegram login.');
+        return;
+      }
+      var serverNonce = data.data.server_nonce;
+      ihqEnsureTelegramLoginScript(function (ok) {
+        if (!ok) {
+          ihqTelegramOAuthBusy = false;
+          ihqShowTelegramLoginErr('Could not load Telegram login.');
+          return;
+        }
+        if (!window.Telegram || !window.Telegram.Login || typeof window.Telegram.Login.auth !== 'function') {
+          ihqTelegramOAuthBusy = false;
+          ihqShowTelegramLoginErr('Telegram login is unavailable.');
+          return;
+        }
+        window.Telegram.Login.auth(
+          { client_id: IHQ_MODAL_REG.telegramClientId, nonce: serverNonce, lang: 'en' },
+          function (result) {
+            if (result === false) {
+              ihqTelegramOAuthBusy = false;
+              return;
+            }
+            if (!result || result.error) {
+              ihqTelegramOAuthBusy = false;
+              if (result && result.error) {
+                ihqShowTelegramLoginErr(String(result.error));
+              }
+              return;
+            }
+            var idToken = result.id_token;
+            if (!idToken) {
+              ihqTelegramOAuthBusy = false;
+              ihqShowTelegramLoginErr('Telegram did not return an ID token.');
+              return;
+            }
+            var fd2 = new FormData();
+            fd2.append('action', 'ihq_verify_telegram_id_token');
+            fd2.append('nonce', IHQ_MODAL_REG.telegramLoginNonce);
+            fd2.append('id_token', idToken);
+            fetch(IHQ_MODAL_REG.ajaxUrl, { method: 'POST', body: fd2 })
+              .then(function (r2) { return r2.json(); })
+              .then(function (data2) {
+                ihqTelegramOAuthBusy = false;
+                if (!data2.success || !data2.data || !data2.data.telegram_username) {
+                  ihqShowTelegramLoginErr(ihqModalAjaxErrMessage(data2) || 'Verification failed.');
+                  return;
+                }
+                var tu = data2.data.telegram_username;
+                var ti = document.getElementById('modal-reg-telegram');
+                if (ti) {
+                  ti.value = tu;
+                }
+                var lbl = document.getElementById('modal-comm-telegram-lbl');
+                if (lbl) {
+                  lbl.textContent = IHQ_MODAL_REG.telegramVerifiedPrefix + tu;
+                }
+              })
+              .catch(function () {
+                ihqTelegramOAuthBusy = false;
+                ihqShowTelegramLoginErr('Network error.');
+              });
+          }
+        );
+      });
+    })
+    .catch(function () {
+      ihqTelegramOAuthBusy = false;
+      ihqShowTelegramLoginErr('Network error.');
+    });
+}
+
 function ihqModalAjaxErrMessage(data) {
   if (!data || !data.data) {
     return 'Something went wrong.';
@@ -936,6 +1069,12 @@ function ihqResetMainConversationModal() {
   ihqModalRemoveTurnstile();
   var telWrap = document.getElementById('modal-reg-telegram-wrap');
   if (telWrap) telWrap.style.display = 'none';
+  var tgl = document.getElementById('modal-comm-telegram-lbl');
+  if (tgl) {
+    tgl.textContent = IHQ_MODAL_REG.telegramLblDefault;
+  }
+  ihqClearTelegramLoginErr();
+  ihqTelegramOAuthBusy = false;
 }
 
 function ihqModalGetChallengeType() {
@@ -1323,12 +1462,30 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!box) return;
     box.addEventListener('change', function() {
       if (box.checked && other) other.checked = false;
+      if (!tg.checked) {
+        var tgl = document.getElementById('modal-comm-telegram-lbl');
+        if (tgl) {
+          tgl.textContent = IHQ_MODAL_REG.telegramLblDefault;
+        }
+        var ti = document.getElementById('modal-reg-telegram');
+        if (ti) {
+          ti.value = '';
+        }
+        ihqClearTelegramLoginErr();
+      }
       syncModalCommCardVisual();
     });
   }
   bindMutual(em, tg);
   bindMutual(tg, em);
   syncModalCommCardVisual();
+  if (tg) {
+    tg.addEventListener('change', function() {
+      if (tg.checked && IHQ_MODAL_REG.telegramClientId) {
+        ihqTryTelegramAccountLink();
+      }
+    });
+  }
 
   syncS7CompetitionSubmitVisibility();
   var s7SubmitBtn = document.getElementById('s7-competition-submit');
