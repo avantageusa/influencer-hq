@@ -28,6 +28,7 @@ function handle_verification_email() {
     $competition_preferences = ihq_sanitize_competition_preferences_input(
         isset( $_POST['competition_preferences'] ) ? wp_unslash( $_POST['competition_preferences'] ) : ''
     );
+    $country_iso_client = isset( $_POST['country_iso'] ) ? sanitize_text_field( wp_unslash( $_POST['country_iso'] ) ) : '';
 
     if (!is_email($email)) {
         wp_send_json_error('Invalid email address');
@@ -58,6 +59,7 @@ function handle_verification_email() {
         'comm_methods' => $comm_methods,
         'challenge_type' => $challenge_type,
         'competition_preferences' => $competition_preferences,
+        'country_iso' => ihq_normalize_country_iso_alpha2( $country_iso_client ),
         'timestamp' => time(),
         'expires' => time() + (24 * 60 * 60) // 24 hours
     );
@@ -190,7 +192,7 @@ function ihq_user_has_influencer_role( $user ) {
 /**
  * Create influencer user + meta + OAuth from pending registration data.
  *
- * @param array $registration_data Keys: email, password (optional — auto-generated if missing/short), first_name, last_name, platform_handle, comm_methods, challenge_type, competition_preferences (optional).
+ * @param array $registration_data Keys: email, password (optional — auto-generated if missing/short), first_name, last_name, platform_handle, comm_methods, challenge_type, competition_preferences (optional), country_iso (optional, client ISO 3166-1 alpha-2).
  * @return int|WP_Error User ID or error.
  */
 function ihq_create_influencer_user_from_registration_data( array $registration_data ) {
@@ -207,6 +209,7 @@ function ihq_create_influencer_user_from_registration_data( array $registration_
     $competition_prefs = isset( $registration_data['competition_preferences'] )
         ? ihq_sanitize_competition_preferences_input( (string) $registration_data['competition_preferences'] )
         : '';
+    $country_iso       = isset( $registration_data['country_iso'] ) ? (string) $registration_data['country_iso'] : '';
 
     if ( ! is_email( $email ) ) {
         return new WP_Error( 'invalid_email', 'Invalid email address' );
@@ -261,8 +264,9 @@ function ihq_create_influencer_user_from_registration_data( array $registration_
 
     update_user_meta( $user_id, 'registration_date', current_time( 'mysql' ) );
     update_user_meta( $user_id, 'email_verified', true );
+    update_user_meta( $user_id, 'ihq_oauth_country_iso', ihq_normalize_country_iso_alpha2( $country_iso ) );
 
-    $ihq_oauth_response = ihq_register_oauth_user( $user_id, $first_name, $last_name, $email );
+    $ihq_oauth_response = ihq_register_oauth_user( $user_id, $first_name, $last_name, $email, $country_iso );
     if ( $ihq_oauth_response && ! empty( $ihq_oauth_response['AccessToken'] ) ) {
         update_user_meta( $user_id, 'ihq_access_token', $ihq_oauth_response['AccessToken'] );
         update_user_meta( $user_id, 'ihq_id_token', $ihq_oauth_response['IdToken'] );
@@ -312,6 +316,7 @@ function ihq_handle_send_registration_code_ajax() {
     $challenge_type  = isset( $_POST['challenge_type'] ) ? sanitize_text_field( wp_unslash( $_POST['challenge_type'] ) ) : '';
     $comm_primary    = isset( $_POST['comm_primary'] ) ? sanitize_text_field( wp_unslash( $_POST['comm_primary'] ) ) : 'email';
     $telegram_user   = isset( $_POST['telegram_username'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_username'] ) ) : '';
+    $country_iso_raw = isset( $_POST['country_iso'] ) ? sanitize_text_field( wp_unslash( $_POST['country_iso'] ) ) : '';
 
     if ( ! is_email( $email ) ) {
         wp_send_json_error( array( 'message' => __( 'Invalid email address', 'avantage-baccarat' ) ) );
@@ -365,6 +370,7 @@ function ihq_handle_send_registration_code_ajax() {
         'platform_handle'  => $platform_handle,
         'comm_methods'     => $comm_methods,
         'challenge_type'   => $challenge_type,
+        'country_iso'      => ihq_normalize_country_iso_alpha2( $country_iso_raw ),
         'code_hash'        => $code_hash,
         'expires'          => $expires,
         'timestamp'        => time(),
@@ -467,6 +473,12 @@ function ihq_handle_verify_registration_code_ajax() {
         return;
     }
 
+    $posted_country = isset( $_POST['country_iso'] ) ? sanitize_text_field( wp_unslash( $_POST['country_iso'] ) ) : '';
+    $stored_country = isset( $pending['country_iso'] ) ? (string) $pending['country_iso'] : '';
+    $pending['country_iso'] = ihq_normalize_country_iso_alpha2(
+        ( $posted_country !== '' ) ? $posted_country : $stored_country
+    );
+
     $emap    = 'ihq_pending_reg_email_' . md5( strtolower( $pending['email'] ) );
     $user_id = ihq_create_influencer_user_from_pending_data_normalized( $pending );
 
@@ -506,16 +518,61 @@ function ihq_create_influencer_user_from_pending_data_normalized( array $pending
         'comm_methods'    => isset( $pending['comm_methods'] ) && is_array( $pending['comm_methods'] ) ? $pending['comm_methods'] : array(),
         'challenge_type'             => isset( $pending['challenge_type'] ) ? $pending['challenge_type'] : '',
         'competition_preferences'    => isset( $pending['competition_preferences'] ) ? $pending['competition_preferences'] : '',
+        'country_iso'                => isset( $pending['country_iso'] ) ? (string) $pending['country_iso'] : '',
     );
     return ihq_create_influencer_user_from_registration_data( $data );
 }
 
 /**
+ * Default ISO 3166-1 alpha-2 when CF-IPCountry is missing or meaningless.
+ * Matches fallback used on `page-portal-home.php`.
+ */
+const IHQ_CLOUDFLARE_COUNTRY_ISO_FALLBACK = 'US';
+
+/**
+ * Cloudflare uses XX when country cannot be determined.
+ *
+ * @link https://developers.cloudflare.com/fundamentals/reference/http-request-headers/#cf-ipcountry
+ */
+const IHQ_CLOUDFLARE_IPCOUNTRY_UNKNOWN = 'XX';
+
+/**
+ * Normalize a string to ISO 3166-1 alpha-2 (ASCII two letters).
+ *
+ * @param string $raw Trimmed uppercase candidate (e.g. from CF header).
+ * @return string Two-letter uppercase code or {@see IHQ_CLOUDFLARE_COUNTRY_ISO_FALLBACK}.
+ */
+function ihq_normalize_country_iso_alpha2( $raw ) {
+    $code = strtoupper( trim( (string) $raw ) );
+    if ( strlen( $code ) !== 2 || ! ctype_alpha( $code ) ) {
+        return IHQ_CLOUDFLARE_COUNTRY_ISO_FALLBACK;
+    }
+    if ( $code === IHQ_CLOUDFLARE_IPCOUNTRY_UNKNOWN ) {
+        return IHQ_CLOUDFLARE_COUNTRY_ISO_FALLBACK;
+    }
+    return $code;
+}
+
+/**
+ * ISO 3166-1 alpha-2 from Cloudflare `CF-IPCountry` (`HTTP_CF_IPCOUNTRY`) on this request (also available behind WP Engine with Cloudflare edge).
+ *
+ * @return string
+ */
+function ihq_get_cloudflare_country_iso_alpha2() {
+    if ( empty( $_SERVER['HTTP_CF_IPCOUNTRY'] ) ) {
+        return IHQ_CLOUDFLARE_COUNTRY_ISO_FALLBACK;
+    }
+    $raw = sanitize_text_field( wp_unslash( $_SERVER['HTTP_CF_IPCOUNTRY'] ) );
+    return ihq_normalize_country_iso_alpha2( $raw );
+}
+
+/**
  * Refresh IHQ platform OAuth tokens after sign-in (used by passwordless login).
  *
- * @param int $user_id WordPress user ID.
+ * @param int    $user_id WordPress user ID.
+ * @param string $country_iso Raw client ISO 3166-1 alpha-2 (normalized in {@see ihq_register_oauth_user}).
  */
-function ihq_refresh_influencer_oauth_tokens( $user_id ) {
+function ihq_refresh_influencer_oauth_tokens( $user_id, $country_iso = '' ) {
     $user_id = (int) $user_id;
     if ( $user_id <= 0 ) {
         return;
@@ -526,8 +583,9 @@ function ihq_refresh_influencer_oauth_tokens( $user_id ) {
     }
     $first_name = get_user_meta( $user_id, 'first_name', true );
     $last_name  = get_user_meta( $user_id, 'last_name', true );
-    $ihq_data   = ihq_register_oauth_user( $user_id, $first_name, $last_name, $user->user_email );
+    $ihq_data   = ihq_register_oauth_user( $user_id, $first_name, $last_name, $user->user_email, $country_iso );
     if ( $ihq_data && ! empty( $ihq_data['AccessToken'] ) ) {
+        update_user_meta( $user_id, 'ihq_oauth_country_iso', ihq_normalize_country_iso_alpha2( $country_iso ) );
         update_user_meta( $user_id, 'ihq_access_token', $ihq_data['AccessToken'] );
         update_user_meta( $user_id, 'ihq_id_token', $ihq_data['IdToken'] );
         update_user_meta( $user_id, 'ihq_refresh_token', $ihq_data['RefreshToken'] ?? '' );
@@ -724,7 +782,8 @@ function ihq_handle_verify_login_code_ajax() {
     wp_set_current_user( $user_id );
     wp_set_auth_cookie( $user_id, true );
 
-    ihq_refresh_influencer_oauth_tokens( $user_id );
+    $country_iso_login = isset( $_POST['country_iso'] ) ? sanitize_text_field( wp_unslash( $_POST['country_iso'] ) ) : '';
+    ihq_refresh_influencer_oauth_tokens( $user_id, $country_iso_login );
 
     $redirect = isset( $_POST['redirect_url'] ) ? esc_url_raw( wp_unslash( $_POST['redirect_url'] ) ) : home_url( '/portal/portal-home/' );
     if ( $redirect === '' ) {
@@ -769,6 +828,7 @@ function handle_email_verification_and_user_creation() {
     $comm_methods      = isset( $registration_data['comm_methods'] ) && is_array( $registration_data['comm_methods'] ) ? $registration_data['comm_methods'] : array();
     $challenge_type    = isset( $registration_data['challenge_type'] ) ? $registration_data['challenge_type'] : '';
     $competition_prefs = isset( $registration_data['competition_preferences'] ) ? $registration_data['competition_preferences'] : '';
+    $country_iso       = isset( $registration_data['country_iso'] ) ? (string) $registration_data['country_iso'] : '';
 
     // Check if email already exists
     if ( email_exists( $registration_data['email'] ) ) {
@@ -787,6 +847,7 @@ function handle_email_verification_and_user_creation() {
             'comm_methods'    => $comm_methods,
             'challenge_type'             => $challenge_type,
             'competition_preferences'    => $competition_prefs,
+            'country_iso'                => $country_iso,
         )
     );
 
@@ -816,18 +877,22 @@ add_action('wp_scheduled_delete', 'cleanup_expired_registrations');
 
 /**
  * Register a new WP user in the InfluencerHQ platform via OAuth start-session.
+ *
+ * @param string $country_iso Raw client ISO 3166-1 alpha-2 (typically from browser `country_iso` POST field); sanitized before send.
+ *
  * Returns the parsed `data` object on success, or false on failure.
  */
-function ihq_register_oauth_user($user_id, $first_name, $last_name, $email) {
+function ihq_register_oauth_user( $user_id, $first_name, $last_name, $email, $country_iso = '' ) {
     $api_url = 'https://02nvfvonol.execute-api.eu-west-2.amazonaws.com/qc/account/oauth/start-session';
 
     $payload = array(
         'oauthLoginType' => 'InfluencerHq',
         'payload' => array(
-            'id'        => 'wpu-' . $user_id,
-            'firstName' => $first_name,
-            'lastName'  => $last_name,
-            'email'     => $email,
+            'id'         => 'wpu-' . $user_id,
+            'firstName'  => $first_name,
+            'lastName'   => $last_name,
+            'email'      => $email,
+            'countryIso' => ihq_normalize_country_iso_alpha2( $country_iso ),
         ),
     );
 

@@ -253,8 +253,10 @@ if (isset($_POST['action']) && $_POST['action'] === 'influencer_login') {
     // ── Refresh IHQ platform session on every login ───────────────────────────
     $first_name = get_user_meta($user->ID, 'first_name', true);
     $last_name  = get_user_meta($user->ID, 'last_name',  true);
-    $ihq_data   = ihq_register_oauth_user($user->ID, $first_name, $last_name, $user->user_email);
+    $country_iso_login = isset($_POST['country_iso']) ? sanitize_text_field(wp_unslash($_POST['country_iso'])) : '';
+    $ihq_data   = ihq_register_oauth_user($user->ID, $first_name, $last_name, $user->user_email, $country_iso_login);
     if ($ihq_data && !empty($ihq_data['AccessToken'])) {
+        update_user_meta($user->ID, 'ihq_oauth_country_iso', ihq_normalize_country_iso_alpha2($country_iso_login));
         update_user_meta($user->ID, 'ihq_access_token',  $ihq_data['AccessToken']);
         update_user_meta($user->ID, 'ihq_id_token',      $ihq_data['IdToken']);
         update_user_meta($user->ID, 'ihq_refresh_token', $ihq_data['RefreshToken'] ?? '');

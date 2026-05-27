@@ -55,14 +55,21 @@ get_template_part( 'template-parts/portal-styles' );
                         $ihq_expires     = get_user_meta($uid, 'ihq_token_expires', true);
                         $current_user    = wp_get_current_user();
 
+                        $ihq_oauth_country_iso = get_user_meta( $uid, 'ihq_oauth_country_iso', true );
+                        $ihq_oauth_country_iso = is_string( $ihq_oauth_country_iso ) ? strtoupper( trim( $ihq_oauth_country_iso ) ) : '';
+
+                        $ihq_payload_person = array(
+                            'id'        => 'wpu-' . $uid,
+                            'firstName' => $first_name,
+                            'lastName'  => $last_name,
+                            'email'     => $current_user->user_email,
+                        );
+                        if ( strlen( $ihq_oauth_country_iso ) === 2 ) {
+                            $ihq_payload_person['countryIso'] = $ihq_oauth_country_iso;
+                        }
                         $ihq_payload_sent = array(
                             'oauthLoginType' => 'InfluencerHq',
-                            'payload' => array(
-                                'id'        => 'wpu-' . $uid,
-                                'firstName' => $first_name,
-                                'lastName'  => $last_name,
-                                'email'     => $current_user->user_email,
-                            ),
+                            'payload'        => $ihq_payload_person,
                         );
                         $ihq_response_stored = array(
                             'AccessToken' => $ihq_access  ? substr($ihq_access, 0, 40)   . '…' : null,
@@ -81,6 +88,7 @@ get_template_part( 'template-parts/portal-styles' );
                                 <tr><td style="color:#888;padding:3px 0;width:150px;">WP ID</td><td><?php echo esc_html($uid); ?></td></tr>
                                 <tr><td style="color:#888;padding:3px 0;">IHQ ID</td><td>wpu-<?php echo esc_html($uid); ?></td></tr>
                                 <tr><td style="color:#888;padding:3px 0;">Email</td><td><?php echo esc_html($current_user->user_email); ?></td></tr>
+                                <tr><td style="color:#888;padding:3px 0;">Country ISO</td><td><?php echo strlen( $ihq_oauth_country_iso ) === 2 ? esc_html( $ihq_oauth_country_iso ) : '—'; ?> <span style="color:#888;font-size:.76rem;">(OAuth / start-session)</span></td></tr>
                                 <tr><td style="color:#888;padding:3px 0;">Name</td><td><?php echo esc_html(trim($first_name . ' ' . $last_name)); ?></td></tr>
                                 <?php if ($platform_handle): ?><tr><td style="color:#888;padding:3px 0;">Handle</td><td><?php echo esc_html($platform_handle); ?></td></tr><?php endif; ?>
                                 <?php if ($challenge_type): ?><tr><td style="color:#888;padding:3px 0;">Challenge</td><td><?php echo esc_html($challenge_type); ?></td></tr><?php endif; ?>

@@ -78,9 +78,9 @@ $social_urls = apply_filters(
 
 <div class="portal-footer" role="contentinfo">
     <div class="portal-footer-inner">
-        <p class="portal-footer-headline"><?php echo esc_html( $headline ); ?></p>
+        <!-- <p class="portal-footer-headline"><?php echo esc_html( $headline ); ?></p> -->
 
-        <ul class="portal-footer-social" aria-label="<?php esc_attr_e( 'Social media', 'avantage-baccarat' ); ?>">
+        <!-- <ul class="portal-footer-social" aria-label="<?php esc_attr_e( 'Social media', 'avantage-baccarat' ); ?>">
             <li>
                 <a class="portal-footer-social-link" href="<?php echo esc_url( $social_urls['youtube'] ?? '#' ); ?>" target="_blank" rel="noopener noreferrer" aria-label="YouTube">
                     <span class="portal-footer-social-thumb" aria-hidden="true"><img src="<?php echo esc_url( $asset_base . 'youtube.png' ); ?>" alt="" width="28" height="20" decoding="async" loading="lazy"></span>
@@ -96,19 +96,20 @@ $social_urls = apply_filters(
                     <span class="portal-footer-social-thumb" aria-hidden="true"><img src="<?php echo esc_url( $asset_base . 'instagram.png' ); ?>" alt="" width="36" height="36" decoding="async" loading="lazy"></span>
                 </a>
             </li>
-        </ul>
+        </ul> -->
 
         <nav class="portal-footer-nav" aria-label="<?php esc_attr_e( 'Footer links', 'avantage-baccarat' ); ?>">
             <a href="<?php echo esc_url( $link_terms ); ?>"><?php esc_html_e( 'Terms & Conditions', 'avantage-baccarat' ); ?></a>
             <a href="<?php echo esc_url( $link_privacy ); ?>"><?php esc_html_e( 'Privacy Center', 'avantage-baccarat' ); ?></a>
-            <a href="<?php echo esc_url( $link_help ); ?>"><?php esc_html_e( 'Help Center', 'avantage-baccarat' ); ?></a>
+            <a href="https://influencerhq.co/portal/portal-home/?open=concierge"><?php esc_html_e( 'Help Center', 'avantage-baccarat' ); ?></a>
             <a href="<?php echo esc_url( $link_contact ); ?>"><?php esc_html_e( 'Contact Us', 'avantage-baccarat' ); ?></a>
         </nav>
 
         <div class="portal-footer-logos">
-            <img class="portal-footer-logo-img portal-footer-logo-img--cogra" src="<?php echo esc_url( $asset_base . 'cogra.png' ); ?>" alt="<?php esc_attr_e( 'eCOGRA', 'avantage-baccarat' ); ?>" width="283" height="60" decoding="async" loading="lazy">
-            <img class="portal-footer-logo-img portal-footer-logo-img--mga" src="<?php echo esc_url( $asset_base . 'mga.png' ); ?>" alt="<?php esc_attr_e( 'Malta Gaming Authority', 'avantage-baccarat' ); ?>" width="259" height="59" decoding="async" loading="lazy">
-            <img class="portal-footer-logo-img portal-footer-logo-img--praxis" src="<?php echo esc_url( $asset_base . 'praxis.png' ); ?>" alt="<?php esc_attr_e( 'Praxis', 'avantage-baccarat' ); ?>" width="247" height="59" decoding="async" loading="lazy">
+            <!-- <img class="portal-footer-logo-img portal-footer-logo-img--cogra" src="<?php echo esc_url( $asset_base . 'cogra.png' ); ?>" alt="<?php esc_attr_e( 'eCOGRA', 'avantage-baccarat' ); ?>" width="283" height="60" decoding="async" loading="lazy"> -->
+            <a href="https://apexregulations.com/">
+            <img class="portal-footer-logo-img portal-footer-logo-img--mga" src="<?php echo esc_url( $asset_base . 'apex-logo.png' ); ?>" alt="<?php esc_attr_e( 'APEX Crypto License', 'avantage-baccarat' ); ?>" width="259" height="59" decoding="async" loading="lazy"></a>
+            <!-- <img class="portal-footer-logo-img portal-footer-logo-img--praxis" src="<?php echo esc_url( $asset_base . 'praxis.png' ); ?>" alt="<?php esc_attr_e( 'Praxis', 'avantage-baccarat' ); ?>" width="247" height="59" decoding="async" loading="lazy"> -->
         </div>
 
         <hr class="portal-footer-rule">

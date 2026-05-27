@@ -14,6 +14,7 @@ get_header();
 
 $ihq_modal_reg_nonce       = wp_create_nonce( 'ihq_reg_code_nonce' );
 $ihq_modal_login_nonce     = wp_create_nonce( 'ihq_login_code_nonce' );
+$ihq_cf_country_iso_alpha2 = ihq_get_cloudflare_country_iso_alpha2();
 $ihq_turnstile_site_modal  = '';
 if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_configured() && defined( 'CF_TURNSTILE_SITE_KEY' ) ) {
 	$ihq_turnstile_site_modal = CF_TURNSTILE_SITE_KEY;
@@ -639,6 +640,17 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
 </main><!-- #primary -->
 
 <script>
+window.IHQ_CF_COUNTRY_SEED_ISO = <?php echo wp_json_encode( $ihq_cf_country_iso_alpha2 ); ?>;
+if (typeof window.ihqResolveClientCountryIsoAlpha2 !== 'function') {
+  window.ihqResolveClientCountryIsoAlpha2 = function () {
+    var seed = typeof window.IHQ_CF_COUNTRY_SEED_ISO === 'string' ? window.IHQ_CF_COUNTRY_SEED_ISO.trim() : '';
+    if (/^[A-Za-z]{2}$/.test(seed)) {
+      return seed.toUpperCase();
+    }
+    return 'US';
+  };
+}
+console.log('[IHQ] Country ISO for POST (IHQ_CF_COUNTRY_SEED_ISO):', window.ihqResolveClientCountryIsoAlpha2());
 var started = false;
 var src = null;
 
@@ -831,6 +843,7 @@ function ihqAuthLoginVerify() {
   fd.append('signup_token', ihqAuthLoginSignupToken);
   fd.append('code', raw);
   fd.append('redirect_url', IHQ_AUTH_LOGIN.redirectUrl);
+  fd.append('country_iso', window.ihqResolveClientCountryIsoAlpha2());
   fetch(IHQ_AUTH_LOGIN.ajaxUrl, { method: 'POST', body: fd })
     .then(function (r) { return r.json(); })
     .then(function (data) {
@@ -1007,6 +1020,7 @@ function ihqModalRegSendCode() {
   fd.append('comm_primary', commPrimary);
   fd.append('telegram_username', telegramUsername);
   fd.append('cf-turnstile-response', tsToken);
+  fd.append('country_iso', window.ihqResolveClientCountryIsoAlpha2());
 
   fetch(IHQ_MODAL_REG.ajaxUrl, { method: 'POST', body: fd })
     .then(function (r) { return r.json(); })
@@ -1052,6 +1066,7 @@ function ihqModalRegVerifyCode() {
   fd.append('nonce', IHQ_MODAL_REG.nonce);
   fd.append('signup_token', ihqModalSignupToken);
   fd.append('code', raw);
+  fd.append('country_iso', window.ihqResolveClientCountryIsoAlpha2());
 
   fetch(IHQ_MODAL_REG.ajaxUrl, { method: 'POST', body: fd })
     .then(function (r) { return r.json(); })
@@ -1481,6 +1496,7 @@ function handleAuthRegister(e) {
   fd.append('challenge_type', challengeType.value);
   var compPrefEl = document.getElementById('auth-competition-preferences');
   fd.append('competition_preferences', compPrefEl ? compPrefEl.value : '');
+  fd.append('country_iso', window.ihqResolveClientCountryIsoAlpha2());
   fd.append('nonce', '<?php echo wp_create_nonce("verification_email_nonce"); ?>');
 
   fetch('<?php echo esc_js(admin_url("admin-ajax.php")); ?>', { method: 'POST', body: fd })

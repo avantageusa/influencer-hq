@@ -18,7 +18,8 @@ $ihq_portal_auth_turnstile   = '';
 if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_configured() && defined( 'CF_TURNSTILE_SITE_KEY' ) ) {
 	$ihq_portal_auth_turnstile = CF_TURNSTILE_SITE_KEY;
 }
-$ihq_portal_auth_redirect = home_url( '/portal/portal-home/' );
+$ihq_portal_auth_redirect   = home_url( '/portal/portal-home/' );
+$ihq_portal_cf_country_seed = function_exists( 'ihq_get_cloudflare_country_iso_alpha2' ) ? ihq_get_cloudflare_country_iso_alpha2() : 'US';
 ?>
 <?php if ( $ihq_portal_auth_turnstile !== '' ) : ?>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
@@ -182,6 +183,16 @@ $ihq_portal_auth_redirect = home_url( '/portal/portal-home/' );
 </div>
 
 <script>
+window.IHQ_CF_COUNTRY_SEED_ISO = <?php echo wp_json_encode( $ihq_portal_cf_country_seed ); ?>;
+if (typeof window.ihqResolveClientCountryIsoAlpha2 !== 'function') {
+	window.ihqResolveClientCountryIsoAlpha2 = function () {
+		var seed = typeof window.IHQ_CF_COUNTRY_SEED_ISO === 'string' ? window.IHQ_CF_COUNTRY_SEED_ISO.trim() : '';
+		if (/^[A-Za-z]{2}$/.test(seed)) {
+			return seed.toUpperCase();
+		}
+		return 'US';
+	};
+}
 var IHQ_AUTH_LOGIN = {
 	ajaxUrl: <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>,
 	nonce: <?php echo wp_json_encode( $ihq_portal_auth_login_nonce ); ?>,
@@ -384,6 +395,7 @@ function ihqAuthLoginVerify() {
 	fd.append('signup_token', ihqAuthLoginSignupToken);
 	fd.append('code', raw);
 	fd.append('redirect_url', IHQ_AUTH_LOGIN.redirectUrl);
+	fd.append('country_iso', window.ihqResolveClientCountryIsoAlpha2());
 	fetch(IHQ_AUTH_LOGIN.ajaxUrl, { method: 'POST', body: fd })
 		.then(function (r) { return r.json(); })
 		.then(function (data) {
@@ -500,6 +512,7 @@ function handleAuthRegister(e) {
 	fd.append('challenge_type', challengeType.value);
 	var compPrefEl = document.getElementById('auth-competition-preferences');
 	fd.append('competition_preferences', compPrefEl ? compPrefEl.value : '');
+	fd.append('country_iso', window.ihqResolveClientCountryIsoAlpha2());
 	fd.append('nonce', '<?php echo esc_js( wp_create_nonce( 'verification_email_nonce' ) ); ?>');
 
 	fetch(<?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>, { method: 'POST', body: fd })
