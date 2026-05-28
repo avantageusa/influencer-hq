@@ -676,6 +676,10 @@ var IHQ_MODAL_REG = {
   telegramVerifiedPrefix: <?php echo wp_json_encode( $ihq_modal_telegram_verified_lbl ); ?>
 };
 var ihqTelegramOAuthBusy = false;
+var ihqVerifiedTelegramUsername = '';
+var ihqVerifiedTelegramSessionToken = '';
+var ihqVerifiedTelegramFirstName = '';
+var ihqVerifiedTelegramLastName = '';
 var ihqModalSignupToken = '';
 var ihqModalTurnstileWidgetId = null;
 
@@ -947,7 +951,7 @@ function ihqTryTelegramAccountLink() {
           return;
         }
         window.Telegram.Login.auth(
-          { client_id: IHQ_MODAL_REG.telegramClientId, nonce: serverNonce, lang: 'en' },
+          { client_id: IHQ_MODAL_REG.telegramClientId, nonce: serverNonce, lang: 'en', request_access: ['write'] },
           function (result) {
             if (result === false) {
               ihqTelegramOAuthBusy = false;
@@ -983,10 +987,42 @@ function ihqTryTelegramAccountLink() {
                 if (ti) {
                   ti.value = tu;
                 }
+                ihqVerifiedTelegramUsername = tu;
+                ihqVerifiedTelegramSessionToken = data2.data.telegram_session_token || '';
+                ihqVerifiedTelegramFirstName = data2.data.telegram_first_name || '';
+                ihqVerifiedTelegramLastName = data2.data.telegram_last_name || '';
+                var firstInput = document.getElementById('modal-reg-first');
+                var lastInput = document.getElementById('modal-reg-last');
+                if (firstInput && !firstInput.value && ihqVerifiedTelegramFirstName) {
+                  firstInput.value = ihqVerifiedTelegramFirstName;
+                }
+                if (lastInput && !lastInput.value && ihqVerifiedTelegramLastName) {
+                  lastInput.value = ihqVerifiedTelegramLastName;
+                }
                 var lbl = document.getElementById('modal-comm-telegram-lbl');
                 if (lbl) {
                   lbl.textContent = IHQ_MODAL_REG.telegramVerifiedPrefix + tu;
                 }
+                var fd3 = new FormData();
+                fd3.append('action', 'ihq_register_telegram_user');
+                fd3.append('nonce', IHQ_MODAL_REG.telegramLoginNonce);
+                fd3.append('telegram_session_token', ihqVerifiedTelegramSessionToken);
+                fd3.append('challenge_type', ihqModalGetChallengeType());
+                fd3.append('platform_handle', ihqModalGetPlatformHandle() || tu);
+                fd3.append('country_iso', window.ihqResolveClientCountryIsoAlpha2());
+                fetch(IHQ_MODAL_REG.ajaxUrl, { method: 'POST', body: fd3 })
+                  .then(function (r3) { return r3.json(); })
+                  .then(function (data3) {
+                    if (!data3.success || !data3.data || !data3.data.redirect_url) {
+                      ihqShowTelegramLoginErr(ihqModalAjaxErrMessage(data3) || 'Could not finish Telegram registration.');
+                      return;
+                    }
+                    chosen();
+                    window.location.href = data3.data.redirect_url;
+                  })
+                  .catch(function () {
+                    ihqShowTelegramLoginErr('Network error.');
+                  });
               })
               .catch(function () {
                 ihqTelegramOAuthBusy = false;
@@ -1075,6 +1111,10 @@ function ihqResetMainConversationModal() {
   }
   ihqClearTelegramLoginErr();
   ihqTelegramOAuthBusy = false;
+  ihqVerifiedTelegramUsername = '';
+  ihqVerifiedTelegramSessionToken = '';
+  ihqVerifiedTelegramFirstName = '';
+  ihqVerifiedTelegramLastName = '';
 }
 
 function ihqModalGetChallengeType() {
@@ -1116,6 +1156,10 @@ function ihqModalRegSendCode() {
   var email = document.getElementById('modal-reg-email').value.trim();
   var commPrimary = document.getElementById('modal-comm-telegram').checked ? 'telegram' : 'email';
   var telegramUsername = document.getElementById('modal-reg-telegram').value.trim();
+  if (!telegramUsername && ihqVerifiedTelegramUsername) {
+    telegramUsername = ihqVerifiedTelegramUsername;
+    document.getElementById('modal-reg-telegram').value = telegramUsername;
+  }
 
   if (!first || !last) {
     errEl.textContent = 'Please enter your first and last name.';
@@ -1158,6 +1202,7 @@ function ihqModalRegSendCode() {
   fd.append('challenge_type', ihqModalGetChallengeType());
   fd.append('comm_primary', commPrimary);
   fd.append('telegram_username', telegramUsername);
+  fd.append('telegram_session_token', ihqVerifiedTelegramSessionToken);
   fd.append('cf-turnstile-response', tsToken);
   fd.append('country_iso', window.ihqResolveClientCountryIsoAlpha2());
 
@@ -1359,6 +1404,17 @@ function onModalSubmit() {
   if (document.getElementById('modal-comm-telegram').checked) {
     telWrap.style.display = 'block';
     telInput.required = true;
+    if (!telInput.value && ihqVerifiedTelegramUsername) {
+      telInput.value = ihqVerifiedTelegramUsername;
+    }
+    var firstInput = document.getElementById('modal-reg-first');
+    var lastInput = document.getElementById('modal-reg-last');
+    if (firstInput && !firstInput.value && ihqVerifiedTelegramFirstName) {
+      firstInput.value = ihqVerifiedTelegramFirstName;
+    }
+    if (lastInput && !lastInput.value && ihqVerifiedTelegramLastName) {
+      lastInput.value = ihqVerifiedTelegramLastName;
+    }
   } else {
     telWrap.style.display = 'none';
     telInput.required = false;
@@ -1471,6 +1527,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (ti) {
           ti.value = '';
         }
+        ihqVerifiedTelegramUsername = '';
+        ihqVerifiedTelegramSessionToken = '';
+        ihqVerifiedTelegramFirstName = '';
+        ihqVerifiedTelegramLastName = '';
         ihqClearTelegramLoginErr();
       }
       syncModalCommCardVisual();

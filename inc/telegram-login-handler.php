@@ -22,6 +22,7 @@ const IHQ_TELEGRAM_JWKS_CACHE_SECONDS = 3600;
 
 /** Issuer claim for Telegram OIDC ID tokens. */
 const IHQ_TELEGRAM_OIDC_ISSUER = 'https://oauth.telegram.org';
+const IHQ_TELEGRAM_REG_SESSION_TTL = 20 * MINUTE_IN_SECONDS;
 
 /**
  * Numeric Telegram Login client ID (bot), or empty if disabled.
@@ -34,6 +35,74 @@ function ihq_telegram_login_get_client_id() {
 		return preg_match( '/^\d+$/', $raw ) ? $raw : '';
 	}
 	return '';
+}
+
+/**
+ * Bot token used for Telegram Bot API sendMessage.
+ *
+ * @return string
+ */
+function ihq_telegram_login_get_bot_token() {
+	if ( defined( 'IHQ_TELEGRAM_BOT_TOKEN' ) && is_string( IHQ_TELEGRAM_BOT_TOKEN ) ) {
+		return trim( (string) IHQ_TELEGRAM_BOT_TOKEN );
+	}
+	return '';
+}
+
+/**
+ * Return Telegram registration session data by token.
+ *
+ * @param string $session_token Session token issued after Telegram auth.
+ * @return array<string,mixed>|null
+ */
+function ihq_get_telegram_registration_session( $session_token ) {
+	$session_token = trim( (string) $session_token );
+	if ( '' === $session_token ) {
+		return null;
+	}
+	$key  = 'ihq_tg_reg_' . md5( $session_token );
+	$data = get_transient( $key );
+	return is_array( $data ) ? $data : null;
+}
+
+/**
+ * Send direct Telegram message via Bot API.
+ *
+ * @param int    $telegram_user_id Telegram user id.
+ * @param string $text             Plaintext message.
+ * @return true|WP_Error
+ */
+function ihq_telegram_send_direct_message( $telegram_user_id, $text ) {
+	$bot_token = ihq_telegram_login_get_bot_token();
+	if ( '' === $bot_token ) {
+		return new WP_Error( 'telegram_bot_token_missing', __( 'Telegram bot token is not configured', 'avantage-baccarat' ) );
+	}
+
+	$payload = array(
+		'chat_id' => (int) $telegram_user_id,
+		'text'    => (string) $text,
+	);
+
+	$response = wp_remote_post(
+		'https://api.telegram.org/bot' . rawurlencode( $bot_token ) . '/sendMessage',
+		array(
+			'timeout' => 12,
+			'body'    => $payload,
+		)
+	);
+
+	if ( is_wp_error( $response ) ) {
+		return $response;
+	}
+
+	$code = (int) wp_remote_retrieve_response_code( $response );
+	$body = wp_remote_retrieve_body( $response );
+	$json = json_decode( $body, true );
+	if ( $code < 200 || $code >= 300 || ! is_array( $json ) || empty( $json['ok'] ) ) {
+		return new WP_Error( 'telegram_send_failed', __( 'Could not deliver the code to Telegram. Please ensure you started the bot, then try again.', 'avantage-baccarat' ) );
+	}
+
+	return true;
 }
 
 /**
@@ -266,7 +335,7 @@ add_action( 'wp_ajax_ihq_telegram_login_nonce', 'ihq_handle_telegram_login_nonce
 add_action( 'wp_ajax_nopriv_ihq_telegram_login_nonce', 'ihq_handle_telegram_login_nonce_ajax' );
 
 /**
- * AJAX: verify ID token from Telegram Login widget; return normalized @username.
+ * AJAX: verify ID token from Telegram Login widget; return normalized profile + session token.
  */
 function ihq_handle_verify_telegram_id_token_ajax() {
 	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_telegram_login_pubkey' ) ) {
@@ -308,17 +377,177 @@ function ihq_handle_verify_telegram_id_token_ajax() {
 
 	$preferred = isset( $claims['preferred_username'] ) ? sanitize_text_field( (string) $claims['preferred_username'] ) : '';
 	if ( '' === $preferred ) {
-		wp_send_json_error( array( 'message' => __( 'Telegram did not return a username for this account', 'avantage-baccarat' ) ) );
+		wp_send_json_error(
+			array(
+				'message' => __( 'Telegram login succeeded, but this Telegram account has no @username set. Please set a Telegram username in Telegram Settings > Edit Profile > Username, then try again (or choose Email).', 'avantage-baccarat' ),
+			)
+		);
 		return;
 	}
 
 	$handle = '@' . ltrim( $preferred, '@' );
+	$telegram_user_id = isset( $claims['id'] ) ? (int) $claims['id'] : 0;
+	if ( $telegram_user_id <= 0 ) {
+		wp_send_json_error( array( 'message' => __( 'Telegram did not return a valid user id', 'avantage-baccarat' ) ) );
+		return;
+	}
+
+	$display_name = isset( $claims['name'] ) ? sanitize_text_field( (string) $claims['name'] ) : '';
+	$first_name   = '';
+	$last_name    = '';
+	if ( '' !== $display_name ) {
+		$name_parts = preg_split( '/\s+/', $display_name );
+		if ( is_array( $name_parts ) && ! empty( $name_parts ) ) {
+			$first_name = (string) array_shift( $name_parts );
+			$last_name  = trim( implode( ' ', $name_parts ) );
+		}
+	}
+
+	$reg_session_token = wp_generate_password( 40, false, false );
+	$reg_session_key   = 'ihq_tg_reg_' . md5( $reg_session_token );
+	set_transient(
+		$reg_session_key,
+		array(
+			'telegram_user_id'  => $telegram_user_id,
+			'telegram_username' => $handle,
+			'first_name'        => $first_name,
+			'last_name'         => $last_name,
+			'issued_at'         => time(),
+		),
+		IHQ_TELEGRAM_REG_SESSION_TTL
+	);
 
 	wp_send_json_success(
 		array(
-			'telegram_username' => $handle,
+			'telegram_username'      => $handle,
+			'telegram_first_name'    => $first_name,
+			'telegram_last_name'     => $last_name,
+			'telegram_session_token' => $reg_session_token,
 		)
 	);
 }
 add_action( 'wp_ajax_ihq_verify_telegram_id_token', 'ihq_handle_verify_telegram_id_token_ajax' );
 add_action( 'wp_ajax_nopriv_ihq_verify_telegram_id_token', 'ihq_handle_verify_telegram_id_token_ajax' );
+
+/**
+ * Build a deterministic fake email from Telegram username/id.
+ *
+ * @param string $telegram_username Username with/without @.
+ * @param int    $telegram_user_id  Numeric Telegram user id.
+ * @return string
+ */
+function ihq_telegram_build_fake_email( $telegram_username, $telegram_user_id ) {
+	$base = strtolower( ltrim( (string) $telegram_username, '@' ) );
+	$base = preg_replace( '/[^a-z0-9._-]/', '', $base );
+	if ( '' === $base ) {
+		$base = 'tg' . (int) $telegram_user_id;
+	}
+	$candidate = $base . '@email_telegram.com';
+	if ( ! email_exists( $candidate ) ) {
+		return $candidate;
+	}
+	$index = 2;
+	while ( $index < 10000 ) {
+		$try = $base . $index . '@email_telegram.com';
+		if ( ! email_exists( $try ) ) {
+			return $try;
+		}
+		++$index;
+	}
+	return 'tg' . (int) $telegram_user_id . '@email_telegram.com';
+}
+
+/**
+ * AJAX: directly register/log-in user from verified Telegram session.
+ */
+function ihq_handle_register_telegram_user_ajax() {
+	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_telegram_login_pubkey' ) ) {
+		wp_send_json_error( array( 'message' => __( 'Invalid security token', 'avantage-baccarat' ) ) );
+		return;
+	}
+	$session_token = isset( $_POST['telegram_session_token'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_session_token'] ) ) : '';
+	$session       = ihq_get_telegram_registration_session( $session_token );
+	if ( ! is_array( $session ) || empty( $session['telegram_user_id'] ) || empty( $session['telegram_username'] ) ) {
+		wp_send_json_error( array( 'message' => __( 'Telegram session expired. Please authenticate again.', 'avantage-baccarat' ) ) );
+		return;
+	}
+
+	$telegram_user_id  = (int) $session['telegram_user_id'];
+	$telegram_username = (string) $session['telegram_username'];
+	$first_name        = isset( $session['first_name'] ) ? sanitize_text_field( (string) $session['first_name'] ) : '';
+	$last_name         = isset( $session['last_name'] ) ? sanitize_text_field( (string) $session['last_name'] ) : '';
+	$challenge_type    = isset( $_POST['challenge_type'] ) ? sanitize_text_field( wp_unslash( $_POST['challenge_type'] ) ) : '';
+	$platform_handle   = isset( $_POST['platform_handle'] ) ? sanitize_text_field( wp_unslash( $_POST['platform_handle'] ) ) : $telegram_username;
+	$country_iso       = isset( $_POST['country_iso'] ) ? sanitize_text_field( wp_unslash( $_POST['country_iso'] ) ) : '';
+
+	$email = ihq_telegram_build_fake_email( $telegram_username, $telegram_user_id );
+	$created = ihq_create_influencer_user_from_registration_data(
+		array(
+			'email'           => $email,
+			'first_name'      => $first_name,
+			'last_name'       => $last_name,
+			'platform_handle' => $platform_handle,
+			'comm_methods'    => array( 'telegram' => $telegram_username ),
+			'challenge_type'  => $challenge_type,
+			'country_iso'     => $country_iso,
+			'telegram_user_id'=> $telegram_user_id,
+		)
+	);
+	if ( is_wp_error( $created ) ) {
+		wp_send_json_error( array( 'message' => $created->get_error_message() ) );
+		return;
+	}
+
+	delete_transient( 'ihq_tg_reg_' . md5( $session_token ) );
+	wp_set_current_user( (int) $created );
+	wp_set_auth_cookie( (int) $created, true );
+	wp_send_json_success(
+		array(
+			'redirect_url' => add_query_arg( 'welcome', 'true', home_url( '/portal/portal-home/' ) ),
+		)
+	);
+}
+add_action( 'wp_ajax_ihq_register_telegram_user', 'ihq_handle_register_telegram_user_ajax' );
+add_action( 'wp_ajax_nopriv_ihq_register_telegram_user', 'ihq_handle_register_telegram_user_ajax' );
+
+/**
+ * AJAX: login existing WP user by verified Telegram username.
+ */
+function ihq_handle_login_telegram_user_ajax() {
+	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_telegram_login_pubkey' ) ) {
+		wp_send_json_error( array( 'message' => __( 'Invalid security token', 'avantage-baccarat' ) ) );
+		return;
+	}
+	$session_token = isset( $_POST['telegram_session_token'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_session_token'] ) ) : '';
+	$session       = ihq_get_telegram_registration_session( $session_token );
+	if ( ! is_array( $session ) || empty( $session['telegram_username'] ) ) {
+		wp_send_json_error( array( 'message' => __( 'Telegram session expired. Please authenticate again.', 'avantage-baccarat' ) ) );
+		return;
+	}
+
+	$telegram_username = (string) $session['telegram_username'];
+	$users = get_users(
+		array(
+			'meta_key'   => 'communication_username',
+			'meta_value' => $telegram_username,
+			'number'     => 1,
+			'fields'     => array( 'ID' ),
+		)
+	);
+	if ( empty( $users ) || empty( $users[0]->ID ) ) {
+		wp_send_json_error( array( 'message' => __( 'No account is linked to this Telegram username yet. Please register first.', 'avantage-baccarat' ) ) );
+		return;
+	}
+
+	$user_id = (int) $users[0]->ID;
+	wp_set_current_user( $user_id );
+	wp_set_auth_cookie( $user_id, true );
+
+	wp_send_json_success(
+		array(
+			'redirect_url' => home_url( '/portal/portal-home/' ),
+		)
+	);
+}
+add_action( 'wp_ajax_ihq_login_telegram_user', 'ihq_handle_login_telegram_user_ajax' );
+add_action( 'wp_ajax_nopriv_ihq_login_telegram_user', 'ihq_handle_login_telegram_user_ajax' );

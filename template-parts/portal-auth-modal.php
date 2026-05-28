@@ -14,12 +14,17 @@ if ( is_user_logged_in() ) {
 }
 
 $ihq_portal_auth_login_nonce = wp_create_nonce( 'ihq_login_code_nonce' );
+$ihq_portal_auth_telegram_nonce = wp_create_nonce( 'ihq_telegram_login_pubkey' );
 $ihq_portal_auth_turnstile   = '';
 if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_configured() && defined( 'CF_TURNSTILE_SITE_KEY' ) ) {
 	$ihq_portal_auth_turnstile = CF_TURNSTILE_SITE_KEY;
 }
 $ihq_portal_auth_redirect   = home_url( '/portal/portal-home/' );
 $ihq_portal_cf_country_seed = function_exists( 'ihq_get_cloudflare_country_iso_alpha2' ) ? ihq_get_cloudflare_country_iso_alpha2() : 'US';
+$ihq_portal_telegram_client_id = 0;
+if ( defined( 'IHQ_TELEGRAM_LOGIN_CLIENT_ID' ) && preg_match( '/^\d+$/', (string) IHQ_TELEGRAM_LOGIN_CLIENT_ID ) ) {
+	$ihq_portal_telegram_client_id = (int) IHQ_TELEGRAM_LOGIN_CLIENT_ID;
+}
 ?>
 <?php if ( $ihq_portal_auth_turnstile !== '' ) : ?>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
@@ -59,6 +64,15 @@ $ihq_portal_cf_country_seed = function_exists( 'ihq_get_cloudflare_country_iso_a
 						<div class="auth-err" id="auth-login-err"></div>
 						<div class="auth-err" id="auth-login-info" style="display:none;background:rgba(40,167,69,.12);border-color:rgba(40,167,69,.35);color:#6fcf97"></div>
 						<button type="button" class="auth-submit-btn" id="auth-login-send-btn" onclick="ihqAuthLoginSendCode()"><?php esc_html_e( 'Send sign-in code', 'avantage-baccarat' ); ?></button>
+						<?php if ( $ihq_portal_telegram_client_id > 0 ) : ?>
+						<div style="display:flex;align-items:center;gap:10px;margin:14px 0">
+							<div style="height:1px;flex:1;background:rgba(240,201,58,.22)"></div>
+							<div style="font-family:'Be Vietnam Pro',sans-serif;font-size:.72rem;letter-spacing:.16em;color:var(--warm)">OR</div>
+							<div style="height:1px;flex:1;background:rgba(240,201,58,.22)"></div>
+						</div>
+						<button type="button" class="auth-submit-btn" id="auth-login-telegram-btn" style="background:transparent;border:1px solid rgba(42,171,238,.55);color:#7ecdf8" onclick="ihqAuthLoginWithTelegram()"><?php esc_html_e( 'Login with Telegram', 'avantage-baccarat' ); ?></button>
+						<div class="auth-err" id="auth-login-telegram-err"></div>
+						<?php endif; ?>
 					</div>
 					<div id="auth-login-step-code" style="display:none;max-width:480px;margin:0 auto">
 						<p class="auth-section-sub" style="margin-bottom:16px"><?php esc_html_e( 'Enter the code from your email.', 'avantage-baccarat' ); ?></p>
@@ -198,10 +212,13 @@ var IHQ_AUTH_LOGIN = {
 	nonce: <?php echo wp_json_encode( $ihq_portal_auth_login_nonce ); ?>,
 	turnstileSiteKey: <?php echo wp_json_encode( $ihq_portal_auth_turnstile ); ?>,
 	redirectUrl: <?php echo wp_json_encode( $ihq_portal_auth_redirect ); ?>,
-	codeExpiresMinutes: 15
+	codeExpiresMinutes: 15,
+	telegramClientId: <?php echo (int) $ihq_portal_telegram_client_id; ?>,
+	telegramNonce: <?php echo wp_json_encode( $ihq_portal_auth_telegram_nonce ); ?>
 };
 var ihqAuthLoginSignupToken = '';
 var ihqAuthLoginTurnstileWidgetId = null;
+var ihqAuthLoginTelegramBusy = false;
 
 function ihqModalAjaxErrMessage(data) {
 	if (!data || !data.data) {
@@ -268,8 +285,132 @@ function ihqAuthLoginResetPanels() {
 	if (cer) cer.textContent = '';
 	var exp = document.getElementById('auth-login-code-expires');
 	if (exp) exp.textContent = '';
+	var tgErr = document.getElementById('auth-login-telegram-err');
+	if (tgErr) { tgErr.textContent = ''; tgErr.style.display = 'none'; }
+	ihqAuthLoginTelegramBusy = false;
 	ihqAuthLoginRemoveTurnstile();
 	window.setTimeout(ihqAuthLoginRenderTurnstileWhenNeeded, 80);
+}
+
+function ihqAuthClearTelegramErr() {
+	var el = document.getElementById('auth-login-telegram-err');
+	if (el) {
+		el.textContent = '';
+		el.style.display = 'none';
+	}
+}
+
+function ihqAuthShowTelegramErr(msg) {
+	var el = document.getElementById('auth-login-telegram-err');
+	if (el) {
+		el.textContent = msg || '';
+		el.style.display = msg ? 'block' : 'none';
+	}
+}
+
+function ihqEnsureTelegramLoginScript(next) {
+	if (window.Telegram && window.Telegram.Login) {
+		next(true);
+		return;
+	}
+	var s = document.createElement('script');
+	s.async = true;
+	s.src = 'https://telegram.org/js/telegram-login.js';
+	s.onload = function () { next(true); };
+	s.onerror = function () { next(false); };
+	document.head.appendChild(s);
+}
+
+function ihqAuthLoginWithTelegram() {
+	if (!IHQ_AUTH_LOGIN.telegramClientId || ihqAuthLoginTelegramBusy) {
+		return;
+	}
+	ihqAuthClearTelegramErr();
+	ihqAuthLoginTelegramBusy = true;
+	var btn = document.getElementById('auth-login-telegram-btn');
+	if (btn) btn.disabled = true;
+	var fd = new FormData();
+	fd.append('action', 'ihq_telegram_login_nonce');
+	fd.append('nonce', IHQ_AUTH_LOGIN.telegramNonce);
+	fetch(IHQ_AUTH_LOGIN.ajaxUrl, { method: 'POST', body: fd })
+		.then(function (r) { return r.json(); })
+		.then(function (data) {
+			if (!data.success || !data.data || !data.data.server_nonce) {
+				ihqAuthLoginTelegramBusy = false;
+				if (btn) btn.disabled = false;
+				ihqAuthShowTelegramErr(ihqModalAjaxErrMessage(data) || 'Could not start Telegram login.');
+				return;
+			}
+			var serverNonce = data.data.server_nonce;
+			ihqEnsureTelegramLoginScript(function (ok) {
+				if (!ok || !window.Telegram || !window.Telegram.Login || typeof window.Telegram.Login.auth !== 'function') {
+					ihqAuthLoginTelegramBusy = false;
+					if (btn) btn.disabled = false;
+					ihqAuthShowTelegramErr('Telegram login is unavailable.');
+					return;
+				}
+				window.Telegram.Login.auth(
+					{ client_id: IHQ_AUTH_LOGIN.telegramClientId, nonce: serverNonce, lang: 'en' },
+					function (result) {
+						if (result === false) {
+							ihqAuthLoginTelegramBusy = false;
+							if (btn) btn.disabled = false;
+							return;
+						}
+						if (!result || result.error || !result.id_token) {
+							ihqAuthLoginTelegramBusy = false;
+							if (btn) btn.disabled = false;
+							ihqAuthShowTelegramErr(result && result.error ? String(result.error) : 'Telegram did not return an ID token.');
+							return;
+						}
+						var fd2 = new FormData();
+						fd2.append('action', 'ihq_verify_telegram_id_token');
+						fd2.append('nonce', IHQ_AUTH_LOGIN.telegramNonce);
+						fd2.append('id_token', result.id_token);
+						fetch(IHQ_AUTH_LOGIN.ajaxUrl, { method: 'POST', body: fd2 })
+							.then(function (r2) { return r2.json(); })
+							.then(function (data2) {
+								if (!data2.success || !data2.data || !data2.data.telegram_session_token) {
+									ihqAuthLoginTelegramBusy = false;
+									if (btn) btn.disabled = false;
+									ihqAuthShowTelegramErr(ihqModalAjaxErrMessage(data2) || 'Telegram verification failed.');
+									return;
+								}
+								var fd3 = new FormData();
+								fd3.append('action', 'ihq_login_telegram_user');
+								fd3.append('nonce', IHQ_AUTH_LOGIN.telegramNonce);
+								fd3.append('telegram_session_token', data2.data.telegram_session_token);
+								fetch(IHQ_AUTH_LOGIN.ajaxUrl, { method: 'POST', body: fd3 })
+									.then(function (r3) { return r3.json(); })
+									.then(function (data3) {
+										ihqAuthLoginTelegramBusy = false;
+										if (btn) btn.disabled = false;
+										if (!data3.success || !data3.data || !data3.data.redirect_url) {
+											ihqAuthShowTelegramErr(ihqModalAjaxErrMessage(data3) || 'Could not sign in with Telegram.');
+											return;
+										}
+										window.location.href = data3.data.redirect_url;
+									})
+									.catch(function () {
+										ihqAuthLoginTelegramBusy = false;
+										if (btn) btn.disabled = false;
+										ihqAuthShowTelegramErr('Network error. Please try again.');
+									});
+							})
+							.catch(function () {
+								ihqAuthLoginTelegramBusy = false;
+								if (btn) btn.disabled = false;
+								ihqAuthShowTelegramErr('Network error. Please try again.');
+							});
+					}
+				);
+			});
+		})
+		.catch(function () {
+			ihqAuthLoginTelegramBusy = false;
+			if (btn) btn.disabled = false;
+			ihqAuthShowTelegramErr('Network error. Please try again.');
+		});
 }
 
 function ihqAuthLoginBackToEmail() {

@@ -210,6 +210,7 @@ function ihq_create_influencer_user_from_registration_data( array $registration_
         ? ihq_sanitize_competition_preferences_input( (string) $registration_data['competition_preferences'] )
         : '';
     $country_iso       = isset( $registration_data['country_iso'] ) ? (string) $registration_data['country_iso'] : '';
+    $telegram_user_id  = isset( $registration_data['telegram_user_id'] ) ? (int) $registration_data['telegram_user_id'] : 0;
 
     if ( ! is_email( $email ) ) {
         return new WP_Error( 'invalid_email', 'Invalid email address' );
@@ -252,6 +253,9 @@ function ihq_create_influencer_user_from_registration_data( array $registration_
             update_user_meta( $user_id, 'preferred_communication', $first_method );
             update_user_meta( $user_id, 'communication_username', $comm_methods[ $first_method ] );
         }
+    }
+    if ( $telegram_user_id > 0 ) {
+        update_user_meta( $user_id, 'telegram_user_id', $telegram_user_id );
     }
 
     if ( ! empty( $challenge_type ) ) {
@@ -316,6 +320,7 @@ function ihq_handle_send_registration_code_ajax() {
     $challenge_type  = isset( $_POST['challenge_type'] ) ? sanitize_text_field( wp_unslash( $_POST['challenge_type'] ) ) : '';
     $comm_primary    = isset( $_POST['comm_primary'] ) ? sanitize_text_field( wp_unslash( $_POST['comm_primary'] ) ) : 'email';
     $telegram_user   = isset( $_POST['telegram_username'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_username'] ) ) : '';
+    $telegram_session_token = isset( $_POST['telegram_session_token'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_session_token'] ) ) : '';
     $country_iso_raw = isset( $_POST['country_iso'] ) ? sanitize_text_field( wp_unslash( $_POST['country_iso'] ) ) : '';
 
     if ( ! is_email( $email ) ) {
@@ -328,10 +333,30 @@ function ihq_handle_send_registration_code_ajax() {
         return;
     }
 
+    $telegram_user_id = 0;
     if ( $comm_primary === 'telegram' ) {
         $tu = ltrim( trim( $telegram_user ), '@' );
         if ( $tu === '' ) {
             wp_send_json_error( array( 'message' => __( 'Please enter your Telegram username', 'avantage-baccarat' ) ) );
+            return;
+        }
+        if ( ! function_exists( 'ihq_get_telegram_registration_session' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Telegram registration is unavailable right now. Please choose Email.', 'avantage-baccarat' ) ) );
+            return;
+        }
+        $tg_session = ihq_get_telegram_registration_session( $telegram_session_token );
+        if ( ! is_array( $tg_session ) || empty( $tg_session['telegram_user_id'] ) || empty( $tg_session['telegram_username'] ) ) {
+            wp_send_json_error( array( 'message' => __( 'Telegram login session expired. Please reselect Telegram and authenticate again.', 'avantage-baccarat' ) ) );
+            return;
+        }
+        $session_username = ltrim( (string) $tg_session['telegram_username'], '@' );
+        if ( strtolower( $session_username ) !== strtolower( $tu ) ) {
+            wp_send_json_error( array( 'message' => __( 'Telegram account mismatch. Please authenticate again.', 'avantage-baccarat' ) ) );
+            return;
+        }
+        $telegram_user_id = (int) $tg_session['telegram_user_id'];
+        if ( $telegram_user_id <= 0 ) {
+            wp_send_json_error( array( 'message' => __( 'Telegram account id missing. Please authenticate again.', 'avantage-baccarat' ) ) );
             return;
         }
         $comm_methods = array( 'telegram' => '@' . $tu );
@@ -371,6 +396,7 @@ function ihq_handle_send_registration_code_ajax() {
         'comm_methods'     => $comm_methods,
         'challenge_type'   => $challenge_type,
         'country_iso'      => ihq_normalize_country_iso_alpha2( $country_iso_raw ),
+        'telegram_user_id' => $telegram_user_id,
         'code_hash'        => $code_hash,
         'expires'          => $expires,
         'timestamp'        => time(),
@@ -381,8 +407,31 @@ function ihq_handle_send_registration_code_ajax() {
 
     $minutes_left = (int) ceil( IHQ_REG_CODE_EXPIRY_SECONDS / 60 );
 
-    $subject = __( 'Your Influencer HQ registration code', 'avantage-baccarat' );
-    $message = '
+    $delivery_error = null;
+    if ( 'telegram' === $comm_primary ) {
+        if ( ! function_exists( 'ihq_telegram_send_direct_message' ) ) {
+            $delivery_error = __( 'Telegram delivery is unavailable right now. Please choose Email.', 'avantage-baccarat' );
+        } else {
+            $telegram_message = sprintf(
+                /* translators: 1: 6-digit code, 2: expiry minutes */
+                __( "Influencer HQ registration code: %1\$s\n\nThis code expires in %2\$d minutes.", 'avantage-baccarat' ),
+                $code,
+                (int) $minutes_left
+            );
+            $send_result = ihq_telegram_send_direct_message( $telegram_user_id, $telegram_message );
+            if ( is_wp_error( $send_result ) ) {
+                $delivery_error = $send_result->get_error_message();
+            }
+        }
+        if ( null !== $delivery_error ) {
+            delete_option( 'pending_reg_code_' . $signup_token );
+            delete_option( $email_map_key );
+            wp_send_json_error( array( 'message' => $delivery_error ) );
+            return;
+        }
+    } else {
+        $subject = __( 'Your Influencer HQ registration code', 'avantage-baccarat' );
+        $message = '
     <!DOCTYPE html>
     <html><head><meta charset="UTF-8"></head>
     <body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background:#0a0a0a;color:#f0f0f0;">
@@ -422,6 +471,7 @@ function ihq_handle_send_registration_code_ajax() {
         wp_send_json_error( array( 'message' => $err ) );
         return;
     }
+    }
 
     wp_send_json_success(
         array(
@@ -446,7 +496,7 @@ function ihq_handle_verify_registration_code_ajax() {
     $code_raw     = isset( $_POST['code'] ) ? preg_replace( '/\D/', '', (string) wp_unslash( $_POST['code'] ) ) : '';
 
     if ( $signup_token === '' || strlen( $code_raw ) !== 6 ) {
-        wp_send_json_error( array( 'message' => __( 'Enter the 6-digit code from your email', 'avantage-baccarat' ) ) );
+        wp_send_json_error( array( 'message' => __( 'Enter the 6-digit code we sent you', 'avantage-baccarat' ) ) );
         return;
     }
 
@@ -519,6 +569,7 @@ function ihq_create_influencer_user_from_pending_data_normalized( array $pending
         'challenge_type'             => isset( $pending['challenge_type'] ) ? $pending['challenge_type'] : '',
         'competition_preferences'    => isset( $pending['competition_preferences'] ) ? $pending['competition_preferences'] : '',
         'country_iso'                => isset( $pending['country_iso'] ) ? (string) $pending['country_iso'] : '',
+        'telegram_user_id'           => isset( $pending['telegram_user_id'] ) ? (int) $pending['telegram_user_id'] : 0,
     );
     return ihq_create_influencer_user_from_registration_data( $data );
 }
