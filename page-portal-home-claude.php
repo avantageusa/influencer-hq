@@ -29,6 +29,24 @@ $ihq_turnstile_site_modal  = '';
 if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_configured() && defined( 'CF_TURNSTILE_SITE_KEY' ) ) {
 	$ihq_turnstile_site_modal = CF_TURNSTILE_SITE_KEY;
 }
+
+$ihq_modal_social_platforms = array(
+	array( 'key' => 'ameba', 'label' => 'Ameba', 'placeholder' => 'blog URL' ),
+	array( 'key' => 'bilibili', 'label' => 'Bilibili', 'placeholder' => 'username or space URL' ),
+	array( 'key' => 'facebook', 'label' => 'Facebook', 'placeholder' => 'Page URL' ),
+	array( 'key' => 'instagram', 'label' => 'Instagram', 'placeholder' => '@username' ),
+	array( 'key' => 'kakao-business', 'label' => 'Kakao Business', 'placeholder' => 'handle or URL' ),
+	array( 'key' => 'kick', 'label' => 'Kick', 'placeholder' => 'username or channel URL' ),
+	array( 'key' => 'line', 'label' => 'Line', 'placeholder' => 'official account ID' ),
+	array( 'key' => 'naver-blog', 'label' => 'Naver Blog', 'placeholder' => 'blog URL' ),
+	array( 'key' => 'reddit', 'label' => 'Reddit', 'placeholder' => 'username or subreddit name' ),
+	array( 'key' => 'telegram-channel', 'label' => 'Telegram', 'placeholder' => 'channel link' ),
+	array( 'key' => 'tiktok', 'label' => 'TikTok', 'placeholder' => '@username' ),
+	array( 'key' => 'twitch', 'label' => 'Twitch', 'placeholder' => 'username or channel URL' ),
+	array( 'key' => 'x', 'label' => 'X', 'placeholder' => '@username' ),
+	array( 'key' => 'rednote', 'label' => 'Rednote', 'placeholder' => 'username or profile URL' ),
+	array( 'key' => 'youtube', 'label' => 'YouTube', 'placeholder' => '@channelhandle' ),
+);
 ?>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -72,16 +90,7 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
 .header-lang-option:last-child{border-bottom:none}
 .header-lang-option:hover,.header-lang-option:focus{background:rgba(240,201,58,.1);color:var(--gl);outline:none}
 
-/* Main modal: Email / Telegram comm + registration steps */
-.modal-comm-grid{display:flex;flex-direction:column;gap:12px;margin:16px 0 8px}
-.modal-comm-card{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid rgba(240,201,58,.28);border-radius:10px;cursor:pointer;transition:background .15s,border-color .15s;background:rgba(0,0,0,.2)}
-.modal-comm-card:hover{border-color:rgba(240,201,58,.5)}
-.modal-comm-card.is-on{border-color:var(--gl);background:rgba(240,201,58,.08)}
-.modal-comm-card input{width:22px;height:22px;accent-color:var(--gl);cursor:pointer;flex-shrink:0}
-.modal-comm-ico{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.modal-comm-ico svg{width:24px;height:24px}
-.modal-comm-text .ch-name{font-family:'Cinzel',serif;font-size:1.05rem;color:var(--white)}
-.modal-comm-text .ch-lbl{font-family:'Be Vietnam Pro',sans-serif;font-size:.78rem;color:var(--warm);margin-top:2px}
+/* Registration steps (conversation modal styles live in homepage-style-claude.css) */
 .modal-reg-field{margin-bottom:16px;text-align:left}
 .modal-reg-field label{display:block;font-family:'Be Vietnam Pro',sans-serif;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gl);margin-bottom:8px}
 .modal-reg-field input{width:100%;box-sizing:border-box;padding:12px 14px;border-radius:8px;border:1px solid rgba(240,201,58,.25);background:var(--bg3);color:var(--white);font-family:'Be Vietnam Pro',sans-serif;font-size:1rem}
@@ -348,60 +357,37 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
   <div class="modal">
     <button class="modal-x" onclick="closeModal()">✕</button>
     <div class="mstep on" id="ms1">
-      <span class="m-eye">Get in Touch</span>
-      <h3 class="m-title">Let's Start the Conversation</h3>
-      <p class="m-sub">Choose <strong style="color:var(--gl)">Email</strong> or <strong style="color:var(--gl)">Telegram</strong> as how we’ll reach you. You’ll complete signup on the next step.</p>
-      <p class="m-benefit">We believe true partnership means standing beside you — helping more people discover your voice, your content, and your audience.</p>
+      <h3 class="m-title m-title--conversation"><?php esc_html_e( "Let's Start The Conversation", 'avantage-baccarat' ); ?></h3>
+      <p class="m-lede"><?php esc_html_e( 'Please give us your favorite methods of communication.', 'avantage-baccarat' ); ?></p>
       <div class="modal-comm-grid">
         <label class="modal-comm-card" id="modal-comm-card-email" for="modal-comm-email">
           <input type="checkbox" id="modal-comm-email" autocomplete="off" aria-label="<?php esc_attr_e( 'Email', 'avantage-baccarat' ); ?>">
-          <div class="modal-comm-ico" style="background:rgba(240,201,58,.15);color:var(--gl)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          <div class="modal-comm-text">
+            <div class="modal-comm-name"><?php esc_html_e( 'Email', 'avantage-baccarat' ); ?></div>
+            <span class="modal-comm-lbl"><?php esc_html_e( 'Receive your code by email', 'avantage-baccarat' ); ?></span>
           </div>
-          <div class="modal-comm-text"><div class="ch-name"><?php esc_html_e( 'Email', 'avantage-baccarat' ); ?></div><span class="ch-lbl"><?php esc_html_e( 'Receive your code by email', 'avantage-baccarat' ); ?></span></div>
         </label>
         <label class="modal-comm-card" id="modal-comm-card-telegram" for="modal-comm-telegram">
           <input type="checkbox" id="modal-comm-telegram" autocomplete="off" aria-label="<?php esc_attr_e( 'Telegram', 'avantage-baccarat' ); ?>">
-          <div class="modal-comm-ico" style="background:rgba(0,136,204,.18);color:#2AABEE">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+          <div class="modal-comm-text">
+            <div class="modal-comm-name"><?php esc_html_e( 'Telegram', 'avantage-baccarat' ); ?></div>
+            <span class="modal-comm-lbl" id="modal-comm-telegram-lbl"><?php echo esc_html( $ihq_modal_telegram_lbl_default ); ?></span>
           </div>
-          <div class="modal-comm-text"><div class="ch-name"><?php esc_html_e( 'Telegram', 'avantage-baccarat' ); ?></div><span class="ch-lbl" id="modal-comm-telegram-lbl"><?php echo esc_html( $ihq_modal_telegram_lbl_default ); ?></span></div>
         </label>
       </div>
-      <p class="modal-comm-tg-err" id="modal-comm-tg-err" style="display:none;margin:4px 0 0;font-family:'Be Vietnam Pro',sans-serif;font-size:.85rem;color:#f85149;text-align:center"></p>
+      <p class="modal-comm-tg-err" id="modal-comm-tg-err"></p>
 
-      <div style="margin:24px 0 4px">
-        <div style="font-family:'Cinzel',serif;font-size:1.6rem;line-height:1.4;color:var(--white);margin-bottom:14px">Favorite Social Media</div>
+      <div class="modal-social-section">
+        <h4 class="modal-social-heading"><?php esc_html_e( 'Favorite Social Media', 'avantage-baccarat' ); ?></h4>
+        <p class="modal-social-lede"><?php esc_html_e( 'Please give us your handle on each platform that you post on so that we can follow you.', 'avantage-baccarat' ); ?></p>
         <div class="ch-list social-list">
-          <div class="ch-sel" id="sel-social-facebook" onclick="toggleCh('social-facebook')">
-            <div class="ch-chk" id="chk-social-facebook"></div>
-            <div class="ch-info"><div class="ch-name">Facebook</div></div>
-            <input class="ch-input social-inline-input" type="text" placeholder="paste your channel link">
+          <?php foreach ( $ihq_modal_social_platforms as $ihq_social ) : ?>
+          <div class="ch-sel" id="sel-social-<?php echo esc_attr( $ihq_social['key'] ); ?>" onclick="toggleCh('social-<?php echo esc_attr( $ihq_social['key'] ); ?>')">
+            <div class="ch-chk" id="chk-social-<?php echo esc_attr( $ihq_social['key'] ); ?>"></div>
+            <div class="ch-info"><div class="ch-name"><?php echo esc_html( $ihq_social['label'] ); ?></div></div>
+            <input class="ch-input social-inline-input" type="text" placeholder="<?php echo esc_attr( $ihq_social['placeholder'] ); ?>" aria-label="<?php echo esc_attr( $ihq_social['label'] ); ?>">
           </div>
-
-          <div class="ch-sel" id="sel-social-instagram" onclick="toggleCh('social-instagram')">
-            <div class="ch-chk" id="chk-social-instagram"></div>
-            <div class="ch-info"><div class="ch-name">Instagram</div></div>
-            <input class="ch-input social-inline-input" type="text" placeholder="@yourhandle">
-          </div>
-
-          <div class="ch-sel" id="sel-social-tiktok" onclick="toggleCh('social-tiktok')">
-            <div class="ch-chk" id="chk-social-tiktok"></div>
-            <div class="ch-info"><div class="ch-name">TikTok</div></div>
-            <input class="ch-input social-inline-input" type="text" placeholder="@yourhandle">
-          </div>
-
-          <div class="ch-sel" id="sel-social-x" onclick="toggleCh('social-x')">
-            <div class="ch-chk" id="chk-social-x"></div>
-            <div class="ch-info"><div class="ch-name">X</div></div>
-            <input class="ch-input social-inline-input" type="text" placeholder="@yourhandle">
-          </div>
-
-          <div class="ch-sel" id="sel-social-youtube" onclick="toggleCh('social-youtube')">
-            <div class="ch-chk" id="chk-social-youtube"></div>
-            <div class="ch-info"><div class="ch-name">YouTube</div></div>
-            <input class="ch-input social-inline-input" type="text" placeholder="paste your channel link">
-          </div>
+          <?php endforeach; ?>
         </div>
       </div>
 
@@ -1131,8 +1117,10 @@ function ihqModalGetPlatformHandle() {
   var parts = [];
   document.querySelectorAll('.social-list .ch-sel.selected').forEach(function (sel) {
     var inp = sel.querySelector('input.social-inline-input');
+    var nameEl = sel.querySelector('.ch-name');
     if (inp && inp.value.trim()) {
-      parts.push(inp.value.trim());
+      var label = nameEl ? nameEl.textContent.trim() : '';
+      parts.push(label ? label + ': ' + inp.value.trim() : inp.value.trim());
     }
   });
   return parts.join(' | ');

@@ -2864,15 +2864,22 @@
 
         /* Login & Register Buttons */
         .header-login-link {
-            color: #fff;
+            display: inline-block;
+            padding: 6px 18px;
+            text-transform: uppercase;
+            border-radius: 5px;
+            color: #000000;
             text-decoration: none;
-            font-size: 15px;
-            font-weight: 400;
-            transition: color 0.2s;
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+            transition: all 0.2s;
+            background: #EECD5D;
         }
 
         .header-login-link:hover {
-            color: var(--gold);
+            color: #000000;
+            background: #e0b84f;
         }
 
         .header-register-btn {
@@ -2895,13 +2902,27 @@
     }
 
     button.header-login-link {
-        background: none;
+        display: inline-block;
+        padding: 6px 18px;
         border: none;
-        padding: 0;
         margin: 0;
-        font: inherit;
+        text-transform: uppercase;
+        border-radius: 5px;
+        color: #000000;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        font-family: inherit;
+        white-space: nowrap;
+        transition: all 0.2s;
+        background: #EECD5D;
         cursor: pointer;
         line-height: inherit;
+    }
+
+    button.header-login-link:hover {
+        color: #000000;
+        background: #e0b84f;
     }
     button.header-register-btn {
         font-family: inherit;
@@ -2969,11 +2990,10 @@
             cursor: pointer;
             border: none;
         }
-        .header-login-link {
-            color: #fff;
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: 400;
+        .header-login-link,
+        button.header-login-link {
+            padding: 4px 12px;
+            font-size: 12px;
         }
         .header-register-btn {
             display: inline-block;

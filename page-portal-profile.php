@@ -90,7 +90,7 @@ $intl_league_team = get_user_meta( $user->ID, '_ihq_intl_league_team', true ) ?:
 $gameplay_video_url = get_user_meta( $user->ID, '_ihq_gameplay_video_url', true );
 $gameplay_yt_id     = ihq_extract_youtube_video_id( $gameplay_video_url );
 
-$contact_platforms = ['Email','KakaoTalk','KICK','Line','TikTok','Twitch','WeChat','WhatsApp'];
+$contact_platforms = [ 'Email', 'Telegram' ];
 
 $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
 ?>
@@ -350,6 +350,15 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                         foreach ( $contact_platforms as $cp ) :
                             $ckey  = strtolower( $cp );
                             $cval  = $social_handles[ $ckey ] ?? '';
+                            if ( $ckey === 'email' && $cval === '' ) {
+                                $cval = $user_email;
+                            }
+                            if ( $ckey === 'telegram' && $cval === '' ) {
+                                $tg_handle = get_user_meta( $user->ID, 'communication_username', true );
+                                if ( is_string( $tg_handle ) && $tg_handle !== '' ) {
+                                    $cval = $tg_handle;
+                                }
+                            }
                             $ccomm = ! empty( $comm_prefs[ $ckey ] );
                         ?>
                         <div class="contact-row" data-key="<?php echo esc_attr( $ckey ); ?>">

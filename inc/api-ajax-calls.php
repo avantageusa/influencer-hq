@@ -615,7 +615,7 @@ function delete_kick_schedule_ajax() {
 add_action( 'wp_ajax_save_settings_field',  'save_settings_field_ajax' );
 
 function ihq_allowed_contact_keys() {
-    return [ 'email', 'kakaotalk', 'kick', 'line', 'tiktok', 'twitch', 'wechat', 'whatsapp' ];
+    return [ 'email', 'telegram' ];
 }
 
 function save_settings_field_ajax() {
