@@ -500,7 +500,7 @@ function ihq_handle_register_telegram_user_ajax() {
 
 	delete_transient( 'ihq_tg_reg_' . md5( $session_token ) );
 	wp_set_current_user( (int) $created );
-	wp_set_auth_cookie( (int) $created, true );
+	wp_set_auth_cookie( (int) $created, false );
 	wp_send_json_success(
 		array(
 			'redirect_url' => add_query_arg( 'welcome', 'true', home_url( '/portal/portal-home/' ) ),
@@ -541,7 +541,7 @@ function ihq_handle_login_telegram_user_ajax() {
 
 	$user_id = (int) $users[0]->ID;
 	wp_set_current_user( $user_id );
-	wp_set_auth_cookie( $user_id, true );
+	wp_set_auth_cookie( $user_id, false );
 
 	wp_send_json_success(
 		array(

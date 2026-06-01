@@ -543,7 +543,7 @@ function ihq_handle_verify_registration_code_ajax() {
     delete_option( $emap );
 
     wp_set_current_user( $user_id );
-    wp_set_auth_cookie( $user_id, true );
+    wp_set_auth_cookie( $user_id, false );
 
     wp_send_json_success(
         array(
@@ -831,7 +831,7 @@ function ihq_handle_verify_login_code_ajax() {
     delete_option( $emap );
 
     wp_set_current_user( $user_id );
-    wp_set_auth_cookie( $user_id, true );
+    wp_set_auth_cookie( $user_id, false );
 
     $country_iso_login = isset( $_POST['country_iso'] ) ? sanitize_text_field( wp_unslash( $_POST['country_iso'] ) ) : '';
     ihq_refresh_influencer_oauth_tokens( $user_id, $country_iso_login );
@@ -914,7 +914,7 @@ function handle_email_verification_and_user_creation() {
 
     // Log the user in automatically
     wp_set_current_user( $user_id );
-    wp_set_auth_cookie($user_id, true); // true = remember me
+    wp_set_auth_cookie( $user_id, false );
     
     // Redirect to portal with welcome parameter
     $redirect_url = add_query_arg('welcome', 'true', home_url('/portal/portal-home/'));

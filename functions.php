@@ -255,6 +255,10 @@ require get_template_directory() . '/inc/influencer-role.php';
  */
 require_once get_template_directory() . '/inc/email-verification-handler.php';
 /**
+ * Influencer auth cookie lifetime (24h).
+ */
+require_once get_template_directory() . '/inc/auth-session-lifetime.php';
+/**
  * Telegram Login (OIDC widget) — optional; IHQ_TELEGRAM_LOGIN_CLIENT_ID in wp-config.php.
  */
 require_once get_template_directory() . '/inc/telegram-login-handler.php';
