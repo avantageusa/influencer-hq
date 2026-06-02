@@ -30,22 +30,24 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
 	$ihq_turnstile_site_modal = CF_TURNSTILE_SITE_KEY;
 }
 
+$ihq_modal_social_placeholder = __( 'handle or URL', 'avantage-baccarat' );
+// Grid order: left-to-right, top-to-bottom (3 columns) to match Figma.
 $ihq_modal_social_platforms = array(
-	array( 'key' => 'ameba', 'label' => 'Ameba', 'placeholder' => 'blog URL' ),
-	array( 'key' => 'bilibili', 'label' => 'Bilibili', 'placeholder' => 'username or space URL' ),
-	array( 'key' => 'facebook', 'label' => 'Facebook', 'placeholder' => 'Page URL' ),
-	array( 'key' => 'instagram', 'label' => 'Instagram', 'placeholder' => '@username' ),
-	array( 'key' => 'kakao-business', 'label' => 'Kakao Business', 'placeholder' => 'handle or URL' ),
-	array( 'key' => 'kick', 'label' => 'Kick', 'placeholder' => 'username or channel URL' ),
-	array( 'key' => 'line', 'label' => 'Line', 'placeholder' => 'official account ID' ),
-	array( 'key' => 'naver-blog', 'label' => 'Naver Blog', 'placeholder' => 'blog URL' ),
-	array( 'key' => 'reddit', 'label' => 'Reddit', 'placeholder' => 'username or subreddit name' ),
-	array( 'key' => 'telegram-channel', 'label' => 'Telegram', 'placeholder' => 'channel link' ),
-	array( 'key' => 'tiktok', 'label' => 'TikTok', 'placeholder' => '@username' ),
-	array( 'key' => 'twitch', 'label' => 'Twitch', 'placeholder' => 'username or channel URL' ),
-	array( 'key' => 'x', 'label' => 'X', 'placeholder' => '@username' ),
-	array( 'key' => 'rednote', 'label' => 'Rednote', 'placeholder' => 'username or profile URL' ),
-	array( 'key' => 'youtube', 'label' => 'YouTube', 'placeholder' => '@channelhandle' ),
+	array( 'key' => 'kick', 'label' => 'Kick' ),
+	array( 'key' => 'facebook', 'label' => 'Facebook' ),
+	array( 'key' => 'reddit', 'label' => 'Reddit' ),
+	array( 'key' => 'tiktok', 'label' => 'TikTok' ),
+	array( 'key' => 'naver-blog', 'label' => 'Naver Blog' ),
+	array( 'key' => 'rednote', 'label' => 'Rednote' ),
+	array( 'key' => 'bilibili', 'label' => 'Bilibili' ),
+	array( 'key' => 'x', 'label' => 'X' ),
+	array( 'key' => 'kakao-business', 'label' => 'Kakao B' ),
+	array( 'key' => 'twitch', 'label' => 'Twitch' ),
+	array( 'key' => 'instagram', 'label' => 'Instagram' ),
+	array( 'key' => 'telegram-channel', 'label' => 'Telegram' ),
+	array( 'key' => 'ameba', 'label' => 'Ameba' ),
+	array( 'key' => 'line', 'label' => 'LINE' ),
+	array( 'key' => 'youtube', 'label' => 'YouTube' ),
 );
 ?>
 
@@ -378,14 +380,31 @@ $ihq_modal_social_platforms = array(
       <p class="modal-comm-tg-err" id="modal-comm-tg-err"></p>
 
       <div class="modal-social-section">
-        <h4 class="modal-social-heading"><?php esc_html_e( 'Favorite Social Media', 'avantage-baccarat' ); ?></h4>
-        <p class="modal-social-lede"><?php esc_html_e( 'Please give us your handle on each platform that you post on so that we can follow you.', 'avantage-baccarat' ); ?></p>
-        <div class="ch-list social-list">
+        <h4 class="modal-social-heading"><?php esc_html_e( 'Social Media You Post On', 'avantage-baccarat' ); ?></h4>
+        <div class="social-grid" role="group" aria-label="<?php esc_attr_e( 'Social media platforms', 'avantage-baccarat' ); ?>">
           <?php foreach ( $ihq_modal_social_platforms as $ihq_social ) : ?>
-          <div class="ch-sel" id="sel-social-<?php echo esc_attr( $ihq_social['key'] ); ?>" onclick="toggleCh('social-<?php echo esc_attr( $ihq_social['key'] ); ?>')">
-            <div class="ch-chk" id="chk-social-<?php echo esc_attr( $ihq_social['key'] ); ?>"></div>
-            <div class="ch-info"><div class="ch-name"><?php echo esc_html( $ihq_social['label'] ); ?></div></div>
-            <input class="ch-input social-inline-input" type="text" placeholder="<?php echo esc_attr( $ihq_social['placeholder'] ); ?>" aria-label="<?php echo esc_attr( $ihq_social['label'] ); ?>">
+          <button
+            type="button"
+            class="social-grid-item"
+            id="social-grid-<?php echo esc_attr( $ihq_social['key'] ); ?>"
+            data-social-key="<?php echo esc_attr( $ihq_social['key'] ); ?>"
+            aria-pressed="false"
+            onclick="ihqToggleSocialPlatform('<?php echo esc_js( $ihq_social['key'] ); ?>')"
+          ><?php echo esc_html( $ihq_social['label'] ); ?></button>
+          <?php endforeach; ?>
+        </div>
+        <div class="social-inputs" id="social-inputs-panel">
+          <?php foreach ( $ihq_modal_social_platforms as $ihq_social ) : ?>
+          <div class="social-input-row" id="social-entry-<?php echo esc_attr( $ihq_social['key'] ); ?>" hidden>
+            <span class="social-input-label"><?php echo esc_html( $ihq_social['label'] ); ?></span>
+            <input
+              class="social-handle-input"
+              type="text"
+              id="social-input-<?php echo esc_attr( $ihq_social['key'] ); ?>"
+              data-social-key="<?php echo esc_attr( $ihq_social['key'] ); ?>"
+              placeholder="<?php echo esc_attr( $ihq_modal_social_placeholder ); ?>"
+              aria-label="<?php echo esc_attr( $ihq_social['label'] ); ?>"
+            >
           </div>
           <?php endforeach; ?>
         </div>
@@ -1101,6 +1120,46 @@ function ihqResetMainConversationModal() {
   ihqVerifiedTelegramSessionToken = '';
   ihqVerifiedTelegramFirstName = '';
   ihqVerifiedTelegramLastName = '';
+  ihqResetModalSocialPlatforms();
+}
+
+function ihqResetModalSocialPlatforms() {
+  document.querySelectorAll('.social-grid-item.is-selected').forEach(function (btn) {
+    btn.classList.remove('is-selected');
+    btn.setAttribute('aria-pressed', 'false');
+  });
+  document.querySelectorAll('.social-input-row').forEach(function (row) {
+    row.hidden = true;
+    var inp = row.querySelector('input.social-handle-input');
+    if (inp) {
+      inp.value = '';
+    }
+  });
+}
+
+function ihqToggleSocialPlatform(key) {
+  var btn = document.getElementById('social-grid-' + key);
+  var row = document.getElementById('social-entry-' + key);
+  if (!btn || !row) {
+    return;
+  }
+  var isOn = !btn.classList.contains('is-selected');
+  btn.classList.toggle('is-selected', isOn);
+  btn.setAttribute('aria-pressed', isOn ? 'true' : 'false');
+  row.hidden = !isOn;
+  if (!isOn) {
+    var cleared = row.querySelector('input.social-handle-input');
+    if (cleared) {
+      cleared.value = '';
+    }
+    return;
+  }
+  var focusInput = row.querySelector('input.social-handle-input');
+  if (focusInput) {
+    window.setTimeout(function () {
+      focusInput.focus();
+    }, 50);
+  }
 }
 
 function ihqModalGetChallengeType() {
@@ -1115,11 +1174,12 @@ function ihqModalGetChallengeType() {
 
 function ihqModalGetPlatformHandle() {
   var parts = [];
-  document.querySelectorAll('.social-list .ch-sel.selected').forEach(function (sel) {
-    var inp = sel.querySelector('input.social-inline-input');
-    var nameEl = sel.querySelector('.ch-name');
+  document.querySelectorAll('.social-grid-item.is-selected').forEach(function (btn) {
+    var key = btn.getAttribute('data-social-key');
+    var row = key ? document.getElementById('social-entry-' + key) : null;
+    var inp = row ? row.querySelector('input.social-handle-input') : null;
+    var label = btn.textContent.trim();
     if (inp && inp.value.trim()) {
-      var label = nameEl ? nameEl.textContent.trim() : '';
       parts.push(label ? label + ': ' + inp.value.trim() : inp.value.trim());
     }
   });

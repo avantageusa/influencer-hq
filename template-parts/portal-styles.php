@@ -3603,5 +3603,74 @@
 }
 .contact-toggle--on .contact-toggle-track { background:#43e97b; }
 .contact-toggle--on .contact-toggle-track::after { left:22px; }
+
+/* Profile — social platforms (platform_handle from registration) */
+.sett-social-profile-card { padding:12px 10px 14px; }
+.sett-social-grid {
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:10px 14px;
+    margin:0 0 14px;
+    padding:0 4px;
+}
+.sett-social-grid-item {
+    margin:0;
+    padding:8px 6px;
+    background:transparent;
+    border:none;
+    font-family:'Be Vietnam Pro', sans-serif;
+    font-size:14px;
+    font-weight:600;
+    color:#e5e5e5;
+    text-align:left;
+    cursor:pointer;
+    line-height:1.3;
+}
+.sett-social-grid-item:hover { color:#7ee0bc; }
+.sett-social-grid-item.is-selected {
+    color:#53cea4;
+    text-decoration:underline;
+    text-underline-offset:4px;
+}
+.sett-social-inputs { display:flex; flex-direction:column; gap:10px; }
+.sett-social-input-row {
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:10px 12px;
+    border:1px solid rgba(184,151,47,.45);
+    border-radius:5px;
+    background:rgba(0,0,0,.35);
+}
+.sett-social-input-row[hidden] { display:none !important; }
+.sett-social-input-label {
+    flex:0 0 auto;
+    min-width:88px;
+    max-width:38%;
+    font-size:14px;
+    font-weight:600;
+    color:#fff;
+}
+.sett-social-handle-input {
+    flex:1;
+    min-width:0;
+    padding:8px 10px;
+    font-size:14px;
+    color:#fff;
+    background:transparent;
+    border:1px dashed rgba(255,255,255,.45);
+    outline:none;
+}
+.sett-social-handle-input:focus { border-color:#b8972f; }
+.sett-social-handle-input::placeholder { color:#555; font-style:italic; }
+.sett-social-save-hint {
+    margin:10px 4px 0;
+    font-size:13px;
+    color:#7CCA8A;
+    min-height:1.2em;
+}
+@media (max-width:520px) {
+    .sett-social-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+}
 </style>
 <?php endif; ?>

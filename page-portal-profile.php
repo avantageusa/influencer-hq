@@ -12,6 +12,36 @@ if ( ! function_exists( 'ihq_extract_youtube_video_id' ) ) {
      *
      * @param string $url Video URL or pasted link.
      */
+    /**
+     * Parse registration `platform_handle` string ("Label: value | Label: value") into label => value pairs.
+     *
+     * @param string $raw Stored platform_handle meta.
+     * @return array<string, string>
+     */
+    function ihq_parse_platform_handle_pairs( $raw ) {
+        $pairs = array();
+        $raw   = trim( (string) $raw );
+        if ( $raw === '' ) {
+            return $pairs;
+        }
+        $segments = array_map( 'trim', explode( '|', $raw ) );
+        foreach ( $segments as $segment ) {
+            if ( $segment === '' ) {
+                continue;
+            }
+            $colon_at = strpos( $segment, ':' );
+            if ( $colon_at === false ) {
+                continue;
+            }
+            $label = trim( substr( $segment, 0, $colon_at ) );
+            $val   = trim( substr( $segment, $colon_at + 1 ) );
+            if ( $label !== '' ) {
+                $pairs[ $label ] = $val;
+            }
+        }
+        return $pairs;
+    }
+
     function ihq_extract_youtube_video_id( $url ) {
         $url = trim( (string) $url );
         if ( $url === '' ) {
@@ -75,6 +105,27 @@ if ( ! $user_avatar ) {
 
 $social_handles  = get_user_meta( $user->ID, '_ihq_social_handles',  true );
 if ( ! is_array( $social_handles ) )  { $social_handles  = []; }
+
+$platform_handle_raw    = get_user_meta( $user->ID, 'platform_handle', true );
+$platform_handle_pairs  = ihq_parse_platform_handle_pairs( $platform_handle_raw );
+$ihq_profile_social_placeholder = __( 'handle or URL', 'avantage-baccarat' );
+$ihq_profile_social_platforms   = array(
+	array( 'key' => 'kick', 'label' => 'Kick' ),
+	array( 'key' => 'facebook', 'label' => 'Facebook' ),
+	array( 'key' => 'reddit', 'label' => 'Reddit' ),
+	array( 'key' => 'tiktok', 'label' => 'TikTok' ),
+	array( 'key' => 'naver-blog', 'label' => 'Naver Blog' ),
+	array( 'key' => 'rednote', 'label' => 'Rednote' ),
+	array( 'key' => 'bilibili', 'label' => 'Bilibili' ),
+	array( 'key' => 'x', 'label' => 'X' ),
+	array( 'key' => 'kakao-business', 'label' => 'Kakao B' ),
+	array( 'key' => 'twitch', 'label' => 'Twitch' ),
+	array( 'key' => 'instagram', 'label' => 'Instagram' ),
+	array( 'key' => 'telegram-channel', 'label' => 'Telegram' ),
+	array( 'key' => 'ameba', 'label' => 'Ameba' ),
+	array( 'key' => 'line', 'label' => 'LINE' ),
+	array( 'key' => 'youtube', 'label' => 'YouTube' ),
+);
 
 $comm_prefs      = get_user_meta( $user->ID, '_ihq_comm_prefs',      true );
 if ( ! is_array( $comm_prefs ) )      { $comm_prefs      = []; }
@@ -271,6 +322,64 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                         </div>
                     </div>
                     <?php endforeach; ?>
+                </div>
+
+                <!-- SOCIAL MEDIA (from registration platform_handle) -->
+                <div class="sett-section-head sett-section-head--comm" id="socialMediaHead" style="cursor:pointer;">
+                    <span class="sett-section-title"><?php esc_html_e( 'Social Media You Post On', 'avantage-baccarat' ); ?></span>
+                    <span class="sett-hint"><span class="sett-hint-text"><?php esc_html_e( 'Click a platform, then enter handle or URL', 'avantage-baccarat' ); ?></span></span>
+                    <span class="sett-arrow" id="socialMediaArrow">▼</span>
+                </div>
+
+                <div id="socialMediaBody">
+                    <div class="sett-card sett-social-profile-card">
+                        <div class="sett-social-grid" role="group" aria-label="<?php esc_attr_e( 'Social media platforms', 'avantage-baccarat' ); ?>">
+                            <?php foreach ( $ihq_profile_social_platforms as $ihq_social ) :
+                                $ihq_social_val = '';
+                                foreach ( $platform_handle_pairs as $pair_label => $pair_val ) {
+                                    if ( strcasecmp( $pair_label, $ihq_social['label'] ) === 0 ) {
+                                        $ihq_social_val = $pair_val;
+                                        break;
+                                    }
+                                }
+                                $ihq_social_selected = $ihq_social_val !== '';
+                                ?>
+                            <button
+                                type="button"
+                                class="sett-social-grid-item<?php echo $ihq_social_selected ? ' is-selected' : ''; ?>"
+                                id="profile-social-grid-<?php echo esc_attr( $ihq_social['key'] ); ?>"
+                                data-social-key="<?php echo esc_attr( $ihq_social['key'] ); ?>"
+                                data-social-label="<?php echo esc_attr( $ihq_social['label'] ); ?>"
+                                aria-pressed="<?php echo $ihq_social_selected ? 'true' : 'false'; ?>"
+                            ><?php echo esc_html( $ihq_social['label'] ); ?></button>
+                            <?php endforeach; ?>
+                        </div>
+                        <div class="sett-social-inputs" id="profile-social-inputs-panel">
+                            <?php foreach ( $ihq_profile_social_platforms as $ihq_social ) :
+                                $ihq_social_val = '';
+                                foreach ( $platform_handle_pairs as $pair_label => $pair_val ) {
+                                    if ( strcasecmp( $pair_label, $ihq_social['label'] ) === 0 ) {
+                                        $ihq_social_val = $pair_val;
+                                        break;
+                                    }
+                                }
+                                $ihq_social_selected = $ihq_social_val !== '';
+                                ?>
+                            <div class="sett-social-input-row" id="profile-social-entry-<?php echo esc_attr( $ihq_social['key'] ); ?>"<?php echo $ihq_social_selected ? '' : ' hidden'; ?>>
+                                <span class="sett-social-input-label"><?php echo esc_html( $ihq_social['label'] ); ?></span>
+                                <input
+                                    class="sett-social-handle-input"
+                                    type="text"
+                                    data-social-key="<?php echo esc_attr( $ihq_social['key'] ); ?>"
+                                    value="<?php echo esc_attr( $ihq_social_val ); ?>"
+                                    placeholder="<?php echo esc_attr( $ihq_profile_social_placeholder ); ?>"
+                                    aria-label="<?php echo esc_attr( $ihq_social['label'] ); ?>"
+                                >
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <p class="sett-social-save-hint" id="profile-social-save-hint" aria-live="polite"></p>
+                    </div>
                 </div>
 
                 <!-- CELEBRITY FOLLOWERS LEAGUES -->
@@ -541,6 +650,81 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
             if (ln && d.lastName  !== undefined) ln.textContent = d.lastName;
         }
     }).catch(function(){});
+
+    /* ── Social media (platform_handle) ─────────────── */
+    var socialMediaHead  = document.getElementById('socialMediaHead');
+    var socialMediaBody  = document.getElementById('socialMediaBody');
+    var socialMediaArrow = document.getElementById('socialMediaArrow');
+    if (socialMediaHead) {
+        socialMediaHead.addEventListener('click', function(e){
+            if (e.target.closest('.sett-hint')) return;
+            var hidden = socialMediaBody.style.display === 'none';
+            socialMediaBody.style.display = hidden ? '' : 'none';
+            socialMediaArrow.textContent  = hidden ? '▼' : '▲';
+        });
+    }
+
+    function ihqProfileBuildPlatformHandle() {
+        var parts = [];
+        document.querySelectorAll('.sett-social-grid-item.is-selected').forEach(function(btn){
+            var key = btn.getAttribute('data-social-key');
+            var row = key ? document.getElementById('profile-social-entry-' + key) : null;
+            var inp = row ? row.querySelector('input.sett-social-handle-input') : null;
+            var label = btn.getAttribute('data-social-label') || btn.textContent.trim();
+            if (inp && inp.value.trim()) {
+                parts.push(label + ': ' + inp.value.trim());
+            }
+        });
+        return parts.join(' | ');
+    }
+
+    function ihqProfileSavePlatformHandle() {
+        var hint = document.getElementById('profile-social-save-hint');
+        save('save_settings_field', {
+            group: 'account',
+            field: 'platform_handle',
+            value: ihqProfileBuildPlatformHandle()
+        });
+        if (hint) {
+            hint.textContent = 'Saved';
+            window.setTimeout(function(){ hint.textContent = ''; }, 2000);
+        }
+    }
+
+    function ihqProfileToggleSocialPlatform(key) {
+        var btn = document.getElementById('profile-social-grid-' + key);
+        var row = document.getElementById('profile-social-entry-' + key);
+        if (!btn || !row) return;
+        var isOn = !btn.classList.contains('is-selected');
+        btn.classList.toggle('is-selected', isOn);
+        btn.setAttribute('aria-pressed', isOn ? 'true' : 'false');
+        row.hidden = !isOn;
+        if (!isOn) {
+            var cleared = row.querySelector('input.sett-social-handle-input');
+            if (cleared) cleared.value = '';
+            ihqProfileSavePlatformHandle();
+            return;
+        }
+        var focusInput = row.querySelector('input.sett-social-handle-input');
+        if (focusInput) window.setTimeout(function(){ focusInput.focus(); }, 50);
+    }
+
+    document.querySelectorAll('.sett-social-grid-item').forEach(function(btn){
+        btn.addEventListener('click', function(){
+            var key = btn.getAttribute('data-social-key');
+            if (key) ihqProfileToggleSocialPlatform(key);
+        });
+    });
+
+    document.querySelectorAll('.sett-social-handle-input').forEach(function(inp){
+        inp.addEventListener('blur', ihqProfileSavePlatformHandle);
+        inp.addEventListener('keydown', function(e){
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                inp.blur();
+            }
+        });
+    });
 
     /* ── Celebrity Followers Leagues ──────────────────── */
     var celebHead  = document.getElementById('celebLeaguesHead');

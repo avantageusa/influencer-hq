@@ -627,7 +627,10 @@ function save_settings_field_ajax() {
 
     $group = sanitize_key( wp_unslash( $_POST['group'] ?? '' ) );
     $field = sanitize_key( wp_unslash( $_POST['field'] ?? '' ) );
-    $value = sanitize_text_field( wp_unslash( $_POST['value'] ?? '' ) );
+    $value_raw = isset( $_POST['value'] ) ? wp_unslash( $_POST['value'] ) : '';
+    $value     = ( $group === 'account' && $field === 'platform_handle' )
+        ? sanitize_textarea_field( $value_raw )
+        : sanitize_text_field( $value_raw );
 
     if ( $group === 'account' ) {
         $map = [
@@ -637,6 +640,7 @@ function save_settings_field_ajax() {
             'city'                   => '_ihq_city',
             'timezone'               => '_ihq_timezone',
             'handle'                 => '_ihq_handle',
+            'platform_handle'        => 'platform_handle',
             'celebrity_movie_stars'  => '_ihq_cel_movie_stars',
             'celebrity_music_artists'=> '_ihq_cel_music_artists',
             'celebrity_sports_icons' => '_ihq_cel_sports_icons',
