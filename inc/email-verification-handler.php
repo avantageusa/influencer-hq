@@ -151,6 +151,9 @@ function handle_verification_email() {
 /** Registration / login email code validity in seconds. */
 const IHQ_REG_CODE_EXPIRY_SECONDS = 900;
 
+/** Registration send-code throttle per IP in seconds (1 attempt / 5 minutes). */
+const IHQ_REG_IP_ATTEMPT_WINDOW_SECONDS = 300;
+
 /** Login-only email code uses the same TTL as registration. */
 const IHQ_LOGIN_CODE_EXPIRY_SECONDS = 900;
 
@@ -299,6 +302,35 @@ function ihq_verify_turnstile_or_error_for_ajax() {
 }
 
 /**
+ * Best-effort client IP for rate limiting.
+ *
+ * @return string
+ */
+function ihq_get_client_ip_for_rate_limit() {
+    $server_keys = array(
+        'HTTP_CF_CONNECTING_IP',
+        'HTTP_X_FORWARDED_FOR',
+        'REMOTE_ADDR',
+    );
+
+    foreach ( $server_keys as $key ) {
+        if ( empty( $_SERVER[ $key ] ) ) {
+            continue;
+        }
+        $raw = (string) wp_unslash( $_SERVER[ $key ] );
+        if ( $raw === '' ) {
+            continue;
+        }
+        $candidate = trim( explode( ',', $raw )[0] );
+        if ( $candidate !== '' ) {
+            return $candidate;
+        }
+    }
+
+    return '';
+}
+
+/**
  * Send 6-digit registration code email (landing-page modal flow).
  */
 function ihq_handle_send_registration_code_ajax() {
@@ -367,6 +399,16 @@ function ihq_handle_send_registration_code_ajax() {
     if ( email_exists( $email ) ) {
         wp_send_json_error( array( 'message' => __( 'This email is already registered', 'avantage-baccarat' ) ) );
         return;
+    }
+
+    $client_ip = ihq_get_client_ip_for_rate_limit();
+    if ( $client_ip !== '' ) {
+        $ip_throttle_key = 'ihq_reg_send_ip_' . md5( $client_ip );
+        if ( get_transient( $ip_throttle_key ) ) {
+            wp_send_json_error( array( 'message' => __( 'Only one registration attempt is allowed every 5 minutes from this IP', 'avantage-baccarat' ) ) );
+            return;
+        }
+        set_transient( $ip_throttle_key, 1, IHQ_REG_IP_ATTEMPT_WINDOW_SECONDS );
     }
 
     $throttle_key = 'ihq_reg_send_' . md5( strtolower( $email ) );
