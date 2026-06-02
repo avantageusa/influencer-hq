@@ -66,8 +66,14 @@ get_header();
         color: rgb(255, 255, 252) !important;
     }
 
+    footer,
+    #colophon,
+    .site-footer {
+        display: none !important;
+    }
+
     .contact-section {
-        min-height: 100vh;
+        /* height: 100vh; */
         background-color: #000000;
     }
 
