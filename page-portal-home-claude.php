@@ -1438,15 +1438,7 @@ function validateModalStep1Communication() {
   return true;
 }
 
-function onModalSubmit() {
-  clearFieldErrors();
-  if (!validateModalStep1Communication()) {
-    var modalEl = document.querySelector('#mainModal .modal');
-    if (modalEl) {
-      modalEl.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-    return;
-  }
+function ihqModalAdvanceToRegStep() {
   var telWrap = document.getElementById('modal-reg-telegram-wrap');
   var telInput = document.getElementById('modal-reg-telegram');
   if (document.getElementById('modal-comm-telegram').checked) {
@@ -1469,6 +1461,23 @@ function onModalSubmit() {
     telInput.value = '';
   }
   show('ms-reg');
+}
+
+function onModalSubmit() {
+  clearFieldErrors();
+  if (!validateModalStep1Communication()) {
+    var modalEl = document.querySelector('#mainModal .modal');
+    if (modalEl) {
+      modalEl.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    return;
+  }
+  var telegramChecked = document.getElementById('modal-comm-telegram').checked;
+  if (telegramChecked && IHQ_MODAL_REG.telegramClientId && !ihqVerifiedTelegramUsername) {
+    ihqTryTelegramAccountLink();
+    return;
+  }
+  ihqModalAdvanceToRegStep();
 }
 
 function toggleCh(id) {
@@ -1587,13 +1596,6 @@ document.addEventListener('DOMContentLoaded', function() {
   bindMutual(em, tg);
   bindMutual(tg, em);
   syncModalCommCardVisual();
-  if (tg) {
-    tg.addEventListener('change', function() {
-      if (tg.checked && IHQ_MODAL_REG.telegramClientId) {
-        ihqTryTelegramAccountLink();
-      }
-    });
-  }
 
   syncS7CompetitionSubmitVisibility();
   var s7SubmitBtn = document.getElementById('s7-competition-submit');

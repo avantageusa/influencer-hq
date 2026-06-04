@@ -3651,6 +3651,13 @@
     font-weight:600;
     color:#fff;
 }
+.sett-social-input-field {
+    flex:1;
+    min-width:0;
+    display:flex;
+    align-items:center;
+    gap:6px;
+}
 .sett-social-handle-input {
     flex:1;
     min-width:0;
@@ -3661,6 +3668,22 @@
     border:1px dashed rgba(255,255,255,.45);
     outline:none;
 }
+.sett-social-clear-btn {
+    flex-shrink:0;
+    width:28px;
+    height:28px;
+    padding:0;
+    border:none;
+    background:transparent;
+    color:#e53935;
+    font-size:22px;
+    line-height:1;
+    font-weight:700;
+    cursor:pointer;
+    border-radius:4px;
+}
+.sett-social-clear-btn:hover { color:#ff6b6b; background:rgba(229,57,53,.12); }
+.sett-social-clear-btn[hidden] { display:none !important; }
 .sett-social-handle-input:focus { border-color:#b8972f; }
 .sett-social-handle-input::placeholder { color:#555; font-style:italic; }
 .sett-social-save-hint {

@@ -255,6 +255,10 @@ require get_template_directory() . '/inc/influencer-role.php';
  */
 require_once get_template_directory() . '/inc/email-verification-handler.php';
 /**
+ * Contact Us form (AJAX → concierge inbox).
+ */
+require_once get_template_directory() . '/inc/contact-form-handler.php';
+/**
  * Influencer auth cookie lifetime (24h).
  */
 require_once get_template_directory() . '/inc/auth-session-lifetime.php';

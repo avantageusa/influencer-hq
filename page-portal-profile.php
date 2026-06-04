@@ -6,14 +6,9 @@
  * @package Avantage_Baccarat
  */
 
-if ( ! function_exists( 'ihq_extract_youtube_video_id' ) ) {
+if ( ! function_exists( 'ihq_parse_platform_handle_pairs' ) ) {
     /**
-     * Returns the 11-character YouTube video ID or an empty string.
-     *
-     * @param string $url Video URL or pasted link.
-     */
-    /**
-     * Parse registration `platform_handle` string ("Label: value | Label: value") into label => value pairs.
+     * Parse registration platform_handle string (Label: value | Label: value) into label => value pairs.
      *
      * @param string $raw Stored platform_handle meta.
      * @return array<string, string>
@@ -41,7 +36,14 @@ if ( ! function_exists( 'ihq_extract_youtube_video_id' ) ) {
         }
         return $pairs;
     }
+}
 
+if ( ! function_exists( 'ihq_extract_youtube_video_id' ) ) {
+    /**
+     * Returns the 11-character YouTube video ID or an empty string.
+     *
+     * @param string $url Video URL or pasted link.
+     */
     function ihq_extract_youtube_video_id( $url ) {
         $url = trim( (string) $url );
         if ( $url === '' ) {
@@ -364,17 +366,31 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                                     }
                                 }
                                 $ihq_social_selected = $ihq_social_val !== '';
+                                $ihq_social_remove_aria = sprintf(
+                                    /* translators: %s: social platform name */
+                                    __( 'Remove %s', 'avantage-baccarat' ),
+                                    $ihq_social['label']
+                                );
                                 ?>
                             <div class="sett-social-input-row" id="profile-social-entry-<?php echo esc_attr( $ihq_social['key'] ); ?>"<?php echo $ihq_social_selected ? '' : ' hidden'; ?>>
                                 <span class="sett-social-input-label"><?php echo esc_html( $ihq_social['label'] ); ?></span>
-                                <input
-                                    class="sett-social-handle-input"
-                                    type="text"
-                                    data-social-key="<?php echo esc_attr( $ihq_social['key'] ); ?>"
-                                    value="<?php echo esc_attr( $ihq_social_val ); ?>"
-                                    placeholder="<?php echo esc_attr( $ihq_profile_social_placeholder ); ?>"
-                                    aria-label="<?php echo esc_attr( $ihq_social['label'] ); ?>"
-                                >
+                                <div class="sett-social-input-field">
+                                    <input
+                                        class="sett-social-handle-input"
+                                        type="text"
+                                        data-social-key="<?php echo esc_attr( $ihq_social['key'] ); ?>"
+                                        value="<?php echo esc_attr( $ihq_social_val ); ?>"
+                                        placeholder="<?php echo esc_attr( $ihq_profile_social_placeholder ); ?>"
+                                        aria-label="<?php echo esc_attr( $ihq_social['label'] ); ?>"
+                                    >
+                                    <button
+                                        type="button"
+                                        class="sett-social-clear-btn"
+                                        data-social-key="<?php echo esc_attr( $ihq_social['key'] ); ?>"
+                                        aria-label="<?php echo esc_attr( $ihq_social_remove_aria ); ?>"
+                                        <?php echo $ihq_social_val !== '' ? '' : ' hidden'; ?>
+                                    >×</button>
+                                </div>
                             </div>
                             <?php endforeach; ?>
                         </div>
@@ -691,22 +707,74 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
         }
     }
 
-    function ihqProfileToggleSocialPlatform(key) {
-        var btn = document.getElementById('profile-social-grid-' + key);
+    function ihqProfileGetSocialRowParts(key) {
         var row = document.getElementById('profile-social-entry-' + key);
-        if (!btn || !row) return;
-        var isOn = !btn.classList.contains('is-selected');
-        btn.classList.toggle('is-selected', isOn);
-        btn.setAttribute('aria-pressed', isOn ? 'true' : 'false');
-        row.hidden = !isOn;
+        if (!row) {
+            return null;
+        }
+        return {
+            row: row,
+            btn: document.getElementById('profile-social-grid-' + key),
+            inp: row.querySelector('input.sett-social-handle-input'),
+            clearBtn: row.querySelector('.sett-social-clear-btn'),
+        };
+    }
+
+    function ihqProfileSyncSocialClearBtn(parts) {
+        if (!parts || !parts.clearBtn || !parts.inp) {
+            return;
+        }
+        parts.clearBtn.hidden = parts.inp.value.trim() === '';
+    }
+
+    function ihqProfileRemoveSocialPlatform(key) {
+        var parts = ihqProfileGetSocialRowParts(key);
+        if (!parts) {
+            return;
+        }
+        if (parts.inp) {
+            parts.inp.value = '';
+        }
+        if (parts.btn) {
+            parts.btn.classList.remove('is-selected');
+            parts.btn.setAttribute('aria-pressed', 'false');
+        }
+        parts.row.hidden = true;
+        if (parts.clearBtn) {
+            parts.clearBtn.hidden = true;
+        }
+        ihqProfileSavePlatformHandle();
+    }
+
+    function ihqProfileToggleSocialPlatform(key) {
+        var parts = ihqProfileGetSocialRowParts(key);
+        if (!parts || !parts.btn) {
+            return;
+        }
+        var isSelected = parts.btn.classList.contains('is-selected');
+        if (isSelected && parts.inp && parts.inp.value.trim() !== '') {
+            return;
+        }
+        var isOn = !isSelected;
+        parts.btn.classList.toggle('is-selected', isOn);
+        parts.btn.setAttribute('aria-pressed', isOn ? 'true' : 'false');
+        parts.row.hidden = !isOn;
         if (!isOn) {
-            var cleared = row.querySelector('input.sett-social-handle-input');
-            if (cleared) cleared.value = '';
+            if (parts.inp) {
+                parts.inp.value = '';
+            }
+            if (parts.clearBtn) {
+                parts.clearBtn.hidden = true;
+            }
             ihqProfileSavePlatformHandle();
             return;
         }
-        var focusInput = row.querySelector('input.sett-social-handle-input');
-        if (focusInput) window.setTimeout(function(){ focusInput.focus(); }, 50);
+        ihqProfileSyncSocialClearBtn(parts);
+        if (parts.inp) {
+            window.setTimeout(function () {
+                parts.inp.focus();
+            }, 50);
+        }
     }
 
     document.querySelectorAll('.sett-social-grid-item').forEach(function(btn){
@@ -716,7 +784,25 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
         });
     });
 
+    document.querySelectorAll('.sett-social-clear-btn').forEach(function(clearBtn){
+        clearBtn.addEventListener('click', function(e){
+            e.preventDefault();
+            e.stopPropagation();
+            var key = clearBtn.getAttribute('data-social-key');
+            if (key) {
+                ihqProfileRemoveSocialPlatform(key);
+            }
+        });
+    });
+
     document.querySelectorAll('.sett-social-handle-input').forEach(function(inp){
+        inp.addEventListener('input', function(){
+            var key = inp.getAttribute('data-social-key');
+            if (!key) {
+                return;
+            }
+            ihqProfileSyncSocialClearBtn(ihqProfileGetSocialRowParts(key));
+        });
         inp.addEventListener('blur', ihqProfileSavePlatformHandle);
         inp.addEventListener('keydown', function(e){
             if (e.key === 'Enter') {
