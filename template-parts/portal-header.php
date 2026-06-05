@@ -2,25 +2,12 @@
 /**
  * Portal Header Template Part
  * 
- * Displays the sticky header with search bar, navigation, and hamburger menu
+ * Displays the sticky header, navigation, and hamburger menu
  * for all portal pages.
  *
  * @package Avantage_Baccarat
  */
 ?>
-
-<!-- Search Bar -->
-<div class="search-bar-container">
-    <div class="container" style="max-width: 1024px; padding-left: 20px; padding-right: 20px;">
-        <div class="search-bar">
-            <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2">
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="m21 21-4.35-4.35"></path>
-            </svg>
-            <input type="text" class="search-input" placeholder="Search...">
-        </div>
-    </div>
-</div>
 
 <!-- Sticky Header: Hamburger, Logo, Go To Game -->
 <div class="sticky-header">
@@ -57,7 +44,7 @@
             </div>
             <div class="logo-container text-center">
                 <a href="<?php echo esc_url( home_url('/portal/portal-home/') ); ?>">
-                <img src="<?php echo get_template_directory_uri(); ?>/images/new-logo-under.png" alt="influencerHQ" class="img-fluid">
+                <img src="<?php echo get_template_directory_uri(); ?>/images/logo-home-claude.jpg" alt="influencerHQ" class="img-fluid">
                 </a>
             </div>
             <?php
@@ -141,7 +128,7 @@ $hm_ch = function ( $tab, $hash = '' ) {
     <div class="hamburger-drawer-scroll">
         <div class="hamburger-drawer-logo-wrap">
             <a href="<?php echo esc_url( home_url( '/' ) ); ?>">
-                <img src="<?php echo esc_url( get_template_directory_uri() . '/images/logo-tm.png' ); ?>" alt="influencerHQ" class="hamburger-drawer-logo">
+                <img src="<?php echo esc_url( get_template_directory_uri() . '/images/new-logo-under.png' ); ?>" alt="influencerHQ" class="hamburger-drawer-logo">
             </a>
         </div>
         <nav class="hm-nav" aria-label="<?php echo esc_attr__( 'Portal navigation', 'avantage-baccarat' ); ?>">
@@ -287,14 +274,12 @@ $hm_ch = function ( $tab, $hash = '' ) {
     function adjustContentPadding() {
         var stickyNav    = document.querySelector('.sticky-nav');
         var stickyHeader = document.querySelector('.sticky-header');
-        var searchBar    = document.querySelector('.search-bar-container');
         var content      = document.getElementById('portal-content');
         if (!content) return;
 
         var bottom = 0;
         if (stickyNav)    bottom = stickyNav.getBoundingClientRect().bottom;
         else if (stickyHeader) bottom = stickyHeader.getBoundingClientRect().bottom;
-        else if (searchBar)    bottom = searchBar.getBoundingClientRect().bottom;
 
         
 

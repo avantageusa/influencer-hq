@@ -84,7 +84,7 @@ get_template_part( 'template-parts/portal-styles' );
                     <p>You’re one insight away from changing everything.</p>
                 </div>
 
-                <!-- Nested Accordion: 5 Parent Categories -->
+                <!-- Nested Accordion: parent FAQ categories -->
                 <div class="accordion more-parent-accordion" id="moreMainAccordion">
 
                     <!-- PERFORMANCE -->
@@ -105,9 +105,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseFollowersPlaying" class="accordion-collapse collapse" aria-labelledby="headingFollowersPlaying">
-                                            <div class="accordion-body">
-                                                <p>Content coming soon.</p>
-                                            </div>
+                                            <div class="accordion-body"><p>Open your Equity page and use the play-status filter in the My Referrals view — All / Played / Not Played — to isolate followers who&#039;ve actually played. Each row expands to show that follower&#039;s play dates and amounts, so you can see real activity, not just the signup.</p></div>
                                         </div>
                                     </div>
 
@@ -118,9 +116,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseReferralsMade" class="accordion-collapse collapse" aria-labelledby="headingReferralsMade">
-                                            <div class="accordion-body">
-                                                <p>Content coming soon.</p>
-                                            </div>
+                                            <div class="accordion-body"><p>Your Equity page includes a My Referrals view. You can drill down from your level 1 referrals to see who they have referred and then again to see who your level 2 referrals have referred.</p></div>
                                         </div>
                                     </div>
 
@@ -144,9 +140,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseCollectiveEquity" class="accordion-collapse collapse" aria-labelledby="headingCollectiveEquity">
-                                            <div class="accordion-body">
-                                                <p>Content coming soon.</p>
-                                            </div>
+                                            <div class="accordion-body"><p>Your Equity page totals your earnings across every level: 1.5% of verified play from your Level 1 (direct) followers, 1.0% from Level 2, 0.5% from Level 3, plus the 1.0% Bonus Equity from your KICK streams and World Network live appearances. You also will see 1% base on your own play!</p></div>
                                         </div>
                                     </div>
 
@@ -157,24 +151,11 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseKickEquity" class="accordion-collapse collapse" aria-labelledby="headingKickEquity">
-                                            <div class="accordion-body">
-                                                <p>Content coming soon.</p>
-                                            </div>
+                                            <div class="accordion-body"><p>Each is a 1.0% Bonus Equity on the verified play of everyone who plays along with your live KICK stream or your live appearance on the World Network. You can see this broken down in the My Equity screen. You can filter to view one specific type of equity award to see exactly how much you have earned from each.</p></div>
                                         </div>
                                     </div>
 
-                                    <div class="accordion-item mb-3">
-                                        <h2 class="accordion-header" id="headingActiveTime">
-                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseActiveTime" aria-expanded="false" aria-controls="collapseActiveTime">
-                                                <span class="question-text">How do I know which time of day my followers are most active?</span>
-                                            </button>
-                                        </h2>
-                                        <div id="collapseActiveTime" class="accordion-collapse collapse" aria-labelledby="headingActiveTime">
-                                            <div class="accordion-body">
-                                                <p>Content coming soon.</p>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    
 
                                     <div class="accordion-item mb-3">
                                         <h2 class="accordion-header" id="headingWeekVsWeek">
@@ -183,9 +164,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseWeekVsWeek" class="accordion-collapse collapse" aria-labelledby="headingWeekVsWeek">
-                                            <div class="accordion-body">
-                                                <p>Content coming soon.</p>
-                                            </div>
+                                            <div class="accordion-body"><p>Yes. Your Equity page filters by This Week, Last Week, This Month, Last Month, This Year, and Last Year, so you can flip between periods to compare. The Earned Equity Chart on the same page supports the same view.</p></div>
                                         </div>
                                     </div>
 
@@ -196,9 +175,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseShoutouts" class="accordion-collapse collapse" aria-labelledby="headingShoutouts">
-                                            <div class="accordion-body">
-                                                <p>Content coming soon.</p>
-                                            </div>
+                                            <div class="accordion-body"><p>The platform doesn&#039;t track shout-outs you send through your own channels — those happen wherever you post. The signal is whether new sign-ups show up in the My Referrals view on your Equity page after you post. If a shout on a specific channel produces a fresh batch of referrals, that&#039;s the read.</p></div>
                                         </div>
                                     </div>
 
@@ -209,9 +186,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseFilterCountry" class="accordion-collapse collapse" aria-labelledby="headingFilterCountry">
-                                            <div class="accordion-body">
-                                                <p>Content coming soon.</p>
-                                            </div>
+                                            <div class="accordion-body"><p>Not on your Equity page — both the Equity Results and My Referrals views show your full network without geographic filtering. The Rankings page does support geography (World / Continent / Country / City), but those filters apply to the leaderboard itself rather than slicing your own audience.</p></div>
                                         </div>
                                     </div>
 
@@ -235,9 +210,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseCommChannel" class="accordion-collapse collapse" aria-labelledby="headingCommChannel">
-                                            <div class="accordion-body">
-                                                <p>Content coming soon.</p>
-                                            </div>
+                                            <div class="accordion-body"><p>The platform doesn&#039;t tag sign-ups by the channel they came from. Same approach as shout-outs — post on one channel at a time, then watch the My Referrals view on your Equity page to see which posts produced new sign-ups.</p></div>
                                         </div>
                                     </div>
 
@@ -248,9 +221,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseEquityRealTime" class="accordion-collapse collapse" aria-labelledby="headingEquityRealTime">
-                                            <div class="accordion-body">
-                                                <p>Content coming soon.</p>
-                                            </div>
+                                            <div class="accordion-body"><p>Yes. Every share is recorded at the exact moment it is earned — nothing is pooled, estimated, or assumed.</p></div>
                                         </div>
                                     </div>
 
@@ -277,7 +248,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseWidgetWhat" class="accordion-collapse collapse" aria-labelledby="headingWidgetWhat">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
+                                            <div class="accordion-body"><p>Your widget is the Game Portal URL on your Profile page — a personalized link that delivers followers into Avantage Baccarat with you credited as their referrer.</p></div>
                                         </div>
                                     </div>
 
@@ -288,7 +259,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseWidgetDistribute" class="accordion-collapse collapse" aria-labelledby="headingWidgetDistribute">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
+                                            <div class="accordion-body"><p>Use the My Referral Link button on your Equity page to copy your link to the clipboard, then paste it anywhere — social posts, DMs, bios, stream overlays.</p></div>
                                         </div>
                                     </div>
 
@@ -299,7 +270,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseWidgetMultiPlatform" class="accordion-collapse collapse" aria-labelledby="headingWidgetMultiPlatform">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
+                                            <div class="accordion-body"><p>Yes. Your referral link is a single URL — paste it anywhere you want followers to find it. All sign-ups route back to your network regardless of where they originated.</p></div>
                                         </div>
                                     </div>
 
@@ -310,7 +281,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseFollowerNoWidget" class="accordion-collapse collapse" aria-labelledby="headingFollowerNoWidget">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
+                                            <div class="accordion-body"><p>That sign-up isn&#039;t attributed to you. This is why it matters to make sure your followers use the referral link you give them — without your link in the chain, the platform has no way to credit the relationship to you.</p></div>
                                         </div>
                                     </div>
 
@@ -321,20 +292,11 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseNewWidget" class="accordion-collapse collapse" aria-labelledby="headingNewWidget">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
+                                            <div class="accordion-body"><p>Your referral link is just a URL — there&#039;s no incorrect way to share it. If you think you copied an outdated version, open your Equity page and tap My Referral Link to grab the current one again.</p></div>
                                         </div>
                                     </div>
 
-                                    <div class="accordion-item mb-3">
-                                        <h2 class="accordion-header" id="headingWidgetPlatformDiff">
-                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseWidgetPlatformDiff" aria-expanded="false" aria-controls="collapseWidgetPlatformDiff">
-                                                <span class="question-text">Does my widget work differently on different platforms?</span>
-                                            </button>
-                                        </h2>
-                                        <div id="collapseWidgetPlatformDiff" class="accordion-collapse collapse" aria-labelledby="headingWidgetPlatformDiff">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
-                                        </div>
-                                    </div>
+                                    
 
                                     <div class="accordion-item mb-3">
                                         <h2 class="accordion-header" id="headingMustPlay">
@@ -343,31 +305,13 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseMustPlay" class="accordion-collapse collapse" aria-labelledby="headingMustPlay">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
+                                            <div class="accordion-body"><p>You don&#039;t have to play, but two things to weigh: your followers will notice when you&#039;re not in the game, and you won&#039;t earn equity on your own play (equity attributes to whoever recruited you, not yourself). Leading from the front keeps your community invested and stacks Live and Kick bonuses on top of your network attribution.</p></div>
                                         </div>
                                     </div>
 
-                                    <div class="accordion-item mb-3">
-                                        <h2 class="accordion-header" id="headingRealMoney">
-                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRealMoney" aria-expanded="false" aria-controls="collapseRealMoney">
-                                                <span class="question-text">Do I have to deposit real money to have a game account?</span>
-                                            </button>
-                                        </h2>
-                                        <div id="collapseRealMoney" class="accordion-collapse collapse" aria-labelledby="headingRealMoney">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
-                                        </div>
-                                    </div>
+                                    
 
-                                    <div class="accordion-item mb-3">
-                                        <h2 class="accordion-header" id="headingSocialAccount">
-                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSocialAccount" aria-expanded="false" aria-controls="collapseSocialAccount">
-                                                <span class="question-text">Can I use the social game account or do I need a real money account?</span>
-                                            </button>
-                                        </h2>
-                                        <div id="collapseSocialAccount" class="accordion-collapse collapse" aria-labelledby="headingSocialAccount">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
-                                        </div>
-                                    </div>
+                                    
 
                                 </div><!-- /#moreGameAccountAccordion -->
                             </div><!-- /.more-parent-body -->
@@ -392,7 +336,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseLevel2Level3" class="accordion-collapse collapse" aria-labelledby="headingLevel2Level3">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
+                                            <div class="accordion-body"><p>Yes. The Equity page includes a My Referrals view that shows your network by level.</p></div>
                                         </div>
                                     </div>
 
@@ -414,7 +358,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseFollowerStopsPlaying" class="accordion-collapse collapse" aria-labelledby="headingFollowerStopsPlaying">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
+                                            <div class="accordion-body"><p>No. Every share is recorded at the moment it is earned, and earned equity stays with you. If they return and play again, new equity resumes accruing under their existing place in your network.</p></div>
                                         </div>
                                     </div>
 
@@ -425,7 +369,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseTwoInfluencers" class="accordion-collapse collapse" aria-labelledby="headingTwoInfluencers">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
+                                            <div class="accordion-body"><p>Whoever&#039;s link they click first gets the base-level equity for that follower; that attribution stays. If they later click another Influencer&#039;s link, that second Influencer will begin receiving the Kick and Live bonuses on the player&#039;s play — but base-level attribution doesn&#039;t move.</p></div>
                                         </div>
                                     </div>
 
@@ -436,7 +380,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseReferralWorking" class="accordion-collapse collapse" aria-labelledby="headingReferralWorking">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
+                                            <div class="accordion-body"><p>Open your Equity page and check the My Referrals view. Anyone who signed up through your link appears in the list; toggling the Played filter shows who&#039;s actually playing. The My Referral Link button copies your URL to the clipboard so you can test it by opening it in a private window.</p></div>
                                         </div>
                                     </div>
 
@@ -447,20 +391,11 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseRecruitLimit" class="accordion-collapse collapse" aria-labelledby="headingRecruitLimit">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
+                                            <div class="accordion-body"><p>No. Three levels. Forever. No caps. No games.</p></div>
                                         </div>
                                     </div>
 
-                                    <div class="accordion-item mb-3">
-                                        <h2 class="accordion-header" id="headingCloseAccount">
-                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCloseAccount" aria-expanded="false" aria-controls="collapseCloseAccount">
-                                                <span class="question-text">What happens to my referral network if I close my account?</span>
-                                            </button>
-                                        </h2>
-                                        <div id="collapseCloseAccount" class="accordion-collapse collapse" aria-labelledby="headingCloseAccount">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
-                                        </div>
-                                    </div>
+                                    
 
                                 </div><!-- /#moreReferralAccordion -->
                             </div><!-- /.more-parent-body -->
@@ -485,7 +420,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapsePyramid" class="accordion-collapse collapse" aria-labelledby="headingPyramid">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
+                                            <div class="accordion-body"><p>This isn&#039;t a promotion. It&#039;s a seat at the table. Followers play the same games they would play anyway; equity rewards influence as the platform grows — it doesn&#039;t come from your followers&#039; wallets.</p></div>
                                         </div>
                                     </div>
 
@@ -496,7 +431,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseEquityProof" class="accordion-collapse collapse" aria-labelledby="headingEquityProof">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
+                                            <div class="accordion-body"><p>Point them at the Equity page — it discloses the per-share price ($0.20), the $80M+ already invested in the platform, AE Ltd.&#039;s 53 international utility patents across 20 jurisdictions, and Avantage Baccarat&#039;s Malta Gaming Authority recognition. Every share you earn is recorded at the exact moment of earning — the same page is the receipt.</p></div>
                                         </div>
                                     </div>
 
@@ -507,20 +442,11 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseHoldingPeriod" class="accordion-collapse collapse" aria-labelledby="headingHoldingPeriod">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
+                                            <div class="accordion-body"><p>It&#039;s the same model used for founder equity — a two-year holding period before shares can be sold. The framing that works: those who help build something deserve to share in what grows from it, on the same terms as the founders. Two years is the alignment window for that value to compound.</p></div>
                                         </div>
                                     </div>
 
-                                    <div class="accordion-item mb-3">
-                                        <h2 class="accordion-header" id="headingPlatformShutdown">
-                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePlatformShutdown" aria-expanded="false" aria-controls="collapsePlatformShutdown">
-                                                <span class="question-text">What happens to followers' money if the platform shuts down?</span>
-                                            </button>
-                                        </h2>
-                                        <div id="collapsePlatformShutdown" class="accordion-collapse collapse" aria-labelledby="headingPlatformShutdown">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
-                                        </div>
-                                    </div>
+                                    
 
                                     <div class="accordion-item mb-3">
                                         <h2 class="accordion-header" id="headingFounders">
@@ -529,7 +455,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseFounders" class="accordion-collapse collapse" aria-labelledby="headingFounders">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
+                                            <div class="accordion-body"><p>InfluencerHQ is operated under Avantage Entertainment (AE Ltd.). In the US, Bet 5 Games is licensed by Avantage Entertainment USA.</p></div>
                                         </div>
                                     </div>
 
@@ -540,20 +466,11 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseRegulated" class="accordion-collapse collapse" aria-labelledby="headingRegulated">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
+                                            <div class="accordion-body"><p>Avantage Baccarat holds Recognition status issued by the Malta Gaming Authority. AE Ltd. holds 53 US and international utility patents distributed across China, Macau, the United States, Japan, Singapore, Malta, the Philippines, Korea, Vietnam, Australia, Gibraltar, Cambodia, Malaysia, Monaco, Taiwan, Israel, Spain, the UK, France, and Hong Kong. In the US, Bet 5 Games operates under license from Avantage Entertainment USA.</p></div>
                                         </div>
                                     </div>
 
-                                    <div class="accordion-item mb-3">
-                                        <h2 class="accordion-header" id="headingEquityRules">
-                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEquityRules" aria-expanded="false" aria-controls="collapseEquityRules">
-                                                <span class="question-text">What stops InfluencerHQ from changing the equity rules after I've built my network?</span>
-                                            </button>
-                                        </h2>
-                                        <div id="collapseEquityRules" class="accordion-collapse collapse" aria-labelledby="headingEquityRules">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
-                                        </div>
-                                    </div>
+                                    
 
                                 </div><!-- /#moreTrustAccordion -->
                             </div><!-- /.more-parent-body -->
@@ -578,20 +495,11 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseOnlyBaccarat" class="accordion-collapse collapse" aria-labelledby="headingOnlyBaccarat">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
+                                            <div class="accordion-body"><p>Avantage Baccarat is the currently launched game — a modern 1 Bank vs. 5 Players format with plays throughout the hand and a top-30% pool split.</p></div>
                                         </div>
                                     </div>
 
-                                    <div class="accordion-item mb-3">
-                                        <h2 class="accordion-header" id="headingOtherGames">
-                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOtherGames" aria-expanded="false" aria-controls="collapseOtherGames">
-                                                <span class="question-text">When will other games be available?</span>
-                                            </button>
-                                        </h2>
-                                        <div id="collapseOtherGames" class="accordion-collapse collapse" aria-labelledby="headingOtherGames">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
-                                        </div>
-                                    </div>
+                                    
 
                                     <div class="accordion-item mb-3">
                                         <h2 class="accordion-header" id="headingEquityCarryOver">
@@ -600,7 +508,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseEquityCarryOver" class="accordion-collapse collapse" aria-labelledby="headingEquityCarryOver">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
+                                            <div class="accordion-body"><p>Yes. Your referral network and equity stake live at the platform level — not at the game level. When new titles like Avantage TwentyOne and Avantage Hold&#039;em come online, your existing network plays them under the same equity attribution, and any new sign-ups roll into the same upline.</p></div>
                                         </div>
                                     </div>
 
@@ -611,31 +519,13 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseAvantage" class="accordion-collapse collapse" aria-labelledby="headingAvantage">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
+                                            <div class="accordion-body"><p>Avantage Entertainment (AE Ltd.) is the parent group behind InfluencerHQ and Avantage Baccarat. AE Ltd. holds 53 US and international utility patents, and Bet 5 Games is its licensed operator in the US.</p></div>
                                         </div>
                                     </div>
 
-                                    <div class="accordion-item mb-3">
-                                        <h2 class="accordion-header" id="headingHowLong">
-                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseHowLong" aria-expanded="false" aria-controls="collapseHowLong">
-                                                <span class="question-text">How long has this platform been operating?</span>
-                                            </button>
-                                        </h2>
-                                        <div id="collapseHowLong" class="accordion-collapse collapse" aria-labelledby="headingHowLong">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
-                                        </div>
-                                    </div>
+                                    
 
-                                    <div class="accordion-item mb-3">
-                                        <h2 class="accordion-header" id="headingHowManyInfluencers">
-                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseHowManyInfluencers" aria-expanded="false" aria-controls="collapseHowManyInfluencers">
-                                                <span class="question-text">How many influencers are already on the platform?</span>
-                                            </button>
-                                        </h2>
-                                        <div id="collapseHowManyInfluencers" class="accordion-collapse collapse" aria-labelledby="headingHowManyInfluencers">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
-                                        </div>
-                                    </div>
+                                    
 
                                     <div class="accordion-item mb-3">
                                         <h2 class="accordion-header" id="headingMarkets">
@@ -644,7 +534,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseMarkets" class="accordion-collapse collapse" aria-labelledby="headingMarkets">
-                                            <div class="accordion-body"><p>Content coming soon.</p></div>
+                                            <div class="accordion-body"><p>The platform is delivered in English alongside Simplified Chinese (Mandarin), Traditional Chinese (Cantonese), Japanese, Thai, Vietnamese, and Korean — the seven languages every content surface is localized into.</p></div>
                                         </div>
                                     </div>
 
@@ -652,6 +542,416 @@ get_template_part( 'template-parts/portal-styles' );
                             </div><!-- /.more-parent-body -->
                         </div>
                     </div><!-- /THE BIGGER PICTURE -->
+
+                    <!-- COMMUNICATION & FOLLOWERS -->
+                    <div class="accordion-item more-parent-item mb-3">
+                        <h2 class="accordion-header" id="headingCommFollowers">
+                            <button class="accordion-button more-parent-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCommFollowers" aria-expanded="false" aria-controls="collapseCommFollowers">
+                                Communication &amp; Followers
+                            </button>
+                        </h2>
+                        <div id="collapseCommFollowers" class="accordion-collapse collapse" aria-labelledby="headingCommFollowers" data-bs-parent="#moreMainAccordion">
+                            <div class="accordion-body more-parent-body">
+                                <div class="accordion custom-accordion equity-accordion" id="moreCommFollowersAccordion">
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingCommFaqHowDoISend">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCommFaqHowDoISend" aria-expanded="false" aria-controls="collapseCommFaqHowDoISend">
+                                                <span class="question-text">How do I send shout-out messages to my followers through the platform?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseCommFaqHowDoISend" class="accordion-collapse collapse" aria-labelledby="headingCommFaqHowDoISend">
+                                            <div class="accordion-body"><p>Shout-outs happen on your own channels in your own voice — your referral link, your stream announcements, your follower invites all post through whatever platforms you already use. There&#039;s no in-platform shout-out tool today; if you&#039;d use one, let your Executive Concierge know.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingCommFaqCanIChooseDifferent">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCommFaqCanIChooseDifferent" aria-expanded="false" aria-controls="collapseCommFaqCanIChooseDifferent">
+                                                <span class="question-text">Can I choose different channels for different followers?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseCommFaqCanIChooseDifferent" class="accordion-collapse collapse" aria-labelledby="headingCommFaqCanIChooseDifferent">
+                                            <div class="accordion-body"><p>You already do — your followers come to you on whatever platforms they follow you on. Post your link and your invitations on the channels that fit each audience, in whatever language and tone work best.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingCommFaqHowOftenCanI">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCommFaqHowOftenCanI" aria-expanded="false" aria-controls="collapseCommFaqHowOftenCanI">
+                                                <span class="question-text">How often can I send messages to my followers through the platform?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseCommFaqHowOftenCanI" class="accordion-collapse collapse" aria-labelledby="headingCommFaqHowOftenCanI">
+                                            <div class="accordion-body"><p>There&#039;s no in-platform messaging — your outreach to followers happens through your own channels at whatever cadence works for you and your audience.</p></div>
+                                        </div>
+                                    </div>
+
+                                </div><!-- /#moreCommFollowersAccordion -->
+                            </div><!-- /.more-parent-body -->
+                        </div>
+                    </div><!-- /COMMUNICATION & FOLLOWERS -->
+
+                    <!-- LIVE APPEARANCES -->
+                    <div class="accordion-item more-parent-item mb-3">
+                        <h2 class="accordion-header" id="headingLiveAppearances">
+                            <button class="accordion-button more-parent-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLiveAppearances" aria-expanded="false" aria-controls="collapseLiveAppearances">
+                                Live Appearances
+                            </button>
+                        </h2>
+                        <div id="collapseLiveAppearances" class="accordion-collapse collapse" aria-labelledby="headingLiveAppearances" data-bs-parent="#moreMainAccordion">
+                            <div class="accordion-body more-parent-body">
+                                <div class="accordion custom-accordion equity-accordion" id="moreLiveAppearancesAccordion">
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingLiveFaqHowMuchNoticeDo">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLiveFaqHowMuchNoticeDo" aria-expanded="false" aria-controls="collapseLiveFaqHowMuchNoticeDo">
+                                                <span class="question-text">How much notice do I need before a scheduled stream?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseLiveFaqHowMuchNoticeDo" class="accordion-collapse collapse" aria-labelledby="headingLiveFaqHowMuchNoticeDo">
+                                            <div class="accordion-body"><p>There&#039;s no specific notice period stated. World Network Live Appearance requests go through HQ review and approval, and the request form asks for first, second, and third choice day-and-time — so submitting a range works best. For Kick streams, post your schedule to Report KICK Broadcast Schedule before you go live so we can publish your stream and provide tracked links.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingLiveFaqWhatHappensIfMy">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLiveFaqWhatHappensIfMy" aria-expanded="false" aria-controls="collapseLiveFaqWhatHappensIfMy">
+                                                <span class="question-text">What happens if my stream is cancelled after distributing my URL?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseLiveFaqWhatHappensIfMy" class="accordion-collapse collapse" aria-labelledby="headingLiveFaqWhatHappensIfMy">
+                                            <div class="accordion-body"><p>Each scheduled KICK broadcast can be cancelled from the KICK Broadcasting Schedule on the Live page.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingLiveFaqCanIStreamOn">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLiveFaqCanIStreamOn" aria-expanded="false" aria-controls="collapseLiveFaqCanIStreamOn">
+                                                <span class="question-text">Can I stream on platforms other than Kick?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseLiveFaqCanIStreamOn" class="accordion-collapse collapse" aria-labelledby="headingLiveFaqCanIStreamOn">
+                                            <div class="accordion-body"><p>KICK is the supported third-party streaming platform — viewer play during your KICK stream earns the 1% Bonus Equity. The World Broadcast Network is a separate live-appearance channel for approved 1-1 Private Challenges.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingLiveFaqHowDoIKnow">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLiveFaqHowDoIKnow" aria-expanded="false" aria-controls="collapseLiveFaqHowDoIKnow">
+                                                <span class="question-text">How do I know how many viewers generated play during my stream?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseLiveFaqHowDoIKnow" class="accordion-collapse collapse" aria-labelledby="headingLiveFaqHowDoIKnow">
+                                            <div class="accordion-body"><p>The KICK Stream Equity Bonus is 1% of the verified play generated by participating viewers during your stream. Your Equity page breaks out the Kick Bonus separately so you can see what each stream contributed.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingLiveFaqWhatIfMyFollowers">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLiveFaqWhatIfMyFollowers" aria-expanded="false" aria-controls="collapseLiveFaqWhatIfMyFollowers">
+                                                <span class="question-text">What if my followers use the wrong link?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseLiveFaqWhatIfMyFollowers" class="accordion-collapse collapse" aria-labelledby="headingLiveFaqWhatIfMyFollowers">
+                                            <div class="accordion-body"><p>The Kick Stream Equity Bonus is credited based on viewers participating through your official tracked link — generated when you submit your broadcast schedule. If a follower clicks an off-platform or untracked link, that play won&#039;t carry the Kick Bonus. Submit your schedule via Report KICK Broadcast Schedule before going live so the right link is in circulation.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingLiveFaqCanIScheduleMultiple">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLiveFaqCanIScheduleMultiple" aria-expanded="false" aria-controls="collapseLiveFaqCanIScheduleMultiple">
+                                                <span class="question-text">Can I schedule multiple streams in the same week?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseLiveFaqCanIScheduleMultiple" class="accordion-collapse collapse" aria-labelledby="headingLiveFaqCanIScheduleMultiple">
+                                            <div class="accordion-body"><p>Yes. You can post additional sessions on the KICK Broadcasting Schedule on the Live page.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingLiveFaqWhatIsTheMinimum">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLiveFaqWhatIsTheMinimum" aria-expanded="false" aria-controls="collapseLiveFaqWhatIsTheMinimum">
+                                                <span class="question-text">What is the minimum stream length to qualify for the equity bonus?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseLiveFaqWhatIsTheMinimum" class="accordion-collapse collapse" aria-labelledby="headingLiveFaqWhatIsTheMinimum">
+                                            <div class="accordion-body"><p>No minimum length is specified. The Kick Stream Equity Bonus is 1% of viewer play during your broadcast — whatever the length, qualifying play counts toward it.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingLiveFaqHowSoonAfterMy">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLiveFaqHowSoonAfterMy" aria-expanded="false" aria-controls="collapseLiveFaqHowSoonAfterMy">
+                                                <span class="question-text">How soon after my stream do I see the equity credited?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseLiveFaqHowSoonAfterMy" class="accordion-collapse collapse" aria-labelledby="headingLiveFaqHowSoonAfterMy">
+                                            <div class="accordion-body"><p>Equity shares are recorded at the exact moment they are earned, so play during the broadcast credits as it happens.</p></div>
+                                        </div>
+                                    </div>
+
+                                </div><!-- /#moreLiveAppearancesAccordion -->
+                            </div><!-- /.more-parent-body -->
+                        </div>
+                    </div><!-- /LIVE APPEARANCES -->
+
+                    <!-- GETTING STARTED -->
+                    <div class="accordion-item more-parent-item mb-3">
+                        <h2 class="accordion-header" id="headingGettingStarted">
+                            <button class="accordion-button more-parent-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGettingStarted" aria-expanded="false" aria-controls="collapseGettingStarted">
+                                Getting Started
+                            </button>
+                        </h2>
+                        <div id="collapseGettingStarted" class="accordion-collapse collapse" aria-labelledby="headingGettingStarted" data-bs-parent="#moreMainAccordion">
+                            <div class="accordion-body more-parent-body">
+                                <div class="accordion custom-accordion equity-accordion" id="moreGettingStartedAccordion">
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingStartFaqIsThereAMinimum">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStartFaqIsThereAMinimum" aria-expanded="false" aria-controls="collapseStartFaqIsThereAMinimum">
+                                                <span class="question-text">Is there a minimum follower count to join?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseStartFaqIsThereAMinimum" class="accordion-collapse collapse" aria-labelledby="headingStartFaqIsThereAMinimum">
+                                            <div class="accordion-body"><p>No.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingStartFaqCanIParticipateIf">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStartFaqCanIParticipateIf" aria-expanded="false" aria-controls="collapseStartFaqCanIParticipateIf">
+                                                <span class="question-text">Can I participate if my audience is primarily on TikTok?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseStartFaqCanIParticipateIf" class="accordion-collapse collapse" aria-labelledby="headingStartFaqCanIParticipateIf">
+                                            <div class="accordion-body"><p>Yes.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingStartFaqWhatIfMyFollowers">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStartFaqWhatIfMyFollowers" aria-expanded="false" aria-controls="collapseStartFaqWhatIfMyFollowers">
+                                                <span class="question-text">What if my followers speak multiple languages?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseStartFaqWhatIfMyFollowers" class="accordion-collapse collapse" aria-labelledby="headingStartFaqWhatIfMyFollowers">
+                                            <div class="accordion-body"><p>The portal is delivered in seven languages — English, Mandarin (Simplified Chinese), Cantonese (Traditional Chinese), Japanese, Korean, Thai, and Vietnamese. Your referral link is the same URL for all of them; each follower picks their own language once they land.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingStartFaqHowDoIInvite">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStartFaqHowDoIInvite" aria-expanded="false" aria-controls="collapseStartFaqHowDoIInvite">
+                                                <span class="question-text">How do I invite followers not on supported messaging platforms?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseStartFaqHowDoIInvite" class="accordion-collapse collapse" aria-labelledby="headingStartFaqHowDoIInvite">
+                                            <div class="accordion-body"><p>The referral link is a plain URL — paste it anywhere your followers actually are. The &#039;supported&#039; channel lists you see in the portal (Email, WhatsApp, KakaoTalk, Line, WeChat, Telegram, plus TikTok and Twitch on your Profile) are for InfluencerHQ-side communication — opponent invites, HQ outreach — not a restriction on where your followers must come from.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingStartFaqCanIJoinAs">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStartFaqCanIJoinAs" aria-expanded="false" aria-controls="collapseStartFaqCanIJoinAs">
+                                                <span class="question-text">Can I join as an Influencer and also play as a regular player?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseStartFaqCanIJoinAs" class="accordion-collapse collapse" aria-labelledby="headingStartFaqCanIJoinAs">
+                                            <div class="accordion-body"><p>Yes. The Influencer experience is built around you playing — that&#039;s what the live stream and live appearance formats are for. There&#039;s no separate &#039;Influencer-only&#039; mode.</p></div>
+                                        </div>
+                                    </div>
+
+                                </div><!-- /#moreGettingStartedAccordion -->
+                            </div><!-- /.more-parent-body -->
+                        </div>
+                    </div><!-- /GETTING STARTED -->
+
+                    <!-- COMPETITIONS -->
+                    <div class="accordion-item more-parent-item mb-3">
+                        <h2 class="accordion-header" id="headingCompetitions">
+                            <button class="accordion-button more-parent-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCompetitions" aria-expanded="false" aria-controls="collapseCompetitions">
+                                Competitions
+                            </button>
+                        </h2>
+                        <div id="collapseCompetitions" class="accordion-collapse collapse" aria-labelledby="headingCompetitions" data-bs-parent="#moreMainAccordion">
+                            <div class="accordion-body more-parent-body">
+                                <div class="accordion custom-accordion equity-accordion" id="moreCompetitionsAccordion">
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingCompFaqHowDoIKnow">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCompFaqHowDoIKnow" aria-expanded="false" aria-controls="collapseCompFaqHowDoIKnow">
+                                                <span class="question-text">How do I know when the next World Challenge window opens?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseCompFaqHowDoIKnow" class="accordion-collapse collapse" aria-labelledby="headingCompFaqHowDoIKnow">
+                                            <div class="accordion-body"><p>World Challenges run every weekend, Thursday night through Sunday night.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingCompFaqCanIParticipateIn">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCompFaqCanIParticipateIn" aria-expanded="false" aria-controls="collapseCompFaqCanIParticipateIn">
+                                                <span class="question-text">Can I participate in multiple competition types simultaneously?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseCompFaqCanIParticipateIn" class="accordion-collapse collapse" aria-labelledby="headingCompFaqCanIParticipateIn">
+                                            <div class="accordion-body"><p>Yes. Private Challenges, Community Challenges, and the World Competition are independent — you can run or join any combination at the same time, and the same goes for the International League and the three Celebrity Follower Leagues.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingCompFaqCanMyFollowersCompete">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCompFaqCanMyFollowersCompete" aria-expanded="false" aria-controls="collapseCompFaqCanMyFollowersCompete">
+                                                <span class="question-text">Can my followers compete even if I don&#039;t personally compete?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseCompFaqCanMyFollowersCompete" class="accordion-collapse collapse" aria-labelledby="headingCompFaqCanMyFollowersCompete">
+                                            <div class="accordion-body"><p>Yes. Your name will still show up on the Team leaderboards for Community Play and the Weekly World Challenge, carried by the players on your Team.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingCompFaqHowDoIChoose">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCompFaqHowDoIChoose" aria-expanded="false" aria-controls="collapseCompFaqHowDoIChoose">
+                                                <span class="question-text">How do I choose which Celebrity League to join?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseCompFaqHowDoIChoose" class="accordion-collapse collapse" aria-labelledby="headingCompFaqHowDoIChoose">
+                                            <div class="accordion-body"><p>On your Profile, pick one favorite from each of the three Celebrity Follower Leagues — Movie Stars, Music Artists, and Sports Icons. InfluencerHQ then promotes you as a Team Captain to new game participants.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingCompFaqCanIChangeMy">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCompFaqCanIChangeMy" aria-expanded="false" aria-controls="collapseCompFaqCanIChangeMy">
+                                                <span class="question-text">Can I change my Celebrity League team after I&#039;ve chosen?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseCompFaqCanIChangeMy" class="accordion-collapse collapse" aria-labelledby="headingCompFaqCanIChangeMy">
+                                            <div class="accordion-body"><p>Yes. Your Celebrity Follower League picks (Movie Stars, Music Artists, Sports Icons) and your International League team live on your Profile page — open the dropdowns and update at any time.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingCompFaqCanIBeIn">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCompFaqCanIBeIn" aria-expanded="false" aria-controls="collapseCompFaqCanIBeIn">
+                                                <span class="question-text">Can I be in both a Celebrity League and an International League at the same time?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseCompFaqCanIBeIn" class="accordion-collapse collapse" aria-labelledby="headingCompFaqCanIBeIn">
+                                            <div class="accordion-body"><p>Yes. The International League (chosen by country or region) and the three Celebrity Follower Leagues are independent selections on your Profile.</p></div>
+                                        </div>
+                                    </div>
+
+                                </div><!-- /#moreCompetitionsAccordion -->
+                            </div><!-- /.more-parent-body -->
+                        </div>
+                    </div><!-- /COMPETITIONS -->
+
+                    <!-- EQUITY & TOKENS -->
+                    <div class="accordion-item more-parent-item mb-3">
+                        <h2 class="accordion-header" id="headingEquityTokens">
+                            <button class="accordion-button more-parent-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEquityTokens" aria-expanded="false" aria-controls="collapseEquityTokens">
+                                Equity &amp; Tokens
+                            </button>
+                        </h2>
+                        <div id="collapseEquityTokens" class="accordion-collapse collapse" aria-labelledby="headingEquityTokens" data-bs-parent="#moreMainAccordion">
+                            <div class="accordion-body more-parent-body">
+                                <div class="accordion custom-accordion equity-accordion" id="moreEquityTokensAccordion">
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingTokenFaqWhereExactlyDoI">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTokenFaqWhereExactlyDoI" aria-expanded="false" aria-controls="collapseTokenFaqWhereExactlyDoI">
+                                                <span class="question-text">Where exactly do I see my token balance?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseTokenFaqWhereExactlyDoI" class="accordion-collapse collapse" aria-labelledby="headingTokenFaqWhereExactlyDoI">
+                                            <div class="accordion-body"><p>Open your Equity page. It shows your Total Equity Shares, Current Share Value, and Total Equity Value, with a breakdown by Level 1 (Direct Influence), Level 2 (Expanding Reach), Level 3 (Networking Momentum), Kick Bonus, and Live Bonus — plus an Influencer&#039;s Earned Equity Chart filterable by Today / This Week / This Month / This Year / All.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingTokenFaqHowDoIKnow">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTokenFaqHowDoIKnow" aria-expanded="false" aria-controls="collapseTokenFaqHowDoIKnow">
+                                                <span class="question-text">How do I know when my first tokens reach maturity?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseTokenFaqHowDoIKnow" class="accordion-collapse collapse" aria-labelledby="headingTokenFaqHowDoIKnow">
+                                            <div class="accordion-body"><p>Each share you earn is recorded at the moment of earning, on its own timeline. With a two-year holding period on all equity awarded under this program, any individual share matures on the second anniversary of when it was recorded.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingTokenFaqCanIGiftOr">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTokenFaqCanIGiftOr" aria-expanded="false" aria-controls="collapseTokenFaqCanIGiftOr">
+                                                <span class="question-text">Can I gift or transfer tokens before maturity?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseTokenFaqCanIGiftOr" class="accordion-collapse collapse" aria-labelledby="headingTokenFaqCanIGiftOr">
+                                            <div class="accordion-body"><p>No, token transfers are not allowed before maturity.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingTokenFaqIsThereAMinimum">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTokenFaqIsThereAMinimum" aria-expanded="false" aria-controls="collapseTokenFaqIsThereAMinimum">
+                                                <span class="question-text">Is there a minimum number of tokens before I can sell?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseTokenFaqIsThereAMinimum" class="accordion-collapse collapse" aria-labelledby="headingTokenFaqIsThereAMinimum">
+                                            <div class="accordion-body"><p>No there is no minimum number of tokens required, but there is a minimum of 2 years hold before you can actually sell.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingTokenFaqWillIReceiveA">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTokenFaqWillIReceiveA" aria-expanded="false" aria-controls="collapseTokenFaqWillIReceiveA">
+                                                <span class="question-text">Will I receive a statement showing tokens earned and maturity dates?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseTokenFaqWillIReceiveA" class="accordion-collapse collapse" aria-labelledby="headingTokenFaqWillIReceiveA">
+                                            <div class="accordion-body"><p>No there is no official statemant, this information is always available on the website within Equity section.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingTokenFaqWhatPlatformDoI">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTokenFaqWhatPlatformDoI" aria-expanded="false" aria-controls="collapseTokenFaqWhatPlatformDoI">
+                                                <span class="question-text">What platform do I use to sell my tokens when they mature?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseTokenFaqWhatPlatformDoI" class="accordion-collapse collapse" aria-labelledby="headingTokenFaqWhatPlatformDoI">
+                                            <div class="accordion-body"><p>Token sales platform is Tokeny (Apex).</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingTokenFaqWhatCurrencyWillI">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTokenFaqWhatCurrencyWillI" aria-expanded="false" aria-controls="collapseTokenFaqWhatCurrencyWillI">
+                                                <span class="question-text">What currency will I receive when I sell my tokens?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseTokenFaqWhatCurrencyWillI" class="accordion-collapse collapse" aria-labelledby="headingTokenFaqWhatCurrencyWillI">
+                                            <div class="accordion-body"><p>USD.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="accordion-item mb-3">
+                                        <h2 class="accordion-header" id="headingTokenFaqCanISeeThe">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTokenFaqCanISeeThe" aria-expanded="false" aria-controls="collapseTokenFaqCanISeeThe">
+                                                <span class="question-text">Can I see the current estimated value of my token balance?</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapseTokenFaqCanISeeThe" class="accordion-collapse collapse" aria-labelledby="headingTokenFaqCanISeeThe">
+                                            <div class="accordion-body"><p>Yes. Your Equity page shows Current Share Value alongside your Total Equity Shares, with Total Equity Value as the product of the two — updated live.</p></div>
+                                        </div>
+                                    </div>
+
+                                </div><!-- /#moreEquityTokensAccordion -->
+                            </div><!-- /.more-parent-body -->
+                        </div>
+                    </div><!-- /EQUITY & TOKENS -->
 
                 </div><!-- /#moreMainAccordion -->
 

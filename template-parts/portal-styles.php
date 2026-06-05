@@ -10,8 +10,8 @@
         --hm-accent: #b8972f;
         --hm-accent-bar: #b7962f;
         --hm-text: #ffffff;
-        /* Fixed stack: search bar (~60px) + sticky header (~100px) + sticky nav (~50px); tune if header heights change */
-        --portal-anchor-scroll-margin: 240px;
+        /* Fixed stack: sticky header (~100px) + sticky nav (~50px); tune if header heights change */
+        --portal-anchor-scroll-margin: 180px;
         /* Shared with portal auth modal (Claude parity) */
         --bg2: #161612;
         --gl: #f0c93a;
@@ -21,7 +21,7 @@
 
     @media (min-width: 1025px) {
         :root {
-            --portal-anchor-scroll-margin: 278px;
+            --portal-anchor-scroll-margin: 218px;
         }
     }
 
@@ -76,8 +76,7 @@
     
     /* Reduce margins for containers inside sticky elements */
     .sticky-header .container,
-    .sticky-nav .container,
-    .search-bar-container .container {
+    .sticky-nav .container {
         margin-top: 0;
         margin-bottom: 0;
     }
@@ -166,51 +165,10 @@
         display: none !important;
     }
     
-    /* Search Bar */
-    .search-bar-container {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        background: rgba(48, 49, 62, 0.98);
-        backdrop-filter: blur(10px);
-        z-index: 1001;
-        padding: 15px 0;
-    }
-    
-    .search-bar {
-        position: relative;
-        width: 100%;
-        max-width: 850px;
-        margin: 0 auto;
-    }
-    
-    .search-icon {
-        position: absolute;
-        left: 20px;
-        top: 50%;
-        transform: translateY(-50%);
-        pointer-events: none;
-    }
-    
-    .search-input {
-        width: 100%;
-        padding: 12px 20px 12px 50px;
-        background: #fff;
-        border: none;
-        border-radius: 25px;
-        font-size: 15px;
-        outline: none;
-    }
-    
-    .search-input::placeholder {
-        color: #999;
-    }
-    
     /* Fixed Header */
     .sticky-header {
         position: fixed;
-        top: 60px;
+        top: 0;
         left: 0;
         width: 100%;
         background: #000000;
@@ -221,7 +179,7 @@
     
     .sticky-nav {
         position: fixed;
-        top: 173px;
+        top: 113px;
         left: 0;
         width: 100%;
         background: #000000;
@@ -256,7 +214,7 @@
         align-items: center;
         justify-content: center;
         max-width: 1024px;
-        margin: 280px auto 0;
+        margin: 200px auto 0;
         padding-left: 20px;
         padding-right: 20px;
     }
@@ -2593,11 +2551,6 @@
             background: black;
         }
 
-        .search-bar-container {
-            background: black;
-            backdrop-filter: none;
-        }
-
         .sticky-header {
             background: #000000;
             backdrop-filter: none;
@@ -2609,7 +2562,7 @@
             border-top: 1px solid transparent;
             border-bottom: 1px solid transparent;
             border-image: linear-gradient(90deg, transparent, #B8972F 50%, transparent) 1;
-            top: 200px;
+            top: 140px;
         }
 
         .accordion-gradient-container {
@@ -2674,7 +2627,7 @@
 
     @media (max-width: 1024px) {
         body.page-template-page-portal-home-php .dealer-row {
-            margin: -45px auto 0;
+            margin: -10px auto 0;
         }
 
         body.page-template-page-portal-home-php .dealer-row .dealer-image-container {
