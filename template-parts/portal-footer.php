@@ -59,6 +59,10 @@ $link_contact = portal_footer_resolve_url(
         'contact',
     ]
 );
+$link_concierge = esc_url( add_query_arg( 'open', 'concierge', home_url( '/portal/portal-home/' ) ) );
+
+$portal_contact_agent_tip = __( 'For best support, please reach out to our Agent and ask any question regarding the Influencer HQ portal.', 'avantage-baccarat' );
+$portal_contact_form_tip  = __( 'If you have specific inquires, please fill in the form.', 'avantage-baccarat' );
 
 $headline_default = __( 'FOOTER PLACEHOLDER', 'avantage-baccarat' );
 $headline         = apply_filters( 'portal_footer_headline', $headline_default );
@@ -102,8 +106,37 @@ $social_urls = apply_filters(
             <a href="<?php echo esc_url( $link_terms ); ?>"><?php esc_html_e( 'Terms & Conditions', 'avantage-baccarat' ); ?></a>
             <a href="<?php echo esc_url( $link_privacy ); ?>"><?php esc_html_e( 'Privacy Center', 'avantage-baccarat' ); ?></a>
             <a href="https://influencerhq.co/portal/portal-home/?open=concierge"><?php esc_html_e( 'Help Center', 'avantage-baccarat' ); ?></a>
-            <a href="<?php echo esc_url( $link_contact ); ?>"><?php esc_html_e( 'Contact Us', 'avantage-baccarat' ); ?></a>
+            <button type="button" class="portal-footer-contact-trigger" id="portalFooterContactBtn" aria-haspopup="dialog" aria-controls="portalContactModal">
+                <?php esc_html_e( 'Contact Us', 'avantage-baccarat' ); ?>
+            </button>
         </nav>
+
+        <div class="portal-contact-modal-overlay" id="portalContactModal" hidden aria-hidden="true">
+            <div class="portal-contact-modal" role="dialog" aria-modal="true" aria-labelledby="portalContactModalTitle">
+                <button type="button" class="portal-contact-modal-close" id="portalContactModalClose" aria-label="<?php esc_attr_e( 'Close', 'avantage-baccarat' ); ?>">&#10005;</button>
+                <h2 class="portal-contact-modal-title" id="portalContactModalTitle"><?php esc_html_e( 'Contact Us', 'avantage-baccarat' ); ?></h2>
+                <ul class="portal-contact-modal-options">
+                    <li class="portal-contact-modal-option-row">
+                        <a class="portal-contact-modal-link" href="<?php echo esc_url( $link_concierge ); ?>">
+                            <?php esc_html_e( 'Talk to Agent', 'avantage-baccarat' ); ?>
+                        </a>
+                        <span class="portal-contact-info" tabindex="0" aria-label="<?php echo esc_attr( $portal_contact_agent_tip ); ?>">
+                            <span class="portal-contact-info-icon" aria-hidden="true">i</span>
+                            <span class="portal-contact-info-tip" role="tooltip"><?php echo esc_html( $portal_contact_agent_tip ); ?></span>
+                        </span>
+                    </li>
+                    <li class="portal-contact-modal-option-row">
+                        <a class="portal-contact-modal-link" href="<?php echo esc_url( $link_contact ); ?>">
+                            <?php esc_html_e( 'Send message', 'avantage-baccarat' ); ?>
+                        </a>
+                        <span class="portal-contact-info" tabindex="0" aria-label="<?php echo esc_attr( $portal_contact_form_tip ); ?>">
+                            <span class="portal-contact-info-icon" aria-hidden="true">i</span>
+                            <span class="portal-contact-info-tip" role="tooltip"><?php echo esc_html( $portal_contact_form_tip ); ?></span>
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </div>
 
         <div class="portal-footer-logos">
             <!-- <img class="portal-footer-logo-img portal-footer-logo-img--cogra" src="<?php echo esc_url( $asset_base . 'cogra.png' ); ?>" alt="<?php esc_attr_e( 'eCOGRA', 'avantage-baccarat' ); ?>" width="283" height="60" decoding="async" loading="lazy"> -->
@@ -117,3 +150,51 @@ $social_urls = apply_filters(
         <p class="portal-footer-legal"><?php echo esc_html( $legal ); ?></p>
     </div>
 </div>
+
+<script>
+(function () {
+    var trigger = document.getElementById('portalFooterContactBtn');
+    var modal = document.getElementById('portalContactModal');
+    var closeBtn = document.getElementById('portalContactModalClose');
+    if (!trigger || !modal) {
+        return;
+    }
+
+    function openModal() {
+        modal.hidden = false;
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('portal-contact-modal-open');
+        if (closeBtn) {
+            closeBtn.focus();
+        }
+    }
+
+    function closeModal() {
+        modal.hidden = true;
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('portal-contact-modal-open');
+        trigger.focus();
+    }
+
+    trigger.addEventListener('click', function (e) {
+        e.preventDefault();
+        openModal();
+    });
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeModal);
+    }
+
+    modal.addEventListener('click', function (e) {
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !modal.hidden) {
+            closeModal();
+        }
+    });
+})();
+</script>

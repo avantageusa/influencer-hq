@@ -368,6 +368,172 @@
         text-decoration: underline;
     }
 
+    .portal-footer-contact-trigger {
+        background: none;
+        border: none;
+        padding: 0;
+        margin: 0;
+        font: inherit;
+        font-family: 'Inter', 'Be Vietnam Pro', sans-serif;
+        font-size: clamp(10px, 2.1vw, 11px);
+        font-weight: 700;
+        line-height: 1.35;
+        color: #fff;
+        cursor: pointer;
+        white-space: nowrap;
+        text-decoration: none;
+    }
+
+    .portal-footer-contact-trigger:hover {
+        text-decoration: underline;
+    }
+
+    body.portal-contact-modal-open {
+        overflow: hidden;
+    }
+
+    .portal-contact-modal-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 11050;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.72);
+        backdrop-filter: blur(4px);
+    }
+
+    .portal-contact-modal-overlay[hidden] {
+        display: none !important;
+    }
+
+    .portal-contact-modal {
+        position: relative;
+        width: 100%;
+        max-width: 420px;
+        padding: 28px 24px 22px;
+        background: #2a2b37;
+        border: 1px solid #b8972f;
+        border-radius: 10px;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    }
+
+    .portal-contact-modal-close {
+        position: absolute;
+        top: 10px;
+        right: 12px;
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: transparent;
+        color: #ead9b0;
+        font-size: 1.1rem;
+        line-height: 1;
+        cursor: pointer;
+    }
+
+    .portal-contact-modal-close:hover {
+        color: #fff;
+    }
+
+    .portal-contact-modal-title {
+        margin: 0 0 20px;
+        font-family: 'Cinzel', serif;
+        font-size: 1.15rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-align: center;
+        color: #f0c93a;
+    }
+
+    .portal-contact-modal-options {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .portal-contact-modal-option-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        background: rgba(0, 0, 0, 0.28);
+        border: 1px solid rgba(184, 151, 47, 0.45);
+        border-radius: 8px;
+    }
+
+    .portal-contact-modal-link {
+        flex: 1;
+        color: #fff;
+        font-family: 'Inter', 'Be Vietnam Pro', sans-serif;
+        font-size: 1rem;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .portal-contact-modal-link:hover {
+        color: #f0c93a;
+        text-decoration: underline;
+    }
+
+    .portal-contact-info {
+        position: relative;
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .portal-contact-info-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 1px solid #b8972f;
+        color: #f0c93a;
+        font-size: 0.75rem;
+        font-weight: 700;
+        font-style: italic;
+        font-family: Georgia, 'Times New Roman', serif;
+        line-height: 1;
+        cursor: help;
+    }
+
+    .portal-contact-info-tip {
+        position: absolute;
+        right: 0;
+        bottom: calc(100% + 10px);
+        width: min(260px, 70vw);
+        padding: 10px 12px;
+        border-radius: 8px;
+        background: #161612;
+        border: 1px solid rgba(184, 151, 47, 0.55);
+        color: #ead9b0;
+        font-size: 0.8rem;
+        line-height: 1.45;
+        text-align: left;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 0.15s ease, visibility 0.15s ease;
+        z-index: 2;
+    }
+
+    .portal-contact-info:hover .portal-contact-info-tip,
+    .portal-contact-info:focus .portal-contact-info-tip,
+    .portal-contact-info:focus-within .portal-contact-info-tip {
+        opacity: 1;
+        visibility: visible;
+    }
+
     .portal-footer-logos {
         display: flex;
         flex-wrap: wrap;
