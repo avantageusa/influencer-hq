@@ -448,6 +448,116 @@ function save_challenge_meta_box($post_id) {
 add_action('save_post_challenge', 'save_challenge_meta_box');
 
 /**
+ * Resolve how an influencer signed up: Telegram or email.
+ *
+ * Telegram users store telegram_user_id and/or use a faux @email_telegram.com address.
+ *
+ * @param int $user_id WordPress user ID.
+ * @return string 'telegram', 'email', or 'unknown'.
+ */
+function ihq_resolve_user_registration_method( $user_id ) {
+    $user_id = (int) $user_id;
+    if ( $user_id <= 0 ) {
+        return 'unknown';
+    }
+
+    $telegram_user_id = (int) get_user_meta( $user_id, 'telegram_user_id', true );
+    if ( $telegram_user_id > 0 ) {
+        return 'telegram';
+    }
+
+    $user = get_userdata( $user_id );
+    if ( $user && is_email( $user->user_email ) ) {
+        $at_pos = strrpos( $user->user_email, '@' );
+        if ( $at_pos !== false ) {
+            $domain = strtolower( substr( $user->user_email, $at_pos + 1 ) );
+            if ( $domain === 'email_telegram.com' ) {
+                return 'telegram';
+            }
+        }
+    }
+
+    return 'email';
+}
+
+/**
+ * Add custom columns to Users list in wp-admin.
+ *
+ * @param array $columns Existing list table columns.
+ * @return array
+ */
+function ihq_users_list_add_registered_column( $columns ) {
+    $new_columns = array();
+    foreach ( $columns as $key => $label ) {
+        $new_columns[ $key ] = $label;
+        if ( $key === 'email' ) {
+            $new_columns['user_registered']     = __( 'Registered', 'avantage-baccarat' );
+            $new_columns['registration_method'] = __( 'Signed up via', 'avantage-baccarat' );
+        }
+    }
+    if ( ! isset( $new_columns['user_registered'] ) ) {
+        $new_columns['user_registered'] = __( 'Registered', 'avantage-baccarat' );
+    }
+    if ( ! isset( $new_columns['registration_method'] ) ) {
+        $new_columns['registration_method'] = __( 'Signed up via', 'avantage-baccarat' );
+    }
+    return $new_columns;
+}
+add_filter( 'manage_users_columns', 'ihq_users_list_add_registered_column' );
+
+/**
+ * Render custom values in the Users list table.
+ *
+ * @param string $value       Default column output.
+ * @param string $column_name Column key.
+ * @param int    $user_id     User ID.
+ * @return string
+ */
+function ihq_users_list_render_registered_column( $value, $column_name, $user_id ) {
+    if ( $column_name === 'user_registered' ) {
+        $user = get_userdata( $user_id );
+        if ( ! $user || empty( $user->user_registered ) || $user->user_registered === '0000-00-00 00:00:00' ) {
+            return '&mdash;';
+        }
+
+        $timestamp = strtotime( $user->user_registered );
+        if ( $timestamp === false ) {
+            return '&mdash;';
+        }
+
+        $date_format = get_option( 'date_format' );
+        $time_format = get_option( 'time_format' );
+        return esc_html( date_i18n( $date_format . ' ' . $time_format, $timestamp ) );
+    }
+
+    if ( $column_name === 'registration_method' ) {
+        $method = ihq_resolve_user_registration_method( $user_id );
+        if ( $method === 'telegram' ) {
+            return esc_html__( 'Telegram', 'avantage-baccarat' );
+        }
+        if ( $method === 'email' ) {
+            return esc_html__( 'Email', 'avantage-baccarat' );
+        }
+        return '&mdash;';
+    }
+
+    return $value;
+}
+add_filter( 'manage_users_custom_column', 'ihq_users_list_render_registered_column', 10, 3 );
+
+/**
+ * Make the Registered column sortable on the Users screen.
+ *
+ * @param array $columns Sortable columns.
+ * @return array
+ */
+function ihq_users_list_registered_sortable_column( $columns ) {
+    $columns['user_registered'] = 'registered';
+    return $columns;
+}
+add_filter( 'manage_users_sortable_columns', 'ihq_users_list_registered_sortable_column' );
+
+/**
  * Debug function to check if role was created properly
  * Remove this in production
  */
