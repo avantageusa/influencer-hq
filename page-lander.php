@@ -94,60 +94,58 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
 
   <!-- Concierge band -->
   <div class="ln-concierge-band">
-    <div class="ln-concierge-center">
-      <img class="ln-concierge-img"
-           src="<?php echo esc_url( get_template_directory_uri() . '/images/concierge.png' ); ?>"
-           alt="">
-    </div>
-    <div class="ln-concierge-overlay">
+    <div class="ln-concierge-inner">
       <div class="ln-concierge-left">
         <span class="ln-concierge-label">Conversations should be easy.</span>
       </div>
+      <div class="ln-concierge-center">
+        <img class="ln-concierge-img"
+             src="<?php echo esc_url( get_template_directory_uri() . '/images/concierge.png' ); ?>"
+             alt="<?php esc_attr_e( 'Executive Concierge', 'avantage-baccarat' ); ?>">
+        <p class="ln-concierge-title"><?php esc_html_e( 'Executive Concierge', 'avantage-baccarat' ); ?></p>
+      </div>
       <div class="ln-concierge-right">
-        <a href="#" class="ln-concierge-ask" id="landerConciergeBtn">Ask Me Anything</a>
+        <a href="#" class="ln-concierge-ask" id="landerConciergeBtn"><?php esc_html_e( 'Ask Me Anything', 'avantage-baccarat' ); ?></a>
       </div>
     </div>
   </div>
-
-  <div class="ln-concierge-title">Executive Concierge</div>
 
   <!-- ═══ OUR BELIEFS (part of hero) ═════════════════════════════ -->
   <div class="ln-section ln-beliefs ln-beliefs--hero">
     <div class="ln-section-center">
-      <h2 class="ln-section-title">Our Beliefs</h2>
+      <h2 class="ln-section-title"><?php esc_html_e( 'Our Beliefs', 'avantage-baccarat' ); ?></h2>
     </div>
 
     <div class="ln-beliefs-grid">
-      <!-- Left column -->
       <div class="ln-belief-col">
         <img src="<?php echo esc_url( get_template_directory_uri() . '/images/lander-icon-left.png' ); ?>"
              alt="" class="ln-belief-icon">
-        <p class="ln-belief-item">Influence deserves more than short-term payouts.</p>
+        <p class="ln-belief-item"><?php esc_html_e( 'Influence deserves more than short-term payouts.', 'avantage-baccarat' ); ?></p>
+        <?php if ( ! is_user_logged_in() ) : ?>
+          <button type="button" class="btn-arena ln-belief-cta" onclick="openModal()"><?php esc_html_e( 'TELL ME MORE!', 'avantage-baccarat' ); ?></button>
+        <?php endif; ?>
       </div>
 
-      <!-- Centre — exec concierge label -->
-      <div class="ln-beliefs-center">
-        <p class="ln-belief-item ln-belief-item--center">
-          When your influence grows a platform, you should share in the value created by that growth.
-        </p>
+      <div class="ln-belief-col">
+        <img src="<?php echo esc_url( get_template_directory_uri() . '/images/hamburger-icons/icon-equity.png' ); ?>"
+             alt="" class="ln-belief-icon">
+        <p class="ln-belief-item"><?php esc_html_e( 'When your influence grows a platform, you should share in the value created by that growth.', 'avantage-baccarat' ); ?></p>
       </div>
 
-      <!-- Right column -->
       <div class="ln-belief-col">
         <img src="<?php echo esc_url( get_template_directory_uri() . '/images/lander-icon-right.png' ); ?>"
-             alt="" class="ln-belief-icon" style="align-self:center">
-        <p class="ln-belief-item">Influencers deserve the opportunity to share in ownership.</p>
+             alt="" class="ln-belief-icon">
+        <p class="ln-belief-item"><?php esc_html_e( 'Influencers deserve the opportunity to share in ownership.', 'avantage-baccarat' ); ?></p>
+        <?php if ( ! is_user_logged_in() ) : ?>
+          <button type="button" class="btn-arena ln-belief-cta" onclick="openModal()"><?php esc_html_e( 'COUNT ME IN!', 'avantage-baccarat' ); ?></button>
+        <?php endif; ?>
       </div>
     </div>
-  </div>
 
-  <!-- CTA buttons -->
-  <div class="ln-hero-ctas">
     <?php if ( is_user_logged_in() ) : ?>
-      <a class="btn-arena" href="<?php echo esc_url( home_url( '/portal/portal-home/' ) ); ?>">Go to portal</a>
-    <?php else : ?>
-      <button class="btn-arena" onclick="openModal()">TELL ME MORE!</button>
-      <button class="btn-arena" onclick="openModal()">COUNT ME IN!</button>
+      <div class="ln-hero-logged-in-cta">
+        <a class="btn-arena" href="<?php echo esc_url( home_url( '/portal/portal-home/' ) ); ?>"><?php esc_html_e( 'Go to portal', 'avantage-baccarat' ); ?></a>
+      </div>
     <?php endif; ?>
   </div>
 
@@ -189,8 +187,8 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
   <!-- BTS -->
   <div class="ln-story">
     <img class="ln-story-img"
-         src="<?php echo esc_url( get_template_directory_uri() . '/images/concierge.png' ); ?>"
-         alt="BTS" style="object-position:center top">
+         src="<?php echo esc_url( get_template_directory_uri() . '/images/bts.png' ); ?>"
+         alt="<?php esc_attr_e( 'BTS', 'avantage-baccarat' ); ?>">
     <div class="ln-story-body">
       <div class="ln-story-name">BTS</div>
       <p class="ln-story-text">
@@ -201,140 +199,139 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
   </div>
 
   <!-- COUNT ME IN CTA -->
-  <div style="text-align:center;margin-top:40px">
+  <div class="ln-ownership-cta">
     <?php if ( is_user_logged_in() ) : ?>
-      <a class="btn-arena" href="<?php echo esc_url( home_url( '/portal/portal-home/' ) ); ?>">Go to portal</a>
+      <a class="btn-arena" href="<?php echo esc_url( home_url( '/portal/portal-home/' ) ); ?>"><?php esc_html_e( 'Go to portal', 'avantage-baccarat' ); ?></a>
     <?php else : ?>
-      <button class="btn-arena" onclick="openModal()">COUNT ME IN!</button>
+      <button type="button" class="btn-arena" onclick="openModal()"><?php esc_html_e( 'COUNT ME IN!', 'avantage-baccarat' ); ?></button>
     <?php endif; ?>
   </div>
+</div>
+
+<!-- ═══ COMPETE TEASER ═══════════════════════════════════════════ -->
+<div class="ln-section ln-compete-teaser">
+  <h3 class="ln-compete-headline">
+    <span><?php esc_html_e( 'Don\'t Just Post!', 'avantage-baccarat' ); ?></span>
+    <span><?php esc_html_e( 'Compete!', 'avantage-baccarat' ); ?></span>
+  </h3>
 </div>
 
 <!-- ═══ INTERNATIONAL COMPETITION ════════════════════════════════ -->
 <div class="ln-section ln-intl">
   <div class="ln-section-center">
-    <h2 class="ln-section-title">International Competition</h2>
+    <h2 class="ln-section-title"><?php esc_html_e( 'International Competition', 'avantage-baccarat' ); ?></h2>
   </div>
   <p class="ln-intl-sub">
-    Influencers are automatically invited to appear on our partners' International Competition.
+    <?php esc_html_e( 'Influencers are automatically invited to appear on our partners\' International Competition.', 'avantage-baccarat' ); ?>
   </p>
 
-  <p class="ln-section-sub" style="text-align:center;margin-bottom:24px;font-weight:600">
-    Rank your level of interest for each of these competition types.
-  </p>
+  <div class="ln-intl-stage ln-intl-stage--triple">
+    <img class="ln-intl-torch"
+         src="<?php echo esc_url( get_template_directory_uri() . '/images/lander-torch.png' ); ?>"
+         alt="">
+    <div class="ln-intl-stage-copy">
+      <p><?php esc_html_e( 'Influence deserves a stage worthy of that legacy — and now, it has one.', 'avantage-baccarat' ); ?></p>
+      <p><?php esc_html_e( 'Elegance that never goes out of style. Prestige that spans centuries.', 'avantage-baccarat' ); ?></p>
+    </div>
+    <div class="ln-intl-miami">
+      <img src="<?php echo esc_url( get_template_directory_uri() . '/images/lander-miami-worldcup.png' ); ?>"
+           alt="<?php esc_attr_e( 'Miami skyline — 2026 World Cup', 'avantage-baccarat' ); ?>">
+    </div>
+  </div>
 
   <div class="ln-comp-cards">
-
-    <!-- WORLD -->
-    <div class="ln-comp-card ln-comp-card--world">
-      <div class="ln-comp-card-title">World</div>
-      <p class="ln-comp-card-desc">Compete against Influencers and their followers from across the world. Thursday through Sunday.</p>
+    <div class="ln-comp-col">
+      <div class="ln-comp-card ln-comp-card--world">
+        <div class="ln-comp-card-title"><?php esc_html_e( 'World', 'avantage-baccarat' ); ?></div>
+        <p class="ln-comp-card-desc"><?php esc_html_e( 'Compete against Influencers and their followers from across the world. Thursday through Sunday.', 'avantage-baccarat' ); ?></p>
+      </div>
       <div class="ln-rating-row">
-        <span class="ln-rating-label">Rank:</span>
-        <button class="ln-rating-btn" data-group="world" data-val="1" onclick="lnRate(this)">1</button>
-        <button class="ln-rating-btn" data-group="world" data-val="2" onclick="lnRate(this)">2</button>
-        <button class="ln-rating-btn" data-group="world" data-val="3" onclick="lnRate(this)">3</button>
+        <button type="button" class="ln-rating-btn" data-group="world" data-val="1" onclick="lnRate(this)">1</button>
+        <button type="button" class="ln-rating-btn" data-group="world" data-val="2" onclick="lnRate(this)">2</button>
+        <button type="button" class="ln-rating-btn" data-group="world" data-val="3" onclick="lnRate(this)">3</button>
       </div>
     </div>
 
-    <!-- COMMUNITY -->
-    <div class="ln-comp-card ln-comp-card--comm">
-      <div class="ln-comp-card-title">Community</div>
-      <p class="ln-comp-card-desc">A weekly competition for all of your followers.</p>
-      <div class="ln-rating-row">
-        <span class="ln-rating-label">Rank:</span>
-        <button class="ln-rating-btn" data-group="community" data-val="1" onclick="lnRate(this)">1</button>
-        <button class="ln-rating-btn" data-group="community" data-val="2" onclick="lnRate(this)">2</button>
-        <button class="ln-rating-btn" data-group="community" data-val="3" onclick="lnRate(this)">3</button>
+    <div class="ln-comp-col">
+      <div class="ln-comp-card ln-comp-card--comm">
+        <div class="ln-comp-card-title"><?php esc_html_e( 'Community', 'avantage-baccarat' ); ?></div>
+        <p class="ln-comp-card-desc"><?php esc_html_e( 'A weekly competition for all of your followers.', 'avantage-baccarat' ); ?></p>
+        <div class="ln-rating-row ln-rating-row--in-card">
+          <button type="button" class="ln-rating-btn" data-group="community" data-val="1" onclick="lnRate(this)">1</button>
+          <button type="button" class="ln-rating-btn" data-group="community" data-val="2" onclick="lnRate(this)">2</button>
+          <button type="button" class="ln-rating-btn" data-group="community" data-val="3" onclick="lnRate(this)">3</button>
+        </div>
       </div>
     </div>
 
-    <!-- PRIVATE -->
-    <div class="ln-comp-card ln-comp-card--private">
-      <div class="ln-comp-card-title">Private</div>
-      <p class="ln-comp-card-desc">Invite a single Influencer friend and their followers to compete against you and your followers in a 24-hour event.</p>
+    <div class="ln-comp-col">
+      <div class="ln-comp-card ln-comp-card--private">
+        <div class="ln-comp-card-title"><?php esc_html_e( 'Private', 'avantage-baccarat' ); ?></div>
+        <p class="ln-comp-card-desc"><?php esc_html_e( 'Invite a single Influencer friend and their followers to compete against you and your followers in a 24-hour event.', 'avantage-baccarat' ); ?></p>
+      </div>
       <div class="ln-rating-row">
-        <span class="ln-rating-label">Rank:</span>
-        <button class="ln-rating-btn" data-group="private" data-val="1" onclick="lnRate(this)">1</button>
-        <button class="ln-rating-btn" data-group="private" data-val="2" onclick="lnRate(this)">2</button>
-        <button class="ln-rating-btn" data-group="private" data-val="3" onclick="lnRate(this)">3</button>
+        <button type="button" class="ln-rating-btn" data-group="private" data-val="1" onclick="lnRate(this)">1</button>
+        <button type="button" class="ln-rating-btn" data-group="private" data-val="2" onclick="lnRate(this)">2</button>
+        <button type="button" class="ln-rating-btn" data-group="private" data-val="3" onclick="lnRate(this)">3</button>
       </div>
     </div>
-
   </div>
 
   <input type="hidden" id="ln-comp-rating-world"     value="">
   <input type="hidden" id="ln-comp-rating-community" value="">
   <input type="hidden" id="ln-comp-rating-private"   value="">
 
-  <!-- Stage / Miami -->
-  <div class="ln-stage-inner" style="margin-top:48px">
-    <img class="ln-stage-sword"
-         src="<?php echo esc_url( get_template_directory_uri() . '/images/concierge.png' ); ?>"
-         alt="" style="max-width:120px;opacity:.6">
-    <div class="ln-stage-right">
-      <p class="ln-stage-text">
-        Influence deserves a stage worthy of that legacy — and now, it has one.<br><br>
-        Elegance that never goes out of style. Prestige that spans centuries.
-      </p>
-      <div class="ln-miami-wrap">
-        <img src="<?php echo esc_url( get_template_directory_uri() . '/images/miami-png.png' ); ?>" alt="Miami">
-        <span class="ln-miami-label ln-miami-label--top">2026 World Cup</span>
-        <span class="ln-miami-label ln-miami-label--bottom">Miami</span>
-      </div>
-    </div>
-  </div>
+  <p class="ln-rating-note">
+    <?php esc_html_e( 'Rank your level of Interest for each of these competition types.', 'avantage-baccarat' ); ?>
+  </p>
 
-  <!-- COUNT ME IN CTA -->
-  <div style="text-align:center;margin-top:48px">
+  <div class="ln-intl-cta">
     <?php if ( is_user_logged_in() ) : ?>
-      <a class="btn-arena" href="<?php echo esc_url( home_url( '/portal/portal-home/' ) ); ?>">Go to portal</a>
+      <a class="btn-arena" href="<?php echo esc_url( home_url( '/portal/portal-home/' ) ); ?>"><?php esc_html_e( 'Go to portal', 'avantage-baccarat' ); ?></a>
     <?php else : ?>
-      <button class="btn-arena" onclick="openModal()">COUNT ME IN!</button>
+      <button type="button" class="btn-arena" onclick="openModal()"><?php esc_html_e( 'COUNT ME IN!', 'avantage-baccarat' ); ?></button>
     <?php endif; ?>
   </div>
 </div>
 
-<!-- ═══ COMPETE / STREAMING ══════════════════════════════════════ -->
-<div class="ln-section ln-compete">
-
-  <h2 class="ln-section-title" style="margin-bottom:8px">Influence is the Spark</h2>
-  <p class="ln-section-title" style="font-size:clamp(1.4rem,3vw,2.6rem);margin-bottom:32px">
-    Ownership is the Fire
-  </p>
-
-  <h3 class="ln-compete-headline">Don't just post! &nbsp;Compete!</h3>
+<!-- ═══ INFLUENCE / OWNERSHIP (STREAMING) ══════════════════════════ -->
+<div class="ln-section ln-spark-fire">
+  <div class="ln-spark-fire-grid">
+    <div class="ln-spark-fire-col">
+      <h2 class="ln-spark-fire-title"><?php esc_html_e( 'Influence Is The Spark', 'avantage-baccarat' ); ?></h2>
+      <div class="ln-stream-card">
+        <img src="<?php echo esc_url( get_template_directory_uri() . '/images/girl-stream.jpg' ); ?>"
+             alt="<?php esc_attr_e( 'Influencer streaming', 'avantage-baccarat' ); ?>">
+      </div>
+      <?php if ( is_user_logged_in() ) : ?>
+        <a class="btn-arena dim" href="<?php echo esc_url( home_url( '/portal/portal-home/' ) ); ?>"><?php esc_html_e( 'Go to portal', 'avantage-baccarat' ); ?></a>
+      <?php else : ?>
+        <button type="button" class="btn-arena dim" onclick="openModal()"><?php esc_html_e( 'TELL ME MORE!', 'avantage-baccarat' ); ?></button>
+      <?php endif; ?>
+    </div>
+    <div class="ln-spark-fire-col">
+      <h2 class="ln-spark-fire-title"><?php esc_html_e( 'Ownership Is The Fire', 'avantage-baccarat' ); ?></h2>
+      <div class="ln-stream-card">
+        <img src="<?php echo esc_url( get_template_directory_uri() . '/images/boy-stream.jpg' ); ?>"
+             alt="<?php esc_attr_e( 'Influencer streaming', 'avantage-baccarat' ); ?>">
+      </div>
+      <?php if ( is_user_logged_in() ) : ?>
+        <a class="btn-arena dim" href="<?php echo esc_url( home_url( '/portal/portal-home/' ) ); ?>"><?php esc_html_e( 'Go to portal', 'avantage-baccarat' ); ?></a>
+      <?php else : ?>
+        <button type="button" class="btn-arena dim" onclick="openModal()"><?php esc_html_e( 'COUNT ME IN!', 'avantage-baccarat' ); ?></button>
+      <?php endif; ?>
+    </div>
+  </div>
 
   <p class="ln-compete-sub">
-    Rally your followers into action.<br>
-    Your community competes as a unit — every invite, every interaction earns equity.
+    <?php esc_html_e( 'Rally your followers into action.', 'avantage-baccarat' ); ?><br>
+    <?php esc_html_e( 'Your community competes as a unit — every invite, every interaction earns equity.', 'avantage-baccarat' ); ?>
   </p>
-
-  <div class="ln-stream-row">
-    <div class="ln-stream-card">
-      <img src="<?php echo esc_url( get_template_directory_uri() . '/images/girl-stream.jpg' ); ?>"
-           alt="Influencer streaming">
-    </div>
-    <div class="ln-stream-card">
-      <img src="<?php echo esc_url( get_template_directory_uri() . '/images/boy-stream.jpg' ); ?>"
-           alt="Influencer streaming">
-    </div>
-  </div>
 
   <p class="ln-equity-note">
-    Streaming is optional, not required.<br>
-    You can fully participate and earn equity without streaming.
+    <?php esc_html_e( 'Streaming is optional, not required.', 'avantage-baccarat' ); ?><br>
+    <?php esc_html_e( 'You can fully participate and earn equity without streaming.', 'avantage-baccarat' ); ?>
   </p>
-
-  <!-- Final pair of CTAs -->
-  <div class="ln-final-ctas" style="margin-top:40px">
-    <?php if ( is_user_logged_in() ) : ?>
-      <a class="btn-arena" href="<?php echo esc_url( home_url( '/portal/portal-home/' ) ); ?>">Go to portal</a>
-    <?php else : ?>
-      <button class="btn-arena dim" onclick="openModal()">TELL ME MORE!</button>
-      <button class="btn-arena dim" onclick="openModal()">COUNT ME IN!</button>
-    <?php endif; ?>
-  </div>
 </div>
 
 <!-- ═══ FINAL BAND ════════════════════════════════════════════════ -->
