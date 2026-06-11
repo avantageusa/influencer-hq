@@ -30,6 +30,26 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
 	$ihq_turnstile_site_modal = CF_TURNSTILE_SITE_KEY;
 }
 
+$ihq_modal_comm_placeholder = __( 'handle or URL', 'avantage-baccarat' );
+$ihq_modal_comm_methods_left = array(
+	array( 'key' => 'botim', 'label' => 'Botim' ),
+	array( 'key' => 'email', 'label' => 'Email' ),
+	array( 'key' => 'imo', 'label' => 'IMO' ),
+	array( 'key' => 'kakaotalk', 'label' => 'KakaoTalk' ),
+	array( 'key' => 'line', 'label' => 'Line' ),
+	array( 'key' => 'qq', 'label' => 'QQ' ),
+	array( 'key' => 'signal', 'label' => 'Signal' ),
+);
+$ihq_modal_comm_methods_right = array(
+	array( 'key' => 'sms', 'label' => 'SMS' ),
+	array( 'key' => 'telegram', 'label' => 'Telegram' ),
+	array( 'key' => 'viber', 'label' => 'Viber' ),
+	array( 'key' => 'wechat', 'label' => 'WeChat' ),
+	array( 'key' => 'whatsapp', 'label' => 'WhatsApp' ),
+	array( 'key' => 'zalo', 'label' => 'Zalo' ),
+);
+$ihq_modal_comm_methods_all = array_merge( $ihq_modal_comm_methods_left, $ihq_modal_comm_methods_right );
+
 $ihq_modal_social_placeholder = __( 'handle or URL', 'avantage-baccarat' );
 // Grid order: left-to-right, top-to-bottom (3 columns) to match Figma.
 $ihq_modal_social_platforms = array(
@@ -359,27 +379,63 @@ $ihq_modal_social_platforms = array(
   <div class="modal">
     <button class="modal-x" onclick="closeModal()">✕</button>
     <div class="mstep on" id="ms1">
+      <div class="modal-comm-thanks" id="modal-comm-thanks" hidden>
+        <p class="modal-comm-thanks-msg"><?php esc_html_e( 'Thank you for your submission, your message was received', 'avantage-baccarat' ); ?></p>
+      </div>
+      <div id="modal-comm-form-body">
       <h3 class="m-title m-title--conversation"><?php esc_html_e( "Let's Start The Conversation", 'avantage-baccarat' ); ?></h3>
       <p class="m-lede"><?php esc_html_e( 'Please give us your favorite methods of communication.', 'avantage-baccarat' ); ?></p>
-      <div class="modal-comm-grid">
-        <label class="modal-comm-card" id="modal-comm-card-email" for="modal-comm-email">
-          <input type="checkbox" id="modal-comm-email" autocomplete="off" aria-label="<?php esc_attr_e( 'Email', 'avantage-baccarat' ); ?>">
-          <div class="modal-comm-text">
-            <div class="modal-comm-name"><?php esc_html_e( 'Email', 'avantage-baccarat' ); ?></div>
-            <span class="modal-comm-lbl"><?php esc_html_e( 'Receive your code by email', 'avantage-baccarat' ); ?></span>
+      <div class="modal-comm-pick" id="modal-comm-pick">
+        <div class="modal-comm-cols" role="group" aria-label="<?php esc_attr_e( 'Favorite methods of communication', 'avantage-baccarat' ); ?>">
+          <div class="modal-comm-col">
+            <?php foreach ( $ihq_modal_comm_methods_left as $ihq_comm ) : ?>
+            <label class="modal-comm-option" id="modal-comm-row-<?php echo esc_attr( $ihq_comm['key'] ); ?>" for="modal-comm-<?php echo esc_attr( $ihq_comm['key'] ); ?>">
+              <input
+                type="checkbox"
+                id="modal-comm-<?php echo esc_attr( $ihq_comm['key'] ); ?>"
+                data-comm-key="<?php echo esc_attr( $ihq_comm['key'] ); ?>"
+                autocomplete="off"
+                aria-label="<?php echo esc_attr( $ihq_comm['label'] ); ?>"
+              >
+              <span class="modal-comm-option-name"><?php echo esc_html( $ihq_comm['label'] ); ?></span>
+            </label>
+            <?php endforeach; ?>
           </div>
-        </label>
-        <label class="modal-comm-card" id="modal-comm-card-telegram" for="modal-comm-telegram">
-          <input type="checkbox" id="modal-comm-telegram" autocomplete="off" aria-label="<?php esc_attr_e( 'Telegram', 'avantage-baccarat' ); ?>">
-          <div class="modal-comm-text">
-            <div class="modal-comm-name"><?php esc_html_e( 'Telegram', 'avantage-baccarat' ); ?></div>
-            <span class="modal-comm-lbl" id="modal-comm-telegram-lbl"><?php echo esc_html( $ihq_modal_telegram_lbl_default ); ?></span>
+          <div class="modal-comm-col">
+            <?php foreach ( $ihq_modal_comm_methods_right as $ihq_comm ) : ?>
+            <label class="modal-comm-option" id="modal-comm-row-<?php echo esc_attr( $ihq_comm['key'] ); ?>" for="modal-comm-<?php echo esc_attr( $ihq_comm['key'] ); ?>">
+              <input
+                type="checkbox"
+                id="modal-comm-<?php echo esc_attr( $ihq_comm['key'] ); ?>"
+                data-comm-key="<?php echo esc_attr( $ihq_comm['key'] ); ?>"
+                autocomplete="off"
+                aria-label="<?php echo esc_attr( $ihq_comm['label'] ); ?>"
+              >
+              <span class="modal-comm-option-name"><?php echo esc_html( $ihq_comm['label'] ); ?></span>
+            </label>
+            <?php endforeach; ?>
           </div>
-        </label>
+        </div>
+        <p class="modal-comm-err" id="modal-comm-err" role="alert"></p>
       </div>
       <p class="modal-comm-tg-err" id="modal-comm-tg-err"></p>
+      <div class="modal-comm-inputs" id="modal-comm-inputs-panel">
+        <?php foreach ( $ihq_modal_comm_methods_all as $ihq_comm ) : ?>
+        <div class="modal-comm-input-row" id="modal-comm-entry-<?php echo esc_attr( $ihq_comm['key'] ); ?>" hidden>
+          <span class="modal-comm-input-label"><?php echo esc_html( strtoupper( $ihq_comm['label'] ) ); ?></span>
+          <input
+            class="modal-comm-handle-input"
+            type="text"
+            id="modal-comm-input-<?php echo esc_attr( $ihq_comm['key'] ); ?>"
+            data-comm-key="<?php echo esc_attr( $ihq_comm['key'] ); ?>"
+            placeholder="<?php echo esc_attr( $ihq_modal_comm_placeholder ); ?>"
+            aria-label="<?php echo esc_attr( $ihq_comm['label'] ); ?>"
+          >
+        </div>
+        <?php endforeach; ?>
+      </div>
 
-      <div class="modal-social-section">
+      <div class="modal-social-section modal-comm-deferred">
         <h4 class="modal-social-heading"><?php esc_html_e( 'Social Media You Post On', 'avantage-baccarat' ); ?></h4>
         <div class="social-grid" role="group" aria-label="<?php esc_attr_e( 'Social media platforms', 'avantage-baccarat' ); ?>">
           <?php foreach ( $ihq_modal_social_platforms as $ihq_social ) : ?>
@@ -410,7 +466,7 @@ $ihq_modal_social_platforms = array(
         </div>
       </div>
 
-      <div class="modal-lower-panel">
+      <div class="modal-lower-panel modal-comm-deferred">
         <span class="m-eye">One More Thing</span>
         <h3 class="m-title">Glory is earned one weekend at a time.</h3>
         <p class="m-ctx">Yours starts now. Choose your competition and we'll send you and your followers everything you need to get started.</p>
@@ -421,9 +477,10 @@ $ihq_modal_social_platforms = array(
         </div>
       </div>
 
-      <button type="button" class="send-btn" id="sendbtn" onclick="onModalSubmit()">Continue</button>
+      <button type="button" class="send-btn" id="sendbtn" onclick="onModalSubmit()"><?php esc_html_e( 'Submit', 'avantage-baccarat' ); ?></button>
 
-      <p class="m-note">All conversations are private and confidential.<br>We operate across time zones. Expect a reply within minutes.</p>
+      <p class="m-note"><?php esc_html_e( 'All conversations are private and confidential.', 'avantage-baccarat' ); ?><br><?php esc_html_e( 'We operate across time zones. Expect a reply within minutes.', 'avantage-baccarat' ); ?></p>
+      </div>
     </div>
 
     <div class="mstep" id="ms-reg">
@@ -885,13 +942,80 @@ function ihqAuthLoginVerify() {
     });
 }
 
+function ihqGetModalCommCheckboxes() {
+  return document.querySelectorAll('#modal-comm-pick .modal-comm-option input[type=checkbox]');
+}
+
 function syncModalCommCardVisual() {
-  var em = document.getElementById('modal-comm-email');
-  var tg = document.getElementById('modal-comm-telegram');
-  var cardEm = document.getElementById('modal-comm-card-email');
-  var cardTg = document.getElementById('modal-comm-card-telegram');
-  if (cardEm && em) cardEm.classList.toggle('is-on', em.checked);
-  if (cardTg && tg) cardTg.classList.toggle('is-on', tg.checked);
+  ihqGetModalCommCheckboxes().forEach(function (box) {
+    var row = box.closest('.modal-comm-option');
+    if (row) {
+      row.classList.toggle('is-on', box.checked);
+    }
+  });
+}
+
+function ihqClearModalCommErr() {
+  var pick = document.getElementById('modal-comm-pick');
+  var err = document.getElementById('modal-comm-err');
+  if (pick) {
+    pick.classList.remove('field-error');
+  }
+  if (err) {
+    err.textContent = '';
+    err.classList.remove('is-visible');
+  }
+}
+
+function ihqShowModalCommErr(msg) {
+  var pick = document.getElementById('modal-comm-pick');
+  var err = document.getElementById('modal-comm-err');
+  if (pick) {
+    pick.classList.add('field-error');
+  }
+  if (err) {
+    err.textContent = msg || '';
+    err.classList.toggle('is-visible', Boolean(msg));
+  }
+}
+
+function ihqResetModalCommMethods() {
+  ihqGetModalCommCheckboxes().forEach(function (box) {
+    box.checked = false;
+    var key = box.getAttribute('data-comm-key');
+    var entry = key ? document.getElementById('modal-comm-entry-' + key) : null;
+    var input = key ? document.getElementById('modal-comm-input-' + key) : null;
+    if (entry) {
+      entry.hidden = true;
+    }
+    if (input) {
+      input.value = '';
+    }
+  });
+  syncModalCommCardVisual();
+  ihqClearModalCommErr();
+}
+
+function ihqHideModalCommThanks() {
+  var thanks = document.getElementById('modal-comm-thanks');
+  var body = document.getElementById('modal-comm-form-body');
+  if (thanks) {
+    thanks.hidden = true;
+  }
+  if (body) {
+    body.hidden = false;
+  }
+}
+
+function ihqShowModalCommThanks() {
+  var thanks = document.getElementById('modal-comm-thanks');
+  var body = document.getElementById('modal-comm-form-body');
+  if (body) {
+    body.hidden = true;
+  }
+  if (thanks) {
+    thanks.hidden = false;
+  }
 }
 
 function ihqClearTelegramLoginErr() {
@@ -1102,18 +1226,11 @@ function ihqResetMainConversationModal() {
     var x = document.getElementById(idEl);
     if (x) x.value = '';
   });
-  var em = document.getElementById('modal-comm-email');
-  var tg = document.getElementById('modal-comm-telegram');
-  if (em) em.checked = false;
-  if (tg) tg.checked = false;
-  syncModalCommCardVisual();
+  ihqResetModalCommMethods();
+  ihqHideModalCommThanks();
   ihqModalRemoveTurnstile();
   var telWrap = document.getElementById('modal-reg-telegram-wrap');
   if (telWrap) telWrap.style.display = 'none';
-  var tgl = document.getElementById('modal-comm-telegram-lbl');
-  if (tgl) {
-    tgl.textContent = IHQ_MODAL_REG.telegramLblDefault;
-  }
   ihqClearTelegramLoginErr();
   ihqTelegramOAuthBusy = false;
   ihqVerifiedTelegramUsername = '';
@@ -1162,6 +1279,26 @@ function ihqToggleSocialPlatform(key) {
   }
 }
 
+function ihqModalGetCommMethods() {
+  var methods = {};
+  ihqGetModalCommCheckboxes().forEach(function (box) {
+    if (!box.checked) {
+      return;
+    }
+    var key = box.getAttribute('data-comm-key');
+    var input = key ? document.getElementById('modal-comm-input-' + key) : null;
+    if (key && input && input.value.trim()) {
+      methods[key] = input.value.trim();
+    }
+  });
+  return methods;
+}
+
+function ihqModalEmailCommSelected() {
+  var emailBox = document.getElementById('modal-comm-email');
+  return Boolean(emailBox && emailBox.checked);
+}
+
 function ihqModalGetChallengeType() {
   if (document.getElementById('cw').classList.contains('sel')) {
     return 'weekend_world';
@@ -1202,7 +1339,9 @@ function ihqModalRegSendCode() {
   var first = document.getElementById('modal-reg-first').value.trim();
   var last = document.getElementById('modal-reg-last').value.trim();
   var email = document.getElementById('modal-reg-email').value.trim();
-  var commPrimary = document.getElementById('modal-comm-telegram').checked ? 'telegram' : 'email';
+  // Previously: email OR telegram primary (mutual cards) — telegram sent code via DM.
+  // var commPrimary = document.getElementById('modal-comm-telegram').checked ? 'telegram' : 'email';
+  var commPrimary = 'email';
   var telegramUsername = document.getElementById('modal-reg-telegram').value.trim();
   if (!telegramUsername && ihqVerifiedTelegramUsername) {
     telegramUsername = ihqVerifiedTelegramUsername;
@@ -1217,10 +1356,12 @@ function ihqModalRegSendCode() {
     errEl.textContent = 'Please enter a valid email address.';
     return;
   }
-  if (commPrimary === 'telegram' && !telegramUsername) {
-    errEl.textContent = 'Please enter your Telegram username.';
-    return;
-  }
+  // if (commPrimary === 'telegram' && !telegramUsername) {
+  //   errEl.textContent = 'Please enter your Telegram username.';
+  //   return;
+  // }
+  var commMethods = ihqModalGetCommMethods();
+  commMethods.email = email;
 
   var tsToken = '';
   if (IHQ_MODAL_REG.turnstileSiteKey) {
@@ -1249,6 +1390,7 @@ function ihqModalRegSendCode() {
   fd.append('platform_handle', ihqModalGetPlatformHandle());
   fd.append('challenge_type', ihqModalGetChallengeType());
   fd.append('comm_primary', commPrimary);
+  fd.append('comm_methods', JSON.stringify(commMethods));
   fd.append('telegram_username', telegramUsername);
   fd.append('telegram_session_token', ihqVerifiedTelegramSessionToken);
   fd.append('cf-turnstile-response', tsToken);
@@ -1424,24 +1566,48 @@ function showFieldError(el) {
 }
 
 function validateModalStep1Communication() {
-  var email = document.getElementById('modal-comm-email');
-  var telegram = document.getElementById('modal-comm-telegram');
-  if (!email || !telegram || (!email.checked && !telegram.checked)) {
-    if (document.getElementById('modal-comm-card-email')) {
-      showFieldError(document.getElementById('modal-comm-card-email'));
+  var checked = [];
+  ihqGetModalCommCheckboxes().forEach(function (box) {
+    if (box.checked) {
+      checked.push(box);
     }
-    if (document.getElementById('modal-comm-card-telegram')) {
-      showFieldError(document.getElementById('modal-comm-card-telegram'));
-    }
+  });
+  if (!checked.length) {
+    ihqShowModalCommErr('Please pick a method of communication');
     return false;
   }
+  var missingInput = false;
+  checked.forEach(function (box) {
+    var key = box.getAttribute('data-comm-key');
+    var input = key ? document.getElementById('modal-comm-input-' + key) : null;
+    var entry = key ? document.getElementById('modal-comm-entry-' + key) : null;
+    if (!input || !input.value.trim()) {
+      missingInput = true;
+      if (entry) {
+        showFieldError(entry);
+      }
+    }
+  });
+  if (missingInput) {
+    return false;
+  }
+  ihqClearModalCommErr();
   return true;
 }
 
 function ihqModalAdvanceToRegStep() {
   var telWrap = document.getElementById('modal-reg-telegram-wrap');
   var telInput = document.getElementById('modal-reg-telegram');
-  if (document.getElementById('modal-comm-telegram').checked) {
+  var telegramBox = document.getElementById('modal-comm-telegram');
+  // var emailCommInput = document.getElementById('modal-comm-input-email');
+  // var regEmail = document.getElementById('modal-reg-email');
+  // if (emailCommInput && regEmail && !regEmail.value.trim()) {
+  //   var emailHandle = emailCommInput.value.trim();
+  //   if (emailHandle.indexOf('@') !== -1) {
+  //     regEmail.value = emailHandle;
+  //   }
+  // }
+  if (telegramBox && telegramBox.checked) {
     telWrap.style.display = 'block';
     telInput.required = true;
     if (!telInput.value && ihqVerifiedTelegramUsername) {
@@ -1465,6 +1631,7 @@ function ihqModalAdvanceToRegStep() {
 
 function onModalSubmit() {
   clearFieldErrors();
+  ihqClearModalCommErr();
   if (!validateModalStep1Communication()) {
     var modalEl = document.querySelector('#mainModal .modal');
     if (modalEl) {
@@ -1472,13 +1639,35 @@ function onModalSubmit() {
     }
     return;
   }
-  var telegramChecked = document.getElementById('modal-comm-telegram').checked;
-  if (telegramChecked && IHQ_MODAL_REG.telegramClientId && !ihqVerifiedTelegramUsername) {
-    ihqTryTelegramAccountLink();
+  if (ihqModalEmailCommSelected()) {
+    // Previously: Telegram OAuth gate when Telegram was also checked before ms-reg.
+    // var telegramBox = document.getElementById('modal-comm-telegram');
+    // var telegramChecked = telegramBox && telegramBox.checked;
+    // if (telegramChecked && IHQ_MODAL_REG.telegramClientId && !ihqVerifiedTelegramUsername) {
+    //   ihqTryTelegramAccountLink();
+    //   return;
+    // }
+    ihqModalAdvanceToRegStep();
     return;
   }
-  ihqModalAdvanceToRegStep();
+  // Non-email comm methods only: acknowledgment (no WP registration).
+  ihqShowModalCommThanks();
+  window.setTimeout(function () {
+    closeModal();
+  }, 2000);
 }
+
+// Previously: onModalSubmit always advanced to registration after email OR telegram validation.
+// function onModalSubmitLegacy() {
+//   clearFieldErrors();
+//   if (!validateModalStep1Communication()) { return; }
+//   var telegramChecked = document.getElementById('modal-comm-telegram').checked;
+//   if (telegramChecked && IHQ_MODAL_REG.telegramClientId && !ihqVerifiedTelegramUsername) {
+//     ihqTryTelegramAccountLink();
+//     return;
+//   }
+//   ihqModalAdvanceToRegStep();
+// }
 
 function toggleCh(id) {
   var sel = document.getElementById('sel-' + id);
@@ -1569,17 +1758,23 @@ document.getElementById('mainModal').addEventListener('click', function(e) {
 });
 
 document.addEventListener('DOMContentLoaded', function() {
-  var em = document.getElementById('modal-comm-email');
-  var tg = document.getElementById('modal-comm-telegram');
-  function bindMutual(box, other) {
-    if (!box) return;
-    box.addEventListener('change', function() {
-      if (box.checked && other) other.checked = false;
-      if (!tg.checked) {
-        var tgl = document.getElementById('modal-comm-telegram-lbl');
-        if (tgl) {
-          tgl.textContent = IHQ_MODAL_REG.telegramLblDefault;
-        }
+  ihqGetModalCommCheckboxes().forEach(function (box) {
+    box.addEventListener('change', function () {
+      var key = box.getAttribute('data-comm-key');
+      var entry = key ? document.getElementById('modal-comm-entry-' + key) : null;
+      var input = key ? document.getElementById('modal-comm-input-' + key) : null;
+      if (entry) {
+        entry.hidden = !box.checked;
+      }
+      if (!box.checked && input) {
+        input.value = '';
+      }
+      if (box.checked && input) {
+        window.setTimeout(function () {
+          input.focus();
+        }, 50);
+      }
+      if (key === 'telegram' && !box.checked) {
         var ti = document.getElementById('modal-reg-telegram');
         if (ti) {
           ti.value = '';
@@ -1591,10 +1786,9 @@ document.addEventListener('DOMContentLoaded', function() {
         ihqClearTelegramLoginErr();
       }
       syncModalCommCardVisual();
+      ihqClearModalCommErr();
     });
-  }
-  bindMutual(em, tg);
-  bindMutual(tg, em);
+  });
   syncModalCommCardVisual();
 
   syncS7CompetitionSubmitVisibility();

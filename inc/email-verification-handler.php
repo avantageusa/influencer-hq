@@ -282,6 +282,11 @@ function ihq_create_influencer_user_from_registration_data( array $registration_
         update_user_meta( $user_id, 'ihq_token_expires', time() + (int) ( $ihq_oauth_response['ExpiresIn'] ?? 3600 ) );
     }
 
+    // Active Braze sync (replaces legacy Genius Referrals → Braze hook in functions.php).
+    if ( function_exists( 'ihq_send_influencer_to_braze' ) ) {
+        ihq_send_influencer_to_braze( $user_id );
+    }
+
     return (int) $user_id;
 }
 
@@ -331,6 +336,38 @@ function ihq_get_client_ip_for_rate_limit() {
 }
 
 /**
+ * Parse communication methods map from modal POST (JSON object).
+ *
+ * @return array<string, string>
+ */
+function ihq_parse_comm_methods_from_post() {
+    if ( ! isset( $_POST['comm_methods'] ) ) {
+        return array();
+    }
+
+    $raw = wp_unslash( $_POST['comm_methods'] );
+    if ( ! is_string( $raw ) || $raw === '' ) {
+        return array();
+    }
+
+    $decoded = json_decode( $raw, true );
+    if ( ! is_array( $decoded ) ) {
+        return array();
+    }
+
+    $methods = array();
+    foreach ( $decoded as $method_key => $method_value ) {
+        $key = sanitize_key( (string) $method_key );
+        if ( $key === '' ) {
+            continue;
+        }
+        $methods[ $key ] = sanitize_text_field( (string) $method_value );
+    }
+
+    return $methods;
+}
+
+/**
  * Send 6-digit registration code email (landing-page modal flow).
  */
 function ihq_handle_send_registration_code_ajax() {
@@ -350,10 +387,16 @@ function ihq_handle_send_registration_code_ajax() {
     $last_name       = isset( $_POST['last_name'] ) ? sanitize_text_field( wp_unslash( $_POST['last_name'] ) ) : '';
     $platform_handle = isset( $_POST['platform_handle'] ) ? sanitize_text_field( wp_unslash( $_POST['platform_handle'] ) ) : '';
     $challenge_type  = isset( $_POST['challenge_type'] ) ? sanitize_text_field( wp_unslash( $_POST['challenge_type'] ) ) : '';
-    $comm_primary    = isset( $_POST['comm_primary'] ) ? sanitize_text_field( wp_unslash( $_POST['comm_primary'] ) ) : 'email';
-    $telegram_user   = isset( $_POST['telegram_username'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_username'] ) ) : '';
+    $comm_primary           = isset( $_POST['comm_primary'] ) ? sanitize_text_field( wp_unslash( $_POST['comm_primary'] ) ) : 'email';
+    $telegram_user          = isset( $_POST['telegram_username'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_username'] ) ) : '';
     $telegram_session_token = isset( $_POST['telegram_session_token'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_session_token'] ) ) : '';
-    $country_iso_raw = isset( $_POST['country_iso'] ) ? sanitize_text_field( wp_unslash( $_POST['country_iso'] ) ) : '';
+    $country_iso_raw        = isset( $_POST['country_iso'] ) ? sanitize_text_field( wp_unslash( $_POST['country_iso'] ) ) : '';
+    $comm_methods           = ihq_parse_comm_methods_from_post();
+
+    // Previously: force email code delivery when modal posted comm_methods including email.
+    // if ( ! empty( $comm_methods ) && isset( $comm_methods['email'] ) ) {
+    //     $comm_primary = 'email';
+    // }
 
     if ( ! is_email( $email ) ) {
         wp_send_json_error( array( 'message' => __( 'Invalid email address', 'avantage-baccarat' ) ) );
@@ -366,7 +409,7 @@ function ihq_handle_send_registration_code_ajax() {
     }
 
     $telegram_user_id = 0;
-    if ( $comm_primary === 'telegram' ) {
+    if ( $comm_primary === 'telegram' && empty( $comm_methods ) ) {
         $tu = ltrim( trim( $telegram_user ), '@' );
         if ( $tu === '' ) {
             wp_send_json_error( array( 'message' => __( 'Please enter your Telegram username', 'avantage-baccarat' ) ) );
@@ -393,7 +436,27 @@ function ihq_handle_send_registration_code_ajax() {
         }
         $comm_methods = array( 'telegram' => '@' . $tu );
     } else {
-        $comm_methods = array( 'email' => $email );
+        if ( empty( $comm_methods ) ) {
+            $comm_methods = array( 'email' => $email );
+        } else {
+            $comm_methods['email'] = $email;
+        }
+        $comm_primary = 'email';
+
+        // Previously: optional Telegram session when portal posted multi-method comm_methods.
+        // if ( isset( $comm_methods['telegram'] ) ) {
+        //     $tu = ltrim( trim( $telegram_user !== '' ? $telegram_user : $comm_methods['telegram'] ), '@' );
+        //     if ( $tu !== '' && function_exists( 'ihq_get_telegram_registration_session' ) ) {
+        //         $tg_session = ihq_get_telegram_registration_session( $telegram_session_token );
+        //         if ( is_array( $tg_session ) && ! empty( $tg_session['telegram_user_id'] ) ) {
+        //             $session_username = ltrim( (string) $tg_session['telegram_username'], '@' );
+        //             if ( strtolower( $session_username ) === strtolower( $tu ) ) {
+        //                 $telegram_user_id = (int) $tg_session['telegram_user_id'];
+        //                 $comm_methods['telegram'] = '@' . $tu;
+        //             }
+        //         }
+        //     }
+        // }
     }
 
     if ( email_exists( $email ) ) {

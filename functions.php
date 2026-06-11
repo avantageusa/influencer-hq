@@ -277,6 +277,11 @@ require_once get_template_directory() . '/inc/turnstile-verify.php';
 require_once get_template_directory() . '/inc/influencer-auth-handler.php';
 
 /**
+ * Braze REST (influencer registration sync).
+ */
+require_once get_template_directory() . '/inc/braze-integration.php';
+
+/**
  * API AJAX Calls (equity chart data, etc.)
  */
 require_once get_template_directory() . '/inc/api-ajax-calls.php';
@@ -296,21 +301,20 @@ function ihq_calendar( array $occupied = [], array $details = [] ) {
 }
 
 /**
- * Check if user exists in Braze (for influencer integration)
+ * Legacy Braze + Genius Referrals (commented — active Braze sync lives in inc/braze-integration.php).
  */
 // function check_braze_user_exists_influencer($email, $external_id = null) {
 //     $braze_api_key = '20bea073-5d29-40ca-b7b5-17126a5893c6';
 //     $braze_endpoint = 'https://rest.iad-05.braze.com/users/export/ids';
-    
-//     // Use email as external_id if not provided
+//
 //     if (!$external_id) {
 //         $external_id = $email;
 //     }
-    
+//
 //     $payload = [
 //         'external_ids' => [$external_id]
 //     ];
-    
+//
 //     $response = wp_remote_post($braze_endpoint, [
 //         'headers' => [
 //             'Authorization' => 'Bearer ' . $braze_api_key,
@@ -320,7 +324,7 @@ function ihq_calendar( array $occupied = [], array $details = [] ) {
 //         'timeout' => 15,
 //         'sslverify' => true
 //     ]);
-    
+//
 //     if (is_wp_error($response)) {
 //         return [
 //             'success' => false,
@@ -329,17 +333,16 @@ function ihq_calendar( array $occupied = [], array $details = [] ) {
 //             'user_data' => null
 //         ];
 //     }
-    
+//
 //     $response_code = wp_remote_retrieve_response_code($response);
 //     $response_body = wp_remote_retrieve_body($response);
 //     $data = json_decode($response_body, true);
-    
+//
 //     if ($response_code >= 200 && $response_code < 300) {
 //         $user_exists = false;
 //         $existing_user_data = null;
-        
+//
 //         if (isset($data['users']) && !empty($data['users'])) {
-//             // Check if the email field exists and matches target email
 //             foreach ($data['users'] as $user) {
 //                 if (isset($user['email']) && $user['email'] === $email) {
 //                     $user_exists = true;
@@ -348,48 +351,47 @@ function ihq_calendar( array $occupied = [], array $details = [] ) {
 //                 }
 //             }
 //         }
-        
+//
 //         return [
 //             'success' => true,
 //             'exists' => $user_exists,
 //             'user_data' => $existing_user_data,
 //             'full_response' => $data
 //         ];
-//     } else {
-//         return [
-//             'success' => false,
-//             'exists' => false,
-//             'error' => 'API returned error code: ' . $response_code,
-//             'user_data' => null
-//         ];
 //     }
+//
+//     return [
+//         'success' => false,
+//         'exists' => false,
+//         'error' => 'API returned error code: ' . $response_code,
+//         'user_data' => null
+//     ];
 // }
 
 // Hook: Create Genius Referrals advocate when a new influencer account is created
 // add_action('set_user_role', function($user_id, $role, $old_roles) {
 // 	error_log('=== GENIUS REFERRALS: set_user_role hook triggered for user ID: ' . $user_id);
 // 	error_log('=== GENIUS REFERRALS: New role: ' . $role . ', Old roles: ' . print_r($old_roles, true));
-	
-// 	// Only proceed if the new role is influencer
+//
 // 	if ($role !== 'influencer') {
 // 		error_log('=== GENIUS REFERRALS: New role is NOT influencer, skipping advocate creation');
 // 		return;
 // 	}
-	
+//
 // 	error_log('=== GENIUS REFERRALS: User IS now an influencer, proceeding with advocate creation');
-	
+//
 // 	$user = get_userdata($user_id);
 // 	if (!$user) {
 // 		error_log('=== GENIUS REFERRALS: Could not load user data, aborting');
 // 		return;
 // 	}
-	
+//
 // 	$email = $user->user_email;
 // 	$first_name = get_user_meta($user_id, 'first_name', true);
 // 	$last_name = get_user_meta($user_id, 'last_name', true);
-	
+//
 // 	error_log('=== GENIUS REFERRALS: Email: "' . $email . '", First name: "' . $first_name . '", Last name: "' . $last_name . '"');
-	
+//
 // 	$advocate_data = array(
 // 		'advocate' => array(
 // 			'firstname' => $first_name ? $first_name : $user->display_name,
@@ -401,9 +403,9 @@ function ihq_calendar( array $occupied = [], array $details = [] ) {
 // 			'status' => 'active'
 // 		)
 // 	);
-	
+//
 // 	error_log('=== GENIUS REFERRALS: Advocate data prepared: ' . json_encode($advocate_data));
-	
+//
 // 	$url = 'https://api.geniusreferrals.com/accounts/dev_qc/advocates';
 // 	$args = array(
 // 		'method' => 'POST',
@@ -414,11 +416,11 @@ function ihq_calendar( array $occupied = [], array $details = [] ) {
 // 		),
 // 		'body' => json_encode($advocate_data)
 // 	);
-	
+//
 // 	error_log('=== GENIUS REFERRALS: Sending API request to: ' . $url);
-	
+//
 // 	$response = wp_remote_post($url, $args);
-	
+//
 // 	if (is_wp_error($response)) {
 // 		error_log('=== GENIUS REFERRALS: API Error: ' . $response->get_error_message());
 // 	} else {
@@ -426,38 +428,30 @@ function ihq_calendar( array $occupied = [], array $details = [] ) {
 // 		$code = wp_remote_retrieve_response_code($response);
 // 		error_log('=== GENIUS REFERRALS: API Response Code: ' . $code);
 // 		error_log('=== GENIUS REFERRALS: API Response Body: ' . $body);
-		
-// 		// Save the token to user meta
+//
 // 		$response_data = json_decode($body, true);
 // 		if (isset($response_data['token'])) {
 // 			$genius_token = $response_data['token'];
 // 			update_user_meta($user_id, 'genius_token', $genius_token);
 // 			error_log('=== GENIUS REFERRALS: Token saved to user meta: ' . $genius_token);
-			
-// 			// Send influencer data to Braze
+//
 // 			$country = get_user_meta($user_id, 'country', true);
-			
-// 			// Check if email exists in Braze
 // 			$braze_user_check = check_braze_user_exists_influencer($email);
 // 			$external_id_to_use = '';
 // 			$influencer_guid = '';
-			
+//
 // 			if ($braze_user_check['success'] && $braze_user_check['exists']) {
-// 				// CASE A: Email exists in Braze - use existing external_id as WordPress GUID
 // 				$existing_braze_user_info = $braze_user_check['user_data'];
 // 				$external_id_to_use = $existing_braze_user_info['external_id'] ?? $email;
-				
-// 				// Use the existing Braze external_id as WordPress influencer GUID
 // 				$influencer_guid = $external_id_to_use;
 // 			} else {
-// 				// CASE B: Email does not exist in Braze - create new GUID and use as external_id
 // 				$influencer_guid = 'wpinfluencer_' . bin2hex(random_bytes(12));
-// 				$external_id_to_use = $influencer_guid; // Use GUID as external_id for new users
+// 				$external_id_to_use = $influencer_guid;
 // 			}
-			
+//
 // 			$braze_api_key = '81adeace-fad5-4566-bdd9-06095acdd3ee';
 // 			$braze_endpoint = 'https://rest.iad-05.braze.com/users/track';
-			
+//
 // 			$braze_data = [
 // 				'attributes' => [
 // 					[
@@ -477,10 +471,10 @@ function ihq_calendar( array $occupied = [], array $details = [] ) {
 // 					]
 // 				]
 // 			];
-			
+//
 // 			error_log('=== GENIUS REFERRALS: Sending to Braze with external_id: ' . $external_id_to_use);
 // 			error_log('=== GENIUS REFERRALS: Braze payload: ' . wp_json_encode($braze_data));
-			
+//
 // 			$braze_response = wp_remote_post($braze_endpoint, [
 // 				'headers' => [
 // 					'Content-Type' => 'application/json',
@@ -490,7 +484,7 @@ function ihq_calendar( array $occupied = [], array $details = [] ) {
 // 				'timeout' => 15,
 // 				'sslverify' => true
 // 			]);
-			
+//
 // 			if (is_wp_error($braze_response)) {
 // 				error_log('=== GENIUS REFERRALS: Braze API Error: ' . $braze_response->get_error_message());
 // 			} else {
@@ -498,7 +492,7 @@ function ihq_calendar( array $occupied = [], array $details = [] ) {
 // 				$braze_code = wp_remote_retrieve_response_code($braze_response);
 // 				error_log('=== GENIUS REFERRALS: Braze API Response Code: ' . $braze_code);
 // 				error_log('=== GENIUS REFERRALS: Braze API Response Body: ' . $braze_body);
-				
+//
 // 				if ($braze_code >= 200 && $braze_code < 300) {
 // 					error_log('=== GENIUS REFERRALS: Braze submission SUCCESS');
 // 				} else {
