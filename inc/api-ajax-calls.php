@@ -500,41 +500,185 @@ function delete_live_appearance_ajax() {
 // Action: get_referral_link
 // Returns the user's share URL from GET /referral/user/{userId}/link
 // ---------------------------------------------------------------------------
+
+/**
+ * @param int $wp_user_id WordPress user ID.
+ * @return string
+ */
+function ihq_referral_user_id( $wp_user_id ) {
+	return 'influencerhq-wpu-' . (int) $wp_user_id;
+}
+
+/**
+ * Referral API path user ids to try.
+ * Genius / referral accounts are provisioned by the IHQ backend on oauth/start-session
+ * (not created from WordPress). GET /link uses influencerhq-wpu-{id} on live page.
+ *
+ * @param int $wp_user_id WordPress user ID.
+ * @return string[]
+ */
+function ihq_referral_api_user_id_candidates( $wp_user_id ) {
+	$wp_user_id = (int) $wp_user_id;
+	$candidates = array( ihq_referral_user_id( $wp_user_id ) );
+
+	$id_token = get_user_meta( $wp_user_id, 'ihq_id_token', true );
+	if ( ! empty( $id_token ) ) {
+		$decoded = _challenge_get_sub( $id_token );
+		if ( ! empty( $decoded['sub'] ) && is_string( $decoded['sub'] ) ) {
+			$candidates[] = $decoded['sub'];
+		}
+	}
+
+	$candidates[] = 'wpu-' . $wp_user_id;
+
+	return array_values( array_unique( $candidates ) );
+}
+
+/**
+ * @param array<string, mixed> $body Decoded API JSON.
+ * @return string
+ */
+function ihq_extract_referral_url_from_api_body( $body ) {
+	if ( ! is_array( $body ) ) {
+		return '';
+	}
+	$url_keys = array( 'url', 'link', 'shareUrl', 'referralUrl' );
+	foreach ( $url_keys as $key ) {
+		if ( ! empty( $body[ $key ] ) && is_string( $body[ $key ] ) ) {
+			return esc_url_raw( $body[ $key ] );
+		}
+	}
+	if ( ! empty( $body['data'] ) && is_array( $body['data'] ) ) {
+		return ihq_extract_referral_url_from_api_body( $body['data'] );
+	}
+	return '';
+}
+
+/**
+ * Re-run oauth/start-session so the IHQ backend can finish Genius / referral provisioning.
+ *
+ * @param int $wp_user_id WordPress user ID.
+ */
+function ihq_retry_referral_link_after_oauth_refresh( $wp_user_id ) {
+	if ( ! function_exists( 'ihq_refresh_influencer_oauth_tokens' ) ) {
+		return;
+	}
+	$country = get_user_meta( (int) $wp_user_id, 'ihq_oauth_country_iso', true );
+	ihq_refresh_influencer_oauth_tokens( (int) $wp_user_id, is_string( $country ) ? $country : '' );
+}
+
+/**
+ * @param string $api_user_id Referral service user id (JWT sub or influencerhq-wpu-*).
+ * @param string $id_token    IHQ id token.
+ * @return array{url: string, status: int, body: array<string, mixed>, api_user_id: string}|WP_Error
+ */
+function ihq_fetch_referral_link_for_api_user_id( $api_user_id, $id_token ) {
+	$api_url  = INFLUENCER_API_BASE . '/referral/user/' . rawurlencode( $api_user_id ) . '/link';
+	$response = wp_remote_get(
+		$api_url,
+		array(
+			'timeout'   => 10,
+			'sslverify' => true,
+			'headers'   => array(
+				'Accept'        => 'application/json',
+				'Authorization' => 'Bearer ' . $id_token,
+			),
+		)
+	);
+
+	if ( is_wp_error( $response ) ) {
+		return $response;
+	}
+
+	$status = wp_remote_retrieve_response_code( $response );
+	$body   = json_decode( wp_remote_retrieve_body( $response ), true );
+	if ( ! is_array( $body ) ) {
+		$body = array();
+	}
+
+	return array(
+		'url'         => ihq_extract_referral_url_from_api_body( $body ),
+		'status'      => $status,
+		'body'        => $body,
+		'api_user_id' => $api_user_id,
+	);
+}
+
+/**
+ * @param int $wp_user_id WordPress user ID.
+ * @return array{url: string, status: int, body: array<string, mixed>, api_user_id: string}|WP_Error
+ */
+function ihq_fetch_referral_link_from_api( $wp_user_id ) {
+	$wp_user_id = (int) $wp_user_id;
+	$id_token   = get_user_meta( $wp_user_id, 'ihq_id_token', true );
+	if ( $wp_user_id <= 0 || empty( $id_token ) ) {
+		return new WP_Error( 'not_authenticated', 'Not authenticated.' );
+	}
+
+	$last_result = null;
+	foreach ( ihq_referral_api_user_id_candidates( $wp_user_id ) as $api_user_id ) {
+		$attempt = ihq_fetch_referral_link_for_api_user_id( $api_user_id, $id_token );
+		if ( is_wp_error( $attempt ) ) {
+			return $attempt;
+		}
+		$last_result = $attempt;
+		if ( $attempt['status'] === 200 && $attempt['url'] !== '' ) {
+			return $attempt;
+		}
+	}
+
+	if ( $last_result === null ) {
+		return new WP_Error( 'referral_fetch_failed', 'Could not resolve referral user id.' );
+	}
+
+	return $last_result;
+}
+
 add_action( 'wp_ajax_get_referral_link', 'get_referral_link_ajax' );
 
 function get_referral_link_ajax() {
-    if ( ! check_ajax_referer( 'request_live_appearance_nonce', 'nonce', false ) ) {
-        wp_send_json_error( array( 'message' => 'Security check failed.' ), 403 );
-    }
-    $user_id  = get_current_user_id();
-    $id_token = get_user_meta( $user_id, 'ihq_id_token', true );
-    if ( ! $user_id || empty( $id_token ) ) {
-        wp_send_json_error( array( 'message' => 'Not authenticated.' ) );
-    }
+	if ( ! check_ajax_referer( 'request_live_appearance_nonce', 'nonce', false ) ) {
+		wp_send_json_error( array( 'message' => 'Security check failed.' ), 403 );
+	}
 
-    $wpu_id   = 'influencerhq-wpu-' . $user_id;
-    $api_url  = INFLUENCER_API_BASE . '/referral/user/' . rawurlencode( $wpu_id ) . '/link';
-    $response = wp_remote_get( $api_url, array(
-        'timeout'   => 10,
-        'sslverify' => true,
-        'headers'   => array(
-            'Accept'        => 'application/json',
-            'Authorization' => 'Bearer ' . $id_token,
-        ),
-    ) );
+	$user_id = get_current_user_id();
+	if ( ! $user_id ) {
+		wp_send_json_error( array( 'message' => 'Not logged in.' ), 403 );
+	}
 
-    if ( is_wp_error( $response ) ) {
-        wp_send_json_error( array( 'message' => $response->get_error_message() ) );
-    }
+	$result = ihq_fetch_referral_link_from_api( $user_id );
+	if ( is_wp_error( $result ) ) {
+		wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+	}
 
-    $status = wp_remote_retrieve_response_code( $response );
-    $body   = json_decode( wp_remote_retrieve_body( $response ), true );
+	$url    = $result['url'];
+	$status = $result['status'];
 
-    if ( 200 !== $status ) {
-        wp_send_json_error( array( 'message' => 'API returned HTTP ' . $status, 'body' => $body ) );
-    }
+	// Genius account is created by IHQ on start-session; after fresh registration retry once.
+	if ( $status !== 200 || $url === '' ) {
+		ihq_retry_referral_link_after_oauth_refresh( $user_id );
+		$retry = ihq_fetch_referral_link_from_api( $user_id );
+		if ( ! is_wp_error( $retry ) ) {
+			$url    = $retry['url'];
+			$status = $retry['status'];
+			$result = $retry;
+		}
+	}
 
-    wp_send_json_success( array( 'url' => isset( $body['url'] ) ? esc_url_raw( $body['url'] ) : '' ) );
+	if ( $status !== 200 ) {
+		wp_send_json_error(
+			array(
+				'message' => 'API returned HTTP ' . $status,
+				'body'    => isset( $result['body'] ) ? $result['body'] : null,
+			)
+		);
+	}
+
+	if ( $url === '' ) {
+		wp_send_json_error( array( 'message' => 'Referral link not available yet.' ) );
+	}
+
+	wp_send_json_success( array( 'url' => $url ) );
 }
 
 // ============================================================

@@ -3425,7 +3425,7 @@
     }
 </style>
 
-<?php if ( is_page_template( 'page-portal-profile.php' ) ) : ?>
+<?php if ( is_page_template( array( 'page-portal-profile.php', 'page-portal-account.php' ) ) ) : ?>
 <style>
 /* ── Profile page styles ─────────────────────────────── */
 .sett-wrap   { max-width: 1024px; padding-left: 18px; padding-right: 18px; }
@@ -3455,6 +3455,68 @@
     margin-left: 8px;
 }
 .hq-game-url-save-btn:hover { background: rgba(184,151,47,.15); }
+
+.sett-portal-username-row .sett-portal-username-val {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: auto;
+    flex: 1;
+    min-width: 0;
+}
+.sett-portal-username-input { min-width: 0; }
+.sett-portal-username-feedback {
+    font-size: 13px;
+    margin: -4px 0 10px;
+    text-align: right;
+}
+.sett-portal-username-feedback--ok { color: #7CCA8A; }
+.sett-portal-username-feedback--err {
+    color: #ff6b6b;
+    font-weight: 600;
+    line-height: 1.45;
+    text-align: center;
+}
+.sett-referral-block {
+    margin: 0 0 18px;
+}
+.sett-referral-label {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #b8972f;
+    margin: 0 0 8px;
+}
+.sett-referral-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.sett-referral-url {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 12px;
+    border: 1px solid rgba(184,151,47,.35);
+    border-radius: 6px;
+    color: #888;
+    font-size: 14px;
+    word-break: break-all;
+    background: rgba(0,0,0,.25);
+}
+.sett-referral-url--has-value { color: #fff; }
+.sett-referral-copy-btn {
+    background: none;
+    border: 1px solid #b8972f;
+    color: #b8972f;
+    font-size: 13px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+    text-transform: lowercase;
+}
+.sett-referral-copy-btn:hover { background: rgba(184,151,47,.15); }
 
 /* Gameplay video URL + YouTube thumbnail preview */
 .sett-gameplay-promo {

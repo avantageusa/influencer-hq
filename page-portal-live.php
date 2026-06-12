@@ -922,7 +922,7 @@ $_schedule_nonce = wp_create_nonce( 'kick_schedule_nonce' );
         el.className   = 'live-status' + (statusKey === 'confirmed' ? ' live-status--confirmed' : ' live-status--pending');
     }
 
-    function setUrl(url) {
+    function setReferralUrl(url) {
         var el = document.getElementById('live-url-display');
         if (!el) return;
         var qrWrap = document.getElementById('live-url-qr');
@@ -988,12 +988,11 @@ $_schedule_nonce = wp_create_nonce( 'kick_schedule_nonce' );
             .then(function(res) {
                 if (res.success && res.data.found) {
                     setStatus(res.data.status_label, res.data.status_key);
-                    setUrl(res.data.url);
                 }
             }).catch(function() {});
     })();
 
-    // Load the referral share URL on page load
+    // Load the referral share URL on page load (separate from live-request status URL).
     (function loadReferralUrl() {
         var fd = new FormData();
         fd.append('action', 'get_referral_link');
@@ -1001,10 +1000,22 @@ $_schedule_nonce = wp_create_nonce( 'kick_schedule_nonce' );
         fetch(_liveAjaxUrl, { method: 'POST', body: fd })
             .then(function(r) { return r.json(); })
             .then(function(res) {
-                if (res.success && res.data.url) {
-                    setUrl(res.data.url);
+                if (res.success && res.data && res.data.url) {
+                    setReferralUrl(res.data.url);
+                    return;
                 }
-            }).catch(function() {});
+                var errMsg = (res.data && res.data.message) ? res.data.message : 'Referral link unavailable.';
+                setReferralUrl('');
+                var el = document.getElementById('live-url-display');
+                if (el) {
+                    el.textContent = errMsg;
+                }
+            }).catch(function() {
+                var el = document.getElementById('live-url-display');
+                if (el) {
+                    el.textContent = 'Could not load referral link.';
+                }
+            });
     })();
 
     // Form submission
@@ -1024,7 +1035,6 @@ $_schedule_nonce = wp_create_nonce( 'kick_schedule_nonce' );
                     if (res.success) {
                         showMsg(res.data.message || 'Request submitted successfully.', false);
                         setStatus(res.data.status_label, res.data.status_key);
-                        setUrl(res.data.url);
                         form.reset();
                     } else {
                         var msg = (res.data && res.data.message) ? res.data.message : 'An error occurred.';

@@ -282,6 +282,11 @@ require_once get_template_directory() . '/inc/influencer-auth-handler.php';
 require_once get_template_directory() . '/inc/braze-integration.php';
 
 /**
+ * Portal username (public handle) for influencer accounts.
+ */
+require_once get_template_directory() . '/inc/portal-username.php';
+
+/**
  * API AJAX Calls (equity chart data, etc.)
  */
 require_once get_template_directory() . '/inc/api-ajax-calls.php';

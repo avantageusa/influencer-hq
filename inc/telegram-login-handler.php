@@ -503,7 +503,9 @@ function ihq_handle_register_telegram_user_ajax() {
 	wp_set_auth_cookie( (int) $created, false );
 	wp_send_json_success(
 		array(
-			'redirect_url' => add_query_arg( 'welcome', 'true', home_url( '/portal/portal-home/' ) ),
+			'redirect_url' => function_exists( 'ihq_portal_profile_setup_url' )
+				? ihq_portal_profile_setup_url()
+				: add_query_arg( 'setup_portal_username', '1', home_url( '/portal/account/' ) ),
 		)
 	);
 }

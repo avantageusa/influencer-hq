@@ -62,7 +62,8 @@ if ( isset( $_POST['hq_game_url_submit'] ) && is_user_logged_in() ) {
     check_admin_referer( 'hq_game_url_save' );
     $url = isset( $_POST['hq_game_url'] ) ? esc_url_raw( wp_unslash( $_POST['hq_game_url'] ) ) : '';
     update_user_meta( get_current_user_id(), 'hq_game_url', $url );
-    wp_safe_redirect( add_query_arg( 'hq_saved', '1', get_permalink() ) );
+    $account_url = function_exists( 'ihq_portal_account_url' ) ? ihq_portal_account_url() : trailingslashit( home_url( '/portal/account' ) );
+    wp_safe_redirect( add_query_arg( 'hq_saved', '1', $account_url ) );
     exit;
 }
 
@@ -73,16 +74,18 @@ if ( isset( $_POST['ihq_gameplay_video_submit'] ) && is_user_logged_in() ) {
     $raw = trim( (string) $raw );
     if ( $raw === '' ) {
         update_user_meta( get_current_user_id(), '_ihq_gameplay_video_url', '' );
-        wp_safe_redirect( add_query_arg( 'ihq_video_saved', '1', get_permalink() ) );
+        $account_url = function_exists( 'ihq_portal_account_url' ) ? ihq_portal_account_url() : trailingslashit( home_url( '/portal/account' ) );
+        wp_safe_redirect( add_query_arg( 'ihq_video_saved', '1', $account_url ) );
         exit;
     }
     $url = esc_url_raw( $raw );
+    $account_url = function_exists( 'ihq_portal_account_url' ) ? ihq_portal_account_url() : trailingslashit( home_url( '/portal/account' ) );
     if ( ! $url || ihq_extract_youtube_video_id( $url ) === '' ) {
-        wp_safe_redirect( add_query_arg( 'ihq_video_err', '1', get_permalink() ) );
+        wp_safe_redirect( add_query_arg( 'ihq_video_err', '1', $account_url ) );
         exit;
     }
     update_user_meta( get_current_user_id(), '_ihq_gameplay_video_url', $url );
-    wp_safe_redirect( add_query_arg( 'ihq_video_saved', '1', get_permalink() ) );
+    wp_safe_redirect( add_query_arg( 'ihq_video_saved', '1', $account_url ) );
     exit;
 }
 
@@ -96,7 +99,12 @@ $display_name    = $user->display_name ?: $user->user_login;
 $first_name      = get_user_meta( $user->ID, 'first_name', true ) ?: $user->first_name;
 $last_name       = get_user_meta( $user->ID, 'last_name',  true ) ?: $user->last_name;
 $user_email      = $user->user_email;
-$user_handle     = get_user_meta( $user->ID, '_ihq_handle',    true ) ?: ( '@' . $user->user_login );
+$portal_username = function_exists( 'ihq_get_portal_username' ) ? ihq_get_portal_username( $user->ID ) : '';
+$needs_portal_username_setup = function_exists( 'ihq_user_needs_portal_username' ) && ihq_user_needs_portal_username( $user->ID );
+$ihq_referral_nonce = wp_create_nonce( 'request_live_appearance_nonce' );
+$user_handle     = $portal_username !== ''
+	? ( '@' . $portal_username )
+	: ( get_user_meta( $user->ID, '_ihq_handle', true ) ?: ( '@' . $user->user_login ) );
 $user_country    = get_user_meta( $user->ID, '_ihq_country',   true );
 $user_city       = get_user_meta( $user->ID, '_ihq_city',      true );
 $user_timezone   = get_user_meta( $user->ID, '_ihq_timezone',  true );
@@ -213,6 +221,14 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                     </div>
                 </div>
 
+                <div class="sett-referral-block">
+                    <p class="sett-referral-label"><?php esc_html_e( 'Referral Link', 'avantage-baccarat' ); ?></p>
+                    <div class="sett-referral-wrap">
+                        <div class="sett-referral-url" id="profile-referral-url-display"><?php esc_html_e( 'URL will appear here...', 'avantage-baccarat' ); ?></div>
+                        <button type="button" id="profile-referral-copy-btn" class="sett-referral-copy-btn"><?php esc_html_e( 'copy', 'avantage-baccarat' ); ?></button>
+                    </div>
+                </div>
+
                 <!-- GAMEPLAY VIDEO PROMOTION -->
                 <div class="sett-gameplay-promo">
                     <p class="sett-gameplay-promo-text">
@@ -275,6 +291,24 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                 </div>
 
                 <div class="sett-card">
+                    <div class="sett-row sett-portal-username-row" id="portal-username-setup-zone">
+                        <label for="portal-username-input" class="sett-row-lbl"><?php esc_html_e( 'Your username', 'avantage-baccarat' ); ?></label>
+                        <div class="sett-row-val sett-portal-username-val">
+                            <input
+                                type="text"
+                                id="portal-username-input"
+                                class="hq-game-url-input sett-portal-username-input"
+                                value="<?php echo esc_attr( $portal_username ); ?>"
+                                placeholder="<?php esc_attr_e( 'Choose your username', 'avantage-baccarat' ); ?>"
+                                autocomplete="username"
+                                maxlength="30"
+                                spellcheck="false"
+                            >
+                            <button type="button" id="portal-username-save-btn" class="hq-game-url-save-btn"><?php esc_html_e( 'Save', 'avantage-baccarat' ); ?></button>
+                        </div>
+                    </div>
+                    <p class="sett-portal-username-feedback sett-portal-username-feedback--ok" id="portal-username-ok" hidden></p>
+                    <p class="sett-portal-username-feedback sett-portal-username-feedback--err" id="portal-username-err" hidden></p>
                     <?php
                     $acct_rows = [
                         [ 'key' => 'first_name', 'label' => 'First Name',             'value' => $first_name,    'type' => 'text'   ],
@@ -519,6 +553,151 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
 (function(){
     var _ajax  = <?php echo wp_json_encode( admin_url('admin-ajax.php') ); ?>;
     var _nonce = <?php echo wp_json_encode( $_settings_nonce ); ?>;
+    var _referralNonce = <?php echo wp_json_encode( $ihq_referral_nonce ); ?>;
+    var _needsPortalUsername = <?php echo $needs_portal_username_setup ? 'true' : 'false'; ?>;
+    var _portalUsernameSetupMsg = <?php echo wp_json_encode( __( 'Please create your username to be able to continue your journey on Influencer HQ', 'avantage-baccarat' ) ); ?>;
+
+    /* ── Referral link (same API as Live Appearance page) ── */
+    function setProfileReferralUrl(url) {
+        var el = document.getElementById('profile-referral-url-display');
+        if (!el) return;
+        if (url) {
+            el.textContent = url;
+            el.classList.add('sett-referral-url--has-value');
+        } else {
+            el.textContent = 'URL will appear here...';
+            el.classList.remove('sett-referral-url--has-value');
+        }
+    }
+
+    (function loadProfileReferralUrl() {
+        var fd = new FormData();
+        fd.append('action', 'get_referral_link');
+        fd.append('nonce', _referralNonce);
+        fetch(_ajax, { method: 'POST', body: fd })
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                if (res.success && res.data && res.data.url) {
+                    setProfileReferralUrl(res.data.url);
+                    return;
+                }
+                var errMsg = (res.data && res.data.message) ? res.data.message : 'Referral link unavailable.';
+                setProfileReferralUrl('');
+                var el = document.getElementById('profile-referral-url-display');
+                if (el) {
+                    el.textContent = errMsg;
+                }
+            }).catch(function() {
+                var el = document.getElementById('profile-referral-url-display');
+                if (el) {
+                    el.textContent = 'Could not load referral link.';
+                }
+            });
+    })();
+
+    var profileReferralCopyBtn = document.getElementById('profile-referral-copy-btn');
+    if (profileReferralCopyBtn) {
+        profileReferralCopyBtn.addEventListener('click', function() {
+            var txt = document.getElementById('profile-referral-url-display');
+            if (!txt || !txt.textContent || txt.textContent === 'URL will appear here...') {
+                return;
+            }
+            navigator.clipboard.writeText(txt.textContent).then(function() {
+                profileReferralCopyBtn.textContent = 'copied!';
+                window.setTimeout(function() {
+                    profileReferralCopyBtn.textContent = 'copy';
+                }, 2000);
+            });
+        });
+    }
+
+    /* ── Portal username (mandatory after registration) ── */
+    var portalUsernameInput = document.getElementById('portal-username-input');
+    var portalUsernameSaveBtn = document.getElementById('portal-username-save-btn');
+    var portalUsernameSetupZone = document.getElementById('portal-username-setup-zone');
+    var portalUsernameErr = document.getElementById('portal-username-err');
+    var portalUsernameOk = document.getElementById('portal-username-ok');
+    var settUserHandle = document.querySelector('.sett-user-handle');
+
+    function showPortalUsernameErr(msg) {
+        if (!portalUsernameErr) {
+            return;
+        }
+        portalUsernameErr.textContent = msg || '';
+        portalUsernameErr.hidden = !msg;
+    }
+
+    function clearPortalUsernameFeedback() {
+        if (portalUsernameErr) {
+            portalUsernameErr.hidden = true;
+            portalUsernameErr.textContent = '';
+        }
+        if (portalUsernameOk) {
+            portalUsernameOk.hidden = true;
+            portalUsernameOk.textContent = '';
+        }
+    }
+
+    function isInsidePortalUsernameZone(target) {
+        if (!target || !portalUsernameSetupZone) {
+            return false;
+        }
+        return portalUsernameSetupZone.contains(target);
+    }
+
+    if (_needsPortalUsername) {
+        document.body.classList.add('portal-username-setup-active');
+        document.addEventListener('click', function(e) {
+            if (!_needsPortalUsername) {
+                return;
+            }
+            if (isInsidePortalUsernameZone(e.target)) {
+                return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            showPortalUsernameErr(_portalUsernameSetupMsg);
+        }, true);
+    }
+
+    if (portalUsernameSaveBtn && portalUsernameInput) {
+        portalUsernameSaveBtn.addEventListener('click', function() {
+            clearPortalUsernameFeedback();
+            portalUsernameSaveBtn.disabled = true;
+            var fd = new FormData();
+            fd.append('action', 'save_portal_username');
+            fd.append('nonce', _nonce);
+            fd.append('portal_username', portalUsernameInput.value.trim());
+            fetch(_ajax, { method: 'POST', body: fd })
+                .then(function(r) { return r.json(); })
+                .then(function(res) {
+                    portalUsernameSaveBtn.disabled = false;
+                    if (!res.success) {
+                        var msg = (res.data && res.data.message) ? res.data.message : 'Could not save username.';
+                        showPortalUsernameErr(msg);
+                        return;
+                    }
+                    _needsPortalUsername = false;
+                    document.body.classList.remove('portal-username-setup-active');
+                    if (portalUsernameOk) {
+                        portalUsernameOk.textContent = 'Saved.';
+                        portalUsernameOk.hidden = false;
+                    }
+                    if (settUserHandle && res.data && res.data.portal_username) {
+                        settUserHandle.textContent = '@' + res.data.portal_username;
+                    }
+                    if (res.data && res.data.redirect_url) {
+                        window.setTimeout(function() {
+                            window.location.href = res.data.redirect_url;
+                        }, 600);
+                    }
+                })
+                .catch(function() {
+                    portalUsernameSaveBtn.disabled = false;
+                    showPortalUsernameErr('Network error. Please try again.');
+                });
+        });
+    }
 
     /* ── Inline edit ───────────────────────────────────── */
     document.querySelectorAll('.sett-editable').forEach(function(el){
