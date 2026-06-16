@@ -1,0 +1,269 @@
+/**
+ * Anonymous visitor intent — 30-day cookie + modal/lander capture.
+ */
+(function (window) {
+  'use strict';
+
+  var cfg = window.IHQ_VISITOR_INTENT || {};
+  var COOKIE_NAME = cfg.cookieName || 'ihq_visitor_intent';
+  var COOKIE_DAYS = cfg.cookieDays || 30;
+  var MAX_COOKIE_BYTES = 3800;
+
+  function readCookie(name) {
+    var prefix = name + '=';
+    var parts = document.cookie.split(';');
+    for (var i = 0; i < parts.length; i++) {
+      var part = parts[i].trim();
+      if (part.indexOf(prefix) === 0) {
+        return decodeURIComponent(part.substring(prefix.length));
+      }
+    }
+    return '';
+  }
+
+  function writeCookie(name, value, days) {
+    var maxAge = Math.max(1, parseInt(days, 10) || 30) * 86400;
+    var secure = window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie =
+      name + '=' + encodeURIComponent(value) +
+      '; Path=/' +
+      '; Max-Age=' + maxAge +
+      '; SameSite=Lax' +
+      secure;
+  }
+
+  function readIntent() {
+    var raw = readCookie(COOKIE_NAME);
+    if (!raw) {
+      return {};
+    }
+    try {
+      var parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function writeIntent(data) {
+    var json = JSON.stringify(data);
+    if (json.length > MAX_COOKIE_BYTES) {
+      return false;
+    }
+    writeCookie(COOKIE_NAME, json, COOKIE_DAYS);
+    return true;
+  }
+
+  function mergeIntent(patch) {
+    var current = readIntent();
+    var next = Object.assign({}, current, patch || {});
+    if (patch && patch.competition_ratings) {
+      next.competition_ratings = Object.assign(
+        {},
+        current.competition_ratings || {},
+        patch.competition_ratings
+      );
+    }
+    if (patch && patch.comm_methods) {
+      next.comm_methods = Object.assign({}, current.comm_methods || {}, patch.comm_methods);
+    }
+    if (patch && patch.social_handles) {
+      next.social_handles = Object.assign({}, current.social_handles || {}, patch.social_handles);
+    }
+    next.updated_at = new Date().toISOString();
+    writeIntent(next);
+    return next;
+  }
+
+  function collectModalCommMethods() {
+    var methods = {};
+    document.querySelectorAll('#modal-comm-pick .modal-comm-option input[type=checkbox]').forEach(function (box) {
+      if (!box.checked) {
+        return;
+      }
+      var key = box.getAttribute('data-comm-key');
+      var input = key ? document.getElementById('modal-comm-input-' + key) : null;
+      if (key && input && input.value.trim()) {
+        methods[key] = input.value.trim();
+      }
+    });
+    return methods;
+  }
+
+  function collectModalSocialHandles() {
+    var handles = {};
+    document.querySelectorAll('.social-grid-item.is-selected').forEach(function (btn) {
+      var key = btn.getAttribute('data-social-key');
+      var row = key ? document.getElementById('social-entry-' + key) : null;
+      var inp = row ? row.querySelector('input.social-handle-input') : null;
+      var label = btn.textContent.trim();
+      if (key && inp && inp.value.trim()) {
+        handles[key] = label ? label + ': ' + inp.value.trim() : inp.value.trim();
+      }
+    });
+    return handles;
+  }
+
+  function collectModalChallengeType() {
+    var cw = document.getElementById('cw');
+    var cp = document.getElementById('cp');
+    if (cw && cw.classList.contains('sel')) {
+      return 'weekend_world';
+    }
+    if (cp && cp.classList.contains('sel')) {
+      return 'community_challenge';
+    }
+    return 'maybe_later';
+  }
+
+  function collectPlatformHandleFromSocial() {
+    var parts = [];
+    var handles = collectModalSocialHandles();
+    Object.keys(handles).forEach(function (key) {
+      parts.push(handles[key]);
+    });
+    return parts.join(' | ');
+  }
+
+  function collectCompetitionRatings() {
+    var ratings = {};
+    ['world', 'community', 'private'].forEach(function (group) {
+      var el = document.getElementById('ln-comp-rating-' + group);
+      if (el && el.value) {
+        ratings[group] = el.value;
+      }
+    });
+    return ratings;
+  }
+
+  function collectFromModal() {
+    var ratings = collectCompetitionRatings();
+    var payload = {
+      comm_methods: collectModalCommMethods(),
+      social_handles: collectModalSocialHandles(),
+      platform_handle: collectPlatformHandleFromSocial(),
+      challenge_type: collectModalChallengeType(),
+      source_url: window.location.href,
+      captured_from: 'modal',
+    };
+    if (Object.keys(ratings).length) {
+      payload.competition_ratings = ratings;
+    }
+    return payload;
+  }
+
+  function saveRating(group, val) {
+    var ratings = {};
+    ratings[group] = String(val);
+    mergeIntent({
+      competition_ratings: ratings,
+      source_url: window.location.href,
+      captured_from: 'lander_rating',
+    });
+  }
+
+  function saveFromModalAndRedirect() {
+    var payload = collectFromModal();
+    mergeIntent(payload);
+    var target = cfg.accountUrl || '/portal/account/';
+    window.location.href = target;
+  }
+
+  function buildBrazePreview(intent, extras) {
+    var out = {
+      intent: intent || {},
+      button_press_url: extras && extras.button_press_url ? extras.button_press_url : '',
+      magic_register_url: extras && extras.magic_register_url ? extras.magic_register_url : '',
+    };
+    if (extras && extras.braze_track_payload) {
+      out.braze_track_payload = extras.braze_track_payload;
+    }
+    if (extras && extras.braze_response) {
+      out.braze_response = extras.braze_response;
+    }
+    return out;
+  }
+
+  function renderPreview(el, data) {
+    if (!el) {
+      return;
+    }
+    el.textContent = JSON.stringify(data, null, 2);
+  }
+
+  function refreshTestRegistryPreview() {
+    var el = document.getElementById('ihq-visitor-intent-braze-preview');
+    if (!el) {
+      return;
+    }
+    renderPreview(el, buildBrazePreview(readIntent(), {}));
+  }
+
+  function sendTestRegistry() {
+    var btn = document.getElementById('ihq-test-registry-btn');
+    var preview = document.getElementById('ihq-visitor-intent-braze-preview');
+    var intent = readIntent();
+    var buttonUrl = window.location.href;
+
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Sending…';
+    }
+
+    var fd = new FormData();
+    fd.append('action', 'ihq_test_registry_braze');
+    fd.append('nonce', cfg.nonce || '');
+    fd.append('intent_json', JSON.stringify(intent));
+    fd.append('button_press_url', buttonUrl);
+    fd.append('country_iso', typeof window.ihqResolveClientCountryIsoAlpha2 === 'function'
+      ? window.ihqResolveClientCountryIsoAlpha2()
+      : '');
+
+    return fetch(cfg.ajaxUrl || '/wp-admin/admin-ajax.php', { method: 'POST', body: fd })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'TEST REGISTRY';
+        }
+        if (!data.success) {
+          var msg = (data.data && data.data.message) ? data.data.message : 'Request failed.';
+          renderPreview(preview, buildBrazePreview(intent, { error: msg }));
+          return;
+        }
+        renderPreview(preview, buildBrazePreview(intent, {
+          button_press_url: buttonUrl,
+          magic_register_url: data.data.magic_register_url || '',
+          braze_track_payload: data.data.braze_track_payload || null,
+          braze_response: data.data.braze_response || null,
+        }));
+      })
+      .catch(function () {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'TEST REGISTRY';
+        }
+        renderPreview(preview, buildBrazePreview(intent, { error: 'Network error.' }));
+      });
+  }
+
+  window.ihqVisitorIntentRead = readIntent;
+  window.ihqVisitorIntentMerge = mergeIntent;
+  window.ihqVisitorIntentCollectFromModal = collectFromModal;
+  window.ihqVisitorIntentSaveFromModalAndRedirect = saveFromModalAndRedirect;
+  window.ihqVisitorIntentSaveRating = saveRating;
+  window.ihqVisitorIntentRefreshPreview = refreshTestRegistryPreview;
+  window.ihqVisitorIntentSendTestRegistry = sendTestRegistry;
+
+  document.addEventListener('DOMContentLoaded', function () {
+    refreshTestRegistryPreview();
+
+    var testBtn = document.getElementById('ihq-test-registry-btn');
+    if (testBtn) {
+      testBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        sendTestRegistry();
+      });
+    }
+  });
+})(window);

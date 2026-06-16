@@ -1040,6 +1040,93 @@ function handle_email_verification_and_user_creation() {
 add_action('wp_scheduled_delete', 'cleanup_expired_registrations');
 
 /**
+ * User meta key for iframe SSO code from start-session (`ssoCode`).
+ *
+ * @return string
+ */
+function ihq_sso_code_meta_key() {
+	return 'ihq_sso_code';
+}
+
+/**
+ * @param array<string, mixed> $data Start-session `data` object or error payload.
+ * @return string
+ */
+function ihq_extract_sso_code_from_start_session_data( $data ) {
+	if ( ! is_array( $data ) ) {
+		return '';
+	}
+	$keys = array( 'ssoCode', 'hqSsoCode', 'sso_code' );
+	foreach ( $keys as $key ) {
+		if ( ! empty( $data[ $key ] ) && is_string( $data[ $key ] ) ) {
+			return sanitize_text_field( $data[ $key ] );
+		}
+	}
+	return '';
+}
+
+/**
+ * @param int $user_id WordPress user ID.
+ * @return string
+ */
+function ihq_get_hq_sso_code_for_user( $user_id ) {
+	$user_id = (int) $user_id;
+	if ( $user_id <= 0 ) {
+		return '';
+	}
+
+	$stored = get_user_meta( $user_id, ihq_sso_code_meta_key(), true );
+	if ( is_string( $stored ) && $stored !== '' ) {
+		return sanitize_text_field( $stored );
+	}
+
+	$snapshot = get_user_meta( $user_id, 'ihq_oauth_start_session_last', true );
+	if ( ! is_string( $snapshot ) || $snapshot === '' ) {
+		return '';
+	}
+
+	$decoded = json_decode( $snapshot, true );
+	if ( ! is_array( $decoded ) ) {
+		return '';
+	}
+
+	return ihq_extract_sso_code_from_start_session_data( $decoded );
+}
+
+/**
+ * Save start-session response for display on the profile page.
+ *
+ * @param int                           $user_id WordPress user ID.
+ * @param array<string, mixed>|false    $data    Parsed `data` object or error payload.
+ */
+function ihq_save_start_session_response_for_profile( $user_id, $data ) {
+	$user_id = (int) $user_id;
+	if ( $user_id <= 0 ) {
+		return;
+	}
+
+	if ( ! is_array( $data ) ) {
+		update_user_meta(
+			$user_id,
+			'ihq_oauth_start_session_last',
+			wp_json_encode( array( 'error' => 'start-session failed' ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES )
+		);
+		return;
+	}
+
+	update_user_meta(
+		$user_id,
+		'ihq_oauth_start_session_last',
+		wp_json_encode( $data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES )
+	);
+
+	$sso_code = ihq_extract_sso_code_from_start_session_data( $data );
+	if ( $sso_code !== '' ) {
+		update_user_meta( $user_id, ihq_sso_code_meta_key(), $sso_code );
+	}
+}
+
+/**
  * Register a new WP user in the InfluencerHQ platform via OAuth start-session.
  *
  * @param string $country_iso Raw client ISO 3166-1 alpha-2 (typically from browser `country_iso` POST field); sanitized before send.
@@ -1072,6 +1159,10 @@ function ihq_register_oauth_user( $user_id, $first_name, $last_name, $email, $co
 
     if (is_wp_error($response)) {
         error_log('IHQ OAuth register error for user ' . $user_id . ': ' . $response->get_error_message());
+        ihq_save_start_session_response_for_profile( $user_id, array(
+            'success' => false,
+            'error'   => $response->get_error_message(),
+        ) );
         return false;
     }
 
@@ -1081,8 +1172,14 @@ function ihq_register_oauth_user( $user_id, $first_name, $last_name, $email, $co
     $success = !empty($body['success']) && $body['success'] === true && !empty($body['data']);
     if (!$success) {
         error_log('IHQ OAuth register bad response (HTTP ' . $status . ') for user ' . $user_id . ': ' . wp_remote_retrieve_body($response));
+        ihq_save_start_session_response_for_profile(
+            $user_id,
+            is_array( $body ) ? $body : array( 'http_status' => $status, 'raw' => wp_remote_retrieve_body( $response ) )
+        );
         return false;
     }
+
+    ihq_save_start_session_response_for_profile( $user_id, $body['data'] );
 
     return $body['data'];
 }

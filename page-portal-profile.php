@@ -164,6 +164,17 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
 
             <div class="sett-content">
 
+                <?php
+                if ( function_exists( 'ihq_visitor_intent_cookie_name' ) ) {
+                    get_template_part( 'template-parts/visitor-intent-test-registry' );
+                }
+                if ( isset( $_GET['ihq_magic_registered'] ) && $_GET['ihq_magic_registered'] === '1' ) :
+                ?>
+                <div class="sett-card" style="margin-bottom:14px;border-color:rgba(40,167,69,.45);">
+                    <p style="margin:0;color:#6fcf97;"><?php esc_html_e( 'Account created from magic link. Welcome!', 'avantage-baccarat' ); ?></p>
+                </div>
+                <?php endif; ?>
+
                 <!-- PROFILE Header -->
                 <header class="sett-header">
                     <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/profile.png" alt="" class="sett-header-icon">
@@ -171,6 +182,19 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                 </header>
 
                 <div class="sett-sep"></div>
+
+                <?php
+                $ihq_start_session_dump = (string) get_user_meta( $user->ID, 'ihq_oauth_start_session_last', true );
+                if ( $ihq_start_session_dump === '' ) {
+                    $ihq_start_session_dump = __( 'No start-session response saved yet. Log in to refresh.', 'avantage-baccarat' );
+                }
+                ?>
+                <div class="sett-card" style="margin-bottom:14px;border:1px dashed rgba(184,151,47,.45);">
+                    <p style="margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#b8972f;">
+                        <?php esc_html_e( 'OAuth start-session response (last login)', 'avantage-baccarat' ); ?>
+                    </p>
+                    <pre style="margin:0;padding:10px 12px;max-height:320px;overflow:auto;font-size:11px;line-height:1.45;color:#ddd;background:rgba(0,0,0,.35);border-radius:6px;white-space:pre-wrap;word-break:break-word;"><?php echo esc_html( $ihq_start_session_dump ); ?></pre>
+                </div>
 
                 <!-- GAME PORTAL URL -->
                 <?php

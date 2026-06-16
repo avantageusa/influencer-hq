@@ -56,14 +56,21 @@
             $default_game_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.games/av-baccarat';
             $meta_game_url   = get_user_meta( $uid, 'hq_game_url', true );
             $base_game_url   = ( $meta_game_url !== '' ) ? $meta_game_url : $default_game_url;
-            $game_url   = add_query_arg( array(
+            $game_url_args     = array(
                 'influencerHqAuth' => 'true',
                 'hqId'             => 'wpu-' . $uid,
                 'hqFirstName'      => $first_name,
                 'hqLastName'       => $last_name,
                 'hqEmail'          => $email,
                 'hqAvatar'         => $avatar_url,
-            ), $base_game_url );
+            );
+            if ( $uid > 0 && function_exists( 'ihq_get_hq_sso_code_for_user' ) ) {
+                $hq_sso_code = ihq_get_hq_sso_code_for_user( $uid );
+                if ( $hq_sso_code !== '' ) {
+                    $game_url_args['hqSsoCode'] = $hq_sso_code;
+                }
+            }
+            $game_url = add_query_arg( $game_url_args, $base_game_url );
             ?>
             <div style="flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 10px;">
                 <div class="desktop-header-right-items">

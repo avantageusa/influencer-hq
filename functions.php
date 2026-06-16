@@ -282,6 +282,11 @@ require_once get_template_directory() . '/inc/influencer-auth-handler.php';
 require_once get_template_directory() . '/inc/braze-integration.php';
 
 /**
+ * Visitor intent cookie, test registry, magic-link registration.
+ */
+require_once get_template_directory() . '/inc/visitor-intent-handler.php';
+
+/**
  * Portal username (public handle) for influencer accounts.
  */
 require_once get_template_directory() . '/inc/portal-username.php';
