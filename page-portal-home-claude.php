@@ -221,7 +221,7 @@ $ihq_modal_social_platforms = array(
     <div class="acc-body"><div class="acc-inner">
       <p class="sec-p">We believe that Influencers deserve the opportunity to share in ownership.</p>
       <div class="h-card h-card--side">
-        <div class="card-img-wrap magic-img"><img src="<?php echo esc_url(get_template_directory_uri()); ?>/images/magic-j.png" alt="Magic Johnson" style="width:100%;height:100%;object-fit:contain;display:block"></div>
+        <div class="card-img-wrap magic-img"><img src="<?php echo esc_url(get_template_directory_uri()); ?>/images/magic-j.jpg" alt="Magic Johnson" style="width:100%;height:100%;object-fit:contain;display:block"></div>
         <div class="h-body">
           <div class="h-name">Magic Johnson</div>
           <div class="h-text">The biggest missed equity-for-influence deal in history was Nike's 11 cent stock deal offered to NBA superstar Magic Johnson. Magic chose Adidas' $100,000 cash instead.<br><br>Today's value of the Nike stock Magic turned down? $5.4 billion.</div>
@@ -229,7 +229,7 @@ $ihq_modal_social_platforms = array(
         </div>
       </div>
       <div class="h-card h-card--side h-card--side-rev">
-        <div class="card-img-wrap magic-img"><img src="<?php echo esc_url(get_template_directory_uri()); ?>/images/alix-hair.png" alt="Alix Earle" style="width:100%;height:100%;object-fit:contain;display:block"></div>
+        <div class="card-img-wrap magic-img"><img src="<?php echo esc_url(get_template_directory_uri()); ?>/images/alix-hair.jpg" alt="Alix Earle" style="width:100%;height:100%;object-fit:contain;display:block"></div>
         <div class="h-body">
           <div class="h-name">Alix Earle</div>
           <div class="h-text">American Influencer Alix Earle chose an ownership-based partnership with Poppi instead of traditional cash. When Poppi was acquired by PepsiCo for well over a billion dollars, her choice became a defining moment in the creator economy.</div>

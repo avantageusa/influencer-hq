@@ -6,7 +6,7 @@
  *
  * @link https://developer.wordpress.org/themes/basics/template-files/#template-partials
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 ?>
@@ -19,7 +19,7 @@
 "@type": "Organization",
 "name": "InfluencerHQ",
 "url": "https://influencerhq.co/",
-"logo": "https://influencerhq.co/wp-content/themes/avantage-baccarat/images/logo-hq.png",
+"logo": "https://influencerhq.co/wp-content/themes/influencer-hq/images/logo-hq.png",
 "description": "InfluencerHQ is a Nevis-based company that provides equity participation to influencers in exchange for promoting products. Equity participation is a core component of the InfluencerHQ model. InfluencerHQ operates independently and is not an influencer marketplace, advertising network, talent agency, or social media platform."
 }
 </script>
@@ -34,27 +34,21 @@
   }(window,document,'script');
 </script>
 
-<meta name="facebook-domain-verification" content="duql6iqb4luzf8d44y9uvsdtvlb1tl" />
-
-<!-- Google Tag Manager -->
-<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','GTM-PVNC3K92');</script>
-<!-- End Google Tag Manager -->
+<!-- Clixtell Tracking Code -->
+<script type='text/javascript'>
+var script=document.createElement('script');
+var prefix=document.location.protocol;
+script.async=true;script.type='text/javascript';
+var target=prefix + '//scripts.clixtell.com/track.js';
+script.src=target;var elem=document.head;
+elem.appendChild(script);
+</script>
 
 	<?php wp_head(); ?>
 </head>
 
 <body id="page-top" <?php body_class(); ?>>
-<!-- Google Tag Manager (noscript) -->
-<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PVNC3K92"
-height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-<!-- End Google Tag Manager (noscript) -->
+
 <?php wp_body_open(); ?>
 <div id="page" class="site">
-	<a class="skip-link screen-reader-text" href="#primary"><?php esc_html_e( 'Skip to content', 'avantage-baccarat' ); ?></a>
- 
-
-	
+	<a class="skip-link screen-reader-text" href="#primary"><?php esc_html_e( 'Skip to content', 'influencer-hq' ); ?></a>

@@ -149,7 +149,7 @@ $ihq_modal_social_platforms   = array(
 
     <div class="ln-beliefs-grid">
       <div class="ln-belief-col">
-        <img src="<?php echo esc_url( get_template_directory_uri() . '/images/lander-icon-left.png' ); ?>"
+        <img src="<?php echo esc_url( get_template_directory_uri() . '/images/lander-icon-left.jpg' ); ?>"
              alt="" class="ln-belief-icon">
         <p class="ln-belief-item"><?php esc_html_e( 'Influence deserves more than short-term payouts.', 'avantage-baccarat' ); ?></p>
         <?php if ( ! is_user_logged_in() ) : ?>
@@ -164,7 +164,7 @@ $ihq_modal_social_platforms   = array(
       </div>
 
       <div class="ln-belief-col">
-        <img src="<?php echo esc_url( get_template_directory_uri() . '/images/lander-icon-right.png' ); ?>"
+        <img src="<?php echo esc_url( get_template_directory_uri() . '/images/lander-icon-right.jpg' ); ?>"
              alt="" class="ln-belief-icon">
         <p class="ln-belief-item"><?php esc_html_e( 'Influencers deserve the opportunity to share in ownership.', 'avantage-baccarat' ); ?></p>
         <?php if ( ! is_user_logged_in() ) : ?>
@@ -189,7 +189,7 @@ $ihq_modal_social_platforms   = array(
   <!-- Magic Johnson -->
   <div class="ln-story">
     <img class="ln-story-img"
-         src="<?php echo esc_url( get_template_directory_uri() . '/images/magic-j.png' ); ?>"
+         src="<?php echo esc_url( get_template_directory_uri() . '/images/magic-j.jpg' ); ?>"
          alt="Magic Johnson">
     <div class="ln-story-body">
       <div class="ln-story-name">Magic Johnson</div>
@@ -211,14 +211,14 @@ $ihq_modal_social_platforms   = array(
       </p>
     </div>
     <img class="ln-story-img"
-         src="<?php echo esc_url( get_template_directory_uri() . '/images/alix-hair.png' ); ?>"
+         src="<?php echo esc_url( get_template_directory_uri() . '/images/alix-hair.jpg' ); ?>"
          alt="Alix Earle">
   </div>
 
   <!-- BTS -->
   <div class="ln-story">
     <img class="ln-story-img"
-         src="<?php echo esc_url( get_template_directory_uri() . '/images/bts.png' ); ?>"
+         src="<?php echo esc_url( get_template_directory_uri() . '/images/bts.jpg' ); ?>"
          alt="<?php esc_attr_e( 'BTS', 'avantage-baccarat' ); ?>">
     <div class="ln-story-body">
       <div class="ln-story-name">BTS</div>
@@ -265,7 +265,7 @@ $ihq_modal_social_platforms   = array(
       <p><?php esc_html_e( 'Elegance that never goes out of style. Prestige that spans centuries.', 'avantage-baccarat' ); ?></p>
     </div>
     <div class="ln-intl-miami">
-      <img src="<?php echo esc_url( get_template_directory_uri() . '/images/lander-miami-worldcup.png' ); ?>"
+      <img src="<?php echo esc_url( get_template_directory_uri() . '/images/lander-miami-worldcup.jpg' ); ?>"
            alt="<?php esc_attr_e( 'Miami skyline — 2026 World Cup', 'avantage-baccarat' ); ?>">
     </div>
   </div>
