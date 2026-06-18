@@ -272,6 +272,11 @@ require_once get_template_directory() . '/inc/telegram-login-handler.php';
 require_once get_template_directory() . '/inc/turnstile-verify.php';
 
 /**
+ * Guest portal routes: invisible Turnstile gate + pass cookie.
+ */
+require_once get_template_directory() . '/inc/portal-turnstile-gate.php';
+
+/**
  * Influencer Authentication Handler
  */
 require_once get_template_directory() . '/inc/influencer-auth-handler.php';

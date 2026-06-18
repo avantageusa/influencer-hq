@@ -55,7 +55,12 @@ function ihq_turnstile_verify_response( $token ) {
 		);
 	}
 
-	$remote_ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
+	$remote_ip = '';
+	if ( ! empty( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ) {
+		$remote_ip = sanitize_text_field( wp_unslash( $_SERVER['HTTP_CF_CONNECTING_IP'] ) );
+	} elseif ( isset( $_SERVER['REMOTE_ADDR'] ) ) {
+		$remote_ip = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) );
+	}
 
 	$response = wp_remote_post(
 		'https://challenges.cloudflare.com/turnstile/v0/siteverify',
