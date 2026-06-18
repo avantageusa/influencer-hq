@@ -893,10 +893,12 @@ function ihq_api_proxy() {
     $api_base = 'https://02nvfvonol.execute-api.eu-west-2.amazonaws.com/qc';
     $url      = $api_base . $endpoint;
 
-    $headers = array(
-        'Authorization' => 'milos_testing',
-        'Content-Type'  => 'application/json',
-    );
+    $headers = function_exists( 'ihq_oauth_start_session_request_headers' )
+        ? ihq_oauth_start_session_request_headers()
+        : array(
+            'Authorization' => 'milos_testing',
+            'Content-Type'  => 'application/json',
+        );
     if (is_array($extra_headers)) {
         $headers = array_merge($headers, $extra_headers);
     }

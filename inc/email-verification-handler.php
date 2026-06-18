@@ -1039,6 +1039,26 @@ function handle_email_verification_and_user_creation() {
 // Clean up expired registration tokens daily
 add_action('wp_scheduled_delete', 'cleanup_expired_registrations');
 
+if ( ! defined( 'IHQ_INFLUENCER_API_KEY' ) ) {
+	define( 'IHQ_INFLUENCER_API_KEY', 'Z9sSPTV0lV95EcnFlajWua9G9mQGBYns7lyZZL59' );
+}
+
+/**
+ * Headers for POST /account/oauth/start-session (server-side only).
+ *
+ * @return array<string, string>
+ */
+function ihq_oauth_start_session_request_headers() {
+	$headers = array(
+		'Authorization' => 'milos_testing',
+		'Content-Type'  => 'application/json',
+	);
+	if ( defined( 'IHQ_INFLUENCER_API_KEY' ) && IHQ_INFLUENCER_API_KEY !== '' ) {
+		$headers['x-api-key'] = IHQ_INFLUENCER_API_KEY;
+	}
+	return $headers;
+}
+
 /**
  * User meta key for iframe SSO code from start-session (`ssoCode`).
  *
@@ -1148,10 +1168,7 @@ function ihq_register_oauth_user( $user_id, $first_name, $last_name, $email, $co
     );
 
     $response = wp_remote_post($api_url, array(
-        'headers' => array(
-            'Authorization' => 'milos_testing',
-            'Content-Type'  => 'application/json',
-        ),
+        'headers' => ihq_oauth_start_session_request_headers(),
         'body'      => wp_json_encode($payload),
         'timeout'   => 30,
         'sslverify' => true,
