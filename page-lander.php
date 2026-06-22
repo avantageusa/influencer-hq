@@ -11,12 +11,57 @@ add_action( 'wp_enqueue_scripts', function () {
 	wp_enqueue_style( 'homepage-style-claude', get_template_directory_uri() . '/css/homepage-style-claude.css' );
 } );
 
+/**
+ * Lander-only tracking (removed from global header in 934ab9b / ENGR-5469).
+ * Meta Pixel was loaded via GTM-PVNC3K92, not a direct fbq snippet in this repo.
+ */
+add_action(
+	'wp_head',
+	function () {
+		?>
+<meta name="facebook-domain-verification" content="duql6iqb4luzf8d44y9uvsdtvlb1tl" />
+<!-- Google Tag Manager (lander only) -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-PVNC3K92');</script>
+<!-- End Google Tag Manager -->
+<!-- Clixtell Tracking Code -->
+<script type="text/javascript">
+var script=document.createElement('script');
+var prefix=document.location.protocol;
+script.async=true;script.type='text/javascript';
+var target=prefix + '//scripts.clixtell.com/track.js';
+script.src=target;var elem=document.head;
+elem.appendChild(script);
+</script>
+		<?php
+	},
+	2
+);
+
+add_action(
+	'wp_body_open',
+	function () {
+		?>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PVNC3K92"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+		<?php
+	},
+	2
+);
+
 get_header();
 
 $ihq_modal_reg_nonce       = wp_create_nonce( 'ihq_reg_code_nonce' );
 $ihq_modal_login_nonce     = wp_create_nonce( 'ihq_login_code_nonce' );
 $ihq_telegram_login_pubkey_nonce = wp_create_nonce( 'ihq_telegram_login_pubkey' );
-$ihq_cf_country_iso_alpha2 = ihq_get_cloudflare_country_iso_alpha2();
+$ihq_cf_country_iso_alpha2 = function_exists( 'ihq_get_cloudflare_country_iso_alpha2' )
+	? ihq_get_cloudflare_country_iso_alpha2()
+	: 'US';
 $ihq_telegram_client_id    = 0;
 if ( defined( 'IHQ_TELEGRAM_LOGIN_CLIENT_ID' ) && preg_match( '/^\d+$/', (string) IHQ_TELEGRAM_LOGIN_CLIENT_ID ) ) {
 	$ihq_telegram_client_id = (int) IHQ_TELEGRAM_LOGIN_CLIENT_ID;
