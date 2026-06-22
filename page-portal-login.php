@@ -3,7 +3,7 @@
  * Template Name: Portal Login
  * Description: Login and registration page for influencer portal access.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 get_header();

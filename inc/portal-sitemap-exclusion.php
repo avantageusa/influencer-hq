@@ -3,7 +3,7 @@
  * Exclude portal-zone pages from WordPress core sitemaps (/wp-sitemap.xml).
  * Pairs with portal noindex meta + X-Robots-Tag (see template-parts/portal-header.php).
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

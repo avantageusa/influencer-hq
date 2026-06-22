@@ -3,7 +3,7 @@
  * Template Name: Portal Earnings
  * Description: A custom template for displaying earnings information.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 get_header();
 

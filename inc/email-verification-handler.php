@@ -304,7 +304,7 @@ function ihq_verify_turnstile_or_error_for_ajax() {
         $token = isset( $_POST['cf-turnstile-response'] ) ? sanitize_text_field( wp_unslash( $_POST['cf-turnstile-response'] ) ) : '';
         $check = ihq_turnstile_verify_response( $token );
         if ( empty( $check['success'] ) ) {
-            return new WP_Error( 'turnstile_failed', __( 'Human verification failed. Please try again.', 'avantage-baccarat' ) );
+            return new WP_Error( 'turnstile_failed', __( 'Human verification failed. Please try again.', 'influencer-hq' ) );
         }
     }
     return true;
@@ -376,7 +376,7 @@ function ihq_parse_comm_methods_from_post() {
  */
 function ihq_handle_send_registration_code_ajax() {
     if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_reg_code_nonce' ) ) {
-        wp_send_json_error( array( 'message' => __( 'Invalid security token', 'avantage-baccarat' ) ) );
+        wp_send_json_error( array( 'message' => __( 'Invalid security token', 'influencer-hq' ) ) );
         return;
     }
 
@@ -403,12 +403,12 @@ function ihq_handle_send_registration_code_ajax() {
     // }
 
     if ( ! is_email( $email ) ) {
-        wp_send_json_error( array( 'message' => __( 'Invalid email address', 'avantage-baccarat' ) ) );
+        wp_send_json_error( array( 'message' => __( 'Invalid email address', 'influencer-hq' ) ) );
         return;
     }
 
     if ( $first_name === '' || $last_name === '' ) {
-        wp_send_json_error( array( 'message' => __( 'First and last name are required', 'avantage-baccarat' ) ) );
+        wp_send_json_error( array( 'message' => __( 'First and last name are required', 'influencer-hq' ) ) );
         return;
     }
 
@@ -416,26 +416,26 @@ function ihq_handle_send_registration_code_ajax() {
     if ( $comm_primary === 'telegram' && empty( $comm_methods ) ) {
         $tu = ltrim( trim( $telegram_user ), '@' );
         if ( $tu === '' ) {
-            wp_send_json_error( array( 'message' => __( 'Please enter your Telegram username', 'avantage-baccarat' ) ) );
+            wp_send_json_error( array( 'message' => __( 'Please enter your Telegram username', 'influencer-hq' ) ) );
             return;
         }
         if ( ! function_exists( 'ihq_get_telegram_registration_session' ) ) {
-            wp_send_json_error( array( 'message' => __( 'Telegram registration is unavailable right now. Please choose Email.', 'avantage-baccarat' ) ) );
+            wp_send_json_error( array( 'message' => __( 'Telegram registration is unavailable right now. Please choose Email.', 'influencer-hq' ) ) );
             return;
         }
         $tg_session = ihq_get_telegram_registration_session( $telegram_session_token );
         if ( ! is_array( $tg_session ) || empty( $tg_session['telegram_user_id'] ) || empty( $tg_session['telegram_username'] ) ) {
-            wp_send_json_error( array( 'message' => __( 'Telegram login session expired. Please reselect Telegram and authenticate again.', 'avantage-baccarat' ) ) );
+            wp_send_json_error( array( 'message' => __( 'Telegram login session expired. Please reselect Telegram and authenticate again.', 'influencer-hq' ) ) );
             return;
         }
         $session_username = ltrim( (string) $tg_session['telegram_username'], '@' );
         if ( strtolower( $session_username ) !== strtolower( $tu ) ) {
-            wp_send_json_error( array( 'message' => __( 'Telegram account mismatch. Please authenticate again.', 'avantage-baccarat' ) ) );
+            wp_send_json_error( array( 'message' => __( 'Telegram account mismatch. Please authenticate again.', 'influencer-hq' ) ) );
             return;
         }
         $telegram_user_id = (int) $tg_session['telegram_user_id'];
         if ( $telegram_user_id <= 0 ) {
-            wp_send_json_error( array( 'message' => __( 'Telegram account id missing. Please authenticate again.', 'avantage-baccarat' ) ) );
+            wp_send_json_error( array( 'message' => __( 'Telegram account id missing. Please authenticate again.', 'influencer-hq' ) ) );
             return;
         }
         $comm_methods = array( 'telegram' => '@' . $tu );
@@ -464,7 +464,7 @@ function ihq_handle_send_registration_code_ajax() {
     }
 
     if ( email_exists( $email ) ) {
-        wp_send_json_error( array( 'message' => __( 'This email is already registered', 'avantage-baccarat' ) ) );
+        wp_send_json_error( array( 'message' => __( 'This email is already registered', 'influencer-hq' ) ) );
         return;
     }
 
@@ -472,7 +472,7 @@ function ihq_handle_send_registration_code_ajax() {
     if ( $client_ip !== '' ) {
         $ip_throttle_key = 'ihq_reg_send_ip_' . md5( $client_ip );
         if ( get_transient( $ip_throttle_key ) ) {
-            wp_send_json_error( array( 'message' => __( 'Only one registration attempt is allowed every 5 minutes from this IP', 'avantage-baccarat' ) ) );
+            wp_send_json_error( array( 'message' => __( 'Only one registration attempt is allowed every 5 minutes from this IP', 'influencer-hq' ) ) );
             return;
         }
         set_transient( $ip_throttle_key, 1, IHQ_REG_IP_ATTEMPT_WINDOW_SECONDS );
@@ -480,7 +480,7 @@ function ihq_handle_send_registration_code_ajax() {
 
     $throttle_key = 'ihq_reg_send_' . md5( strtolower( $email ) );
     if ( get_transient( $throttle_key ) ) {
-        wp_send_json_error( array( 'message' => __( 'Please wait a moment before requesting another code', 'avantage-baccarat' ) ) );
+        wp_send_json_error( array( 'message' => __( 'Please wait a moment before requesting another code', 'influencer-hq' ) ) );
         return;
     }
     set_transient( $throttle_key, 1, 45 );
@@ -519,11 +519,11 @@ function ihq_handle_send_registration_code_ajax() {
     $delivery_error = null;
     if ( 'telegram' === $comm_primary ) {
         if ( ! function_exists( 'ihq_telegram_send_direct_message' ) ) {
-            $delivery_error = __( 'Telegram delivery is unavailable right now. Please choose Email.', 'avantage-baccarat' );
+            $delivery_error = __( 'Telegram delivery is unavailable right now. Please choose Email.', 'influencer-hq' );
         } else {
             $telegram_message = sprintf(
                 /* translators: 1: 6-digit code, 2: expiry minutes */
-                __( "Influencer HQ registration code: %1\$s\n\nThis code expires in %2\$d minutes.", 'avantage-baccarat' ),
+                __( "Influencer HQ registration code: %1\$s\n\nThis code expires in %2\$d minutes.", 'influencer-hq' ),
                 $code,
                 (int) $minutes_left
             );
@@ -539,7 +539,7 @@ function ihq_handle_send_registration_code_ajax() {
             return;
         }
     } else {
-        $subject = __( 'Your Influencer HQ registration code', 'avantage-baccarat' );
+        $subject = __( 'Your Influencer HQ registration code', 'influencer-hq' );
         $message = '
     <!DOCTYPE html>
     <html><head><meta charset="UTF-8"></head>
@@ -575,7 +575,7 @@ function ihq_handle_send_registration_code_ajax() {
     if ( ! $sent ) {
         delete_option( 'pending_reg_code_' . $signup_token );
         delete_option( $email_map_key );
-        $err = $mail_error ? $mail_error : __( 'Failed to send email', 'avantage-baccarat' );
+        $err = $mail_error ? $mail_error : __( 'Failed to send email', 'influencer-hq' );
         error_log( 'IHQ send_registration_code failed for ' . $email . ': ' . $err );
         wp_send_json_error( array( 'message' => $err ) );
         return;
@@ -597,7 +597,7 @@ add_action( 'wp_ajax_nopriv_ihq_send_registration_code', 'ihq_handle_send_regist
  */
 function ihq_handle_verify_registration_code_ajax() {
     if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_reg_code_nonce' ) ) {
-        wp_send_json_error( array( 'message' => __( 'Invalid security token', 'avantage-baccarat' ) ) );
+        wp_send_json_error( array( 'message' => __( 'Invalid security token', 'influencer-hq' ) ) );
         return;
     }
 
@@ -605,14 +605,14 @@ function ihq_handle_verify_registration_code_ajax() {
     $code_raw     = isset( $_POST['code'] ) ? preg_replace( '/\D/', '', (string) wp_unslash( $_POST['code'] ) ) : '';
 
     if ( $signup_token === '' || strlen( $code_raw ) !== 6 ) {
-        wp_send_json_error( array( 'message' => __( 'Enter the 6-digit code we sent you', 'avantage-baccarat' ) ) );
+        wp_send_json_error( array( 'message' => __( 'Enter the 6-digit code we sent you', 'influencer-hq' ) ) );
         return;
     }
 
     $opt_key  = 'pending_reg_code_' . $signup_token;
     $pending  = get_option( $opt_key );
     if ( ! is_array( $pending ) || empty( $pending['email'] ) ) {
-        wp_send_json_error( array( 'message' => __( 'Invalid or expired code. Please start again', 'avantage-baccarat' ) ) );
+        wp_send_json_error( array( 'message' => __( 'Invalid or expired code. Please start again', 'influencer-hq' ) ) );
         return;
     }
 
@@ -620,7 +620,7 @@ function ihq_handle_verify_registration_code_ajax() {
         delete_option( $opt_key );
         $emap = 'ihq_pending_reg_email_' . md5( strtolower( $pending['email'] ) );
         delete_option( $emap );
-        wp_send_json_error( array( 'message' => __( 'This code has expired. Request a new one', 'avantage-baccarat' ) ) );
+        wp_send_json_error( array( 'message' => __( 'This code has expired. Request a new one', 'influencer-hq' ) ) );
         return;
     }
 
@@ -628,7 +628,7 @@ function ihq_handle_verify_registration_code_ajax() {
     $try_hash      = hash_hmac( 'sha256', $code_raw, wp_salt( 'ihq_reg_code' ) . $signup_token );
 
     if ( ! hash_equals( $expected_hash, $try_hash ) ) {
-        wp_send_json_error( array( 'message' => __( 'That code does not match. Check your email and try again', 'avantage-baccarat' ) ) );
+        wp_send_json_error( array( 'message' => __( 'That code does not match. Check your email and try again', 'influencer-hq' ) ) );
         return;
     }
 
@@ -761,7 +761,7 @@ function ihq_refresh_influencer_oauth_tokens( $user_id, $country_iso = '' ) {
  */
 function ihq_handle_send_login_code_ajax() {
     if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_login_code_nonce' ) ) {
-        wp_send_json_error( array( 'message' => __( 'Invalid security token', 'avantage-baccarat' ) ) );
+        wp_send_json_error( array( 'message' => __( 'Invalid security token', 'influencer-hq' ) ) );
         return;
     }
 
@@ -773,7 +773,7 @@ function ihq_handle_send_login_code_ajax() {
 
     $email = isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '';
     if ( ! is_email( $email ) ) {
-        wp_send_json_error( array( 'message' => __( 'Invalid email address', 'avantage-baccarat' ) ) );
+        wp_send_json_error( array( 'message' => __( 'Invalid email address', 'influencer-hq' ) ) );
         return;
     }
 
@@ -783,7 +783,7 @@ function ihq_handle_send_login_code_ajax() {
      * Always return the same success copy if the inbox exists — avoids leaking which emails are registered.
      * Only deliver a code when the user exists and is an influencer.
      */
-    $generic_success = __( 'If that email matches an Influencer HQ account, you will receive a sign-in code shortly.', 'avantage-baccarat' );
+    $generic_success = __( 'If that email matches an Influencer HQ account, you will receive a sign-in code shortly.', 'influencer-hq' );
 
     if ( ! $user || ! ihq_user_has_influencer_role( $user ) ) {
         wp_send_json_success(
@@ -799,7 +799,7 @@ function ihq_handle_send_login_code_ajax() {
 
     $throttle_key = 'ihq_login_send_' . md5( strtolower( $email ) );
     if ( get_transient( $throttle_key ) ) {
-        wp_send_json_error( array( 'message' => __( 'Please wait a moment before requesting another code', 'avantage-baccarat' ) ) );
+        wp_send_json_error( array( 'message' => __( 'Please wait a moment before requesting another code', 'influencer-hq' ) ) );
         return;
     }
     set_transient( $throttle_key, 1, 45 );
@@ -829,7 +829,7 @@ function ihq_handle_send_login_code_ajax() {
 
     $minutes_left = (int) ceil( IHQ_LOGIN_CODE_EXPIRY_SECONDS / 60 );
 
-    $subject = __( 'Your Influencer HQ sign-in code', 'avantage-baccarat' );
+    $subject = __( 'Your Influencer HQ sign-in code', 'influencer-hq' );
     $message = '
     <!DOCTYPE html>
     <html><head><meta charset="UTF-8"></head>
@@ -865,7 +865,7 @@ function ihq_handle_send_login_code_ajax() {
     if ( ! $sent ) {
         delete_option( 'pending_login_code_' . $signup_token );
         delete_option( $email_map_key );
-        $err = $mail_error ? $mail_error : __( 'Failed to send email', 'avantage-baccarat' );
+        $err = $mail_error ? $mail_error : __( 'Failed to send email', 'influencer-hq' );
         error_log( 'IHQ send_login_code failed for ' . $email . ': ' . $err );
         wp_send_json_error( array( 'message' => $err ) );
         return;
@@ -887,7 +887,7 @@ add_action( 'wp_ajax_nopriv_ihq_send_login_code', 'ihq_handle_send_login_code_aj
  */
 function ihq_handle_verify_login_code_ajax() {
     if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_login_code_nonce' ) ) {
-        wp_send_json_error( array( 'message' => __( 'Invalid security token', 'avantage-baccarat' ) ) );
+        wp_send_json_error( array( 'message' => __( 'Invalid security token', 'influencer-hq' ) ) );
         return;
     }
 
@@ -895,14 +895,14 @@ function ihq_handle_verify_login_code_ajax() {
     $code_raw     = isset( $_POST['code'] ) ? preg_replace( '/\D/', '', (string) wp_unslash( $_POST['code'] ) ) : '';
 
     if ( $signup_token === '' || strlen( $code_raw ) !== 6 ) {
-        wp_send_json_error( array( 'message' => __( 'Enter the 6-digit code from your email', 'avantage-baccarat' ) ) );
+        wp_send_json_error( array( 'message' => __( 'Enter the 6-digit code from your email', 'influencer-hq' ) ) );
         return;
     }
 
     $opt_key = 'pending_login_code_' . $signup_token;
     $pending = get_option( $opt_key );
     if ( ! is_array( $pending ) || empty( $pending['email'] ) ) {
-        wp_send_json_error( array( 'message' => __( 'Invalid or expired code. Request a new one', 'avantage-baccarat' ) ) );
+        wp_send_json_error( array( 'message' => __( 'Invalid or expired code. Request a new one', 'influencer-hq' ) ) );
         return;
     }
 
@@ -910,7 +910,7 @@ function ihq_handle_verify_login_code_ajax() {
         delete_option( $opt_key );
         $emap = 'ihq_pending_login_email_' . md5( strtolower( $pending['email'] ) );
         delete_option( $emap );
-        wp_send_json_error( array( 'message' => __( 'This code has expired. Request a new one', 'avantage-baccarat' ) ) );
+        wp_send_json_error( array( 'message' => __( 'This code has expired. Request a new one', 'influencer-hq' ) ) );
         return;
     }
 
@@ -918,7 +918,7 @@ function ihq_handle_verify_login_code_ajax() {
     $try_hash      = hash_hmac( 'sha256', $code_raw, wp_salt( 'ihq_login_code' ) . $signup_token );
 
     if ( ! hash_equals( $expected_hash, $try_hash ) ) {
-        wp_send_json_error( array( 'message' => __( 'That code does not match. Check your email and try again', 'avantage-baccarat' ) ) );
+        wp_send_json_error( array( 'message' => __( 'That code does not match. Check your email and try again', 'influencer-hq' ) ) );
         return;
     }
 
@@ -931,7 +931,7 @@ function ihq_handle_verify_login_code_ajax() {
             delete_option( $opt_key );
             $emap = 'ihq_pending_login_email_' . md5( strtolower( $pending['email'] ) );
             delete_option( $emap );
-            wp_send_json_error( array( 'message' => __( 'Invalid or expired code. Request a new one', 'avantage-baccarat' ) ) );
+            wp_send_json_error( array( 'message' => __( 'Invalid or expired code. Request a new one', 'influencer-hq' ) ) );
             return;
         }
         $user_id = (int) $user->ID;

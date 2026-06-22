@@ -3,7 +3,7 @@
  * Template Name: Portal Help
  * Description: A custom template for displaying the help page.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 get_header();
 

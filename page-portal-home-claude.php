@@ -3,7 +3,7 @@
  * Template Name: Portal home mr claude
  * Description: A custom template for displaying the influencer HQ.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 add_action('wp_enqueue_scripts', function() {
@@ -20,17 +20,17 @@ $ihq_telegram_client_id    = 0;
 if ( defined( 'IHQ_TELEGRAM_LOGIN_CLIENT_ID' ) && preg_match( '/^\d+$/', (string) IHQ_TELEGRAM_LOGIN_CLIENT_ID ) ) {
 	$ihq_telegram_client_id = (int) IHQ_TELEGRAM_LOGIN_CLIENT_ID;
 }
-$ihq_modal_telegram_lbl_default = __( 'We\'ll note your @username; code still arrives by email', 'avantage-baccarat' );
+$ihq_modal_telegram_lbl_default = __( 'We\'ll note your @username; code still arrives by email', 'influencer-hq' );
 if ( $ihq_telegram_client_id > 0 ) {
-	$ihq_modal_telegram_lbl_default = __( 'Sign in with Telegram to verify your @username — code still arrives by email', 'avantage-baccarat' );
+	$ihq_modal_telegram_lbl_default = __( 'Sign in with Telegram to verify your @username — code still arrives by email', 'influencer-hq' );
 }
-$ihq_modal_telegram_verified_lbl = __( 'Verified — ', 'avantage-baccarat' );
+$ihq_modal_telegram_verified_lbl = __( 'Verified — ', 'influencer-hq' );
 $ihq_turnstile_site_modal  = '';
 if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_configured() && defined( 'CF_TURNSTILE_SITE_KEY' ) ) {
 	$ihq_turnstile_site_modal = CF_TURNSTILE_SITE_KEY;
 }
 
-$ihq_modal_comm_placeholder = __( 'handle or URL', 'avantage-baccarat' );
+$ihq_modal_comm_placeholder = __( 'handle or URL', 'influencer-hq' );
 $ihq_modal_comm_methods_left = array(
 	array( 'key' => 'botim', 'label' => 'Botim' ),
 	array( 'key' => 'email', 'label' => 'Email' ),
@@ -50,7 +50,7 @@ $ihq_modal_comm_methods_right = array(
 );
 $ihq_modal_comm_methods_all = array_merge( $ihq_modal_comm_methods_left, $ihq_modal_comm_methods_right );
 
-$ihq_modal_social_placeholder = __( 'handle or URL', 'avantage-baccarat' );
+$ihq_modal_social_placeholder = __( 'handle or URL', 'influencer-hq' );
 // Grid order: left-to-right, top-to-bottom (3 columns) to match Figma.
 $ihq_modal_social_platforms = array(
 	array( 'key' => 'kick', 'label' => 'Kick' ),
@@ -134,7 +134,7 @@ $ihq_modal_social_platforms = array(
   <a class="logo" href="<?php echo esc_url(home_url('/')); ?>"><img style="max-width: 50%;" src="<?php echo get_template_directory_uri(); ?>/images/logo-home-claude.jpg" alt="influencerHQ"></a>
   <div style="display:flex;align-items:center;gap:10px">
     <div class="header-lang-wrap">
-      <button type="button" class="header-lang-btn" id="headerLangBtn" aria-label="<?php esc_attr_e( 'Select language', 'avantage-baccarat' ); ?>" aria-expanded="false" aria-haspopup="true">
+      <button type="button" class="header-lang-btn" id="headerLangBtn" aria-label="<?php esc_attr_e( 'Select language', 'influencer-hq' ); ?>" aria-expanded="false" aria-haspopup="true">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="10"></circle>
           <line x1="2" y1="12" x2="22" y2="12"></line>
@@ -308,10 +308,10 @@ $ihq_modal_social_platforms = array(
       </div>
       <input type="hidden" id="ihq-s7-competition-selection" value="" autocomplete="off">
       <div id="s7-competition-submit-wrap" class="s7-competition-submit-wrap" style="display:none;text-align:center;margin:24px 0 16px;">
-        <button type="button" class="send-btn" id="s7-competition-submit"><?php esc_html_e( 'Submit', 'avantage-baccarat' ); ?></button>
+        <button type="button" class="send-btn" id="s7-competition-submit"><?php esc_html_e( 'Submit', 'influencer-hq' ); ?></button>
       </div>
       <div id="s7-competition-followup" class="s7-competition-followup" style="display:none;text-align:center;margin-top:8px;margin-bottom:8px;padding:18px 16px;border:1px solid rgba(240,201,58,.28);border-radius:12px;background:rgba(0,0,0,.25);font-family:'Be Vietnam Pro',sans-serif;color:var(--warm);line-height:1.85;">
-        <p style="margin:0;font-size:.95rem;"><?php esc_html_e( 'Provide favorite method of communication first in the', 'avantage-baccarat' ); ?> <a href="#" id="s7-open-registration-modal" style="color:var(--gl);text-decoration:underline;font-weight:600;"><?php esc_html_e( 'registration', 'avantage-baccarat' ); ?></a> <?php esc_html_e( 'form.', 'avantage-baccarat' ); ?></p>
+        <p style="margin:0;font-size:.95rem;"><?php esc_html_e( 'Provide favorite method of communication first in the', 'influencer-hq' ); ?> <a href="#" id="s7-open-registration-modal" style="color:var(--gl);text-decoration:underline;font-weight:600;"><?php esc_html_e( 'registration', 'influencer-hq' ); ?></a> <?php esc_html_e( 'form.', 'influencer-hq' ); ?></p>
       </div>
       <p class="sec-p">Influencers are automatically invited to appear on our partners' International Competition Series — a 24-hour global competition stage. Head-to-head competition features two Influencers from their own locations streaming reactions, commentary, and competitive energy in real time.</p>
       <p class="sec-p" style="color:var(--gl)">English · Mandarin · Cantonese · Korean · Japanese · Thai · Vietnamese</p>
@@ -380,13 +380,13 @@ $ihq_modal_social_platforms = array(
     <button class="modal-x" onclick="closeModal()">✕</button>
     <div class="mstep on" id="ms1">
       <div class="modal-comm-thanks" id="modal-comm-thanks" hidden>
-        <p class="modal-comm-thanks-msg"><?php esc_html_e( 'Thank you for your submission, your message was received', 'avantage-baccarat' ); ?></p>
+        <p class="modal-comm-thanks-msg"><?php esc_html_e( 'Thank you for your submission, your message was received', 'influencer-hq' ); ?></p>
       </div>
       <div id="modal-comm-form-body">
-      <h3 class="m-title m-title--conversation"><?php esc_html_e( "Let's Start The Conversation", 'avantage-baccarat' ); ?></h3>
-      <p class="m-lede"><?php esc_html_e( 'Please give us your favorite methods of communication.', 'avantage-baccarat' ); ?></p>
+      <h3 class="m-title m-title--conversation"><?php esc_html_e( "Let's Start The Conversation", 'influencer-hq' ); ?></h3>
+      <p class="m-lede"><?php esc_html_e( 'Please give us your favorite methods of communication.', 'influencer-hq' ); ?></p>
       <div class="modal-comm-pick" id="modal-comm-pick">
-        <div class="modal-comm-cols" role="group" aria-label="<?php esc_attr_e( 'Favorite methods of communication', 'avantage-baccarat' ); ?>">
+        <div class="modal-comm-cols" role="group" aria-label="<?php esc_attr_e( 'Favorite methods of communication', 'influencer-hq' ); ?>">
           <div class="modal-comm-col">
             <?php foreach ( $ihq_modal_comm_methods_left as $ihq_comm ) : ?>
             <label class="modal-comm-option" id="modal-comm-row-<?php echo esc_attr( $ihq_comm['key'] ); ?>" for="modal-comm-<?php echo esc_attr( $ihq_comm['key'] ); ?>">
@@ -436,8 +436,8 @@ $ihq_modal_social_platforms = array(
       </div>
 
       <div class="modal-social-section modal-comm-deferred">
-        <h4 class="modal-social-heading"><?php esc_html_e( 'Social Media You Post On', 'avantage-baccarat' ); ?></h4>
-        <div class="social-grid" role="group" aria-label="<?php esc_attr_e( 'Social media platforms', 'avantage-baccarat' ); ?>">
+        <h4 class="modal-social-heading"><?php esc_html_e( 'Social Media You Post On', 'influencer-hq' ); ?></h4>
+        <div class="social-grid" role="group" aria-label="<?php esc_attr_e( 'Social media platforms', 'influencer-hq' ); ?>">
           <?php foreach ( $ihq_modal_social_platforms as $ihq_social ) : ?>
           <button
             type="button"
@@ -477,30 +477,30 @@ $ihq_modal_social_platforms = array(
         </div>
       </div>
 
-      <button type="button" class="send-btn" id="sendbtn" onclick="onModalSubmit()"><?php esc_html_e( 'Submit', 'avantage-baccarat' ); ?></button>
+      <button type="button" class="send-btn" id="sendbtn" onclick="onModalSubmit()"><?php esc_html_e( 'Submit', 'influencer-hq' ); ?></button>
 
-      <p class="m-note"><?php esc_html_e( 'All conversations are private and confidential.', 'avantage-baccarat' ); ?><br><?php esc_html_e( 'We operate across time zones. Expect a reply within minutes.', 'avantage-baccarat' ); ?></p>
+      <p class="m-note"><?php esc_html_e( 'All conversations are private and confidential.', 'influencer-hq' ); ?><br><?php esc_html_e( 'We operate across time zones. Expect a reply within minutes.', 'influencer-hq' ); ?></p>
       </div>
     </div>
 
     <div class="mstep" id="ms-reg">
-      <span class="m-eye"><?php esc_html_e( 'Almost there', 'avantage-baccarat' ); ?></span>
-      <h3 class="m-title"><?php esc_html_e( 'Your details', 'avantage-baccarat' ); ?></h3>
-      <p class="m-sub" style="margin-bottom:20px"><?php esc_html_e( 'Tell us who you are. We’ll email your 6-digit registration code.', 'avantage-baccarat' ); ?></p>
+      <span class="m-eye"><?php esc_html_e( 'Almost there', 'influencer-hq' ); ?></span>
+      <h3 class="m-title"><?php esc_html_e( 'Your details', 'influencer-hq' ); ?></h3>
+      <p class="m-sub" style="margin-bottom:20px"><?php esc_html_e( 'Tell us who you are. We’ll email your 6-digit registration code.', 'influencer-hq' ); ?></p>
       <div class="modal-reg-field">
-        <label for="modal-reg-first"><?php esc_html_e( 'First name', 'avantage-baccarat' ); ?> <span style="color:#f85149">*</span></label>
-        <input type="text" id="modal-reg-first" autocomplete="given-name" required maxlength="120" placeholder="<?php esc_attr_e( 'First name', 'avantage-baccarat' ); ?>">
+        <label for="modal-reg-first"><?php esc_html_e( 'First name', 'influencer-hq' ); ?> <span style="color:#f85149">*</span></label>
+        <input type="text" id="modal-reg-first" autocomplete="given-name" required maxlength="120" placeholder="<?php esc_attr_e( 'First name', 'influencer-hq' ); ?>">
       </div>
       <div class="modal-reg-field">
-        <label for="modal-reg-last"><?php esc_html_e( 'Last name', 'avantage-baccarat' ); ?> <span style="color:#f85149">*</span></label>
-        <input type="text" id="modal-reg-last" autocomplete="family-name" required maxlength="120" placeholder="<?php esc_attr_e( 'Last name', 'avantage-baccarat' ); ?>">
+        <label for="modal-reg-last"><?php esc_html_e( 'Last name', 'influencer-hq' ); ?> <span style="color:#f85149">*</span></label>
+        <input type="text" id="modal-reg-last" autocomplete="family-name" required maxlength="120" placeholder="<?php esc_attr_e( 'Last name', 'influencer-hq' ); ?>">
       </div>
       <div class="modal-reg-field">
-        <label for="modal-reg-email"><?php esc_html_e( 'Email', 'avantage-baccarat' ); ?> <span style="color:#f85149">*</span></label>
+        <label for="modal-reg-email"><?php esc_html_e( 'Email', 'influencer-hq' ); ?> <span style="color:#f85149">*</span></label>
         <input type="email" id="modal-reg-email" autocomplete="email" required placeholder="your@email.com">
       </div>
       <div class="modal-reg-field" id="modal-reg-telegram-wrap" style="display:none">
-        <label for="modal-reg-telegram"><?php esc_html_e( 'Telegram username', 'avantage-baccarat' ); ?> <span style="color:#f85149">*</span></label>
+        <label for="modal-reg-telegram"><?php esc_html_e( 'Telegram username', 'influencer-hq' ); ?> <span style="color:#f85149">*</span></label>
         <input type="text" id="modal-reg-telegram" autocomplete="username" maxlength="80" placeholder="@username">
       </div>
       <?php if ( $ihq_turnstile_site_modal !== '' ) : ?>
@@ -508,28 +508,28 @@ $ihq_modal_social_platforms = array(
       <?php endif; ?>
       <p class="modal-step-err" id="modal-reg-err"></p>
       <div class="modal-reg-actions">
-        <button type="button" class="btn-modal-back" onclick="ihqModalRegBackToMs1()"><?php esc_html_e( 'Back', 'avantage-baccarat' ); ?></button>
-        <button type="button" class="send-btn" id="modal-send-code-btn" onclick="ihqModalRegSendCode()"><?php esc_html_e( 'Send code', 'avantage-baccarat' ); ?></button>
+        <button type="button" class="btn-modal-back" onclick="ihqModalRegBackToMs1()"><?php esc_html_e( 'Back', 'influencer-hq' ); ?></button>
+        <button type="button" class="send-btn" id="modal-send-code-btn" onclick="ihqModalRegSendCode()"><?php esc_html_e( 'Send code', 'influencer-hq' ); ?></button>
       </div>
     </div>
 
     <div class="mstep" id="ms-code">
-      <span class="m-eye"><?php esc_html_e( 'Check your inbox', 'avantage-baccarat' ); ?></span>
-      <h3 class="m-title"><?php esc_html_e( 'You’re on your way.', 'avantage-baccarat' ); ?></h3>
-      <p class="modal-code-msg"><?php esc_html_e( 'Details coming in shortly. You and your followers are on the road to glory.', 'avantage-baccarat' ); ?></p>
-      <p class="modal-code-msg"><?php esc_html_e( 'Registration code is sent via your provided method of communication.', 'avantage-baccarat' ); ?></p>
-      <p class="modal-code-msg"><strong><?php esc_html_e( 'Enter the 6-digit code.', 'avantage-baccarat' ); ?></strong></p>
+      <span class="m-eye"><?php esc_html_e( 'Check your inbox', 'influencer-hq' ); ?></span>
+      <h3 class="m-title"><?php esc_html_e( 'You’re on your way.', 'influencer-hq' ); ?></h3>
+      <p class="modal-code-msg"><?php esc_html_e( 'Details coming in shortly. You and your followers are on the road to glory.', 'influencer-hq' ); ?></p>
+      <p class="modal-code-msg"><?php esc_html_e( 'Registration code is sent via your provided method of communication.', 'influencer-hq' ); ?></p>
+      <p class="modal-code-msg"><strong><?php esc_html_e( 'Enter the 6-digit code.', 'influencer-hq' ); ?></strong></p>
       <p class="modal-code-msg" id="modal-code-expires-note"></p>
       <div class="modal-reg-field" style="max-width:280px;margin:20px auto 0">
-        <label for="modal-reg-code"><?php esc_html_e( 'Code', 'avantage-baccarat' ); ?></label>
+        <label for="modal-reg-code"><?php esc_html_e( 'Code', 'influencer-hq' ); ?></label>
         <input type="text" id="modal-reg-code" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="000000" style="text-align:center;letter-spacing:0.4em;font-size:1.35rem">
       </div>
       <p class="modal-step-err" id="modal-code-err"></p>
       <div class="modal-reg-actions">
-        <button type="button" class="btn-modal-back" onclick="show('ms-reg')"><?php esc_html_e( 'Edit details', 'avantage-baccarat' ); ?></button>
-        <button type="button" class="send-btn" id="modal-verify-btn" onclick="ihqModalRegVerifyCode()"><?php esc_html_e( 'Verify & continue', 'avantage-baccarat' ); ?></button>
+        <button type="button" class="btn-modal-back" onclick="show('ms-reg')"><?php esc_html_e( 'Edit details', 'influencer-hq' ); ?></button>
+        <button type="button" class="send-btn" id="modal-verify-btn" onclick="ihqModalRegVerifyCode()"><?php esc_html_e( 'Verify & continue', 'influencer-hq' ); ?></button>
       </div>
-      <p style="font-family:'Be Vietnam Pro',sans-serif;font-size:.78rem;color:var(--warm);text-align:center;margin-top:16px;line-height:1.6"><?php esc_html_e( 'Didn’t receive it? Go back and tap Send code again.', 'avantage-baccarat' ); ?></p>
+      <p style="font-family:'Be Vietnam Pro',sans-serif;font-size:.78rem;color:var(--warm);text-align:center;margin-top:16px;line-height:1.6"><?php esc_html_e( 'Didn’t receive it? Go back and tap Send code again.', 'influencer-hq' ); ?></p>
     </div>
 
   </div>

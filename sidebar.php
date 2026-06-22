@@ -4,7 +4,7 @@
  *
  * @link https://developer.wordpress.org/themes/basics/template-files/#template-partials
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 if ( ! is_active_sidebar( 'sidebar-1' ) ) {

@@ -4,7 +4,7 @@
  *
  * @link https://jetpack.com/
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 /**
@@ -14,13 +14,13 @@
  * See: https://jetpack.com/support/responsive-videos/
  * See: https://jetpack.com/support/content-options/
  */
-function avantage_baccarat_jetpack_setup() {
+function influencer_hq_jetpack_setup() {
 	// Add theme support for Infinite Scroll.
 	add_theme_support(
 		'infinite-scroll',
 		array(
 			'container' => 'main',
-			'render'    => 'avantage_baccarat_infinite_scroll_render',
+			'render'    => 'influencer_hq_infinite_scroll_render',
 			'footer'    => 'page',
 		)
 	);
@@ -33,7 +33,7 @@ function avantage_baccarat_jetpack_setup() {
 		'jetpack-content-options',
 		array(
 			'post-details' => array(
-				'stylesheet' => 'avantage-baccarat-style',
+				'stylesheet' => 'influencer-hq-style',
 				'date'       => '.posted-on',
 				'categories' => '.cat-links',
 				'tags'       => '.tags-links',
@@ -48,13 +48,13 @@ function avantage_baccarat_jetpack_setup() {
 		)
 	);
 }
-add_action( 'after_setup_theme', 'avantage_baccarat_jetpack_setup' );
+add_action( 'after_setup_theme', 'influencer_hq_jetpack_setup' );
 
-if ( ! function_exists( 'avantage_baccarat_infinite_scroll_render' ) ) :
+if ( ! function_exists( 'influencer_hq_infinite_scroll_render' ) ) :
 	/**
 	 * Custom render function for Infinite Scroll.
 	 */
-	function avantage_baccarat_infinite_scroll_render() {
+	function influencer_hq_infinite_scroll_render() {
 		while ( have_posts() ) {
 			the_post();
 			if ( is_search() ) :

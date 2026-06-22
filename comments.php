@@ -7,7 +7,7 @@
  *
  * @link https://developer.wordpress.org/themes/basics/template-hierarchy/
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 /*
@@ -28,18 +28,18 @@ if ( post_password_required() ) {
 		?>
 		<h2 class="comments-title">
 			<?php
-			$avantage_baccarat_comment_count = get_comments_number();
-			if ( '1' === $avantage_baccarat_comment_count ) {
+			$influencer_hq_comment_count = get_comments_number();
+			if ( '1' === $influencer_hq_comment_count ) {
 				printf(
 					/* translators: 1: title. */
-					esc_html__( 'One thought on &ldquo;%1$s&rdquo;', 'avantage-baccarat' ),
+					esc_html__( 'One thought on &ldquo;%1$s&rdquo;', 'influencer-hq' ),
 					'<span>' . wp_kses_post( get_the_title() ) . '</span>'
 				);
 			} else {
 				printf( 
 					/* translators: 1: comment count number, 2: title. */
-					esc_html( _nx( '%1$s thought on &ldquo;%2$s&rdquo;', '%1$s thoughts on &ldquo;%2$s&rdquo;', $avantage_baccarat_comment_count, 'comments title', 'avantage-baccarat' ) ),
-					number_format_i18n( $avantage_baccarat_comment_count ), // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					esc_html( _nx( '%1$s thought on &ldquo;%2$s&rdquo;', '%1$s thoughts on &ldquo;%2$s&rdquo;', $influencer_hq_comment_count, 'comments title', 'influencer-hq' ) ),
+					number_format_i18n( $influencer_hq_comment_count ), // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 					'<span>' . wp_kses_post( get_the_title() ) . '</span>'
 				);
 			}
@@ -65,7 +65,7 @@ if ( post_password_required() ) {
 		// If comments are closed and there are comments, let's leave a little note, shall we?
 		if ( ! comments_open() ) :
 			?>
-			<p class="no-comments"><?php esc_html_e( 'Comments are closed.', 'avantage-baccarat' ); ?></p>
+			<p class="no-comments"><?php esc_html_e( 'Comments are closed.', 'influencer-hq' ); ?></p>
 			<?php
 		endif;
 

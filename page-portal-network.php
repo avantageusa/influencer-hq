@@ -3,7 +3,7 @@
  * Template Name: Portal Network
  * Description: A custom template for displaying the network page.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 get_header();
 

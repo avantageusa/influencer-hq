@@ -3,7 +3,7 @@
  * Template Name: Portal More
  * Description: A custom template for the More section.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 get_header();
 
@@ -248,7 +248,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseWidgetWhat" class="accordion-collapse collapse" aria-labelledby="headingWidgetWhat">
-                                            <div class="accordion-body"><p>Your widget is the Game Portal URL on your Profile page — a personalized link that delivers followers into Avantage Baccarat with you credited as their referrer.</p></div>
+                                            <div class="accordion-body"><p>Your widget is the Game Portal URL on your Profile page — a personalized link that delivers followers into Influencer HQ with you credited as their referrer.</p></div>
                                         </div>
                                     </div>
 
@@ -431,7 +431,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseEquityProof" class="accordion-collapse collapse" aria-labelledby="headingEquityProof">
-                                            <div class="accordion-body"><p>Point them at the Equity page — it discloses the per-share price ($0.20), the $80M+ already invested in the platform, AE Ltd.&#039;s 53 international utility patents across 20 jurisdictions, and Avantage Baccarat&#039;s Malta Gaming Authority recognition. Every share you earn is recorded at the exact moment of earning — the same page is the receipt.</p></div>
+                                            <div class="accordion-body"><p>Point them at the Equity page — it discloses the per-share price ($0.20), the $80M+ already invested in the platform, AE Ltd.&#039;s 53 international utility patents across 20 jurisdictions, and Influencer HQ&#039;s Malta Gaming Authority recognition. Every share you earn is recorded at the exact moment of earning — the same page is the receipt.</p></div>
                                         </div>
                                     </div>
 
@@ -466,7 +466,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseRegulated" class="accordion-collapse collapse" aria-labelledby="headingRegulated">
-                                            <div class="accordion-body"><p>Avantage Baccarat holds Recognition status issued by the Malta Gaming Authority. AE Ltd. holds 53 US and international utility patents distributed across China, Macau, the United States, Japan, Singapore, Malta, the Philippines, Korea, Vietnam, Australia, Gibraltar, Cambodia, Malaysia, Monaco, Taiwan, Israel, Spain, the UK, France, and Hong Kong. In the US, Bet 5 Games operates under license from Avantage Entertainment USA.</p></div>
+                                            <div class="accordion-body"><p>Influencer HQ holds Recognition status issued by the Malta Gaming Authority. AE Ltd. holds 53 US and international utility patents distributed across China, Macau, the United States, Japan, Singapore, Malta, the Philippines, Korea, Vietnam, Australia, Gibraltar, Cambodia, Malaysia, Monaco, Taiwan, Israel, Spain, the UK, France, and Hong Kong. In the US, Bet 5 Games operates under license from Avantage Entertainment USA.</p></div>
                                         </div>
                                     </div>
 
@@ -495,7 +495,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseOnlyBaccarat" class="accordion-collapse collapse" aria-labelledby="headingOnlyBaccarat">
-                                            <div class="accordion-body"><p>Avantage Baccarat is the currently launched game — a modern 1 Bank vs. 5 Players format with plays throughout the hand and a top-30% pool split.</p></div>
+                                            <div class="accordion-body"><p>Influencer HQ is the currently launched game — a modern 1 Bank vs. 5 Players format with plays throughout the hand and a top-30% pool split.</p></div>
                                         </div>
                                     </div>
 
@@ -519,7 +519,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseAvantage" class="accordion-collapse collapse" aria-labelledby="headingAvantage">
-                                            <div class="accordion-body"><p>Avantage Entertainment (AE Ltd.) is the parent group behind InfluencerHQ and Avantage Baccarat. AE Ltd. holds 53 US and international utility patents, and Bet 5 Games is its licensed operator in the US.</p></div>
+                                            <div class="accordion-body"><p>Avantage Entertainment (AE Ltd.) is the parent group behind InfluencerHQ and Influencer HQ. AE Ltd. holds 53 US and international utility patents, and Bet 5 Games is its licensed operator in the US.</p></div>
                                         </div>
                                     </div>
 

@@ -35,7 +35,7 @@ function influencer_register_ajax() {
     }
 
     wp_send_json_error(
-        __('Influencer registration uses a 6-digit code sent to your email. Use the Register flow to request a code.', 'avantage-baccarat')
+        __('Influencer registration uses a 6-digit code sent to your email. Use the Register flow to request a code.', 'influencer-hq')
     );
 }
 
@@ -52,7 +52,7 @@ function influencer_login_ajax() {
     }
 
     wp_send_json_error(
-        __('Sign in with the 6-digit code emailed to you (request a code first).', 'avantage-baccarat')
+        __('Sign in with the 6-digit code emailed to you (request a code first).', 'influencer-hq')
     );
 }
 
@@ -69,7 +69,7 @@ function influencer_login_portal_ajax() {
     }
 
     wp_send_json_error(
-        __('Sign in with the 6-digit code emailed to you (request a code first).', 'avantage-baccarat')
+        __('Sign in with the 6-digit code emailed to you (request a code first).', 'influencer-hq')
     );
 }
 

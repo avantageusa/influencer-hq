@@ -6,7 +6,7 @@
  *
  * @link https://developer.wordpress.org/themes/basics/template-hierarchy/
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 get_header();
@@ -49,7 +49,7 @@ get_header();
 
                             <!-- Main Body Text -->
                             <div class="mb-5" style="max-width: 800px; margin: 0 auto;">
-                                <p class="fs-5 text-light-gray mb-4 line-height-relaxed">This isn't just a sign-up. It's the beginning of your role in the <strong class="text-yellow">Avantage Baccarat World Championship</strong> — modeled after the World Series of Poker, rooted in the 400-year prestige of Baccarat, and expanding to all of the world's most popular games.</p>
+                                <p class="fs-5 text-light-gray mb-4 line-height-relaxed">This isn't just a sign-up. It's the beginning of your role in the <strong class="text-yellow">Influencer HQ World Championship</strong> — modeled after the World Series of Poker, rooted in the 400-year prestige of Baccarat, and expanding to all of the world's most popular games.</p>
                             </div>
 
                             <!-- Closing Statement -->

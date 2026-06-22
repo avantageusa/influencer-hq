@@ -4,7 +4,7 @@
  *
  * Expects: $site_key, $redirect_to, $post_url, $nonce, $js_url, $js_version, $logo_url, $ts_error
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -47,7 +47,7 @@ $ihq_portal_ts_show_retry = ! empty( $ts_error );
 	<meta charset="<?php bloginfo( 'charset' ); ?>">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="robots" content="noindex, nofollow">
-	<title><?php esc_html_e( 'Verifying…', 'avantage-baccarat' ); ?> — influencerHQ</title>
+	<title><?php esc_html_e( 'Verifying…', 'influencer-hq' ); ?> — influencerHQ</title>
 	<style>
 		body {
 			margin: 0;
@@ -110,13 +110,13 @@ $ihq_portal_ts_show_retry = ! empty( $ts_error );
 <body>
 	<div class="ihq-portal-ts-wrap">
 		<img src="<?php echo esc_url( $logo_url ); ?>" alt="influencerHQ">
-		<p class="ihq-portal-ts-msg"><?php esc_html_e( 'Complete the security check below', 'avantage-baccarat' ); ?></p>
-		<p class="ihq-portal-ts-sub"><?php esc_html_e( 'This only takes a moment.', 'avantage-baccarat' ); ?></p>
+		<p class="ihq-portal-ts-msg"><?php esc_html_e( 'Complete the security check below', 'influencer-hq' ); ?></p>
+		<p class="ihq-portal-ts-sub"><?php esc_html_e( 'This only takes a moment.', 'influencer-hq' ); ?></p>
 		<div id="ihq-portal-ts-widget"></div>
-		<button type="button" id="ihq-portal-ts-retry"><?php esc_html_e( 'Try again', 'avantage-baccarat' ); ?></button>
+		<button type="button" id="ihq-portal-ts-retry"><?php esc_html_e( 'Try again', 'influencer-hq' ); ?></button>
 		<p class="ihq-portal-ts-err" id="ihq-portal-ts-err" role="alert"<?php echo $ihq_portal_ts_show_retry ? ' style="display:block"' : ''; ?>>
 			<?php if ( $ihq_portal_ts_show_retry ) : ?>
-				<?php esc_html_e( 'Verification failed. Click Try again.', 'avantage-baccarat' ); ?>
+				<?php esc_html_e( 'Verification failed. Click Try again.', 'influencer-hq' ); ?>
 			<?php endif; ?>
 		</p>
 	</div>
@@ -129,8 +129,8 @@ $ihq_portal_ts_show_retry = ! empty( $ts_error );
 			'redirectTo'     => $redirect_to,
 			'showRetryError'     => $ihq_portal_ts_show_retry,
 			'requireManualStart' => $ihq_portal_ts_show_retry,
-			'errorMessage'       => __( 'Verification failed. Please try again.', 'avantage-baccarat' ),
-			'retryMessage'       => __( 'Verification failed. Click Try again.', 'avantage-baccarat' ),
+			'errorMessage'       => __( 'Verification failed. Please try again.', 'influencer-hq' ),
+			'retryMessage'       => __( 'Verification failed. Click Try again.', 'influencer-hq' ),
 		)
 	); ?>;
 	</script>

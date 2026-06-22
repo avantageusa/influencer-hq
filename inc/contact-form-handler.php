@@ -2,7 +2,7 @@
 /**
  * Contact Us form — AJAX submission and email to concierge.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -112,7 +112,7 @@ add_action( 'wp_ajax_nopriv_ihq_submit_contact_form', 'ihq_handle_submit_contact
  */
 function ihq_handle_submit_contact_form_ajax() {
 	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_contact_form_nonce' ) ) {
-		wp_send_json_error( array( 'message' => __( 'Invalid security token. Please refresh and try again.', 'avantage-baccarat' ) ) );
+		wp_send_json_error( array( 'message' => __( 'Invalid security token. Please refresh and try again.', 'influencer-hq' ) ) );
 		return;
 	}
 
@@ -128,7 +128,7 @@ function ihq_handle_submit_contact_form_ajax() {
 	if ( $client_ip !== '' ) {
 		$throttle_key = 'ihq_contact_send_ip_' . md5( $client_ip );
 		if ( get_transient( $throttle_key ) ) {
-			wp_send_json_error( array( 'message' => __( 'Only one contact form submission is allowed every 5 minutes from this IP.', 'avantage-baccarat' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Only one contact form submission is allowed every 5 minutes from this IP.', 'influencer-hq' ) ) );
 			return;
 		}
 	}
@@ -142,24 +142,24 @@ function ihq_handle_submit_contact_form_ajax() {
 	$field_errors = array();
 
 	if ( $first_name === '' ) {
-		$field_errors['first_name'] = __( 'This field is required', 'avantage-baccarat' );
+		$field_errors['first_name'] = __( 'This field is required', 'influencer-hq' );
 	}
 	if ( $last_name === '' ) {
-		$field_errors['last_name'] = __( 'This field is required', 'avantage-baccarat' );
+		$field_errors['last_name'] = __( 'This field is required', 'influencer-hq' );
 	}
 	if ( $email === '' ) {
-		$field_errors['email'] = __( 'This field is required', 'avantage-baccarat' );
+		$field_errors['email'] = __( 'This field is required', 'influencer-hq' );
 	} elseif ( ! is_email( $email ) ) {
-		$field_errors['email'] = __( 'Please enter a valid email address', 'avantage-baccarat' );
+		$field_errors['email'] = __( 'Please enter a valid email address', 'influencer-hq' );
 	}
 
 	$allowed_subjects = ihq_contact_form_allowed_subjects();
 	if ( $subject_key === '' || ! isset( $allowed_subjects[ $subject_key ] ) ) {
-		$field_errors['subject'] = __( 'This field is required', 'avantage-baccarat' );
+		$field_errors['subject'] = __( 'This field is required', 'influencer-hq' );
 	}
 
 	if ( $message === '' ) {
-		$field_errors['message'] = __( 'This field is required', 'avantage-baccarat' );
+		$field_errors['message'] = __( 'This field is required', 'influencer-hq' );
 	}
 
 	$attachment_path = '';
@@ -178,7 +178,7 @@ function ihq_handle_submit_contact_form_ajax() {
 	if ( ! empty( $field_errors ) ) {
 		wp_send_json_error(
 			array(
-				'message'      => __( 'Please correct the errors below.', 'avantage-baccarat' ),
+				'message'      => __( 'Please correct the errors below.', 'influencer-hq' ),
 				'field_errors' => $field_errors,
 			)
 		);
@@ -192,7 +192,7 @@ function ihq_handle_submit_contact_form_ajax() {
 	$subject_label = $allowed_subjects[ $subject_key ];
 	$mail_subject  = sprintf(
 		/* translators: 1: subject label, 2: sender name */
-		__( 'Contact Us: %1$s — %2$s', 'avantage-baccarat' ),
+		__( 'Contact Us: %1$s — %2$s', 'influencer-hq' ),
 		$subject_label,
 		$first_name . ' ' . $last_name
 	);
@@ -239,7 +239,7 @@ function ihq_handle_submit_contact_form_ajax() {
 	}
 
 	if ( ! $sent ) {
-		$err = $mail_error ? $mail_error : __( 'Failed to send your message. Please try again later.', 'avantage-baccarat' );
+		$err = $mail_error ? $mail_error : __( 'Failed to send your message. Please try again later.', 'influencer-hq' );
 		error_log( 'IHQ contact form failed for ' . $email . ': ' . $err );
 		wp_send_json_error( array( 'message' => $err ) );
 		return;
@@ -247,7 +247,7 @@ function ihq_handle_submit_contact_form_ajax() {
 
 	wp_send_json_success(
 		array(
-			'message' => __( 'Thank you! Your message has been sent. We will get back to you within 24 hours.', 'avantage-baccarat' ),
+			'message' => __( 'Thank you! Your message has been sent. We will get back to you within 24 hours.', 'influencer-hq' ),
 		)
 	);
 }
@@ -262,11 +262,11 @@ function ihq_contact_form_validate_upload( array $file ) {
 	$error_code = isset( $file['error'] ) ? (int) $file['error'] : UPLOAD_ERR_NO_FILE;
 
 	if ( $error_code !== UPLOAD_ERR_OK ) {
-		return new WP_Error( 'upload_error', __( 'File upload failed. Please try again.', 'avantage-baccarat' ) );
+		return new WP_Error( 'upload_error', __( 'File upload failed. Please try again.', 'influencer-hq' ) );
 	}
 
 	if ( empty( $file['tmp_name'] ) || ! is_uploaded_file( $file['tmp_name'] ) ) {
-		return new WP_Error( 'upload_invalid', __( 'Invalid file upload.', 'avantage-baccarat' ) );
+		return new WP_Error( 'upload_invalid', __( 'Invalid file upload.', 'influencer-hq' ) );
 	}
 
 	$size = isset( $file['size'] ) ? (int) $file['size'] : 0;
@@ -275,7 +275,7 @@ function ihq_contact_form_validate_upload( array $file ) {
 			'upload_size',
 			sprintf(
 				/* translators: %d: max size in MB */
-				__( 'File must be smaller than %d MB.', 'avantage-baccarat' ),
+				__( 'File must be smaller than %d MB.', 'influencer-hq' ),
 				(int) ( IHQ_CONTACT_FORM_MAX_FILE_BYTES / 1048576 )
 			)
 		);
@@ -285,25 +285,25 @@ function ihq_contact_form_validate_upload( array $file ) {
 	if ( $detected === false ) {
 		return new WP_Error(
 			'upload_type',
-			__( 'Allowed file types: images (JPG, PNG, GIF, WebP), PDF, TXT, DOC, DOCX.', 'avantage-baccarat' )
+			__( 'Allowed file types: images (JPG, PNG, GIF, WebP), PDF, TXT, DOC, DOCX.', 'influencer-hq' )
 		);
 	}
 
 	$upload_dir = wp_upload_dir();
 	if ( ! empty( $upload_dir['error'] ) ) {
-		return new WP_Error( 'upload_dir', __( 'Unable to process upload.', 'avantage-baccarat' ) );
+		return new WP_Error( 'upload_dir', __( 'Unable to process upload.', 'influencer-hq' ) );
 	}
 
 	$subdir = trailingslashit( $upload_dir['basedir'] ) . 'ihq-contact-temp';
 	if ( ! wp_mkdir_p( $subdir ) ) {
-		return new WP_Error( 'upload_dir', __( 'Unable to process upload.', 'avantage-baccarat' ) );
+		return new WP_Error( 'upload_dir', __( 'Unable to process upload.', 'influencer-hq' ) );
 	}
 
 	$safe_name = sanitize_file_name( $file['name'] );
 	$dest      = $subdir . '/' . wp_unique_filename( $subdir, $safe_name );
 
 	if ( ! move_uploaded_file( $file['tmp_name'], $dest ) ) {
-		return new WP_Error( 'upload_move', __( 'File upload failed. Please try again.', 'avantage-baccarat' ) );
+		return new WP_Error( 'upload_move', __( 'File upload failed. Please try again.', 'influencer-hq' ) );
 	}
 
 	return array(

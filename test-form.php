@@ -6,7 +6,7 @@
  *
  * @link https://developer.wordpress.org/themes/basics/template-hierarchy/
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 get_header();
@@ -25,7 +25,7 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
 
                         <div class="portal-leaderboards-iframe-wrap" style="margin-top: 1.25rem; width: 100%; max-width: 100%;">
                             <iframe
-                                title="<?php echo esc_attr__( 'Avantage Baccarat leaderboards', 'avantage-baccarat' ); ?>"
+                                title="<?php echo esc_attr__( 'Influencer HQ leaderboards', 'influencer-hq' ); ?>"
                                 src="<?php echo esc_url( $portal_leaderboards_iframe_url ); ?>"
                                 style="display: block; width: 100%; min-height: 75vh; border: 0; background: #111;"
                                 loading="lazy"

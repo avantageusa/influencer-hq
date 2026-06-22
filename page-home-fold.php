@@ -6,7 +6,7 @@
  *
  * @link https://developer.wordpress.org/themes/basics/template-hierarchy/
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 // Extend login session duration to 30 days

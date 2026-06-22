@@ -10,7 +10,7 @@
  * 4. If the site sends Cross-Origin-Opener-Policy: same-origin, change it to
  *    same-origin-allow-popups or remove it — otherwise the Telegram popup cannot post back.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -75,7 +75,7 @@ function ihq_get_telegram_registration_session( $session_token ) {
 function ihq_telegram_send_direct_message( $telegram_user_id, $text ) {
 	$bot_token = ihq_telegram_login_get_bot_token();
 	if ( '' === $bot_token ) {
-		return new WP_Error( 'telegram_bot_token_missing', __( 'Telegram bot token is not configured', 'avantage-baccarat' ) );
+		return new WP_Error( 'telegram_bot_token_missing', __( 'Telegram bot token is not configured', 'influencer-hq' ) );
 	}
 
 	$payload = array(
@@ -99,7 +99,7 @@ function ihq_telegram_send_direct_message( $telegram_user_id, $text ) {
 	$body = wp_remote_retrieve_body( $response );
 	$json = json_decode( $body, true );
 	if ( $code < 200 || $code >= 300 || ! is_array( $json ) || empty( $json['ok'] ) ) {
-		return new WP_Error( 'telegram_send_failed', __( 'Could not deliver the code to Telegram. Please ensure you started the bot, then try again.', 'avantage-baccarat' ) );
+		return new WP_Error( 'telegram_send_failed', __( 'Could not deliver the code to Telegram. Please ensure you started the bot, then try again.', 'influencer-hq' ) );
 	}
 
 	return true;
@@ -200,12 +200,12 @@ function ihq_telegram_fetch_jwks() {
 	$code = wp_remote_retrieve_response_code( $response );
 	$body = wp_remote_retrieve_body( $response );
 	if ( 200 !== $code || '' === $body ) {
-		return new WP_Error( 'jwks_http', __( 'Could not load Telegram signing keys', 'avantage-baccarat' ) );
+		return new WP_Error( 'jwks_http', __( 'Could not load Telegram signing keys', 'influencer-hq' ) );
 	}
 
 	$decoded = json_decode( $body, true );
 	if ( ! is_array( $decoded ) || empty( $decoded['keys'] ) ) {
-		return new WP_Error( 'jwks_parse', __( 'Invalid Telegram signing keys response', 'avantage-baccarat' ) );
+		return new WP_Error( 'jwks_parse', __( 'Invalid Telegram signing keys response', 'influencer-hq' ) );
 	}
 
 	set_transient( $cache_key, $decoded, IHQ_TELEGRAM_JWKS_CACHE_SECONDS );
@@ -222,12 +222,12 @@ function ihq_telegram_fetch_jwks() {
 function ihq_verify_telegram_oidc_id_token( $jwt, $expected_aud ) {
 	$jwt = trim( (string) $jwt );
 	if ( '' === $jwt ) {
-		return new WP_Error( 'empty_token', __( 'Missing ID token', 'avantage-baccarat' ) );
+		return new WP_Error( 'empty_token', __( 'Missing ID token', 'influencer-hq' ) );
 	}
 
 	$parts = explode( '.', $jwt );
 	if ( count( $parts ) !== 3 ) {
-		return new WP_Error( 'malformed', __( 'Invalid ID token format', 'avantage-baccarat' ) );
+		return new WP_Error( 'malformed', __( 'Invalid ID token format', 'influencer-hq' ) );
 	}
 
 	$header_raw = ihq_telegram_base64url_decode( $parts[0] );
@@ -235,16 +235,16 @@ function ihq_verify_telegram_oidc_id_token( $jwt, $expected_aud ) {
 	$sig         = ihq_telegram_base64url_decode( $parts[2] );
 
 	if ( false === $header_raw || false === $payload_raw || false === $sig ) {
-		return new WP_Error( 'decode', __( 'Invalid ID token encoding', 'avantage-baccarat' ) );
+		return new WP_Error( 'decode', __( 'Invalid ID token encoding', 'influencer-hq' ) );
 	}
 
 	$header = json_decode( $header_raw, true );
 	if ( ! is_array( $header ) || empty( $header['alg'] ) || empty( $header['kid'] ) ) {
-		return new WP_Error( 'header', __( 'Invalid ID token header', 'avantage-baccarat' ) );
+		return new WP_Error( 'header', __( 'Invalid ID token header', 'influencer-hq' ) );
 	}
 
 	if ( 'RS256' !== $header['alg'] ) {
-		return new WP_Error( 'alg', __( 'Unexpected signing algorithm', 'avantage-baccarat' ) );
+		return new WP_Error( 'alg', __( 'Unexpected signing algorithm', 'influencer-hq' ) );
 	}
 
 	$jwks = ihq_telegram_fetch_jwks();
@@ -261,47 +261,47 @@ function ihq_verify_telegram_oidc_id_token( $jwt, $expected_aud ) {
 	}
 
 	if ( null === $jwk_match ) {
-		return new WP_Error( 'kid', __( 'Signing key not found', 'avantage-baccarat' ) );
+		return new WP_Error( 'kid', __( 'Signing key not found', 'influencer-hq' ) );
 	}
 
 	$pem = ihq_telegram_jwk_rsa_to_pem( $jwk_match['n'], $jwk_match['e'] );
 	if ( false === $pem ) {
-		return new WP_Error( 'pem', __( 'Could not build public key', 'avantage-baccarat' ) );
+		return new WP_Error( 'pem', __( 'Could not build public key', 'influencer-hq' ) );
 	}
 
 	$pub = openssl_pkey_get_public( $pem );
 	if ( false === $pub ) {
-		return new WP_Error( 'openssl', __( 'Invalid public key material', 'avantage-baccarat' ) );
+		return new WP_Error( 'openssl', __( 'Invalid public key material', 'influencer-hq' ) );
 	}
 
 	$signing_input = $parts[0] . '.' . $parts[1];
 	$ok = openssl_verify( $signing_input, $sig, $pub, OPENSSL_ALGO_SHA256 );
 
 	if ( 1 !== $ok ) {
-		return new WP_Error( 'sig', __( 'ID token signature could not be verified', 'avantage-baccarat' ) );
+		return new WP_Error( 'sig', __( 'ID token signature could not be verified', 'influencer-hq' ) );
 	}
 
 	$claims = json_decode( $payload_raw, true );
 	if ( ! is_array( $claims ) ) {
-		return new WP_Error( 'claims', __( 'Invalid ID token payload', 'avantage-baccarat' ) );
+		return new WP_Error( 'claims', __( 'Invalid ID token payload', 'influencer-hq' ) );
 	}
 
 	if ( empty( $claims['iss'] ) || IHQ_TELEGRAM_OIDC_ISSUER !== $claims['iss'] ) {
-		return new WP_Error( 'iss', __( 'Invalid token issuer', 'avantage-baccarat' ) );
+		return new WP_Error( 'iss', __( 'Invalid token issuer', 'influencer-hq' ) );
 	}
 
 	$aud = isset( $claims['aud'] ) ? (string) $claims['aud'] : '';
 	if ( $aud !== (string) $expected_aud ) {
-		return new WP_Error( 'aud', __( 'Invalid token audience', 'avantage-baccarat' ) );
+		return new WP_Error( 'aud', __( 'Invalid token audience', 'influencer-hq' ) );
 	}
 
 	$now = time();
 	$leeway = 90;
 	if ( isset( $claims['exp'] ) && (int) $claims['exp'] < ( $now - $leeway ) ) {
-		return new WP_Error( 'exp', __( 'ID token has expired', 'avantage-baccarat' ) );
+		return new WP_Error( 'exp', __( 'ID token has expired', 'influencer-hq' ) );
 	}
 	if ( isset( $claims['iat'] ) && (int) $claims['iat'] > ( $now + $leeway ) ) {
-		return new WP_Error( 'iat', __( 'ID token is not yet valid', 'avantage-baccarat' ) );
+		return new WP_Error( 'iat', __( 'ID token is not yet valid', 'influencer-hq' ) );
 	}
 
 	return $claims;
@@ -312,12 +312,12 @@ function ihq_verify_telegram_oidc_id_token( $jwt, $expected_aud ) {
  */
 function ihq_handle_telegram_login_nonce_ajax() {
 	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_telegram_login_pubkey' ) ) {
-		wp_send_json_error( array( 'message' => __( 'Invalid security token', 'avantage-baccarat' ) ) );
+		wp_send_json_error( array( 'message' => __( 'Invalid security token', 'influencer-hq' ) ) );
 		return;
 	}
 
 	if ( '' === ihq_telegram_login_get_client_id() ) {
-		wp_send_json_error( array( 'message' => __( 'Telegram login is not configured', 'avantage-baccarat' ) ) );
+		wp_send_json_error( array( 'message' => __( 'Telegram login is not configured', 'influencer-hq' ) ) );
 		return;
 	}
 
@@ -339,19 +339,19 @@ add_action( 'wp_ajax_nopriv_ihq_telegram_login_nonce', 'ihq_handle_telegram_logi
  */
 function ihq_handle_verify_telegram_id_token_ajax() {
 	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_telegram_login_pubkey' ) ) {
-		wp_send_json_error( array( 'message' => __( 'Invalid security token', 'avantage-baccarat' ) ) );
+		wp_send_json_error( array( 'message' => __( 'Invalid security token', 'influencer-hq' ) ) );
 		return;
 	}
 
 	$client_id = ihq_telegram_login_get_client_id();
 	if ( '' === $client_id ) {
-		wp_send_json_error( array( 'message' => __( 'Telegram login is not configured', 'avantage-baccarat' ) ) );
+		wp_send_json_error( array( 'message' => __( 'Telegram login is not configured', 'influencer-hq' ) ) );
 		return;
 	}
 
 	$id_token = isset( $_POST['id_token'] ) ? sanitize_text_field( wp_unslash( $_POST['id_token'] ) ) : '';
 	if ( '' === $id_token ) {
-		wp_send_json_error( array( 'message' => __( 'Missing ID token', 'avantage-baccarat' ) ) );
+		wp_send_json_error( array( 'message' => __( 'Missing ID token', 'influencer-hq' ) ) );
 		return;
 	}
 
@@ -363,14 +363,14 @@ function ihq_handle_verify_telegram_id_token_ajax() {
 
 	$nonce = isset( $claims['nonce'] ) ? (string) $claims['nonce'] : '';
 	if ( '' === $nonce ) {
-		wp_send_json_error( array( 'message' => __( 'Invalid login session', 'avantage-baccarat' ) ) );
+		wp_send_json_error( array( 'message' => __( 'Invalid login session', 'influencer-hq' ) ) );
 		return;
 	}
 
 	$transient_key = 'ihq_tg_nonce_' . md5( $nonce );
 	$slot          = get_transient( $transient_key );
 	if ( ! is_array( $slot ) ) {
-		wp_send_json_error( array( 'message' => __( 'Login session expired. Please try again', 'avantage-baccarat' ) ) );
+		wp_send_json_error( array( 'message' => __( 'Login session expired. Please try again', 'influencer-hq' ) ) );
 		return;
 	}
 	delete_transient( $transient_key );
@@ -379,7 +379,7 @@ function ihq_handle_verify_telegram_id_token_ajax() {
 	if ( '' === $preferred ) {
 		wp_send_json_error(
 			array(
-				'message' => __( 'Telegram login succeeded, but this Telegram account has no @username set. Please set a Telegram username in Telegram Settings > Edit Profile > Username, then try again (or choose Email).', 'avantage-baccarat' ),
+				'message' => __( 'Telegram login succeeded, but this Telegram account has no @username set. Please set a Telegram username in Telegram Settings > Edit Profile > Username, then try again (or choose Email).', 'influencer-hq' ),
 			)
 		);
 		return;
@@ -388,7 +388,7 @@ function ihq_handle_verify_telegram_id_token_ajax() {
 	$handle = '@' . ltrim( $preferred, '@' );
 	$telegram_user_id = isset( $claims['id'] ) ? (int) $claims['id'] : 0;
 	if ( $telegram_user_id <= 0 ) {
-		wp_send_json_error( array( 'message' => __( 'Telegram did not return a valid user id', 'avantage-baccarat' ) ) );
+		wp_send_json_error( array( 'message' => __( 'Telegram did not return a valid user id', 'influencer-hq' ) ) );
 		return;
 	}
 
@@ -462,13 +462,13 @@ function ihq_telegram_build_fake_email( $telegram_username, $telegram_user_id ) 
  */
 function ihq_handle_register_telegram_user_ajax() {
 	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_telegram_login_pubkey' ) ) {
-		wp_send_json_error( array( 'message' => __( 'Invalid security token', 'avantage-baccarat' ) ) );
+		wp_send_json_error( array( 'message' => __( 'Invalid security token', 'influencer-hq' ) ) );
 		return;
 	}
 	$session_token = isset( $_POST['telegram_session_token'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_session_token'] ) ) : '';
 	$session       = ihq_get_telegram_registration_session( $session_token );
 	if ( ! is_array( $session ) || empty( $session['telegram_user_id'] ) || empty( $session['telegram_username'] ) ) {
-		wp_send_json_error( array( 'message' => __( 'Telegram session expired. Please authenticate again.', 'avantage-baccarat' ) ) );
+		wp_send_json_error( array( 'message' => __( 'Telegram session expired. Please authenticate again.', 'influencer-hq' ) ) );
 		return;
 	}
 
@@ -517,13 +517,13 @@ add_action( 'wp_ajax_nopriv_ihq_register_telegram_user', 'ihq_handle_register_te
  */
 function ihq_handle_login_telegram_user_ajax() {
 	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_telegram_login_pubkey' ) ) {
-		wp_send_json_error( array( 'message' => __( 'Invalid security token', 'avantage-baccarat' ) ) );
+		wp_send_json_error( array( 'message' => __( 'Invalid security token', 'influencer-hq' ) ) );
 		return;
 	}
 	$session_token = isset( $_POST['telegram_session_token'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_session_token'] ) ) : '';
 	$session       = ihq_get_telegram_registration_session( $session_token );
 	if ( ! is_array( $session ) || empty( $session['telegram_username'] ) ) {
-		wp_send_json_error( array( 'message' => __( 'Telegram session expired. Please authenticate again.', 'avantage-baccarat' ) ) );
+		wp_send_json_error( array( 'message' => __( 'Telegram session expired. Please authenticate again.', 'influencer-hq' ) ) );
 		return;
 	}
 
@@ -537,7 +537,7 @@ function ihq_handle_login_telegram_user_ajax() {
 		)
 	);
 	if ( empty( $users ) || empty( $users[0]->ID ) ) {
-		wp_send_json_error( array( 'message' => __( 'No account is linked to this Telegram username yet. Please register first.', 'avantage-baccarat' ) ) );
+		wp_send_json_error( array( 'message' => __( 'No account is linked to this Telegram username yet. Please register first.', 'influencer-hq' ) ) );
 		return;
 	}
 

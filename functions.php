@@ -1,10 +1,10 @@
 <?php
 /**
- * Avantage Baccarat functions and definitions
+ * Influencer HQ functions and definitions
  *
  * @link https://developer.wordpress.org/themes/basics/theme-functions/
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 add_filter('wpcf7_autop_or_not', '__return_false');
 if ( ! defined( '_S_VERSION' ) ) {
@@ -19,14 +19,14 @@ if ( ! defined( '_S_VERSION' ) ) {
  * runs before the init hook. The init hook is too late for some features, such
  * as indicating support for post thumbnails.
  */
-function avantage_baccarat_setup() {
+function influencer_hq_setup() {
 	/*
 		* Make theme available for translation.
 		* Translations can be filed in the /languages/ directory.
-		* If you're building a theme based on Avantage Baccarat, use a find and replace
-		* to change 'avantage-baccarat' to the name of your theme in all the template files.
+		* If you're building a theme based on Influencer HQ, use a find and replace
+		* to change 'influencer-hq' to the name of your theme in all the template files.
 		*/
-	load_theme_textdomain( 'avantage-baccarat', get_template_directory() . '/languages' );
+	load_theme_textdomain( 'influencer-hq', get_template_directory() . '/languages' );
 
 	// Add default posts and comments RSS feed links to head.
 	add_theme_support( 'automatic-feed-links' );
@@ -49,7 +49,7 @@ function avantage_baccarat_setup() {
 	// This theme uses wp_nav_menu() in one location.
 	register_nav_menus(
 		array(
-			'menu-1' => esc_html__( 'Primary', 'avantage-baccarat' ),
+			'menu-1' => esc_html__( 'Primary', 'influencer-hq' ),
 		)
 	);
 
@@ -74,7 +74,7 @@ function avantage_baccarat_setup() {
 	add_theme_support(
 		'custom-background',
 		apply_filters(
-			'avantage_baccarat_custom_background_args',
+			'influencer_hq_custom_background_args',
 			array(
 				'default-color' => 'ffffff',
 				'default-image' => '',
@@ -100,7 +100,7 @@ function avantage_baccarat_setup() {
 		)
 	);
 }
-add_action( 'after_setup_theme', 'avantage_baccarat_setup' );
+add_action( 'after_setup_theme', 'influencer_hq_setup' );
 
 /**
  * Set the content width in pixels, based on the theme's design and stylesheet.
@@ -109,22 +109,22 @@ add_action( 'after_setup_theme', 'avantage_baccarat_setup' );
  *
  * @global int $content_width
  */
-function avantage_baccarat_content_width() {
-	$GLOBALS['content_width'] = apply_filters( 'avantage_baccarat_content_width', 640 );
+function influencer_hq_content_width() {
+	$GLOBALS['content_width'] = apply_filters( 'influencer_hq_content_width', 640 );
 }
-add_action( 'after_setup_theme', 'avantage_baccarat_content_width', 0 );
+add_action( 'after_setup_theme', 'influencer_hq_content_width', 0 );
 
 /**
  * Register widget area.
  *
  * @link https://developer.wordpress.org/themes/functionality/sidebars/#registering-a-sidebar
  */
-function avantage_baccarat_widgets_init() {
+function influencer_hq_widgets_init() {
 	register_sidebar(
 		array(
-			'name'          => esc_html__( 'Sidebar', 'avantage-baccarat' ),
+			'name'          => esc_html__( 'Sidebar', 'influencer-hq' ),
 			'id'            => 'sidebar-1',
-			'description'   => esc_html__( 'Add widgets here.', 'avantage-baccarat' ),
+			'description'   => esc_html__( 'Add widgets here.', 'influencer-hq' ),
 			'before_widget' => '<section id="%1$s" class="widget %2$s">',
 			'after_widget'  => '</section>',
 			'before_title'  => '<h2 class="widget-title">',
@@ -132,21 +132,21 @@ function avantage_baccarat_widgets_init() {
 		)
 	);
 }
-add_action( 'widgets_init', 'avantage_baccarat_widgets_init' );
+add_action( 'widgets_init', 'influencer_hq_widgets_init' );
 
 /**
  * Enqueue scripts and styles.
  */
-function avantage_baccarat_scripts() {
-	wp_enqueue_style( 'avantage-baccarat-style', get_stylesheet_uri(), array(), _S_VERSION );
-	wp_style_add_data( 'avantage-baccarat-style', 'rtl', 'replace' );
+function influencer_hq_scripts() {
+	wp_enqueue_style( 'influencer-hq-style', get_stylesheet_uri(), array(), _S_VERSION );
+	wp_style_add_data( 'influencer-hq-style', 'rtl', 'replace' );
 
 	// Enqueue Bootstrap CSS
 	wp_enqueue_style( 'bootstrap-css', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css', array(), '5.3.0' );
 
-	wp_enqueue_script( 'avantage-baccarat-navigation', get_template_directory_uri() . '/js/navigation.js', array(), _S_VERSION, true );
+	wp_enqueue_script( 'influencer-hq-navigation', get_template_directory_uri() . '/js/navigation.js', array(), _S_VERSION, true );
 	
-	wp_localize_script( 'avantage-baccarat-navigation', 'myAjax', [
+	wp_localize_script( 'influencer-hq-navigation', 'myAjax', [
         'ajax_url' => admin_url( 'admin-ajax.php' )
     ]);
 	// Enqueue Bootstrap JS
@@ -164,42 +164,42 @@ function avantage_baccarat_scripts() {
 		wp_enqueue_script( 'comment-reply' );
 	}
 }
-add_action( 'wp_enqueue_scripts', 'avantage_baccarat_scripts' );
+add_action( 'wp_enqueue_scripts', 'influencer_hq_scripts' );
 
 /**
  * Game Portal URL — user profile field
  * Stored in user meta as 'hq_game_url'.
  * Leave blank to use the theme default URL.
  */
-function avantage_baccarat_game_url_profile_field( $user ) {
+function influencer_hq_game_url_profile_field( $user ) {
 	$value = get_user_meta( $user->ID, 'hq_game_url', true );
 	?>
-	<h3><?php esc_html_e( 'Game Portal Settings', 'avantage-baccarat' ); ?></h3>
+	<h3><?php esc_html_e( 'Game Portal Settings', 'influencer-hq' ); ?></h3>
 	<table class="form-table">
 		<tr>
-			<th><label for="hq_game_url"><?php esc_html_e( 'Game Portal URL', 'avantage-baccarat' ); ?></label></th>
+			<th><label for="hq_game_url"><?php esc_html_e( 'Game Portal URL', 'influencer-hq' ); ?></label></th>
 			<td>
 				<input type="url" name="hq_game_url" id="hq_game_url"
 					value="<?php echo esc_attr( $value ); ?>"
 					class="regular-text" />
-				<p class="description"><?php esc_html_e( 'Override the base game portal URL for this user. Leave blank to use the default.', 'avantage-baccarat' ); ?></p>
+				<p class="description"><?php esc_html_e( 'Override the base game portal URL for this user. Leave blank to use the default.', 'influencer-hq' ); ?></p>
 			</td>
 		</tr>
 	</table>
 	<?php
 }
-add_action( 'show_user_profile', 'avantage_baccarat_game_url_profile_field' );
-add_action( 'edit_user_profile', 'avantage_baccarat_game_url_profile_field' );
+add_action( 'show_user_profile', 'influencer_hq_game_url_profile_field' );
+add_action( 'edit_user_profile', 'influencer_hq_game_url_profile_field' );
 
-function avantage_baccarat_save_game_url_profile_field( $user_id ) {
+function influencer_hq_save_game_url_profile_field( $user_id ) {
 	if ( ! current_user_can( 'edit_user', $user_id ) ) {
 		return;
 	}
 	$url = isset( $_POST['hq_game_url'] ) ? esc_url_raw( wp_unslash( $_POST['hq_game_url'] ) ) : '';
 	update_user_meta( $user_id, 'hq_game_url', $url );
 }
-add_action( 'personal_options_update',  'avantage_baccarat_save_game_url_profile_field' );
-add_action( 'edit_user_profile_update', 'avantage_baccarat_save_game_url_profile_field' );
+add_action( 'personal_options_update',  'influencer_hq_save_game_url_profile_field' );
+add_action( 'edit_user_profile_update', 'influencer_hq_save_game_url_profile_field' );
 
 function avantage_save_hq_game_url() {
 	check_ajax_referer( 'settings_save_nonce', 'nonce' );
@@ -538,38 +538,38 @@ function ihq_calendar( array $occupied = [], array $details = [] ) {
  */
 function register_live_appearance_post_type() {
     $labels = array(
-        'name'                  => _x('Live Appearances', 'Post Type General Name', 'avantage-baccarat'),
-        'singular_name'         => _x('Live Appearance', 'Post Type Singular Name', 'avantage-baccarat'),
-        'menu_name'             => __('Live Appearances', 'avantage-baccarat'),
-        'name_admin_bar'        => __('Live Appearance', 'avantage-baccarat'),
-        'archives'              => __('Live Appearance Archives', 'avantage-baccarat'),
-        'attributes'            => __('Live Appearance Attributes', 'avantage-baccarat'),
-        'parent_item_colon'     => __('Parent Live Appearance:', 'avantage-baccarat'),
-        'all_items'             => __('All Live Appearances', 'avantage-baccarat'),
-        'add_new_item'          => __('Add New Live Appearance', 'avantage-baccarat'),
-        'add_new'               => __('Add New', 'avantage-baccarat'),
-        'new_item'              => __('New Live Appearance', 'avantage-baccarat'),
-        'edit_item'             => __('Edit Live Appearance', 'avantage-baccarat'),
-        'update_item'           => __('Update Live Appearance', 'avantage-baccarat'),
-        'view_item'             => __('View Live Appearance', 'avantage-baccarat'),
-        'view_items'            => __('View Live Appearances', 'avantage-baccarat'),
-        'search_items'          => __('Search Live Appearance', 'avantage-baccarat'),
-        'not_found'             => __('Not found', 'avantage-baccarat'),
-        'not_found_in_trash'    => __('Not found in Trash', 'avantage-baccarat'),
-        'featured_image'        => __('Featured Image', 'avantage-baccarat'),
-        'set_featured_image'    => __('Set featured image', 'avantage-baccarat'),
-        'remove_featured_image' => __('Remove featured image', 'avantage-baccarat'),
-        'use_featured_image'    => __('Use as featured image', 'avantage-baccarat'),
-        'insert_into_item'      => __('Insert into live appearance', 'avantage-baccarat'),
-        'uploaded_to_this_item' => __('Uploaded to this live appearance', 'avantage-baccarat'),
-        'items_list'            => __('Live appearances list', 'avantage-baccarat'),
-        'items_list_navigation' => __('Live appearances list navigation', 'avantage-baccarat'),
-        'filter_items_list'     => __('Filter live appearances list', 'avantage-baccarat'),
+        'name'                  => _x('Live Appearances', 'Post Type General Name', 'influencer-hq'),
+        'singular_name'         => _x('Live Appearance', 'Post Type Singular Name', 'influencer-hq'),
+        'menu_name'             => __('Live Appearances', 'influencer-hq'),
+        'name_admin_bar'        => __('Live Appearance', 'influencer-hq'),
+        'archives'              => __('Live Appearance Archives', 'influencer-hq'),
+        'attributes'            => __('Live Appearance Attributes', 'influencer-hq'),
+        'parent_item_colon'     => __('Parent Live Appearance:', 'influencer-hq'),
+        'all_items'             => __('All Live Appearances', 'influencer-hq'),
+        'add_new_item'          => __('Add New Live Appearance', 'influencer-hq'),
+        'add_new'               => __('Add New', 'influencer-hq'),
+        'new_item'              => __('New Live Appearance', 'influencer-hq'),
+        'edit_item'             => __('Edit Live Appearance', 'influencer-hq'),
+        'update_item'           => __('Update Live Appearance', 'influencer-hq'),
+        'view_item'             => __('View Live Appearance', 'influencer-hq'),
+        'view_items'            => __('View Live Appearances', 'influencer-hq'),
+        'search_items'          => __('Search Live Appearance', 'influencer-hq'),
+        'not_found'             => __('Not found', 'influencer-hq'),
+        'not_found_in_trash'    => __('Not found in Trash', 'influencer-hq'),
+        'featured_image'        => __('Featured Image', 'influencer-hq'),
+        'set_featured_image'    => __('Set featured image', 'influencer-hq'),
+        'remove_featured_image' => __('Remove featured image', 'influencer-hq'),
+        'use_featured_image'    => __('Use as featured image', 'influencer-hq'),
+        'insert_into_item'      => __('Insert into live appearance', 'influencer-hq'),
+        'uploaded_to_this_item' => __('Uploaded to this live appearance', 'influencer-hq'),
+        'items_list'            => __('Live appearances list', 'influencer-hq'),
+        'items_list_navigation' => __('Live appearances list navigation', 'influencer-hq'),
+        'filter_items_list'     => __('Filter live appearances list', 'influencer-hq'),
     );
     
     $args = array(
-        'label'                 => __('Live Appearance', 'avantage-baccarat'),
-        'description'           => __('Live appearance events and performances', 'avantage-baccarat'),
+        'label'                 => __('Live Appearance', 'influencer-hq'),
+        'description'           => __('Live appearance events and performances', 'influencer-hq'),
         'labels'                => $labels,
         'supports'              => array('title', 'editor', 'excerpt', 'author', 'thumbnail', 'comments', 'revisions', 'custom-fields'),
         'taxonomies'            => array('category', 'post_tag'),
@@ -599,7 +599,7 @@ add_action('init', 'register_live_appearance_post_type', 0);
 function add_live_appearance_meta_boxes() {
     add_meta_box(
         'live_appearance_details',
-        __('Live Appearance Details', 'avantage-baccarat'),
+        __('Live Appearance Details', 'influencer-hq'),
         'live_appearance_meta_box_callback',
         'live_appearance',
         'normal',
@@ -661,13 +661,13 @@ function live_appearance_meta_box_callback($post) {
     // Submitted by (read-only)
     $user = $user_id ? get_userdata( $user_id ) : null;
     echo '<tr>';
-    echo '<th>' . __( 'Submitted By', 'avantage-baccarat' ) . '</th>';
+    echo '<th>' . __( 'Submitted By', 'influencer-hq' ) . '</th>';
     echo '<td>' . ( $user ? esc_html( $user->display_name . ' (' . $user->user_email . ')' ) : '—' ) . '</td>';
     echo '</tr>';
 
     // Request status
     echo '<tr>';
-    echo '<th><label for="la_request_status_change">' . __( 'Request Status', 'avantage-baccarat' ) . '</label></th>';
+    echo '<th><label for="la_request_status_change">' . __( 'Request Status', 'influencer-hq' ) . '</label></th>';
     echo '<td>';
     echo '<select name="la_request_status_change" id="la_request_status_change">';
     echo '<option value="pending"'   . selected( $la_status, 'pending',   false ) . '>Pending</option>';
@@ -697,7 +697,7 @@ function live_appearance_meta_box_callback($post) {
     }
 
     echo '<tr>';
-    echo '<th>' . __( 'Appearance URL', 'avantage-baccarat' ) . '</th>';
+    echo '<th>' . __( 'Appearance URL', 'influencer-hq' ) . '</th>';
     echo '<td>';
     echo $la_url ? '<a href="' . esc_url( $la_url ) . '" target="_blank">' . esc_html( $la_url ) . '</a>' : '—';
     echo '</td>';
@@ -705,7 +705,7 @@ function live_appearance_meta_box_callback($post) {
 
     if ( $la_date_created ) {
         echo '<tr>';
-        echo '<th>' . __( 'Submitted', 'avantage-baccarat' ) . '</th>';
+        echo '<th>' . __( 'Submitted', 'influencer-hq' ) . '</th>';
         echo '<td>' . esc_html( date( 'M j, Y g:i A', strtotime( $la_date_created ) ) ) . '</td>';
         echo '</tr>';
     }
@@ -744,15 +744,15 @@ function add_live_appearance_admin_columns($columns) {
     $new_columns = array();
     $new_columns['cb']             = $columns['cb'];
     $new_columns['title']          = $columns['title'];
-    $new_columns['live_status']    = __( 'Status', 'avantage-baccarat' );
-    $new_columns['live_type']      = __( 'Type', 'avantage-baccarat' );
-    $new_columns['live_user']      = __( 'User', 'avantage-baccarat' );
-    $new_columns['live_day']       = __( 'Day', 'avantage-baccarat' );
-    $new_columns['live_backup_day']= __( 'Backup Day', 'avantage-baccarat' );
-    $new_columns['live_start_time']= __( 'Start Time', 'avantage-baccarat' );
-    $new_columns['live_opponent']  = __( 'Opponent', 'avantage-baccarat' );
-    $new_columns['live_url']       = __( 'URL', 'avantage-baccarat' );
-    $new_columns['live_created']   = __( 'Submitted', 'avantage-baccarat' );
+    $new_columns['live_status']    = __( 'Status', 'influencer-hq' );
+    $new_columns['live_type']      = __( 'Type', 'influencer-hq' );
+    $new_columns['live_user']      = __( 'User', 'influencer-hq' );
+    $new_columns['live_day']       = __( 'Day', 'influencer-hq' );
+    $new_columns['live_backup_day']= __( 'Backup Day', 'influencer-hq' );
+    $new_columns['live_start_time']= __( 'Start Time', 'influencer-hq' );
+    $new_columns['live_opponent']  = __( 'Opponent', 'influencer-hq' );
+    $new_columns['live_url']       = __( 'URL', 'influencer-hq' );
+    $new_columns['live_created']   = __( 'Submitted', 'influencer-hq' );
     $new_columns['date']           = $columns['date'];
     return $new_columns;
 }
@@ -782,7 +782,7 @@ function display_live_appearance_admin_columns($column, $post_id) {
                 if ($user) {
                     echo esc_html($user->display_name . ' (' . $user->user_email . ')');
                 } else {
-                    echo __('User not found', 'avantage-baccarat');
+                    echo __('User not found', 'influencer-hq');
                 }
             } else {
                 echo '—';

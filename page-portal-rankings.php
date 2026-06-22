@@ -3,7 +3,7 @@
  * Template Name: Portal Rankings
  * Description: A custom template for displaying the rankings leaderboard.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 get_header();
 

@@ -3,7 +3,7 @@
  * Template Name: Portal Profile
  * Description: A custom template for displaying user profile and statistics.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 get_header();
 

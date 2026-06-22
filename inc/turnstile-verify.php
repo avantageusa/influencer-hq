@@ -5,7 +5,7 @@
  * Keys default below when not set in wp-config.php (allows overriding per environment).
  * For production, prefer wp-config.php defines so secrets stay out of the theme tree if possible.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

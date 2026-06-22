@@ -3,7 +3,7 @@
  * Template Name: Lander
  * Description: Expanded landing page — Figma design 37031-3140.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 add_action( 'wp_enqueue_scripts', function () {
@@ -66,17 +66,17 @@ $ihq_telegram_client_id    = 0;
 if ( defined( 'IHQ_TELEGRAM_LOGIN_CLIENT_ID' ) && preg_match( '/^\d+$/', (string) IHQ_TELEGRAM_LOGIN_CLIENT_ID ) ) {
 	$ihq_telegram_client_id = (int) IHQ_TELEGRAM_LOGIN_CLIENT_ID;
 }
-$ihq_modal_telegram_lbl_default = __( 'We\'ll note your @username; code still arrives by email', 'avantage-baccarat' );
+$ihq_modal_telegram_lbl_default = __( 'We\'ll note your @username; code still arrives by email', 'influencer-hq' );
 if ( $ihq_telegram_client_id > 0 ) {
-	$ihq_modal_telegram_lbl_default = __( 'Sign in with Telegram to verify your @username — code still arrives by email', 'avantage-baccarat' );
+	$ihq_modal_telegram_lbl_default = __( 'Sign in with Telegram to verify your @username — code still arrives by email', 'influencer-hq' );
 }
-$ihq_modal_telegram_verified_lbl = __( 'Verified — ', 'avantage-baccarat' );
+$ihq_modal_telegram_verified_lbl = __( 'Verified — ', 'influencer-hq' );
 $ihq_turnstile_site_modal  = '';
 if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_configured() && defined( 'CF_TURNSTILE_SITE_KEY' ) ) {
 	$ihq_turnstile_site_modal = CF_TURNSTILE_SITE_KEY;
 }
 
-$ihq_modal_comm_placeholder = __( 'handle or URL', 'avantage-baccarat' );
+$ihq_modal_comm_placeholder = __( 'handle or URL', 'influencer-hq' );
 $ihq_modal_comm_methods_left  = array(
 	array( 'key' => 'botim', 'label' => 'Botim' ),
 	array( 'key' => 'email', 'label' => 'Email' ),
@@ -96,7 +96,7 @@ $ihq_modal_comm_methods_right = array(
 );
 $ihq_modal_comm_methods_all = array_merge( $ihq_modal_comm_methods_left, $ihq_modal_comm_methods_right );
 
-$ihq_modal_social_placeholder = __( 'handle or URL', 'avantage-baccarat' );
+$ihq_modal_social_placeholder = __( 'handle or URL', 'influencer-hq' );
 $ihq_modal_social_platforms   = array(
 	array( 'key' => 'kick', 'label' => 'Kick' ),
 	array( 'key' => 'facebook', 'label' => 'Facebook' ),
@@ -154,6 +154,13 @@ $ihq_modal_social_platforms   = array(
 #modal-reg-turnstile{display:flex;justify-content:center;margin:16px 0}
 #modal-code-expires-note{font-size:.88rem;color:var(--gl);text-align:center;margin-top:8px}
 .modal-step-err{font-family:'Be Vietnam Pro',sans-serif;font-size:.85rem;color:#f85149;text-align:center;margin:10px 0;min-height:1.2em}
+.ln-concierge-img {
+  width: auto;
+  height: clamp(220px, 28vw, 320px);
+  /* max-width: min(100%, 360px); */
+  object-fit: contain;
+  object-position: center top;
+}
 </style>
 
 <main id="primary" class="site-main">
@@ -177,11 +184,11 @@ $ihq_modal_social_platforms   = array(
       <div class="ln-concierge-center">
         <img class="ln-concierge-img"
              src="<?php echo esc_url( get_template_directory_uri() . '/images/concierge.png' ); ?>"
-             alt="<?php esc_attr_e( 'Executive Concierge', 'avantage-baccarat' ); ?>">
-        <p class="ln-concierge-title"><?php esc_html_e( 'Executive Concierge', 'avantage-baccarat' ); ?></p>
+             alt="<?php esc_attr_e( 'Executive Concierge', 'influencer-hq' ); ?>">
+        <p class="ln-concierge-title"><?php esc_html_e( 'Executive Concierge', 'influencer-hq' ); ?></p>
       </div>
       <div class="ln-concierge-right">
-        <a href="#" class="ln-concierge-ask" id="landerConciergeBtn"><?php esc_html_e( 'Ask Me Anything', 'avantage-baccarat' ); ?></a>
+        <a href="#" class="ln-concierge-ask" id="landerConciergeBtn"><?php esc_html_e( 'Ask Me Anything', 'influencer-hq' ); ?></a>
       </div>
     </div>
   </div>
@@ -189,38 +196,38 @@ $ihq_modal_social_platforms   = array(
   <!-- ═══ OUR BELIEFS (part of hero) ═════════════════════════════ -->
   <div class="ln-section ln-beliefs ln-beliefs--hero">
     <div class="ln-section-center">
-      <h2 class="ln-section-title"><?php esc_html_e( 'Our Beliefs', 'avantage-baccarat' ); ?></h2>
+      <h2 class="ln-section-title"><?php esc_html_e( 'Our Beliefs', 'influencer-hq' ); ?></h2>
     </div>
 
     <div class="ln-beliefs-grid">
       <div class="ln-belief-col">
-        <img src="<?php echo esc_url( get_template_directory_uri() . '/images/lander-icon-left.jpg' ); ?>"
+        <img src="<?php echo esc_url( get_template_directory_uri() . '/images/eqyuty.png' ); ?>"
              alt="" class="ln-belief-icon">
-        <p class="ln-belief-item"><?php esc_html_e( 'Influence deserves more than short-term payouts.', 'avantage-baccarat' ); ?></p>
+        <p class="ln-belief-item"><?php esc_html_e( 'Influence deserves more than short-term payouts.', 'influencer-hq' ); ?></p>
         <?php if ( ! is_user_logged_in() ) : ?>
-          <button type="button" class="btn-arena ln-belief-cta" onclick="openModal()"><?php esc_html_e( 'TELL ME MORE!', 'avantage-baccarat' ); ?></button>
+          <button type="button" class="btn-arena ln-belief-cta" onclick="openModal()"><?php esc_html_e( 'TELL ME MORE!', 'influencer-hq' ); ?></button>
         <?php endif; ?>
       </div>
 
       <div class="ln-belief-col">
-        <img src="<?php echo esc_url( get_template_directory_uri() . '/images/hamburger-icons/icon-equity.png' ); ?>"
+        <img src="<?php echo esc_url( get_template_directory_uri() . '/images/performance.png' ); ?>"
              alt="" class="ln-belief-icon">
-        <p class="ln-belief-item"><?php esc_html_e( 'When your influence grows a platform, you should share in the value created by that growth.', 'avantage-baccarat' ); ?></p>
+        <p class="ln-belief-item"><?php esc_html_e( 'When your influence grows a platform, you should share in the value created by that growth.', 'influencer-hq' ); ?></p>
       </div>
 
       <div class="ln-belief-col">
-        <img src="<?php echo esc_url( get_template_directory_uri() . '/images/lander-icon-right.jpg' ); ?>"
+        <img src="<?php echo esc_url( get_template_directory_uri() . '/images/cert.png' ); ?>"
              alt="" class="ln-belief-icon">
-        <p class="ln-belief-item"><?php esc_html_e( 'Influencers deserve the opportunity to share in ownership.', 'avantage-baccarat' ); ?></p>
+        <p class="ln-belief-item"><?php esc_html_e( 'Influencers deserve the opportunity to share in ownership.', 'influencer-hq' ); ?></p>
         <?php if ( ! is_user_logged_in() ) : ?>
-          <button type="button" class="btn-arena ln-belief-cta" onclick="openModal()"><?php esc_html_e( 'COUNT ME IN!', 'avantage-baccarat' ); ?></button>
+          <button type="button" class="btn-arena ln-belief-cta" onclick="openModal()"><?php esc_html_e( 'COUNT ME IN!', 'influencer-hq' ); ?></button>
         <?php endif; ?>
       </div>
     </div>
 
     <?php if ( is_user_logged_in() ) : ?>
       <div class="ln-hero-logged-in-cta">
-        <a class="btn-arena" href="<?php echo esc_url( home_url( '/portal/portal-home/' ) ); ?>"><?php esc_html_e( 'Go to portal', 'avantage-baccarat' ); ?></a>
+        <a class="btn-arena" href="<?php echo esc_url( home_url( '/portal/portal-home/' ) ); ?>"><?php esc_html_e( 'Go to portal', 'influencer-hq' ); ?></a>
       </div>
     <?php endif; ?>
   </div>
@@ -264,7 +271,7 @@ $ihq_modal_social_platforms   = array(
   <div class="ln-story">
     <img class="ln-story-img"
          src="<?php echo esc_url( get_template_directory_uri() . '/images/bts.jpg' ); ?>"
-         alt="<?php esc_attr_e( 'BTS', 'avantage-baccarat' ); ?>">
+         alt="<?php esc_attr_e( 'BTS', 'influencer-hq' ); ?>">
     <div class="ln-story-body">
       <div class="ln-story-name">BTS</div>
       <p class="ln-story-text">
@@ -277,9 +284,9 @@ $ihq_modal_social_platforms   = array(
   <!-- COUNT ME IN CTA -->
   <div class="ln-ownership-cta">
     <?php if ( is_user_logged_in() ) : ?>
-      <a class="btn-arena" href="<?php echo esc_url( home_url( '/portal/portal-home/' ) ); ?>"><?php esc_html_e( 'Go to portal', 'avantage-baccarat' ); ?></a>
+      <a class="btn-arena" href="<?php echo esc_url( home_url( '/portal/portal-home/' ) ); ?>"><?php esc_html_e( 'Go to portal', 'influencer-hq' ); ?></a>
     <?php else : ?>
-      <button type="button" class="btn-arena" onclick="openModal()"><?php esc_html_e( 'COUNT ME IN!', 'avantage-baccarat' ); ?></button>
+      <button type="button" class="btn-arena" onclick="openModal()"><?php esc_html_e( 'COUNT ME IN!', 'influencer-hq' ); ?></button>
     <?php endif; ?>
   </div>
 </div>
@@ -287,18 +294,18 @@ $ihq_modal_social_platforms   = array(
 <!-- ═══ COMPETE TEASER ═══════════════════════════════════════════ -->
 <div class="ln-section ln-compete-teaser">
   <h3 class="ln-compete-headline">
-    <span><?php esc_html_e( 'Don\'t Just Post!', 'avantage-baccarat' ); ?></span>
-    <span><?php esc_html_e( 'Compete!', 'avantage-baccarat' ); ?></span>
+    <span><?php esc_html_e( 'Don\'t Just Post!', 'influencer-hq' ); ?></span>
+    <span><?php esc_html_e( 'Compete!', 'influencer-hq' ); ?></span>
   </h3>
 </div>
 
 <!-- ═══ INTERNATIONAL COMPETITION ════════════════════════════════ -->
 <div class="ln-section ln-intl">
   <div class="ln-section-center">
-    <h2 class="ln-section-title"><?php esc_html_e( 'International Competition', 'avantage-baccarat' ); ?></h2>
+    <h2 class="ln-section-title"><?php esc_html_e( 'International Competition', 'influencer-hq' ); ?></h2>
   </div>
   <p class="ln-intl-sub">
-    <?php esc_html_e( 'Influencers are automatically invited to appear on our partners\' International Competition.', 'avantage-baccarat' ); ?>
+    <?php esc_html_e( 'Influencers are automatically invited to appear on our partners\' International Competition.', 'influencer-hq' ); ?>
   </p>
 
   <div class="ln-intl-stage ln-intl-stage--triple">
@@ -306,20 +313,20 @@ $ihq_modal_social_platforms   = array(
          src="<?php echo esc_url( get_template_directory_uri() . '/images/lander-torch.png' ); ?>"
          alt="">
     <div class="ln-intl-stage-copy">
-      <p><?php esc_html_e( 'Influence deserves a stage worthy of that legacy — and now, it has one.', 'avantage-baccarat' ); ?></p>
-      <p><?php esc_html_e( 'Elegance that never goes out of style. Prestige that spans centuries.', 'avantage-baccarat' ); ?></p>
+      <p><?php esc_html_e( 'Influence deserves a stage worthy of that legacy — and now, it has one.', 'influencer-hq' ); ?></p>
+      <p><?php esc_html_e( 'Elegance that never goes out of style. Prestige that spans centuries.', 'influencer-hq' ); ?></p>
     </div>
     <div class="ln-intl-miami">
       <img src="<?php echo esc_url( get_template_directory_uri() . '/images/lander-miami-worldcup.jpg' ); ?>"
-           alt="<?php esc_attr_e( 'Miami skyline — 2026 World Cup', 'avantage-baccarat' ); ?>">
+           alt="<?php esc_attr_e( 'Miami skyline — 2026 World Cup', 'influencer-hq' ); ?>">
     </div>
   </div>
 
   <div class="ln-comp-cards">
     <div class="ln-comp-col">
       <div class="ln-comp-card ln-comp-card--world">
-        <div class="ln-comp-card-title"><?php esc_html_e( 'World', 'avantage-baccarat' ); ?></div>
-        <p class="ln-comp-card-desc"><?php esc_html_e( 'Compete against Influencers and their followers from across the world. Thursday through Sunday.', 'avantage-baccarat' ); ?></p>
+        <div class="ln-comp-card-title"><?php esc_html_e( 'World', 'influencer-hq' ); ?></div>
+        <p class="ln-comp-card-desc"><?php esc_html_e( 'Compete against Influencers and their followers from across the world. Thursday through Sunday.', 'influencer-hq' ); ?></p>
       </div>
       <div class="ln-rating-row">
         <button type="button" class="ln-rating-btn" data-group="world" data-val="1" onclick="lnRate(this)">1</button>
@@ -330,8 +337,8 @@ $ihq_modal_social_platforms   = array(
 
     <div class="ln-comp-col">
       <div class="ln-comp-card ln-comp-card--comm">
-        <div class="ln-comp-card-title"><?php esc_html_e( 'Community', 'avantage-baccarat' ); ?></div>
-        <p class="ln-comp-card-desc"><?php esc_html_e( 'A weekly competition for all of your followers.', 'avantage-baccarat' ); ?></p>
+        <div class="ln-comp-card-title"><?php esc_html_e( 'Community', 'influencer-hq' ); ?></div>
+        <p class="ln-comp-card-desc"><?php esc_html_e( 'A weekly competition for all of your followers.', 'influencer-hq' ); ?></p>
         <div class="ln-rating-row ln-rating-row--in-card">
           <button type="button" class="ln-rating-btn" data-group="community" data-val="1" onclick="lnRate(this)">1</button>
           <button type="button" class="ln-rating-btn" data-group="community" data-val="2" onclick="lnRate(this)">2</button>
@@ -342,8 +349,8 @@ $ihq_modal_social_platforms   = array(
 
     <div class="ln-comp-col">
       <div class="ln-comp-card ln-comp-card--private">
-        <div class="ln-comp-card-title"><?php esc_html_e( 'Private', 'avantage-baccarat' ); ?></div>
-        <p class="ln-comp-card-desc"><?php esc_html_e( 'Invite a single Influencer friend and their followers to compete against you and your followers in a 24-hour event.', 'avantage-baccarat' ); ?></p>
+        <div class="ln-comp-card-title"><?php esc_html_e( 'Private', 'influencer-hq' ); ?></div>
+        <p class="ln-comp-card-desc"><?php esc_html_e( 'Invite a single Influencer friend and their followers to compete against you and your followers in a 24-hour event.', 'influencer-hq' ); ?></p>
       </div>
       <div class="ln-rating-row">
         <button type="button" class="ln-rating-btn" data-group="private" data-val="1" onclick="lnRate(this)">1</button>
@@ -358,14 +365,14 @@ $ihq_modal_social_platforms   = array(
   <input type="hidden" id="ln-comp-rating-private"   value="">
 
   <p class="ln-rating-note">
-    <?php esc_html_e( 'Rank your level of Interest for each of these competition types.', 'avantage-baccarat' ); ?>
+    <?php esc_html_e( 'Rank your level of Interest for each of these competition types.', 'influencer-hq' ); ?>
   </p>
 
   <div class="ln-intl-cta">
     <?php if ( is_user_logged_in() ) : ?>
-      <a class="btn-arena" href="<?php echo esc_url( home_url( '/portal/portal-home/' ) ); ?>"><?php esc_html_e( 'Go to portal', 'avantage-baccarat' ); ?></a>
+      <a class="btn-arena" href="<?php echo esc_url( home_url( '/portal/portal-home/' ) ); ?>"><?php esc_html_e( 'Go to portal', 'influencer-hq' ); ?></a>
     <?php else : ?>
-      <button type="button" class="btn-arena" onclick="openModal()"><?php esc_html_e( 'COUNT ME IN!', 'avantage-baccarat' ); ?></button>
+      <button type="button" class="btn-arena" onclick="openModal()"><?php esc_html_e( 'COUNT ME IN!', 'influencer-hq' ); ?></button>
     <?php endif; ?>
   </div>
 </div>
@@ -374,39 +381,39 @@ $ihq_modal_social_platforms   = array(
 <div class="ln-section ln-spark-fire">
   <div class="ln-spark-fire-grid">
     <div class="ln-spark-fire-col">
-      <h2 class="ln-spark-fire-title"><?php esc_html_e( 'Influence Is The Spark', 'avantage-baccarat' ); ?></h2>
+      <h2 class="ln-spark-fire-title"><?php esc_html_e( 'Influence Is The Spark', 'influencer-hq' ); ?></h2>
       <div class="ln-stream-card">
-        <img src="<?php echo esc_url( get_template_directory_uri() . '/images/girl-stream.jpg' ); ?>"
-             alt="<?php esc_attr_e( 'Influencer streaming', 'avantage-baccarat' ); ?>">
+        <img src="<?php echo esc_url( get_template_directory_uri() . '/images/girl-stream.png' ); ?>"
+             alt="<?php esc_attr_e( 'Influencer streaming', 'influencer-hq' ); ?>">
       </div>
       <?php if ( is_user_logged_in() ) : ?>
-        <a class="btn-arena dim" href="<?php echo esc_url( home_url( '/portal/portal-home/' ) ); ?>"><?php esc_html_e( 'Go to portal', 'avantage-baccarat' ); ?></a>
+        <a class="btn-arena dim" href="<?php echo esc_url( home_url( '/portal/portal-home/' ) ); ?>"><?php esc_html_e( 'Go to portal', 'influencer-hq' ); ?></a>
       <?php else : ?>
-        <button type="button" class="btn-arena dim" onclick="openModal()"><?php esc_html_e( 'TELL ME MORE!', 'avantage-baccarat' ); ?></button>
+        <button type="button" class="btn-arena dim" onclick="openModal()"><?php esc_html_e( 'TELL ME MORE!', 'influencer-hq' ); ?></button>
       <?php endif; ?>
     </div>
     <div class="ln-spark-fire-col">
-      <h2 class="ln-spark-fire-title"><?php esc_html_e( 'Ownership Is The Fire', 'avantage-baccarat' ); ?></h2>
+      <h2 class="ln-spark-fire-title"><?php esc_html_e( 'Ownership Is The Fire', 'influencer-hq' ); ?></h2>
       <div class="ln-stream-card">
-        <img src="<?php echo esc_url( get_template_directory_uri() . '/images/boy-stream.jpg' ); ?>"
-             alt="<?php esc_attr_e( 'Influencer streaming', 'avantage-baccarat' ); ?>">
+        <img src="<?php echo esc_url( get_template_directory_uri() . '/images/boy-stream.png' ); ?>"
+             alt="<?php esc_attr_e( 'Influencer streaming', 'influencer-hq' ); ?>">
       </div>
       <?php if ( is_user_logged_in() ) : ?>
-        <a class="btn-arena dim" href="<?php echo esc_url( home_url( '/portal/portal-home/' ) ); ?>"><?php esc_html_e( 'Go to portal', 'avantage-baccarat' ); ?></a>
+        <a class="btn-arena dim" href="<?php echo esc_url( home_url( '/portal/portal-home/' ) ); ?>"><?php esc_html_e( 'Go to portal', 'influencer-hq' ); ?></a>
       <?php else : ?>
-        <button type="button" class="btn-arena dim" onclick="openModal()"><?php esc_html_e( 'COUNT ME IN!', 'avantage-baccarat' ); ?></button>
+        <button type="button" class="btn-arena dim" onclick="openModal()"><?php esc_html_e( 'COUNT ME IN!', 'influencer-hq' ); ?></button>
       <?php endif; ?>
     </div>
   </div>
 
   <p class="ln-compete-sub">
-    <?php esc_html_e( 'Rally your followers into action.', 'avantage-baccarat' ); ?><br>
-    <?php esc_html_e( 'Your community competes as a unit — every invite, every interaction earns equity.', 'avantage-baccarat' ); ?>
+    <?php esc_html_e( 'Rally your followers into action.', 'influencer-hq' ); ?><br>
+    <?php esc_html_e( 'Your community competes as a unit — every invite, every interaction earns equity.', 'influencer-hq' ); ?>
   </p>
 
   <p class="ln-equity-note">
-    <?php esc_html_e( 'Streaming is optional, not required.', 'avantage-baccarat' ); ?><br>
-    <?php esc_html_e( 'You can fully participate and earn equity without streaming.', 'avantage-baccarat' ); ?>
+    <?php esc_html_e( 'Streaming is optional, not required.', 'influencer-hq' ); ?><br>
+    <?php esc_html_e( 'You can fully participate and earn equity without streaming.', 'influencer-hq' ); ?>
   </p>
 </div>
 
@@ -442,13 +449,13 @@ $ihq_modal_social_platforms   = array(
     <button class="modal-x" onclick="closeModal()">✕</button>
     <div class="mstep on" id="ms1">
       <div class="modal-comm-thanks" id="modal-comm-thanks" hidden>
-        <p class="modal-comm-thanks-msg"><?php esc_html_e( 'Thank you for your submission, your message was received', 'avantage-baccarat' ); ?></p>
+        <p class="modal-comm-thanks-msg"><?php esc_html_e( 'Thank you for your submission, your message was received', 'influencer-hq' ); ?></p>
       </div>
       <div id="modal-comm-form-body">
-      <h3 class="m-title m-title--conversation"><?php esc_html_e( "Let's Start The Conversation", 'avantage-baccarat' ); ?></h3>
-      <p class="m-lede"><?php esc_html_e( 'Please give us your favorite methods of communication.', 'avantage-baccarat' ); ?></p>
+      <h3 class="m-title m-title--conversation"><?php esc_html_e( "Let's Start The Conversation", 'influencer-hq' ); ?></h3>
+      <p class="m-lede"><?php esc_html_e( 'Please give us your favorite methods of communication.', 'influencer-hq' ); ?></p>
       <div class="modal-comm-pick" id="modal-comm-pick">
-        <div class="modal-comm-cols" role="group" aria-label="<?php esc_attr_e( 'Favorite methods of communication', 'avantage-baccarat' ); ?>">
+        <div class="modal-comm-cols" role="group" aria-label="<?php esc_attr_e( 'Favorite methods of communication', 'influencer-hq' ); ?>">
           <div class="modal-comm-col">
             <?php foreach ( $ihq_modal_comm_methods_left as $ihq_comm ) : ?>
             <label class="modal-comm-option" id="modal-comm-row-<?php echo esc_attr( $ihq_comm['key'] ); ?>" for="modal-comm-<?php echo esc_attr( $ihq_comm['key'] ); ?>">
@@ -498,8 +505,8 @@ $ihq_modal_social_platforms   = array(
       </div>
 
       <div class="modal-social-section modal-comm-deferred">
-        <h4 class="modal-social-heading"><?php esc_html_e( 'Social Media You Post On', 'avantage-baccarat' ); ?></h4>
-        <div class="social-grid" role="group" aria-label="<?php esc_attr_e( 'Social media platforms', 'avantage-baccarat' ); ?>">
+        <h4 class="modal-social-heading"><?php esc_html_e( 'Social Media You Post On', 'influencer-hq' ); ?></h4>
+        <div class="social-grid" role="group" aria-label="<?php esc_attr_e( 'Social media platforms', 'influencer-hq' ); ?>">
           <?php foreach ( $ihq_modal_social_platforms as $ihq_social ) : ?>
           <button
             type="button"
@@ -539,30 +546,30 @@ $ihq_modal_social_platforms   = array(
         </div>
       </div>
 
-      <button type="button" class="send-btn" id="sendbtn" onclick="onModalSubmit()"><?php esc_html_e( 'Continue', 'avantage-baccarat' ); ?></button>
+      <button type="button" class="send-btn" id="sendbtn" onclick="onModalSubmit()"><?php esc_html_e( 'Continue', 'influencer-hq' ); ?></button>
 
-      <p class="m-note"><?php esc_html_e( 'All conversations are private and confidential.', 'avantage-baccarat' ); ?><br><?php esc_html_e( 'We operate across time zones. Expect a reply within minutes.', 'avantage-baccarat' ); ?></p>
+      <p class="m-note"><?php esc_html_e( 'All conversations are private and confidential.', 'influencer-hq' ); ?><br><?php esc_html_e( 'We operate across time zones. Expect a reply within minutes.', 'influencer-hq' ); ?></p>
       </div>
     </div>
 
     <div class="mstep" id="ms-reg">
-      <span class="m-eye"><?php esc_html_e( 'Almost there', 'avantage-baccarat' ); ?></span>
-      <h3 class="m-title"><?php esc_html_e( 'Your details', 'avantage-baccarat' ); ?></h3>
-      <p class="m-sub" style="margin-bottom:20px"><?php esc_html_e( 'Tell us who you are. We\'ll email your 6-digit registration code.', 'avantage-baccarat' ); ?></p>
+      <span class="m-eye"><?php esc_html_e( 'Almost there', 'influencer-hq' ); ?></span>
+      <h3 class="m-title"><?php esc_html_e( 'Your details', 'influencer-hq' ); ?></h3>
+      <p class="m-sub" style="margin-bottom:20px"><?php esc_html_e( 'Tell us who you are. We\'ll email your 6-digit registration code.', 'influencer-hq' ); ?></p>
       <div class="modal-reg-field">
-        <label for="modal-reg-first"><?php esc_html_e( 'First name', 'avantage-baccarat' ); ?> <span style="color:#f85149">*</span></label>
-        <input type="text" id="modal-reg-first" autocomplete="given-name" required maxlength="120" placeholder="<?php esc_attr_e( 'First name', 'avantage-baccarat' ); ?>">
+        <label for="modal-reg-first"><?php esc_html_e( 'First name', 'influencer-hq' ); ?> <span style="color:#f85149">*</span></label>
+        <input type="text" id="modal-reg-first" autocomplete="given-name" required maxlength="120" placeholder="<?php esc_attr_e( 'First name', 'influencer-hq' ); ?>">
       </div>
       <div class="modal-reg-field">
-        <label for="modal-reg-last"><?php esc_html_e( 'Last name', 'avantage-baccarat' ); ?> <span style="color:#f85149">*</span></label>
-        <input type="text" id="modal-reg-last" autocomplete="family-name" required maxlength="120" placeholder="<?php esc_attr_e( 'Last name', 'avantage-baccarat' ); ?>">
+        <label for="modal-reg-last"><?php esc_html_e( 'Last name', 'influencer-hq' ); ?> <span style="color:#f85149">*</span></label>
+        <input type="text" id="modal-reg-last" autocomplete="family-name" required maxlength="120" placeholder="<?php esc_attr_e( 'Last name', 'influencer-hq' ); ?>">
       </div>
       <div class="modal-reg-field">
-        <label for="modal-reg-email"><?php esc_html_e( 'Email', 'avantage-baccarat' ); ?> <span style="color:#f85149">*</span></label>
+        <label for="modal-reg-email"><?php esc_html_e( 'Email', 'influencer-hq' ); ?> <span style="color:#f85149">*</span></label>
         <input type="email" id="modal-reg-email" autocomplete="email" required placeholder="your@email.com">
       </div>
       <div class="modal-reg-field" id="modal-reg-telegram-wrap" style="display:none">
-        <label for="modal-reg-telegram"><?php esc_html_e( 'Telegram username', 'avantage-baccarat' ); ?> <span style="color:#f85149">*</span></label>
+        <label for="modal-reg-telegram"><?php esc_html_e( 'Telegram username', 'influencer-hq' ); ?> <span style="color:#f85149">*</span></label>
         <input type="text" id="modal-reg-telegram" autocomplete="username" maxlength="80" placeholder="@username">
       </div>
       <?php if ( $ihq_turnstile_site_modal !== '' ) : ?>
@@ -570,28 +577,28 @@ $ihq_modal_social_platforms   = array(
       <?php endif; ?>
       <p class="modal-step-err" id="modal-reg-err"></p>
       <div class="modal-reg-actions">
-        <button type="button" class="btn-modal-back" onclick="ihqModalRegBackToMs1()"><?php esc_html_e( 'Back', 'avantage-baccarat' ); ?></button>
-        <button type="button" class="send-btn" id="modal-send-code-btn" onclick="ihqModalRegSendCode()"><?php esc_html_e( 'Send code', 'avantage-baccarat' ); ?></button>
+        <button type="button" class="btn-modal-back" onclick="ihqModalRegBackToMs1()"><?php esc_html_e( 'Back', 'influencer-hq' ); ?></button>
+        <button type="button" class="send-btn" id="modal-send-code-btn" onclick="ihqModalRegSendCode()"><?php esc_html_e( 'Send code', 'influencer-hq' ); ?></button>
       </div>
     </div>
 
     <div class="mstep" id="ms-code">
-      <span class="m-eye"><?php esc_html_e( 'Check your inbox', 'avantage-baccarat' ); ?></span>
-      <h3 class="m-title"><?php esc_html_e( 'You\'re on your way.', 'avantage-baccarat' ); ?></h3>
-      <p class="modal-code-msg"><?php esc_html_e( 'Details coming in shortly. You and your followers are on the road to glory.', 'avantage-baccarat' ); ?></p>
-      <p class="modal-code-msg"><?php esc_html_e( 'Registration code is sent via your provided method of communication.', 'avantage-baccarat' ); ?></p>
-      <p class="modal-code-msg"><strong><?php esc_html_e( 'Enter the 6-digit code.', 'avantage-baccarat' ); ?></strong></p>
+      <span class="m-eye"><?php esc_html_e( 'Check your inbox', 'influencer-hq' ); ?></span>
+      <h3 class="m-title"><?php esc_html_e( 'You\'re on your way.', 'influencer-hq' ); ?></h3>
+      <p class="modal-code-msg"><?php esc_html_e( 'Details coming in shortly. You and your followers are on the road to glory.', 'influencer-hq' ); ?></p>
+      <p class="modal-code-msg"><?php esc_html_e( 'Registration code is sent via your provided method of communication.', 'influencer-hq' ); ?></p>
+      <p class="modal-code-msg"><strong><?php esc_html_e( 'Enter the 6-digit code.', 'influencer-hq' ); ?></strong></p>
       <p class="modal-code-msg" id="modal-code-expires-note"></p>
       <div class="modal-reg-field" style="max-width:280px;margin:20px auto 0">
-        <label for="modal-reg-code"><?php esc_html_e( 'Code', 'avantage-baccarat' ); ?></label>
+        <label for="modal-reg-code"><?php esc_html_e( 'Code', 'influencer-hq' ); ?></label>
         <input type="text" id="modal-reg-code" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="000000" style="text-align:center;letter-spacing:0.4em;font-size:1.35rem">
       </div>
       <p class="modal-step-err" id="modal-code-err"></p>
       <div class="modal-reg-actions">
-        <button type="button" class="btn-modal-back" onclick="show('ms-reg')"><?php esc_html_e( 'Edit details', 'avantage-baccarat' ); ?></button>
-        <button type="button" class="send-btn" id="modal-verify-btn" onclick="ihqModalRegVerifyCode()"><?php esc_html_e( 'Verify & continue', 'avantage-baccarat' ); ?></button>
+        <button type="button" class="btn-modal-back" onclick="show('ms-reg')"><?php esc_html_e( 'Edit details', 'influencer-hq' ); ?></button>
+        <button type="button" class="send-btn" id="modal-verify-btn" onclick="ihqModalRegVerifyCode()"><?php esc_html_e( 'Verify & continue', 'influencer-hq' ); ?></button>
       </div>
-      <p style="font-family:'Be Vietnam Pro',sans-serif;font-size:.78rem;color:var(--warm);text-align:center;margin-top:16px;line-height:1.6"><?php esc_html_e( 'Didn\'t receive it? Go back and tap Send code again.', 'avantage-baccarat' ); ?></p>
+      <p style="font-family:'Be Vietnam Pro',sans-serif;font-size:.78rem;color:var(--warm);text-align:center;margin-top:16px;line-height:1.6"><?php esc_html_e( 'Didn\'t receive it? Go back and tap Send code again.', 'influencer-hq' ); ?></p>
     </div>
   </div>
 </div>

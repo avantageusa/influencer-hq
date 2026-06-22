@@ -3,7 +3,7 @@
  * Template Name: Challenge Handler
  * Description: Handles private challenge invitation links and the create-challenge AJAX action.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 // ── Resolve challenge from token ──────────────────────────────────────────────

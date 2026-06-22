@@ -5,7 +5,7 @@
  *
  * @link https://developer.wordpress.org/themes/basics/template-hierarchy/
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 $ihq_contact_nonce = wp_create_nonce( 'ihq_contact_form_nonce' );
@@ -353,8 +353,8 @@ get_header();
     var turnstileSiteKey = <?php echo wp_json_encode( $ihq_contact_turnstile ); ?>;
     var turnstileWidgetId = null;
 
-    var REQUIRED_MSG = <?php echo wp_json_encode( __( 'This field is required', 'avantage-baccarat' ) ); ?>;
-    var EMAIL_INVALID_MSG = <?php echo wp_json_encode( __( 'Please enter a valid email address', 'avantage-baccarat' ) ); ?>;
+    var REQUIRED_MSG = <?php echo wp_json_encode( __( 'This field is required', 'influencer-hq' ) ); ?>;
+    var EMAIL_INVALID_MSG = <?php echo wp_json_encode( __( 'Please enter a valid email address', 'influencer-hq' ) ); ?>;
 
     var fields = {
         first_name: document.getElementById('contact-first-name'),

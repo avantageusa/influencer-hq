@@ -3,7 +3,7 @@
  * Template Name: Portal Profile
  * Description: A custom template for displaying user profile and settings.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 if ( ! function_exists( 'ihq_parse_platform_handle_pairs' ) ) {
@@ -118,7 +118,7 @@ if ( ! is_array( $social_handles ) )  { $social_handles  = []; }
 
 $platform_handle_raw    = get_user_meta( $user->ID, 'platform_handle', true );
 $platform_handle_pairs  = ihq_parse_platform_handle_pairs( $platform_handle_raw );
-$ihq_profile_social_placeholder = __( 'handle or URL', 'avantage-baccarat' );
+$ihq_profile_social_placeholder = __( 'handle or URL', 'influencer-hq' );
 $ihq_profile_social_platforms   = array(
 	array( 'key' => 'kick', 'label' => 'Kick' ),
 	array( 'key' => 'facebook', 'label' => 'Facebook' ),
@@ -171,7 +171,7 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                 if ( isset( $_GET['ihq_magic_registered'] ) && $_GET['ihq_magic_registered'] === '1' ) :
                 ?>
                 <div class="sett-card" style="margin-bottom:14px;border-color:rgba(40,167,69,.45);">
-                    <p style="margin:0;color:#6fcf97;"><?php esc_html_e( 'Account created from magic link. Welcome!', 'avantage-baccarat' ); ?></p>
+                    <p style="margin:0;color:#6fcf97;"><?php esc_html_e( 'Account created from magic link. Welcome!', 'influencer-hq' ); ?></p>
                 </div>
                 <?php endif; ?>
 
@@ -186,12 +186,12 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                 <?php
                 $ihq_start_session_dump = (string) get_user_meta( $user->ID, 'ihq_oauth_start_session_last', true );
                 if ( $ihq_start_session_dump === '' ) {
-                    $ihq_start_session_dump = __( 'No start-session response saved yet. Log in to refresh.', 'avantage-baccarat' );
+                    $ihq_start_session_dump = __( 'No start-session response saved yet. Log in to refresh.', 'influencer-hq' );
                 }
                 ?>
                 <div class="sett-card" style="margin-bottom:14px;border:1px dashed rgba(184,151,47,.45);">
                     <p style="margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#b8972f;">
-                        <?php esc_html_e( 'OAuth start-session response (last login)', 'avantage-baccarat' ); ?>
+                        <?php esc_html_e( 'OAuth start-session response (last login)', 'influencer-hq' ); ?>
                     </p>
                     <pre style="margin:0;padding:10px 12px;max-height:320px;overflow:auto;font-size:11px;line-height:1.45;color:#ddd;background:rgba(0,0,0,.35);border-radius:6px;white-space:pre-wrap;word-break:break-word;"><?php echo esc_html( $ihq_start_session_dump ); ?></pre>
                 </div>
@@ -246,23 +246,23 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                 </div>
 
                 <div class="sett-referral-block">
-                    <p class="sett-referral-label"><?php esc_html_e( 'Referral Link', 'avantage-baccarat' ); ?></p>
+                    <p class="sett-referral-label"><?php esc_html_e( 'Referral Link', 'influencer-hq' ); ?></p>
                     <div class="sett-referral-wrap">
-                        <div class="sett-referral-url" id="profile-referral-url-display"><?php esc_html_e( 'URL will appear here...', 'avantage-baccarat' ); ?></div>
-                        <button type="button" id="profile-referral-copy-btn" class="sett-referral-copy-btn"><?php esc_html_e( 'copy', 'avantage-baccarat' ); ?></button>
+                        <div class="sett-referral-url" id="profile-referral-url-display"><?php esc_html_e( 'URL will appear here...', 'influencer-hq' ); ?></div>
+                        <button type="button" id="profile-referral-copy-btn" class="sett-referral-copy-btn"><?php esc_html_e( 'copy', 'influencer-hq' ); ?></button>
                     </div>
                 </div>
 
                 <!-- GAMEPLAY VIDEO PROMOTION -->
                 <div class="sett-gameplay-promo">
                     <p class="sett-gameplay-promo-text">
-                        <?php esc_html_e( 'Post a link of your favorite gameplay video stream to enable immediate worldwide promotion by Influencer Headquarters.', 'avantage-baccarat' ); ?>
+                        <?php esc_html_e( 'Post a link of your favorite gameplay video stream to enable immediate worldwide promotion by Influencer Headquarters.', 'influencer-hq' ); ?>
                     </p>
                     <form method="post" action="" class="ihq-gameplay-video-form">
                         <?php wp_nonce_field( 'ihq_gameplay_video_save' ); ?>
                         <div class="sett-card sett-gameplay-promo-card">
                             <div class="sett-row sett-gameplay-promo-row">
-                                <label for="ihq_gameplay_video_url" class="sett-row-lbl"><?php esc_html_e( 'YouTube video', 'avantage-baccarat' ); ?></label>
+                                <label for="ihq_gameplay_video_url" class="sett-row-lbl"><?php esc_html_e( 'YouTube video', 'influencer-hq' ); ?></label>
                                 <div class="sett-row-val sett-gameplay-promo-input-wrap">
                                     <input
                                         type="url"
@@ -274,14 +274,14 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                                         autocomplete="url"
                                     >
                                 </div>
-                                <button type="submit" name="ihq_gameplay_video_submit" class="hq-game-url-save-btn"><?php esc_html_e( 'Save', 'avantage-baccarat' ); ?></button>
+                                <button type="submit" name="ihq_gameplay_video_submit" class="hq-game-url-save-btn"><?php esc_html_e( 'Save', 'influencer-hq' ); ?></button>
                             </div>
                         </div>
                         <?php if ( isset( $_GET['ihq_video_saved'] ) ) : ?>
-                            <p class="sett-gameplay-promo-feedback sett-gameplay-promo-feedback--ok">&#10003; <?php esc_html_e( 'Saved.', 'avantage-baccarat' ); ?></p>
+                            <p class="sett-gameplay-promo-feedback sett-gameplay-promo-feedback--ok">&#10003; <?php esc_html_e( 'Saved.', 'influencer-hq' ); ?></p>
                         <?php endif; ?>
                         <?php if ( isset( $_GET['ihq_video_err'] ) ) : ?>
-                            <p class="sett-gameplay-promo-feedback sett-gameplay-promo-feedback--err"><?php esc_html_e( 'Enter a valid YouTube link, or clear the field and save.', 'avantage-baccarat' ); ?></p>
+                            <p class="sett-gameplay-promo-feedback sett-gameplay-promo-feedback--err"><?php esc_html_e( 'Enter a valid YouTube link, or clear the field and save.', 'influencer-hq' ); ?></p>
                         <?php endif; ?>
                     </form>
                     <?php if ( $gameplay_yt_id !== '' ) : ?>
@@ -299,7 +299,7 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                             <iframe
                                 class="sett-gameplay-embed"
                                 src="<?php echo esc_url( $embed_src ); ?>"
-                                title="<?php echo esc_attr__( 'Gameplay video preview', 'avantage-baccarat' ); ?>"
+                                title="<?php echo esc_attr__( 'Gameplay video preview', 'influencer-hq' ); ?>"
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                                 allowfullscreen
                                 loading="lazy"
@@ -316,19 +316,19 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
 
                 <div class="sett-card">
                     <div class="sett-row sett-portal-username-row" id="portal-username-setup-zone">
-                        <label for="portal-username-input" class="sett-row-lbl"><?php esc_html_e( 'Your username', 'avantage-baccarat' ); ?></label>
+                        <label for="portal-username-input" class="sett-row-lbl"><?php esc_html_e( 'Your username', 'influencer-hq' ); ?></label>
                         <div class="sett-row-val sett-portal-username-val">
                             <input
                                 type="text"
                                 id="portal-username-input"
                                 class="hq-game-url-input sett-portal-username-input"
                                 value="<?php echo esc_attr( $portal_username ); ?>"
-                                placeholder="<?php esc_attr_e( 'Choose your username', 'avantage-baccarat' ); ?>"
+                                placeholder="<?php esc_attr_e( 'Choose your username', 'influencer-hq' ); ?>"
                                 autocomplete="username"
                                 maxlength="30"
                                 spellcheck="false"
                             >
-                            <button type="button" id="portal-username-save-btn" class="hq-game-url-save-btn"><?php esc_html_e( 'Save', 'avantage-baccarat' ); ?></button>
+                            <button type="button" id="portal-username-save-btn" class="hq-game-url-save-btn"><?php esc_html_e( 'Save', 'influencer-hq' ); ?></button>
                         </div>
                     </div>
                     <p class="sett-portal-username-feedback sett-portal-username-feedback--ok" id="portal-username-ok" hidden></p>
@@ -386,14 +386,14 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
 
                 <!-- SOCIAL MEDIA (from registration platform_handle) -->
                 <div class="sett-section-head sett-section-head--comm" id="socialMediaHead" style="cursor:pointer;">
-                    <span class="sett-section-title"><?php esc_html_e( 'Social Media You Post On', 'avantage-baccarat' ); ?></span>
-                    <span class="sett-hint"><span class="sett-hint-text"><?php esc_html_e( 'Click a platform, then enter handle or URL', 'avantage-baccarat' ); ?></span></span>
+                    <span class="sett-section-title"><?php esc_html_e( 'Social Media You Post On', 'influencer-hq' ); ?></span>
+                    <span class="sett-hint"><span class="sett-hint-text"><?php esc_html_e( 'Click a platform, then enter handle or URL', 'influencer-hq' ); ?></span></span>
                     <span class="sett-arrow" id="socialMediaArrow">▼</span>
                 </div>
 
                 <div id="socialMediaBody">
                     <div class="sett-card sett-social-profile-card">
-                        <div class="sett-social-grid" role="group" aria-label="<?php esc_attr_e( 'Social media platforms', 'avantage-baccarat' ); ?>">
+                        <div class="sett-social-grid" role="group" aria-label="<?php esc_attr_e( 'Social media platforms', 'influencer-hq' ); ?>">
                             <?php foreach ( $ihq_profile_social_platforms as $ihq_social ) :
                                 $ihq_social_val = '';
                                 foreach ( $platform_handle_pairs as $pair_label => $pair_val ) {
@@ -426,7 +426,7 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                                 $ihq_social_selected = $ihq_social_val !== '';
                                 $ihq_social_remove_aria = sprintf(
                                     /* translators: %s: social platform name */
-                                    __( 'Remove %s', 'avantage-baccarat' ),
+                                    __( 'Remove %s', 'influencer-hq' ),
                                     $ihq_social['label']
                                 );
                                 ?>
@@ -579,7 +579,7 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
     var _nonce = <?php echo wp_json_encode( $_settings_nonce ); ?>;
     var _referralNonce = <?php echo wp_json_encode( $ihq_referral_nonce ); ?>;
     var _needsPortalUsername = <?php echo $needs_portal_username_setup ? 'true' : 'false'; ?>;
-    var _portalUsernameSetupMsg = <?php echo wp_json_encode( __( 'Please create your username to be able to continue your journey on Influencer HQ', 'avantage-baccarat' ) ); ?>;
+    var _portalUsernameSetupMsg = <?php echo wp_json_encode( __( 'Please create your username to be able to continue your journey on Influencer HQ', 'influencer-hq' ) ); ?>;
 
     /* ── Referral link (same API as Live Appearance page) ── */
     function setProfileReferralUrl(url) {

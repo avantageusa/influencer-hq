@@ -6,7 +6,7 @@
  *
  * @link https://developer.wordpress.org/themes/basics/template-hierarchy/
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 get_header();
 
@@ -208,10 +208,10 @@ get_template_part( 'template-parts/portal-styles' );
                                         <p>Known as the Game of the Kings for over 500 years, Baccarat became Asia's game of choice — and the choice of high rollers worldwide after James Bond introduced it to the modern era more than 40 years ago.</p>
                                         <p>The founder asked himself:</p>
                                         <p>Why couldn't there be an online version of Baccarat that captures the same elegance on display in Macau?</p>
-                                        <p>Avantage Baccarat World Tour and World Championship are the result of that vision.</p>
-                                        <p>But Avantage Baccarat is more than just a game.</p>
+                                        <p>Influencer HQ World Tour and World Championship are the result of that vision.</p>
+                                        <p>But Influencer HQ is more than just a game.</p>
                                         <p>It is a Competition System — built around the Avantage model of International Competition, including Celebrity Followers Leagues and the Influencer Challenge Series — where top Influencers and their followers compete in Private Challenges and the World Challenge Series.</p>
-                                        <p>All of this culminates in the Avantage Baccarat World Championship —</p>
+                                        <p>All of this culminates in the Influencer HQ World Championship —</p>
                                         <p>$100 Million Guaranteed Prize Pool.</p>
                                         <p>Baccarat succeeded in Asia for the same reason it became the game of choice in Monte Carlo, Asia and other elite locations across the world:</p>
                                         <p>Simple rules.</p>

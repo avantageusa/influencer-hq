@@ -5,7 +5,7 @@
  * WordPress auth uses cookies, not PHP sessions. This filter caps cookie TTL when
  * cookies are issued via wp_set_auth_cookie() / wp_signon() for influencer users.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

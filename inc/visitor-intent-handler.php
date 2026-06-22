@@ -2,7 +2,7 @@
 /**
  * Visitor intent cookie flow: test Braze sync + magic-link registration.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -178,14 +178,14 @@ function ihq_visitor_intent_portal_account_url() {
  */
 function ihq_handle_test_registry_braze_ajax() {
 	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_visitor_intent_nonce' ) ) {
-		wp_send_json_error( array( 'message' => __( 'Invalid security token.', 'avantage-baccarat' ) ) );
+		wp_send_json_error( array( 'message' => __( 'Invalid security token.', 'influencer-hq' ) ) );
 		return;
 	}
 
 	$intent_raw = isset( $_POST['intent_json'] ) ? wp_unslash( $_POST['intent_json'] ) : '';
 	$intent     = json_decode( is_string( $intent_raw ) ? $intent_raw : '', true );
 	if ( ! is_array( $intent ) ) {
-		wp_send_json_error( array( 'message' => __( 'Invalid intent data.', 'avantage-baccarat' ) ) );
+		wp_send_json_error( array( 'message' => __( 'Invalid intent data.', 'influencer-hq' ) ) );
 		return;
 	}
 
@@ -242,25 +242,25 @@ function ihq_handle_magic_register_request() {
 
 	$token = sanitize_text_field( wp_unslash( $_GET['ihq_magic_register'] ) );
 	if ( $token === '' ) {
-		wp_die( esc_html__( 'Invalid registration link.', 'avantage-baccarat' ), '', array( 'response' => 400 ) );
+		wp_die( esc_html__( 'Invalid registration link.', 'influencer-hq' ), '', array( 'response' => 400 ) );
 	}
 
 	$redirect_url = ihq_visitor_intent_portal_account_url();
 
 	$record = get_option( 'ihq_magic_reg_' . $token );
 	if ( ! is_array( $record ) || empty( $record['intent'] ) || ! is_array( $record['intent'] ) ) {
-		wp_die( esc_html__( 'This registration link is invalid or has expired.', 'avantage-baccarat' ), '', array( 'response' => 410 ) );
+		wp_die( esc_html__( 'This registration link is invalid or has expired.', 'influencer-hq' ), '', array( 'response' => 410 ) );
 	}
 
 	if ( time() > (int) ( $record['expires'] ?? 0 ) ) {
 		delete_option( 'ihq_magic_reg_' . $token );
-		wp_die( esc_html__( 'This registration link has expired.', 'avantage-baccarat' ), '', array( 'response' => 410 ) );
+		wp_die( esc_html__( 'This registration link has expired.', 'influencer-hq' ), '', array( 'response' => 410 ) );
 	}
 
 	$intent = $record['intent'];
 	$email  = ihq_visitor_intent_extract_email( $intent );
 	if ( $email === '' ) {
-		wp_die( esc_html__( 'No email was found in your saved form data. Please complete the modal with an email address.', 'avantage-baccarat' ), '', array( 'response' => 400 ) );
+		wp_die( esc_html__( 'No email was found in your saved form data. Please complete the modal with an email address.', 'influencer-hq' ), '', array( 'response' => 400 ) );
 	}
 
 	if ( email_exists( $email ) ) {
@@ -293,7 +293,7 @@ function ihq_handle_magic_register_request() {
 	);
 
 	if ( is_wp_error( $user_id ) ) {
-		wp_die( esc_html( $user_id->get_error_message() ), esc_html__( 'Registration failed', 'avantage-baccarat' ), array( 'response' => 500 ) );
+		wp_die( esc_html( $user_id->get_error_message() ), esc_html__( 'Registration failed', 'influencer-hq' ), array( 'response' => 500 ) );
 	}
 
 	foreach ( $ratings as $group => $rating ) {

@@ -4,7 +4,7 @@
  * /portal/* pages (except login, verify, and test API). One pass covers every
  * gated portal route for 1 hour.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -812,7 +812,7 @@ function ihq_portal_turnstile_handle_verify_post() {
 
 	if ( ! function_exists( 'ihq_turnstile_verify_response' ) ) {
 		ihq_portal_turnstile_log( 'verify_post_abort', array( 'reason' => 'turnstile_verify_fn_missing' ) );
-		wp_die( esc_html__( 'Verification is not available.', 'avantage-baccarat' ), '', array( 'response' => 503 ) );
+		wp_die( esc_html__( 'Verification is not available.', 'influencer-hq' ), '', array( 'response' => 503 ) );
 	}
 
 	$token = ihq_portal_turnstile_read_post_token();

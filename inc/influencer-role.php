@@ -491,15 +491,15 @@ function ihq_users_list_add_registered_column( $columns ) {
     foreach ( $columns as $key => $label ) {
         $new_columns[ $key ] = $label;
         if ( $key === 'email' ) {
-            $new_columns['user_registered']     = __( 'Registered', 'avantage-baccarat' );
-            $new_columns['registration_method'] = __( 'Signed up via', 'avantage-baccarat' );
+            $new_columns['user_registered']     = __( 'Registered', 'influencer-hq' );
+            $new_columns['registration_method'] = __( 'Signed up via', 'influencer-hq' );
         }
     }
     if ( ! isset( $new_columns['user_registered'] ) ) {
-        $new_columns['user_registered'] = __( 'Registered', 'avantage-baccarat' );
+        $new_columns['user_registered'] = __( 'Registered', 'influencer-hq' );
     }
     if ( ! isset( $new_columns['registration_method'] ) ) {
-        $new_columns['registration_method'] = __( 'Signed up via', 'avantage-baccarat' );
+        $new_columns['registration_method'] = __( 'Signed up via', 'influencer-hq' );
     }
     return $new_columns;
 }
@@ -533,10 +533,10 @@ function ihq_users_list_render_registered_column( $value, $column_name, $user_id
     if ( $column_name === 'registration_method' ) {
         $method = ihq_resolve_user_registration_method( $user_id );
         if ( $method === 'telegram' ) {
-            return esc_html__( 'Telegram', 'avantage-baccarat' );
+            return esc_html__( 'Telegram', 'influencer-hq' );
         }
         if ( $method === 'email' ) {
-            return esc_html__( 'Email', 'avantage-baccarat' );
+            return esc_html__( 'Email', 'influencer-hq' );
         }
         return '&mdash;';
     }

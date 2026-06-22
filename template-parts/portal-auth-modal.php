@@ -2,7 +2,7 @@
 /**
  * Login / Register modal for portal header (parity with page-portal-home-claude auth overlay).
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -33,7 +33,7 @@ if ( defined( 'IHQ_TELEGRAM_LOGIN_CLIENT_ID' ) && preg_match( '/^\d+$/', (string
 <!-- Auth Modal (Login / Register) — same flow as page-portal-home-claude -->
 <div class="auth-overlay" id="authModal" aria-hidden="true">
 	<div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="portal-auth-modal-title">
-		<button type="button" class="auth-modal-x" onclick="closeAuthModal()" aria-label="<?php esc_attr_e( 'Close', 'avantage-baccarat' ); ?>">✕</button>
+		<button type="button" class="auth-modal-x" onclick="closeAuthModal()" aria-label="<?php esc_attr_e( 'Close', 'influencer-hq' ); ?>">✕</button>
 
 		<?php
 		$welcome = isset( $_GET['welcome'] ) && 'true' === $_GET['welcome'];
@@ -41,21 +41,21 @@ if ( defined( 'IHQ_TELEGRAM_LOGIN_CLIENT_ID' ) && preg_match( '/^\d+$/', (string
 			?>
 			<div style="text-align:center;padding:24px 0">
 				<div style="font-size:2.5rem;color:var(--gl);margin-bottom:16px">◈</div>
-				<h3 id="portal-auth-modal-title" style="font-family:'Cinzel',serif;font-size:1.8rem;color:var(--white);margin-bottom:12px"><?php esc_html_e( 'Welcome to Influencer HQ!', 'avantage-baccarat' ); ?></h3>
-				<p style="font-family:'Be Vietnam Pro',sans-serif;font-size:1rem;color:var(--warm);line-height:1.9"><?php esc_html_e( 'Your account has been successfully created! You\'re now ready to start your journey with us.', 'avantage-baccarat' ); ?></p>
+				<h3 id="portal-auth-modal-title" style="font-family:'Cinzel',serif;font-size:1.8rem;color:var(--white);margin-bottom:12px"><?php esc_html_e( 'Welcome to Influencer HQ!', 'influencer-hq' ); ?></h3>
+				<p style="font-family:'Be Vietnam Pro',sans-serif;font-size:1rem;color:var(--warm);line-height:1.9"><?php esc_html_e( 'Your account has been successfully created! You\'re now ready to start your journey with us.', 'influencer-hq' ); ?></p>
 			</div>
 		<?php else : ?>
 
 			<div class="auth-tabs">
-					<button type="button" class="auth-tab-btn active" id="auth-tab-login" onclick="switchAuthTab('login')"><?php esc_html_e( 'Login', 'avantage-baccarat' ); ?></button>
-					<button type="button" style="display: none;" class="auth-tab-btn" id="auth-tab-register" onclick="switchAuthTab('register')"><?php esc_html_e( 'Register', 'avantage-baccarat' ); ?></button>
+					<button type="button" class="auth-tab-btn active" id="auth-tab-login" onclick="switchAuthTab('login')"><?php esc_html_e( 'Login', 'influencer-hq' ); ?></button>
+					<button type="button" style="display: none;" class="auth-tab-btn" id="auth-tab-register" onclick="switchAuthTab('register')"><?php esc_html_e( 'Register', 'influencer-hq' ); ?></button>
 				</div>
 
 				<div class="auth-pane active" id="auth-pane-login">
 					<div id="auth-login-step-email" style="max-width:480px;margin:0 auto">
-						<p class="auth-section-sub" style="margin-bottom:16px"><?php esc_html_e( 'Enter your email. We’ll send a 6-digit sign-in code.', 'avantage-baccarat' ); ?></p>
+						<p class="auth-section-sub" style="margin-bottom:16px"><?php esc_html_e( 'Enter your email. We’ll send a 6-digit sign-in code.', 'influencer-hq' ); ?></p>
 						<div class="auth-field">
-							<label for="auth-login-email"><?php esc_html_e( 'Email', 'avantage-baccarat' ); ?></label>
+							<label for="auth-login-email"><?php esc_html_e( 'Email', 'influencer-hq' ); ?></label>
 							<input type="email" id="auth-login-email" name="email" required placeholder="your@email.com" autocomplete="email">
 						</div>
 						<?php if ( $ihq_portal_auth_turnstile !== '' ) : ?>
@@ -63,27 +63,27 @@ if ( defined( 'IHQ_TELEGRAM_LOGIN_CLIENT_ID' ) && preg_match( '/^\d+$/', (string
 						<?php endif; ?>
 						<div class="auth-err" id="auth-login-err"></div>
 						<div class="auth-err" id="auth-login-info" style="display:none;background:rgba(40,167,69,.12);border-color:rgba(40,167,69,.35);color:#6fcf97"></div>
-						<button type="button" class="auth-submit-btn" id="auth-login-send-btn" onclick="ihqAuthLoginSendCode()"><?php esc_html_e( 'Send sign-in code', 'avantage-baccarat' ); ?></button>
+						<button type="button" class="auth-submit-btn" id="auth-login-send-btn" onclick="ihqAuthLoginSendCode()"><?php esc_html_e( 'Send sign-in code', 'influencer-hq' ); ?></button>
 						<?php if ( $ihq_portal_telegram_client_id > 0 ) : ?>
 						<div style="display:flex;align-items:center;gap:10px;margin:14px 0">
 							<div style="height:1px;flex:1;background:rgba(240,201,58,.22)"></div>
 							<div style="font-family:'Be Vietnam Pro',sans-serif;font-size:.72rem;letter-spacing:.16em;color:var(--warm)">OR</div>
 							<div style="height:1px;flex:1;background:rgba(240,201,58,.22)"></div>
 						</div>
-						<button type="button" class="auth-submit-btn" id="auth-login-telegram-btn" style="background:transparent;border:1px solid rgba(42,171,238,.55);color:#7ecdf8" onclick="ihqAuthLoginWithTelegram()"><?php esc_html_e( 'Login with Telegram', 'avantage-baccarat' ); ?></button>
+						<button type="button" class="auth-submit-btn" id="auth-login-telegram-btn" style="background:transparent;border:1px solid rgba(42,171,238,.55);color:#7ecdf8" onclick="ihqAuthLoginWithTelegram()"><?php esc_html_e( 'Login with Telegram', 'influencer-hq' ); ?></button>
 						<div class="auth-err" id="auth-login-telegram-err"></div>
 						<?php endif; ?>
 					</div>
 					<div id="auth-login-step-code" style="display:none;max-width:480px;margin:0 auto">
-						<p class="auth-section-sub" style="margin-bottom:16px"><?php esc_html_e( 'Enter the code from your email.', 'avantage-baccarat' ); ?></p>
+						<p class="auth-section-sub" style="margin-bottom:16px"><?php esc_html_e( 'Enter the code from your email.', 'influencer-hq' ); ?></p>
 						<div class="auth-field">
-							<label for="auth-login-code"><?php esc_html_e( '6-digit code', 'avantage-baccarat' ); ?></label>
+							<label for="auth-login-code"><?php esc_html_e( '6-digit code', 'influencer-hq' ); ?></label>
 							<input type="text" id="auth-login-code" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="000000" style="text-align:center;letter-spacing:0.35em;font-size:1.2rem">
 						</div>
 						<p class="auth-section-sub" id="auth-login-code-expires" style="margin-top:8px"></p>
 						<div class="auth-err" id="auth-login-code-err"></div>
-						<button type="button" class="auth-submit-btn" id="auth-login-verify-btn" onclick="ihqAuthLoginVerify()"><?php esc_html_e( 'Verify & sign in', 'avantage-baccarat' ); ?></button>
-						<button type="button" class="auth-submit-btn" style="margin-top:12px;background:transparent;border:1px solid rgba(240,201,58,.45);color:var(--warm)" id="auth-login-back-btn" onclick="ihqAuthLoginBackToEmail()"><?php esc_html_e( 'Back', 'avantage-baccarat' ); ?></button>
+						<button type="button" class="auth-submit-btn" id="auth-login-verify-btn" onclick="ihqAuthLoginVerify()"><?php esc_html_e( 'Verify & sign in', 'influencer-hq' ); ?></button>
+						<button type="button" class="auth-submit-btn" style="margin-top:12px;background:transparent;border:1px solid rgba(240,201,58,.45);color:var(--warm)" id="auth-login-back-btn" onclick="ihqAuthLoginBackToEmail()"><?php esc_html_e( 'Back', 'influencer-hq' ); ?></button>
 					</div>
 				</div>
 
@@ -91,14 +91,14 @@ if ( defined( 'IHQ_TELEGRAM_LOGIN_CLIENT_ID' ) && preg_match( '/^\d+$/', (string
 					<form id="auth-register-form" onsubmit="handleAuthRegister(event)">
 						<input type="hidden" id="auth-competition-preferences" name="competition_preferences" value="">
 
-						<p class="auth-section-sub"><?php esc_html_e( 'Choose the method(s) you\'d like us to use to communicate with you:', 'avantage-baccarat' ); ?></p>
+						<p class="auth-section-sub"><?php esc_html_e( 'Choose the method(s) you\'d like us to use to communicate with you:', 'influencer-hq' ); ?></p>
 
 						<div class="auth-ch-group">
 							<div class="auth-check auth-ch-block">
 								<input type="checkbox" id="auth-ch-line" value="line" onchange="toggleAuthCh('line',this)">
 								<label for="auth-ch-line">LINE</label>
 							</div>
-							<input type="text" class="auth-ch-input" id="auth-chi-line" placeholder="<?php esc_attr_e( 'Your LINE ID', 'avantage-baccarat' ); ?>" data-method="line">
+							<input type="text" class="auth-ch-input" id="auth-chi-line" placeholder="<?php esc_attr_e( 'Your LINE ID', 'influencer-hq' ); ?>" data-method="line">
 
 							<div class="auth-check auth-ch-block">
 								<input type="checkbox" id="auth-ch-telegram" value="telegram" onchange="toggleAuthCh('telegram',this)">
@@ -116,33 +116,33 @@ if ( defined( 'IHQ_TELEGRAM_LOGIN_CLIENT_ID' ) && preg_match( '/^\d+$/', (string
 								<input type="checkbox" id="auth-ch-wechat" value="wechat" onchange="toggleAuthCh('wechat',this)">
 								<label for="auth-ch-wechat">WeChat</label>
 							</div>
-							<input type="text" class="auth-ch-input" id="auth-chi-wechat" placeholder="<?php esc_attr_e( 'Your WeChat ID', 'avantage-baccarat' ); ?>" data-method="wechat">
+							<input type="text" class="auth-ch-input" id="auth-chi-wechat" placeholder="<?php esc_attr_e( 'Your WeChat ID', 'influencer-hq' ); ?>" data-method="wechat">
 						</div>
 
 						<div id="auth-challenge-section" style="display:none">
 							<hr class="auth-section-sep">
-							<h3 class="auth-section-title"><?php esc_html_e( 'Choose Your Path to Lead Global Competition', 'avantage-baccarat' ); ?></h3>
-							<p class="auth-section-sub"><?php esc_html_e( 'After your email is verified, you\'ll enter HQ², your private influencer portal. Choose how you want to lead:', 'avantage-baccarat' ); ?></p>
+							<h3 class="auth-section-title"><?php esc_html_e( 'Choose Your Path to Lead Global Competition', 'influencer-hq' ); ?></h3>
+							<p class="auth-section-sub"><?php esc_html_e( 'After your email is verified, you\'ll enter HQ², your private influencer portal. Choose how you want to lead:', 'influencer-hq' ); ?></p>
 
 							<div class="auth-comp-cards">
 								<div class="auth-comp-card" id="auth-cc-weekend" onclick="selectAuthComp('weekend_world',this)">
 									<input type="radio" name="auth_challenge_type" value="weekend_world" id="auth-comp-weekend">
 									<div class="auth-comp-card-inner">
-										<h4><?php esc_html_e( 'Weekend World Challenge', 'avantage-baccarat' ); ?></h4>
-										<p><?php esc_html_e( 'A global challenge open to all influencers and their followers — a massive international competition.', 'avantage-baccarat' ); ?></p>
+										<h4><?php esc_html_e( 'Weekend World Challenge', 'influencer-hq' ); ?></h4>
+										<p><?php esc_html_e( 'A global challenge open to all influencers and their followers — a massive international competition.', 'influencer-hq' ); ?></p>
 									</div>
 								</div>
 								<div class="auth-comp-card" id="auth-cc-community" onclick="selectAuthComp('community_challenge',this)">
 									<input type="radio" name="auth_challenge_type" value="community_challenge" id="auth-comp-community">
 									<div class="auth-comp-card-inner">
-										<h4><?php esc_html_e( 'Community Challenge', 'avantage-baccarat' ); ?></h4>
-										<p><?php esc_html_e( 'A challenge created by you, for your community, on your schedule — with an option to stream live.', 'avantage-baccarat' ); ?></p>
+										<h4><?php esc_html_e( 'Community Challenge', 'influencer-hq' ); ?></h4>
+										<p><?php esc_html_e( 'A challenge created by you, for your community, on your schedule — with an option to stream live.', 'influencer-hq' ); ?></p>
 									</div>
 								</div>
 								<div class="auth-comp-card" id="auth-cc-later" onclick="selectAuthComp('maybe_later',this)">
 									<input type="radio" name="auth_challenge_type" value="maybe_later" id="auth-comp-later">
 									<div class="auth-comp-card-inner">
-										<h4><?php esc_html_e( 'Thanks, maybe later', 'avantage-baccarat' ); ?></h4>
+										<h4><?php esc_html_e( 'Thanks, maybe later', 'influencer-hq' ); ?></h4>
 									</div>
 								</div>
 							</div>
@@ -150,32 +150,32 @@ if ( defined( 'IHQ_TELEGRAM_LOGIN_CLIENT_ID' ) && preg_match( '/^\d+$/', (string
 
 						<div id="auth-genius-section" style="display:none">
 							<hr class="auth-section-sep">
-							<h3 class="auth-section-title"><?php esc_html_e( 'Meet Genius — Your Partner in Protecting Your Equity Rewards', 'avantage-baccarat' ); ?></h3>
-							<p class="auth-section-sub"><?php esc_html_e( 'Genius automatically manages lifetime Influencer HQ equity in your expanding network. To activate, verify your identity below.', 'avantage-baccarat' ); ?></p>
+							<h3 class="auth-section-title"><?php esc_html_e( 'Meet Genius — Your Partner in Protecting Your Equity Rewards', 'influencer-hq' ); ?></h3>
+							<p class="auth-section-sub"><?php esc_html_e( 'Genius automatically manages lifetime Influencer HQ equity in your expanding network. To activate, verify your identity below.', 'influencer-hq' ); ?></p>
 
 							<div class="auth-field">
-								<label for="auth-reg-email"><?php esc_html_e( 'Email', 'avantage-baccarat' ); ?></label>
+								<label for="auth-reg-email"><?php esc_html_e( 'Email', 'influencer-hq' ); ?></label>
 								<input type="email" id="auth-reg-email" name="email" required placeholder="your@email.com">
 							</div>
 							<div class="auth-field">
-								<label for="auth-reg-first"><?php esc_html_e( 'First Name', 'avantage-baccarat' ); ?></label>
-								<input type="text" id="auth-reg-first" name="first_name" required placeholder="<?php esc_attr_e( 'First Name', 'avantage-baccarat' ); ?>">
+								<label for="auth-reg-first"><?php esc_html_e( 'First Name', 'influencer-hq' ); ?></label>
+								<input type="text" id="auth-reg-first" name="first_name" required placeholder="<?php esc_attr_e( 'First Name', 'influencer-hq' ); ?>">
 							</div>
 							<div class="auth-field">
-								<label for="auth-reg-last"><?php esc_html_e( 'Last Name', 'avantage-baccarat' ); ?></label>
-								<input type="text" id="auth-reg-last" name="last_name" required placeholder="<?php esc_attr_e( 'Last Name', 'avantage-baccarat' ); ?>">
+								<label for="auth-reg-last"><?php esc_html_e( 'Last Name', 'influencer-hq' ); ?></label>
+								<input type="text" id="auth-reg-last" name="last_name" required placeholder="<?php esc_attr_e( 'Last Name', 'influencer-hq' ); ?>">
 							</div>
 							<div class="auth-field">
-								<label for="auth-reg-handle"><?php esc_html_e( 'Favorite Platform Handle', 'avantage-baccarat' ); ?></label>
+								<label for="auth-reg-handle"><?php esc_html_e( 'Favorite Platform Handle', 'influencer-hq' ); ?></label>
 								<input type="text" id="auth-reg-handle" name="platform_handle" placeholder="@yourhandle">
 							</div>
 
 							<div class="auth-check">
 								<input type="checkbox" id="auth-prefer-facial" onchange="document.getElementById('auth-facial-opts').style.display=this.checked?'block':'none'">
-								<label for="auth-prefer-facial"><?php esc_html_e( 'Prefer Facial Recognition?', 'avantage-baccarat' ); ?></label>
+								<label for="auth-prefer-facial"><?php esc_html_e( 'Prefer Facial Recognition?', 'influencer-hq' ); ?></label>
 							</div>
 							<div id="auth-facial-opts" style="display:none;margin-bottom:20px">
-								<p class="auth-section-sub" style="margin-bottom:12px"><?php esc_html_e( 'Sign in with:', 'avantage-baccarat' ); ?></p>
+								<p class="auth-section-sub" style="margin-bottom:12px"><?php esc_html_e( 'Sign in with:', 'influencer-hq' ); ?></p>
 								<div style="display:flex;flex-wrap:wrap;gap:8px">
 									<?php foreach ( array( 'Face ID', 'WeChat Face', 'Alipay Face', 'LINE Face', 'KakaoTalk', 'Biometric ID' ) as $fr ) : ?>
 										<button type="button" style="padding:10px 16px;background:transparent;border:1px solid rgba(240,201,58,.4);color:var(--warm);font-family:'Be Vietnam Pro',sans-serif;font-size:.8rem;cursor:pointer"><?php echo esc_html( $fr ); ?></button>
@@ -184,8 +184,8 @@ if ( defined( 'IHQ_TELEGRAM_LOGIN_CLIENT_ID' ) && preg_match( '/^\d+$/', (string
 							</div>
 
 							<div class="auth-err" id="auth-reg-err"></div>
-							<p style="font-family:'Be Vietnam Pro',sans-serif;font-size:.8rem;color:var(--warm);text-align:center;margin-bottom:16px"><?php esc_html_e( 'Please check your email to verify and activate Genius.', 'avantage-baccarat' ); ?></p>
-							<button type="submit" class="auth-submit-btn" id="auth-reg-btn"><?php esc_html_e( 'Send Verification Email', 'avantage-baccarat' ); ?></button>
+							<p style="font-family:'Be Vietnam Pro',sans-serif;font-size:.8rem;color:var(--warm);text-align:center;margin-bottom:16px"><?php esc_html_e( 'Please check your email to verify and activate Genius.', 'influencer-hq' ); ?></p>
+							<button type="submit" class="auth-submit-btn" id="auth-reg-btn"><?php esc_html_e( 'Send Verification Email', 'influencer-hq' ); ?></button>
 						</div>
 
 					</form>

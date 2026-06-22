@@ -3,7 +3,7 @@
  * Template Name: Portal Live
  * Description: A custom template for displaying the live streaming page.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 get_header();
 
@@ -158,7 +158,7 @@ if ( ! empty( $la_calendar_posts ) ) {
                 <section class="live-intro-text">
                     <p>There are two types of live appearances: KICK Network and on the World Broadcast Network.</p>
                     <p>We believe live competition creates real connection and lasting influence.</p>
-                    <p>Influencers will automatically be eligible to appear in all 52 World Tour weekend events and the year-long $100 Million Avantage Baccarat World Championship competition.</p>
+                    <p>Influencers will automatically be eligible to appear in all 52 World Tour weekend events and the year-long $100 Million Influencer HQ World Championship competition.</p>
                 </section>
 
                     <div class="live-separator"></div>
@@ -579,12 +579,12 @@ if ( ! empty( $la_calendar_posts ) ) {
                                         <ul>
                                             <li>Click your profile picture (top right) → Creator Dashboard.</li>
                                             <li>Upload a profile photo (headshot or "stage" shot).</li>
-                                            <li>Upload a banner (simple background with your name or Avantage Baccarat).</li>
+                                            <li>Upload a banner (simple background with your name or Influencer HQ).</li>
                                             <li>Free design tools: Canva.com or Fotor.com.</li>
                                             <li>Write a short description (2–3 lines):
                                                 <ul>
-                                                    <li>"Live Avantage Baccarat commentary — join me as I call the action in real time."</li>
-                                                    <li>"Official Avantage Baccarat streamer. Watch, follow trends, and feel the energy with me."</li>
+                                                    <li>"Live Influencer HQ commentary — join me as I call the action in real time."</li>
+                                                    <li>"Official Influencer HQ streamer. Watch, follow trends, and feel the energy with me."</li>
                                                 </ul>
                                             </li>
                                         </ul>

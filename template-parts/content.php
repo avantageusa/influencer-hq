@@ -4,7 +4,7 @@
  *
  * @link https://developer.wordpress.org/themes/basics/template-hierarchy/
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 ?>
@@ -22,14 +22,14 @@
 			?>
 			<div class="entry-meta">
 				<?php
-				avantage_baccarat_posted_on();
-				avantage_baccarat_posted_by();
+				influencer_hq_posted_on();
+				influencer_hq_posted_by();
 				?>
 			</div><!-- .entry-meta -->
 		<?php endif; ?>
 	</header><!-- .entry-header -->
 
-	<?php avantage_baccarat_post_thumbnail(); ?>
+	<?php influencer_hq_post_thumbnail(); ?>
 
 	<div class="entry-content">
 		<?php
@@ -37,7 +37,7 @@
 			sprintf(
 				wp_kses(
 					/* translators: %s: Name of current post. Only visible to screen readers */
-					__( 'Continue reading<span class="screen-reader-text"> "%s"</span>', 'avantage-baccarat' ),
+					__( 'Continue reading<span class="screen-reader-text"> "%s"</span>', 'influencer-hq' ),
 					array(
 						'span' => array(
 							'class' => array(),
@@ -50,7 +50,7 @@
 
 		wp_link_pages(
 			array(
-				'before' => '<div class="page-links">' . esc_html__( 'Pages:', 'avantage-baccarat' ),
+				'before' => '<div class="page-links">' . esc_html__( 'Pages:', 'influencer-hq' ),
 				'after'  => '</div>',
 			)
 		);
@@ -58,6 +58,6 @@
 	</div><!-- .entry-content -->
 
 	<footer class="entry-footer">
-		<?php avantage_baccarat_entry_footer(); ?>
+		<?php influencer_hq_entry_footer(); ?>
 	</footer><!-- .entry-footer -->
 </article><!-- #post-<?php the_ID(); ?> -->

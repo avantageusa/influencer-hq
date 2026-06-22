@@ -6,7 +6,7 @@
  *
  * @link https://developer.wordpress.org/themes/basics/template-hierarchy/
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 get_header();
 ?>
@@ -146,9 +146,9 @@ get_header();
                             <p>Over 10 years ago, an Entrepreneur, while traveling across Asia, visited Macau and discovered an oasis of excitement - thousands of players, young and old, in a single grande parlor of a single grande hotel, sitting and standing around Baccarat tables stretching almost as far as the eye could see…all separately cheering and shouting in anticipation of each card received and squeezed in the most ritualistic manner imaginable.</p>
                             <p>The game is Baccarat — Known as the Game of the Kings for over 500 years — Baccarat had become Asia's game of choice and the choice of high rollers across the world about the time James Bond introduced the game to the modern world over 40 years ago.</p>
                             <p>The founder asked himself, "why couldn't there be an on-line version of Baccarat that captures the same elegance on display in Macau?"</p>
-                            <p>Avantage Baccarat World Tour and World Championship official launch is the result of our founder's love for the game.</p>
-                            <p>But Avantage Baccarat is more than just a game…it's a Competition System built around the Avantage model of International Competition including Celebrity Followers Leagues and the Influencer Challenge Series, where top Influencers and their followers square off against each other in both Private Challenges and the World Challenge Series.</p>
-                            <p>All of this culminates with the Avantage Baccarat World Championship, which guarantees a prize pool of $100 Million.</p>
+                            <p>Influencer HQ World Tour and World Championship official launch is the result of our founder's love for the game.</p>
+                            <p>But Influencer HQ is more than just a game…it's a Competition System built around the Avantage model of International Competition including Celebrity Followers Leagues and the Influencer Challenge Series, where top Influencers and their followers square off against each other in both Private Challenges and the World Challenge Series.</p>
+                            <p>All of this culminates with the Influencer HQ World Championship, which guarantees a prize pool of $100 Million.</p>
                             <p>Baccarat succeeded in Asia for the same reason it became the game of choice in Monte Carlo and other elite locations across the world…simple rules, no bluffing and high prestige dating back to the French Royal Court 500 years ago.</p>
                         </div>
                     </div>

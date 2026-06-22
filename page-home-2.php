@@ -3,7 +3,7 @@
  * Template Name: Home Page 2 (Elite HQ Edition)
  * Description: A cinematic, high-end landing page featuring a sticky brand logo, layered atmospheric depth, and full mobile optimization.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 /* ---------------------------------------------------------
@@ -401,7 +401,7 @@ get_header();
     <nav class="site-nav" id="mainNav">
         <div class="container nav-container">
             <a href="<?php echo esc_url(home_url()); ?>" class="brand-logo">
-                <img src="https://influencerhq.co/wp-content/themes/avantage-baccarat/images/logo-hq.png" alt="Influencer HQ Logo">
+                <img src="https://influencerhq.co/wp-content/themes/influencer-hq/images/logo-hq.png" alt="Influencer HQ Logo">
             </a>
         </div>
     </nav>

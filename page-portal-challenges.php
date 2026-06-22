@@ -3,7 +3,7 @@
  * Template Name: Portal Competition
  * Description: A custom template for displaying competition.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 get_header();
 
@@ -68,7 +68,7 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                     </div>
 
                     <div class="comp-lead-avantage-head">
-                        <h3 class="comp-lead-kings">AVANTAGE BACCARAT</h3>
+                        <h3 class="comp-lead-kings">Influencer HQ</h3>
                     </div>
                     <div class="comp-lead-sep"></div>
                     <div class="comp-lead-row"><span>Matchup - 1 Bank vs. 5 Players</span></div>
@@ -132,10 +132,10 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                     </div>
 
                     <div class="comp-lead-sep"></div>
-                    <!-- Avantage Baccarat -->
+                    <!-- Influencer HQ -->
                     <div class="comp-lead-avantage-head">
                         <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="comp-lead-avantage-icon">
-                        <h3 class="comp-lead-game-title">Avantage Baccarat</h3>
+                        <h3 class="comp-lead-game-title">Influencer HQ</h3>
                     </div>
                     <div class="comp-lead-sep"></div>
 
@@ -929,7 +929,7 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
 
                     <div class="portal-leaderboards-iframe-wrap" id="private-leaderboards">
                         <iframe
-                            title="<?php echo esc_attr__( 'Avantage Baccarat leaderboards', 'avantage-baccarat' ); ?>"
+                            title="<?php echo esc_attr__( 'Influencer HQ leaderboards', 'influencer-hq' ); ?>"
                             src="<?php echo esc_url( $portal_leaderboards_iframe_url ); ?>"
                             loading="lazy"
                             referrerpolicy="strict-origin-when-cross-origin"

@@ -4,7 +4,7 @@
  *
  * @link https://developer.wordpress.org/themes/basics/template-hierarchy/
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 ?>
@@ -16,20 +16,20 @@
 		<?php if ( 'post' === get_post_type() ) : ?>
 		<div class="entry-meta">
 			<?php
-			avantage_baccarat_posted_on();
-			avantage_baccarat_posted_by();
+			influencer_hq_posted_on();
+			influencer_hq_posted_by();
 			?>
 		</div><!-- .entry-meta -->
 		<?php endif; ?>
 	</header><!-- .entry-header -->
 
-	<?php avantage_baccarat_post_thumbnail(); ?>
+	<?php influencer_hq_post_thumbnail(); ?>
 
 	<div class="entry-summary">
 		<?php the_excerpt(); ?>
 	</div><!-- .entry-summary -->
 
 	<footer class="entry-footer">
-		<?php avantage_baccarat_entry_footer(); ?>
+		<?php influencer_hq_entry_footer(); ?>
 	</footer><!-- .entry-footer -->
 </article><!-- #post-<?php the_ID(); ?> -->

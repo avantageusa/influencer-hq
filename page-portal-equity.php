@@ -3,7 +3,7 @@
  * Template Name: Portal Equity
  * Description: A custom template for displaying the equity information.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 get_header();
 

@@ -3,7 +3,7 @@
  * Template Name: Portal home mr claude bkp
  * Description: A custom template for displaying the influencer HQ.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 get_header();

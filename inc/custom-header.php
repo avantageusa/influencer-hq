@@ -8,39 +8,39 @@
  *
  * @link https://developer.wordpress.org/themes/functionality/custom-headers/
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 /**
  * Set up the WordPress core custom header feature.
  *
- * @uses avantage_baccarat_header_style()
+ * @uses influencer_hq_header_style()
  */
-function avantage_baccarat_custom_header_setup() {
+function influencer_hq_custom_header_setup() {
 	add_theme_support(
 		'custom-header',
 		apply_filters(
-			'avantage_baccarat_custom_header_args',
+			'influencer_hq_custom_header_args',
 			array(
 				'default-image'      => '',
 				'default-text-color' => '000000',
 				'width'              => 1000,
 				'height'             => 250,
 				'flex-height'        => true,
-				'wp-head-callback'   => 'avantage_baccarat_header_style',
+				'wp-head-callback'   => 'influencer_hq_header_style',
 			)
 		)
 	);
 }
-add_action( 'after_setup_theme', 'avantage_baccarat_custom_header_setup' );
+add_action( 'after_setup_theme', 'influencer_hq_custom_header_setup' );
 
-if ( ! function_exists( 'avantage_baccarat_header_style' ) ) :
+if ( ! function_exists( 'influencer_hq_header_style' ) ) :
 	/**
 	 * Styles the header image and text displayed on the blog.
 	 *
-	 * @see avantage_baccarat_custom_header_setup().
+	 * @see influencer_hq_custom_header_setup().
 	 */
-	function avantage_baccarat_header_style() {
+	function influencer_hq_header_style() {
 		$header_text_color = get_header_textcolor();
 
 		/*

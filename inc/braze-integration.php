@@ -7,7 +7,7 @@
  *   IHQ_BRAZE_TRACK_API_KEY  — users/track
  *   IHQ_BRAZE_REST_ENDPOINT  — default https://rest.iad-05.braze.com
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

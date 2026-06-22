@@ -1,8 +1,8 @@
 <?php
 /**
- * Avantage Baccarat Theme Customizer
+ * Influencer HQ Theme Customizer
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 /**
@@ -10,7 +10,7 @@
  *
  * @param WP_Customize_Manager $wp_customize Theme Customizer object.
  */
-function avantage_baccarat_customize_register( $wp_customize ) {
+function influencer_hq_customize_register( $wp_customize ) {
 	$wp_customize->get_setting( 'blogname' )->transport         = 'postMessage';
 	$wp_customize->get_setting( 'blogdescription' )->transport  = 'postMessage';
 	$wp_customize->get_setting( 'header_textcolor' )->transport = 'postMessage';
@@ -20,26 +20,26 @@ function avantage_baccarat_customize_register( $wp_customize ) {
 			'blogname',
 			array(
 				'selector'        => '.site-title a',
-				'render_callback' => 'avantage_baccarat_customize_partial_blogname',
+				'render_callback' => 'influencer_hq_customize_partial_blogname',
 			)
 		);
 		$wp_customize->selective_refresh->add_partial(
 			'blogdescription',
 			array(
 				'selector'        => '.site-description',
-				'render_callback' => 'avantage_baccarat_customize_partial_blogdescription',
+				'render_callback' => 'influencer_hq_customize_partial_blogdescription',
 			)
 		);
 	}
 }
-add_action( 'customize_register', 'avantage_baccarat_customize_register' );
+add_action( 'customize_register', 'influencer_hq_customize_register' );
 
 /**
  * Render the site title for the selective refresh partial.
  *
  * @return void
  */
-function avantage_baccarat_customize_partial_blogname() {
+function influencer_hq_customize_partial_blogname() {
 	bloginfo( 'name' );
 }
 
@@ -48,14 +48,14 @@ function avantage_baccarat_customize_partial_blogname() {
  *
  * @return void
  */
-function avantage_baccarat_customize_partial_blogdescription() {
+function influencer_hq_customize_partial_blogdescription() {
 	bloginfo( 'description' );
 }
 
 /**
  * Binds JS handlers to make Theme Customizer preview reload changes asynchronously.
  */
-function avantage_baccarat_customize_preview_js() {
-	wp_enqueue_script( 'avantage-baccarat-customizer', get_template_directory_uri() . '/js/customizer.js', array( 'customize-preview' ), _S_VERSION, true );
+function influencer_hq_customize_preview_js() {
+	wp_enqueue_script( 'influencer-hq-customizer', get_template_directory_uri() . '/js/customizer.js', array( 'customize-preview' ), _S_VERSION, true );
 }
-add_action( 'customize_preview_init', 'avantage_baccarat_customize_preview_js' );
+add_action( 'customize_preview_init', 'influencer_hq_customize_preview_js' );

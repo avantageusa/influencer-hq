@@ -2,7 +2,7 @@
 /**
  * Portal username (public-facing handle) for influencer accounts.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -195,18 +195,18 @@ function ihq_normalize_portal_username( $raw ) {
 function ihq_validate_portal_username_for_save( $username, $user_id ) {
 	$user_id = (int) $user_id;
 	if ( $username === '' ) {
-		return new WP_Error( 'empty', __( 'Please enter a username.', 'avantage-baccarat' ) );
+		return new WP_Error( 'empty', __( 'Please enter a username.', 'influencer-hq' ) );
 	}
 	if ( strlen( $username ) < 3 ) {
-		return new WP_Error( 'too_short', __( 'Username must be at least 3 characters.', 'avantage-baccarat' ) );
+		return new WP_Error( 'too_short', __( 'Username must be at least 3 characters.', 'influencer-hq' ) );
 	}
 	if ( strlen( $username ) > 30 ) {
-		return new WP_Error( 'too_long', __( 'Username must be 30 characters or fewer.', 'avantage-baccarat' ) );
+		return new WP_Error( 'too_long', __( 'Username must be 30 characters or fewer.', 'influencer-hq' ) );
 	}
 
 	$reserved = array( 'admin', 'root', 'support', 'help', 'influencerhq', 'influencer' );
 	if ( in_array( $username, $reserved, true ) ) {
-		return new WP_Error( 'reserved', __( 'That username is not available.', 'avantage-baccarat' ) );
+		return new WP_Error( 'reserved', __( 'That username is not available.', 'influencer-hq' ) );
 	}
 
 	$existing = get_users(
@@ -218,7 +218,7 @@ function ihq_validate_portal_username_for_save( $username, $user_id ) {
 		)
 	);
 	if ( ! empty( $existing ) && (int) $existing[0] !== $user_id ) {
-		return new WP_Error( 'taken', __( 'That username is already taken.', 'avantage-baccarat' ) );
+		return new WP_Error( 'taken', __( 'That username is already taken.', 'influencer-hq' ) );
 	}
 
 	return true;
@@ -255,12 +255,12 @@ add_action( 'template_redirect', 'ihq_maybe_redirect_to_portal_username_setup', 
  */
 function ihq_save_portal_username_ajax() {
 	if ( ! check_ajax_referer( 'settings_save_nonce', 'nonce', false ) ) {
-		wp_send_json_error( array( 'message' => __( 'Security check failed.', 'avantage-baccarat' ) ), 403 );
+		wp_send_json_error( array( 'message' => __( 'Security check failed.', 'influencer-hq' ) ), 403 );
 	}
 
 	$user_id = get_current_user_id();
 	if ( ! $user_id || ! ihq_user_has_influencer_role_id( $user_id ) ) {
-		wp_send_json_error( array( 'message' => __( 'Not allowed.', 'avantage-baccarat' ) ), 403 );
+		wp_send_json_error( array( 'message' => __( 'Not allowed.', 'influencer-hq' ) ), 403 );
 	}
 
 	$username = ihq_normalize_portal_username( wp_unslash( $_POST['portal_username'] ?? '' ) );

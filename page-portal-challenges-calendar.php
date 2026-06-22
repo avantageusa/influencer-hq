@@ -3,7 +3,7 @@
  * Template Name: Portal Challenge Calendar
  * Description: A calendar view for private challenge scheduling.
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 get_header();
 get_template_part( 'template-parts/portal-styles' );

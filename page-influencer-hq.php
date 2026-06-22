@@ -6,7 +6,7 @@
  *
  * @link https://developer.wordpress.org/themes/basics/template-hierarchy/
  *
- * @package Avantage_Baccarat
+ * @package influencer-hq
  */
 
 // Initialize errors variable
@@ -336,7 +336,7 @@ get_header();
                                         
                                         <h3 class="text-22pt fw-bold text-yellow mb-3">Modeled After the World Series of Poker</h3>
                                         <p class="fs-5 text-light-gray mb-3">The World Series of Poker (WSOP) is open to anyone in the world. Players can start small and literally win their way into the finals. In 2024, WSOP events paid out over $250 million, with more than $100 million going to the top 20% of the finals.</p>
-                                        <p class="fs-5 text-light-gray mb-5">This combination of accessibility and prestige is exactly what inspired the Avantage Baccarat World Championship.</p>
+                                        <p class="fs-5 text-light-gray mb-5">This combination of accessibility and prestige is exactly what inspired the Influencer HQ World Championship.</p>
                                         
                                         <h3 class="text-22pt fw-bold text-yellow mb-3">Why Baccarat First</h3>
                                         <p class="fs-5 text-light-gray mb-3">At its core is Baccarat:</p>
@@ -358,7 +358,7 @@ get_header();
                                 </div>
                             </div>
 
-                            <!-- TAB 4: AVANTAGE BACCARAT WORLD CHAMPIONSHIP -->
+                            <!-- TAB 4: Influencer HQ WORLD CHAMPIONSHIP -->
                             <div class="tab-pane fade" id="tab4" role="tabpanel" aria-labelledby="tab4-tab">
                                 <div class="hero-tab-content-wrapper row">
                                     
