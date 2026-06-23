@@ -305,6 +305,12 @@ require_once get_template_directory() . '/inc/braze-integration.php';
 require_once get_template_directory() . '/inc/visitor-intent-handler.php';
 
 /**
+ * Portal registry gates (guest privileged actions → Braze registry flow).
+ */
+require_once get_template_directory() . '/inc/conversation-modal.php';
+require_once get_template_directory() . '/inc/registry-gates.php';
+
+/**
  * Portal username (public handle) for influencer accounts.
  */
 require_once get_template_directory() . '/inc/portal-username.php';

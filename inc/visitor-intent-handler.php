@@ -9,6 +9,20 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/**
+ * Whether the current request uses a portal page template.
+ *
+ * @return bool
+ */
+function ihq_is_portal_page_template() {
+	if ( ! is_page() ) {
+		return false;
+	}
+
+	$template = get_page_template_slug();
+	return is_string( $template ) && strpos( $template, 'page-portal-' ) === 0;
+}
+
 /** Cookie name mirrored in js/ihq-visitor-intent.js */
 function ihq_visitor_intent_cookie_name() {
 	return 'ihq_visitor_intent';
@@ -190,6 +204,10 @@ function ihq_handle_test_registry_braze_ajax() {
 	}
 
 	$button_press_url = isset( $_POST['button_press_url'] ) ? esc_url_raw( wp_unslash( $_POST['button_press_url'] ) ) : '';
+	$gate_id          = isset( $_POST['gate_id'] ) ? sanitize_key( wp_unslash( $_POST['gate_id'] ) ) : '';
+	if ( $gate_id !== '' ) {
+		$intent['gate_id'] = $gate_id;
+	}
 	$country_iso      = isset( $_POST['country_iso'] ) ? sanitize_text_field( wp_unslash( $_POST['country_iso'] ) ) : '';
 	if ( $country_iso !== '' ) {
 		$intent['country_iso'] = function_exists( 'ihq_normalize_country_iso_alpha2' )
@@ -311,11 +329,23 @@ function ihq_handle_magic_register_request() {
 add_action( 'template_redirect', 'ihq_handle_magic_register_request', 0 );
 
 /**
- * Enqueue visitor-intent script on lander + /portal/account (Portal Profile template).
+ * Whether visitor-intent JS should load on this request.
+ *
+ * @return bool
+ */
+function ihq_visitor_intent_should_enqueue_script() {
+	if ( is_page_template( 'page-lander.php' ) ) {
+		return true;
+	}
+
+	return ihq_is_portal_page_template();
+}
+
+/**
+ * Enqueue visitor-intent script on lander + all portal page templates.
  */
 function ihq_enqueue_visitor_intent_assets() {
-	// /portal/account uses page-portal-profile.php — not the unused page-portal-account.php shell.
-	if ( ! is_page_template( array( 'page-lander.php', 'page-portal-profile.php' ) ) ) {
+	if ( ! ihq_visitor_intent_should_enqueue_script() ) {
 		return;
 	}
 

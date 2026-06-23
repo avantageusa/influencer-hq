@@ -1639,6 +1639,14 @@ function onModalSubmit() {
     }
     return;
   }
+  if (window.ihqConversationModalOpenedFromGate) {
+    if (typeof window.ihqVisitorIntentMerge === 'function' && typeof window.ihqVisitorIntentCollectFromModal === 'function') {
+      window.ihqVisitorIntentMerge(window.ihqVisitorIntentCollectFromModal());
+    }
+    window.ihqConversationModalOpenedFromGate = false;
+    closeModal();
+    return;
+  }
   if (ihqModalEmailCommSelected()) {
     // Previously: Telegram OAuth gate when Telegram was also checked before ms-reg.
     // var telegramBox = document.getElementById('modal-comm-telegram');

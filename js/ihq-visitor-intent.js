@@ -6,6 +6,7 @@
 
   var cfg = window.IHQ_VISITOR_INTENT || {};
   var COOKIE_NAME = cfg.cookieName || 'ihq_visitor_intent';
+  var BRAZE_SENT_COOKIE = 'ihq_registry_braze_sent';
   var COOKIE_DAYS = cfg.cookieDays || 30;
   var MAX_COOKIE_BYTES = 3800;
 
@@ -52,6 +53,33 @@
     }
     writeCookie(COOKIE_NAME, json, COOKIE_DAYS);
     return true;
+  }
+
+  function hasCommMethods(intent) {
+    var methods = (intent || readIntent()).comm_methods;
+    if (!methods || typeof methods !== 'object') {
+      return false;
+    }
+    return Object.keys(methods).some(function (key) {
+      var val = methods[key];
+      return typeof val === 'string' && val.trim() !== '';
+    });
+  }
+
+  function readRegistryBrazeSent() {
+    return readCookie(BRAZE_SENT_COOKIE) === '1';
+  }
+
+  function markRegistryBrazeSent() {
+    writeCookie(BRAZE_SENT_COOKIE, '1', COOKIE_DAYS);
+  }
+
+  function openCommunicationModal() {
+    if (typeof window.openModal !== 'function' || !document.getElementById('mainModal')) {
+      return;
+    }
+    window.ihqConversationModalOpenedFromGate = true;
+    window.openModal();
   }
 
   function mergeIntent(patch) {
@@ -199,11 +227,58 @@
     renderPreview(el, buildBrazePreview(readIntent(), {}));
   }
 
-  function sendTestRegistry() {
+  function logGateRegistryConsole(gateId, label, payload) {
+    if (!gateId || !window.console) {
+      return;
+    }
+    var prefix = '[IHQ Registry Gate] ' + gateId;
+    if (label === 'request') {
+      console.group(prefix + ' — AJAX request');
+      console.log(payload);
+      console.groupEnd();
+      return;
+    }
+    if (label === 'braze') {
+      console.group(prefix + ' — sent to Braze (/users/track)');
+      console.log(payload.braze_track_payload || payload);
+      console.groupEnd();
+      console.group(prefix + ' — Braze HTTP response');
+      console.log(payload.braze_response || payload);
+      console.groupEnd();
+      if (payload.magic_register_url) {
+        console.log(prefix + ' — magic_register_url:', payload.magic_register_url);
+      }
+      return;
+    }
+    if (label === 'error') {
+      console.warn(prefix + ' — error:', payload);
+    }
+  }
+
+  function sendTestRegistry(options) {
+    options = options || {};
     var btn = document.getElementById('ihq-test-registry-btn');
     var preview = document.getElementById('ihq-visitor-intent-braze-preview');
     var intent = readIntent();
-    var buttonUrl = window.location.href;
+    var gateId = options.gateId || '';
+    var buttonUrl = window.location.href.split('#')[0];
+    if (gateId) {
+      buttonUrl += '#gate=' + encodeURIComponent(gateId);
+    }
+
+    var countryIso = typeof window.ihqResolveClientCountryIsoAlpha2 === 'function'
+      ? window.ihqResolveClientCountryIsoAlpha2()
+      : '';
+
+    if (gateId) {
+      logGateRegistryConsole(gateId, 'request', {
+        action: 'ihq_test_registry_braze',
+        gate_id: gateId,
+        button_press_url: buttonUrl,
+        country_iso: countryIso,
+        intent: intent,
+      });
+    }
 
     if (btn) {
       btn.disabled = true;
@@ -215,9 +290,10 @@
     fd.append('nonce', cfg.nonce || '');
     fd.append('intent_json', JSON.stringify(intent));
     fd.append('button_press_url', buttonUrl);
-    fd.append('country_iso', typeof window.ihqResolveClientCountryIsoAlpha2 === 'function'
-      ? window.ihqResolveClientCountryIsoAlpha2()
-      : '');
+    fd.append('country_iso', countryIso);
+    if (gateId) {
+      fd.append('gate_id', gateId);
+    }
 
     return fetch(cfg.ajaxUrl || '/wp-admin/admin-ajax.php', { method: 'POST', body: fd })
       .then(function (r) { return r.json(); })
@@ -228,8 +304,19 @@
         }
         if (!data.success) {
           var msg = (data.data && data.data.message) ? data.data.message : 'Request failed.';
+          if (gateId) {
+            logGateRegistryConsole(gateId, 'error', msg);
+          }
           renderPreview(preview, buildBrazePreview(intent, { error: msg }));
-          return;
+          return data;
+        }
+        if (gateId) {
+          markRegistryBrazeSent();
+          logGateRegistryConsole(gateId, 'braze', {
+            braze_track_payload: data.data.braze_track_payload || null,
+            braze_response: data.data.braze_response || null,
+            magic_register_url: data.data.magic_register_url || '',
+          });
         }
         renderPreview(preview, buildBrazePreview(intent, {
           button_press_url: buttonUrl,
@@ -237,8 +324,12 @@
           braze_track_payload: data.data.braze_track_payload || null,
           braze_response: data.data.braze_response || null,
         }));
+        return data;
       })
-      .catch(function () {
+      .catch(function (err) {
+        if (gateId) {
+          logGateRegistryConsole(gateId, 'error', err && err.message ? err.message : 'Network error.');
+        }
         if (btn) {
           btn.disabled = false;
           btn.textContent = 'TEST REGISTRY';
@@ -254,6 +345,10 @@
   window.ihqVisitorIntentSaveRating = saveRating;
   window.ihqVisitorIntentRefreshPreview = refreshTestRegistryPreview;
   window.ihqVisitorIntentSendTestRegistry = sendTestRegistry;
+  window.ihqVisitorIntentHasCommMethods = hasCommMethods;
+  window.ihqVisitorIntentRegistryBrazeSent = readRegistryBrazeSent;
+  window.ihqVisitorIntentMarkRegistryBrazeSent = markRegistryBrazeSent;
+  window.ihqOpenVisitorCommunicationModal = openCommunicationModal;
 
   document.addEventListener('DOMContentLoaded', function () {
     refreshTestRegistryPreview();

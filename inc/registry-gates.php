@@ -1,0 +1,63 @@
+<?php
+/**
+ * Portal registry gates (AC#1 / AC#2): guest-only triggers → Braze + magic link flow.
+ *
+ * @package influencer-hq
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+/**
+ * Enqueue gate script on portal pages for guests (depends on visitor-intent).
+ */
+function ihq_enqueue_registry_gates_assets() {
+	if ( ! ihq_is_portal_page_template() || is_user_logged_in() ) {
+		return;
+	}
+
+	$script_path = get_template_directory() . '/js/ihq-registry-gates.js';
+	$version     = file_exists( $script_path ) ? (string) filemtime( $script_path ) : '1';
+
+	$deps = array( 'ihq-visitor-intent' );
+	if ( ! ihq_portal_page_has_inline_conversation_modal() ) {
+		$deps[] = 'ihq-conversation-modal';
+	}
+
+	wp_enqueue_script(
+		'ihq-registry-gates',
+		get_template_directory_uri() . '/js/ihq-registry-gates.js',
+		$deps,
+		$version,
+		true
+	);
+
+	wp_localize_script(
+		'ihq-registry-gates',
+		'IHQ_REGISTRY_GATES',
+		array(
+			'isLoggedIn' => false,
+			'message'    => __( 'Check your selected method of communication to continue to registration process', 'influencer-hq' ),
+		)
+	);
+
+	wp_register_style( 'ihq-registry-gates', false, array(), $version );
+	wp_enqueue_style( 'ihq-registry-gates' );
+	wp_add_inline_style(
+		'ihq-registry-gates',
+		'.ihq-registry-gate-backdrop{position:fixed;inset:0;z-index:10040;background:rgba(8,6,4,.5);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);opacity:0;pointer-events:none;transition:opacity .35s ease;}'
+		. '.ihq-registry-gate-backdrop.is-visible{opacity:1;pointer-events:auto;}'
+		. 'body.ihq-registry-gate-open{overflow:hidden;}'
+		. '.ihq-registry-gate-notice{position:fixed;left:50%;top:50%;z-index:10050;max-width:min(520px,calc(100vw - 32px));padding:28px 48px 24px 24px;border-radius:12px;border:2px solid #b8972f;background:rgba(20,18,13,.98);color:#f5e6c8;font-family:"Be Vietnam Pro",sans-serif;font-size:15px;line-height:1.55;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,.55);transform:translate(-50%,-50%) scale(.96);opacity:0;pointer-events:none;transition:transform .35s ease,opacity .35s ease;}'
+		. '.ihq-registry-gate-notice.is-visible{transform:translate(-50%,-50%) scale(1);opacity:1;pointer-events:auto;}'
+		. '.ihq-registry-gate-notice-text{margin:0;padding:0 8px;}'
+		. '.ihq-registry-gate-notice-close{position:absolute;top:10px;right:12px;width:32px;height:32px;padding:0;border:0;border-radius:6px;background:transparent;color:#e6cfa0;font-size:18px;line-height:1;cursor:pointer;}'
+		. '.ihq-registry-gate-notice-close:hover{color:#fff;background:rgba(255,255,255,.08);}'
+		. 'body.page-template-page-portal-equity-php .equity-card.ihq-gate-collapsed .equity-attribution-grid{display:none;}'
+		. 'body.page-template-page-portal-challenges-php .competition-dropdown.ihq-gate-collapsed .competition-dropdown-body{display:none;}'
+		. 'body.page-template-page-portal-challenges-php .competition-dropdown-header{cursor:pointer;}'
+		. 'body.page-template-page-portal-equity-php .equity-card-header{cursor:pointer;}'
+	);
+}
+add_action( 'wp_enqueue_scripts', 'ihq_enqueue_registry_gates_assets', 30 );
