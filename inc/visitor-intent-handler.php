@@ -97,14 +97,19 @@ function ihq_build_braze_track_payload_for_visitor_intent( array $intent, $butto
 	$last_name    = '';
 	$country_iso  = isset( $intent['country_iso'] ) ? sanitize_text_field( (string) $intent['country_iso'] ) : '';
 
-	$attrs = array(
-		'external_id'              => $external_id,
-		'first_name'               => $first_name,
-		'last_name'                => $last_name,
-		'Language'                 => $country_iso,
-		'visitor_intent_json'      => wp_json_encode( $intent ),
-		'test_registry_button_url' => esc_url_raw( $button_press_url ),
-		'magic_register_url'       => esc_url_raw( $magic_link_url ),
+	$attrs = array_merge(
+		array(
+			'external_id'              => $external_id,
+			'first_name'               => $first_name,
+			'last_name'                => $last_name,
+			'Language'                 => $country_iso,
+			'visitor_intent_json'      => wp_json_encode( $intent ),
+			'test_registry_button_url' => esc_url_raw( $button_press_url ),
+			'magic_register_url'       => esc_url_raw( $magic_link_url ),
+		),
+		function_exists( 'ihq_visitor_intent_braze_attribute_extras' )
+			? ihq_visitor_intent_braze_attribute_extras( $intent )
+			: array()
 	);
 	if ( $email !== '' ) {
 		$attrs['email'] = $email;
@@ -293,6 +298,7 @@ function ihq_handle_magic_register_request() {
 	}
 
 	$comm_methods = isset( $intent['comm_methods'] ) && is_array( $intent['comm_methods'] ) ? $intent['comm_methods'] : array();
+	$social_handles = isset( $intent['social_handles'] ) && is_array( $intent['social_handles'] ) ? $intent['social_handles'] : array();
 	$ratings      = isset( $intent['competition_ratings'] ) && is_array( $intent['competition_ratings'] ) ? $intent['competition_ratings'] : array();
 	$challenge    = isset( $intent['challenge_type'] ) ? sanitize_text_field( (string) $intent['challenge_type'] ) : 'maybe_later';
 	$country_iso  = isset( $intent['country_iso'] ) ? (string) $intent['country_iso'] : '';
@@ -304,6 +310,7 @@ function ihq_handle_magic_register_request() {
 			'last_name'               => '',
 			'platform_handle'         => ihq_visitor_intent_build_platform_handle( $intent ),
 			'comm_methods'            => $comm_methods,
+			'social_handles'          => $social_handles,
 			'challenge_type'          => $challenge,
 			'competition_preferences' => ihq_visitor_intent_competition_preferences_from_ratings( $ratings ),
 			'country_iso'             => $country_iso,

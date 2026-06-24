@@ -195,7 +195,7 @@ function ihq_user_has_influencer_role( $user ) {
 /**
  * Create influencer user + meta + OAuth from pending registration data.
  *
- * @param array $registration_data Keys: email, password (optional — auto-generated if missing/short), first_name, last_name, platform_handle, comm_methods, challenge_type, competition_preferences (optional), country_iso (optional, client ISO 3166-1 alpha-2).
+ * @param array $registration_data Keys: email, password (optional — auto-generated if missing/short), first_name, last_name, platform_handle, comm_methods, social_handles (optional), challenge_type, competition_preferences (optional), country_iso (optional, client ISO 3166-1 alpha-2).
  * @return int|WP_Error User ID or error.
  */
 function ihq_create_influencer_user_from_registration_data( array $registration_data ) {
@@ -208,6 +208,7 @@ function ihq_create_influencer_user_from_registration_data( array $registration_
     $last_name        = isset( $registration_data['last_name'] ) ? $registration_data['last_name'] : '';
     $platform_handle  = isset( $registration_data['platform_handle'] ) ? $registration_data['platform_handle'] : '';
     $comm_methods     = isset( $registration_data['comm_methods'] ) && is_array( $registration_data['comm_methods'] ) ? $registration_data['comm_methods'] : array();
+    $social_handles   = isset( $registration_data['social_handles'] ) && is_array( $registration_data['social_handles'] ) ? $registration_data['social_handles'] : array();
     $challenge_type   = isset( $registration_data['challenge_type'] ) ? $registration_data['challenge_type'] : '';
     $competition_prefs = isset( $registration_data['competition_preferences'] )
         ? ihq_sanitize_competition_preferences_input( (string) $registration_data['competition_preferences'] )
@@ -257,6 +258,9 @@ function ihq_create_influencer_user_from_registration_data( array $registration_
             update_user_meta( $user_id, 'communication_username', $comm_methods[ $first_method ] );
         }
     }
+    if ( ! empty( $social_handles ) ) {
+        update_user_meta( $user_id, '_ihq_social_handles', $social_handles );
+    }
     if ( $telegram_user_id > 0 ) {
         update_user_meta( $user_id, 'telegram_user_id', $telegram_user_id );
     }
@@ -273,7 +277,7 @@ function ihq_create_influencer_user_from_registration_data( array $registration_
     update_user_meta( $user_id, 'email_verified', true );
     update_user_meta( $user_id, 'ihq_oauth_country_iso', ihq_normalize_country_iso_alpha2( $country_iso ) );
 
-    $ihq_oauth_response = ihq_register_oauth_user( $user_id, $first_name, $last_name, $email, $country_iso );
+    $ihq_oauth_response = ihq_register_oauth_user( $user_id, $first_name, $last_name, $email, $country_iso, $comm_methods, $social_handles );
     if ( $ihq_oauth_response && ! empty( $ihq_oauth_response['AccessToken'] ) ) {
         update_user_meta( $user_id, 'ihq_access_token', $ihq_oauth_response['AccessToken'] );
         update_user_meta( $user_id, 'ihq_id_token', $ihq_oauth_response['IdToken'] );
@@ -745,7 +749,15 @@ function ihq_refresh_influencer_oauth_tokens( $user_id, $country_iso = '' ) {
     }
     $first_name = get_user_meta( $user_id, 'first_name', true );
     $last_name  = get_user_meta( $user_id, 'last_name', true );
-    $ihq_data   = ihq_register_oauth_user( $user_id, $first_name, $last_name, $user->user_email, $country_iso );
+    $comm_methods = get_user_meta( $user_id, 'communication_methods', true );
+    if ( ! is_array( $comm_methods ) ) {
+        $comm_methods = array();
+    }
+    $social_handles = get_user_meta( $user_id, '_ihq_social_handles', true );
+    if ( ! is_array( $social_handles ) ) {
+        $social_handles = array();
+    }
+    $ihq_data   = ihq_register_oauth_user( $user_id, $first_name, $last_name, $user->user_email, $country_iso, $comm_methods, $social_handles );
     if ( $ihq_data && ! empty( $ihq_data['AccessToken'] ) ) {
         update_user_meta( $user_id, 'ihq_oauth_country_iso', ihq_normalize_country_iso_alpha2( $country_iso ) );
         update_user_meta( $user_id, 'ihq_access_token', $ihq_data['AccessToken'] );
@@ -1150,21 +1162,32 @@ function ihq_save_start_session_response_for_profile( $user_id, $data ) {
  * Register a new WP user in the InfluencerHQ platform via OAuth start-session.
  *
  * @param string $country_iso Raw client ISO 3166-1 alpha-2 (typically from browser `country_iso` POST field); sanitized before send.
+ * @param array  $comm_methods Modal / cookie comm_methods (key => handle).
+ * @param array  $social_handles Modal social grid selections.
  *
  * Returns the parsed `data` object on success, or false on failure.
  */
-function ihq_register_oauth_user( $user_id, $first_name, $last_name, $email, $country_iso = '' ) {
+function ihq_register_oauth_user( $user_id, $first_name, $last_name, $email, $country_iso = '', array $comm_methods = array(), array $social_handles = array() ) {
     $api_url = 'https://02nvfvonol.execute-api.eu-west-2.amazonaws.com/qc/account/oauth/start-session';
+
+    $payload_inner = array(
+        'id'         => 'wpu-' . $user_id,
+        'firstName'  => $first_name,
+        'lastName'   => $last_name,
+        'email'      => $email,
+        'countryIso' => ihq_normalize_country_iso_alpha2( $country_iso ),
+    );
+
+    if ( function_exists( 'ihq_build_marketing_notifications_payload_from_comm_methods' ) ) {
+        $payload_inner = array_merge(
+            $payload_inner,
+            ihq_build_marketing_notifications_payload_from_comm_methods( $comm_methods, $social_handles )
+        );
+    }
 
     $payload = array(
         'oauthLoginType' => 'InfluencerHq',
-        'payload' => array(
-            'id'         => 'wpu-' . $user_id,
-            'firstName'  => $first_name,
-            'lastName'   => $last_name,
-            'email'      => $email,
-            'countryIso' => ihq_normalize_country_iso_alpha2( $country_iso ),
-        ),
+        'payload'        => $payload_inner,
     );
 
     $response = wp_remote_post($api_url, array(
