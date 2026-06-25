@@ -350,10 +350,10 @@
         flex-wrap: wrap;
         align-items: center;
         justify-content: center;
-        gap: clamp(8px, 2.4vw, 28px);
+        gap: clamp(12px, 4vw, 48px);
         margin: 0 auto clamp(18px, 3vw, 26px);
         font-family: 'Inter', 'Be Vietnam Pro', sans-serif;
-        font-size: clamp(10px, 2.1vw, 11px);
+        font-size: clamp(12px, 2.4vw, 14px);
         font-weight: 700;
         line-height: 1.35;
     }
@@ -375,7 +375,7 @@
         margin: 0;
         font: inherit;
         font-family: 'Inter', 'Be Vietnam Pro', sans-serif;
-        font-size: clamp(10px, 2.1vw, 11px);
+        font-size: clamp(12px, 2.4vw, 14px);
         font-weight: 700;
         line-height: 1.35;
         color: #fff;
@@ -534,6 +534,170 @@
         visibility: visible;
     }
 
+    .portal-footer-brand-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        justify-content: center;
+        gap: clamp(20px, 5vw, 56px);
+        margin: 0 auto clamp(8px, 2vw, 16px);
+        max-width: 720px;
+    }
+
+    .portal-footer-brand {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
+        min-width: 0;
+        padding-left: 10px;
+    }
+
+    .portal-footer-brand--apex a {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-decoration: none;
+    }
+
+    .portal-footer-brand-img {
+        display: block;
+        width: auto;
+        height: clamp(40px, 8vw, 56px);
+        max-width: min(100%, 140px);
+        object-fit: contain;
+    }
+
+    .portal-footer-brand-img--tokeny {
+        height: clamp(36px, 7vw, 50px);
+        max-width: min(100%, 72px);
+    }
+
+    .portal-footer-brand-img--apex {
+        height: clamp(44px, 8vw, 60px);
+        max-width: min(100%, 120px);
+    }
+
+    .portal-footer-brand-label {
+        margin-top: 6px;
+        font-family: 'Inter', 'Be Vietnam Pro', sans-serif;
+        font-size: clamp(14px, 2.8vw, 18px);
+        font-weight: 700;
+        line-height: 1;
+        color: #fff;
+        text-transform: lowercase;
+        letter-spacing: 0.02em;
+    }
+
+    .portal-footer-disclosure {
+        display: grid;
+        grid-template-rows: 0fr;
+        margin: 0 auto;
+        max-width: 640px;
+        transition: grid-template-rows 0.4s ease, margin 0.4s ease;
+    }
+
+    .portal-footer-disclosure.is-expanded {
+        grid-template-rows: 1fr;
+        margin: clamp(12px, 2.5vw, 20px) auto clamp(8px, 2vw, 14px);
+    }
+
+    .portal-footer-disclosure-panel {
+        overflow: hidden;
+        min-height: 0;
+    }
+
+    .portal-footer-disclosure-inner {
+        color: #fff;
+        font-family: 'Inter', 'Be Vietnam Pro', sans-serif;
+        font-weight: 600;
+        line-height: 1.55;
+        text-align: left;
+        opacity: 0;
+        transform: translateY(-10px);
+        transition: opacity 0.35s ease 0.05s, transform 0.35s ease 0.05s;
+    }
+
+    .portal-footer-disclosure.is-expanded .portal-footer-disclosure-inner {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .portal-footer-disclosure-list {
+        list-style: disc;
+        margin: 0 0 18px;
+        padding-top: 15px;
+        padding-left: 1.25rem;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .portal-footer-disclosure-list li {
+        margin-bottom: 6px;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .portal-footer-disclosure-list li:last-child {
+        margin-bottom: 0;
+    }
+
+    .portal-footer-disclosure-heading {
+        margin: 0 0 4px;
+        font-size: 20px;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .portal-footer-disclosure-subheading {
+        margin: 0 0 18px;
+        font-size: 18px;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .portal-footer-disclosure-section-title {
+        margin: 0 0 10px;
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+    }
+
+    .portal-footer-disclosure-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        margin: 0 auto clamp(16px, 3vw, 24px);
+        padding: 8px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+    }
+
+    .portal-footer-chevron {
+        display: block;
+        width: 14px;
+        height: 14px;
+        border-right: 2px solid #d4af37;
+        border-bottom: 2px solid #d4af37;
+        transform: rotate(45deg);
+        transition: transform 0.2s ease;
+    }
+
+    .portal-footer-disclosure-toggle.is-expanded .portal-footer-chevron {
+        transform: rotate(-135deg);
+        margin-top: 8px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .portal-footer-disclosure,
+        .portal-footer-disclosure-inner,
+        .portal-footer-chevron {
+            transition: none;
+        }
+    }
+
     .portal-footer-logos {
         display: flex;
         flex-wrap: wrap;
@@ -562,11 +726,12 @@
     .portal-footer-legal {
         margin: 0;
         font-family: 'Inter', 'Be Vietnam Pro', sans-serif;
-        font-size: clamp(9px, 1.9vw, 10.5px);
+        font-size: clamp(10px, 2vw, 12px);
         font-weight: 300;
         font-style: italic;
-        color: #fff;
+        color: rgba(255, 255, 255, 0.88);
         line-height: 1.55;
+        text-align: center;
         max-width: 100%;
     }
 
@@ -1115,6 +1280,112 @@
         text-transform: uppercase;
     }
 
+    body.page-template-page-portal-equity-php .equity-believe {
+        text-align: center;
+        margin: 0 0 28px;
+        padding: 0 20px;
+    }
+
+    body.page-template-page-portal-equity-php .equity-believe-title {
+        color: #ffffff;
+        font-family: 'Be Vietnam Pro', sans-serif;
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1.3;
+        margin: 0 0 20px;
+    }
+
+    body.page-template-page-portal-equity-php .equity-believe-list {
+        list-style: none;
+        margin: 0 auto;
+        padding: 0;
+        max-width: 520px;
+        text-align: left;
+    }
+
+    body.page-template-page-portal-equity-php .equity-believe-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin: 0 0 14px;
+        color: #ffffff;
+        font-family: 'Be Vietnam Pro', sans-serif;
+        font-size: 16px;
+        font-weight: 400;
+        line-height: 1.45;
+    }
+
+    body.page-template-page-portal-equity-php .equity-believe-item:last-child {
+        margin-bottom: 0;
+    }
+
+    body.page-template-page-portal-equity-php .equity-believe-icon {
+        flex-shrink: 0;
+        width: 24px;
+        height: 24px;
+        object-fit: contain;
+        margin-top: 2px;
+    }
+
+    body.page-template-page-portal-equity-php .equity-participation-body {
+        color: #ffffff;
+        font-family: 'Be Vietnam Pro', sans-serif;
+    }
+
+    body.page-template-page-portal-equity-php .equity-participation-lead {
+        margin: 0 0 14px;
+        font-size: 16px;
+        font-weight: 400;
+        line-height: 1.45;
+    }
+
+    body.page-template-page-portal-equity-php .equity-participation-streaming-lead {
+        margin: 24px 0 16px;
+        font-size: 16px;
+        font-weight: 400;
+        line-height: 1.45;
+    }
+
+    body.page-template-page-portal-equity-php .equity-participation-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    body.page-template-page-portal-equity-php .equity-participation-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin: 0 0 16px;
+    }
+
+    body.page-template-page-portal-equity-php .equity-participation-item:last-child {
+        margin-bottom: 0;
+    }
+
+    body.page-template-page-portal-equity-php .equity-participation-icon {
+        flex-shrink: 0;
+        width: 24px;
+        height: 24px;
+        object-fit: contain;
+        margin-top: 2px;
+    }
+
+    body.page-template-page-portal-equity-php .equity-participation-copy strong {
+        display: block;
+        font-size: 16px;
+        font-weight: 700;
+        line-height: 1.35;
+        margin-bottom: 4px;
+    }
+
+    body.page-template-page-portal-equity-php .equity-participation-copy p {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 400;
+        line-height: 1.45;
+    }
+
     body.page-template-page-portal-equity-php .equity-section {
         padding: 20px;
     }
@@ -1458,6 +1729,22 @@
     body.page-template-page-portal-equity-php .equity-sso-btn:disabled {
         opacity: 0.45;
         cursor: not-allowed;
+    }
+
+    body.page-template-page-portal-equity-php .portal-equity-iframe-wrap {
+        width: 100%;
+        max-width: 100%;
+        margin: 0 0 28px;
+    }
+
+    body.page-template-page-portal-equity-php .portal-equity-iframe-wrap iframe {
+        display: block;
+        width: 100%;
+        height: min(72vh, 720px);
+        min-height: 480px;
+        border: 0;
+        background: #111;
+        border-radius: 8px;
     }
 
     /* Go To Game button — shown in portal header across all portal pages */

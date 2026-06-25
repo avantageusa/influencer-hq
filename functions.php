@@ -255,6 +255,55 @@ require get_template_directory() . '/inc/influencer-role.php';
  */
 require_once get_template_directory() . '/inc/comm-methods-marketing-map.php';
 require_once get_template_directory() . '/inc/email-verification-handler.php';
+
+/**
+ * Game portal base URL (profile meta or QC default).
+ *
+ * @param int $user_id WordPress user ID; 0 uses current user.
+ * @return string Untrailingslashit URL.
+ */
+function ihq_get_hq_game_portal_base_url( $user_id = 0 ) {
+	$default = 'https://qc-game-portal-client-tf-b2c.dev.ae.games/av-baccarat';
+	$user_id = $user_id > 0 ? (int) $user_id : (int) get_current_user_id();
+	$base    = '';
+
+	if ( $user_id > 0 ) {
+		$base = get_user_meta( $user_id, 'hq_game_url', true );
+	}
+
+	if ( ! is_string( $base ) || $base === '' ) {
+		$base = $default;
+	}
+
+	return untrailingslashit( esc_url_raw( $base ) );
+}
+
+/**
+ * Build game portal external embed URL (base + path + IHQ auth query).
+ *
+ * @param string $external_path e.g. /external/equity
+ * @param int    $user_id       WordPress user ID; 0 uses current user.
+ * @return string
+ */
+function ihq_build_hq_game_portal_external_url( $external_path, $user_id = 0 ) {
+	$base = ihq_get_hq_game_portal_base_url( $user_id );
+	$path = '/' . ltrim( (string) $external_path, '/' );
+
+	$args = array(
+		'influencerHqAuth' => 'true',
+	);
+
+	$user_id = $user_id > 0 ? (int) $user_id : (int) get_current_user_id();
+	if ( $user_id > 0 && function_exists( 'ihq_get_hq_sso_code_for_user' ) ) {
+		$hq_sso_code = ihq_get_hq_sso_code_for_user( $user_id );
+		if ( $hq_sso_code !== '' ) {
+			$args['hqSsoCode'] = $hq_sso_code;
+		}
+	}
+
+	return add_query_arg( $args, $base . $path );
+}
+
 /**
  * Contact Us form (AJAX → concierge inbox).
  */
