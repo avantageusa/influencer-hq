@@ -1441,6 +1441,15 @@
         justify-content: space-between;
         align-items: center;
         margin-bottom: 14px;
+        cursor: pointer;
+    }
+
+    body.page-template-page-portal-equity-php .equity-card.ihq-gate-collapsed .equity-card-header {
+        margin-bottom: 0;
+    }
+
+    body.page-template-page-portal-equity-php .equity-card-body .portal-equity-iframe-wrap {
+        margin: 0;
     }
 
     body.page-template-page-portal-equity-php .equity-card-title {

@@ -11,6 +11,7 @@ get_header();
 get_template_part( 'template-parts/portal-styles' );
 
 $portal_equity_iframe_url = ihq_build_hq_game_portal_external_url( '/external/equity' );
+$equity_attribution_expanded = is_user_logged_in();
 ?>
 
     <main id="primary" class="site-main">
@@ -48,14 +49,33 @@ $portal_equity_iframe_url = ihq_build_hq_game_portal_external_url( '/external/eq
                     </ul>
                 </section>
 
-                <div class="portal-equity-iframe-wrap" id="equity-external-embed">
-                    <iframe
-                        title="<?php echo esc_attr__( 'Influencer HQ equity', 'influencer-hq' ); ?>"
-                        src="<?php echo esc_url( $portal_equity_iframe_url ); ?>"
-                        loading="lazy"
-                        referrerpolicy="strict-origin-when-cross-origin"
-                        allowfullscreen
-                    ></iframe>
+                <div class="equity-section" id="equity-attribution">
+                    <div class="equity-card<?php echo $equity_attribution_expanded ? '' : ' ihq-gate-collapsed'; ?>" id="equityAttributionCard">
+                        <div
+                            class="equity-card-header"
+                            id="equityAttributionHead"
+                            role="button"
+                            tabindex="0"
+                            aria-expanded="<?php echo $equity_attribution_expanded ? 'true' : 'false'; ?>"
+                            aria-controls="equityAttributionBody"
+                        >
+                            <span class="equity-card-title"><?php esc_html_e( 'Equity Attribution', 'influencer-hq' ); ?></span>
+                            <span class="equity-card-toggle" aria-hidden="true"><?php echo $equity_attribution_expanded ? '▴' : '▾'; ?></span>
+                        </div>
+                        <div class="equity-card-body" id="equityAttributionBody"<?php echo $equity_attribution_expanded ? '' : ' hidden'; ?>>
+                            <div class="portal-equity-iframe-wrap" id="equity-external-embed">
+                                <?php if ( $equity_attribution_expanded ) : ?>
+                                <iframe
+                                    title="<?php echo esc_attr__( 'Influencer HQ equity', 'influencer-hq' ); ?>"
+                                    src="<?php echo esc_url( $portal_equity_iframe_url ); ?>"
+                                    loading="lazy"
+                                    referrerpolicy="strict-origin-when-cross-origin"
+                                    allowfullscreen
+                                ></iframe>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="equity-results" class="hm-scroll-anchor" aria-hidden="true"></div>
@@ -367,6 +387,41 @@ $portal_equity_iframe_url = ihq_build_hq_game_portal_external_url( '/external/eq
         <!-- Fixed Footer Links -->
         <?php get_template_part( 'template-parts/portal-footer' ); ?>
     </main><!-- #main -->
+
+<?php if ( is_user_logged_in() ) : ?>
+<script>
+(function () {
+    var head = document.getElementById('equityAttributionHead');
+    var body = document.getElementById('equityAttributionBody');
+    if (!head || !body) {
+        return;
+    }
+
+    var toggle = head.querySelector('.equity-card-toggle');
+
+    function setExpanded(isExpanded) {
+        body.hidden = !isExpanded;
+        head.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+        if (toggle) {
+            toggle.textContent = isExpanded ? '\u25B4' : '\u25BE';
+        }
+        head.closest('.equity-card').classList.toggle('ihq-gate-collapsed', !isExpanded);
+    }
+
+    function onToggle() {
+        setExpanded(body.hidden);
+    }
+
+    head.addEventListener('click', onToggle);
+    head.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onToggle();
+        }
+    });
+})();
+</script>
+<?php endif; ?>
 
 <?php 
 get_template_part( 'template-parts/portal-scripts' );

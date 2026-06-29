@@ -10,6 +10,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
+ * Body class for guest portal pages (collapse CSS applies before gate JS runs).
+ *
+ * @param string[] $classes Body classes.
+ * @return string[]
+ */
+function ihq_registry_gates_body_class( array $classes ): array {
+	if ( ihq_is_portal_page_template() && ! is_user_logged_in() ) {
+		$classes[] = 'ihq-portal-guest';
+	}
+
+	return $classes;
+}
+add_filter( 'body_class', 'ihq_registry_gates_body_class' );
+
+/**
  * Enqueue gate script on portal pages for guests (depends on visitor-intent).
  */
 function ihq_enqueue_registry_gates_assets() {
@@ -54,10 +69,27 @@ function ihq_enqueue_registry_gates_assets() {
 		. '.ihq-registry-gate-notice-text{margin:0;padding:0 8px;}'
 		. '.ihq-registry-gate-notice-close{position:absolute;top:10px;right:12px;width:32px;height:32px;padding:0;border:0;border-radius:6px;background:transparent;color:#e6cfa0;font-size:18px;line-height:1;cursor:pointer;}'
 		. '.ihq-registry-gate-notice-close:hover{color:#fff;background:rgba(255,255,255,.08);}'
-		. 'body.page-template-page-portal-equity-php .equity-card.ihq-gate-collapsed .equity-attribution-grid{display:none;}'
-		. 'body.page-template-page-portal-challenges-php .competition-dropdown.ihq-gate-collapsed .competition-dropdown-body{display:none;}'
+		. 'body.ihq-portal-guest.page-template-page-portal-equity-php .equity-card .equity-card-body{display:none !important;}'
+		. 'body.ihq-portal-guest.page-template-page-portal-equity-php .equity-card .equity-card-header{margin-bottom:0;}'
+		. 'body.ihq-portal-guest.page-template-page-portal-challenges-php #world-tab .competition-dropdown .competition-dropdown-body{display:none !important;}'
+		. 'body.ihq-portal-guest.page-template-page-portal-challenges-php #cpcCollapse1,'
+		. 'body.ihq-portal-guest.page-template-page-portal-challenges-php #cpcCollapse2{display:none !important;}'
+		. 'body.ihq-portal-guest.page-template-page-portal-challenges-php #cpcCollapse1.show,'
+		. 'body.ihq-portal-guest.page-template-page-portal-challenges-php #cpcCollapse2.show,'
+		. 'body.ihq-portal-guest.page-template-page-portal-challenges-php #cpcCollapse1.collapsing,'
+		. 'body.ihq-portal-guest.page-template-page-portal-challenges-php #cpcCollapse2.collapsing{display:none !important;}'
+		. 'body.ihq-portal-guest.page-template-page-portal-profile-php #socialMediaBody,'
+		. 'body.ihq-portal-guest.page-template-page-portal-profile-php #celebLeaguesBody,'
+		. 'body.ihq-portal-guest.page-template-page-portal-profile-php #intlLeagueBody,'
+		. 'body.ihq-portal-guest.page-template-page-portal-profile-php #contactBody{display:none !important;}'
+		. 'body.page-template-page-portal-challenges-php .competition-dropdown.ihq-gate-collapsed .competition-dropdown-body{display:none !important;}'
+		. 'body.page-template-page-portal-challenges-php #cpcCollapse1.ihq-gate-force-hidden,'
+		. 'body.page-template-page-portal-challenges-php #cpcCollapse2.ihq-gate-force-hidden{display:none !important;}'
+		. 'body.page-template-page-portal-equity-php .equity-card.ihq-gate-collapsed .equity-card-body{display:none !important;}'
+		. 'body.page-template-page-portal-equity-php .equity-card.ihq-gate-collapsed .equity-card-header{margin-bottom:0;}'
 		. 'body.page-template-page-portal-challenges-php .competition-dropdown-header{cursor:pointer;}'
 		. 'body.page-template-page-portal-equity-php .equity-card-header{cursor:pointer;}'
+		. 'body.page-template-page-portal-challenges-php .cpc-accordion-header{cursor:pointer;}'
 	);
 }
 add_action( 'wp_enqueue_scripts', 'ihq_enqueue_registry_gates_assets', 30 );

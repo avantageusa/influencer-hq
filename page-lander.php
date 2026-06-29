@@ -326,7 +326,7 @@ $ihq_modal_social_platforms   = array(
     <div class="ln-comp-col">
       <div class="ln-comp-card ln-comp-card--world">
         <div class="ln-comp-card-title"><?php esc_html_e( 'World', 'influencer-hq' ); ?></div>
-        <p class="ln-comp-card-desc"><?php esc_html_e( 'Compete against Influencers and their followers from across the world. Thursday through Sunday.', 'influencer-hq' ); ?></p>
+        <p class="ln-comp-card-desc"><?php esc_html_e( 'Compete against Influencers and their followers from across the world in a weekly World competition.', 'influencer-hq' ); ?></p>
       </div>
       <div class="ln-rating-row">
         <button type="button" class="ln-rating-btn" data-group="world" data-val="1" onclick="lnRate(this)">1</button>

@@ -86,6 +86,130 @@
     }
   }
 
+  function collapseCompetitionDropdown(selector) {
+    var dropdown = typeof selector === 'string' ? document.querySelector(selector) : selector;
+    if (!dropdown) {
+      return;
+    }
+
+    dropdown.classList.add('ihq-gate-collapsed');
+    var body = dropdown.querySelector('.competition-dropdown-body');
+    if (body) {
+      body.style.display = 'none';
+    }
+  }
+
+  function collapseEquityAttributionCard() {
+    document.querySelectorAll('.equity-card').forEach(function (card) {
+      card.classList.add('ihq-gate-collapsed');
+
+      var body = card.querySelector('.equity-card-body');
+      if (body) {
+        body.hidden = true;
+        body.style.display = 'none';
+      }
+
+      var header = card.querySelector('.equity-card-header');
+      if (header) {
+        header.setAttribute('aria-expanded', 'false');
+        var toggle = header.querySelector('.equity-card-toggle');
+        if (toggle) {
+          toggle.textContent = '\u25BE';
+        }
+      }
+    });
+  }
+
+  function maintainCollapsedForGate(gateId) {
+    if (gateId === 'equity_attribution') {
+      collapseEquityAttributionCard();
+      return;
+    }
+
+    if (gateId === 'private_see_current_challenge') {
+      collapsePrivateAccordion('cpcCollapse1');
+      return;
+    }
+
+    if (gateId === 'private_create_new_challenge') {
+      collapsePrivateAccordion('cpcCollapse2');
+      return;
+    }
+
+    if (gateId === 'world_see_my_results') {
+      collapseCompetitionDropdown('#world-leaderboards');
+      return;
+    }
+
+    if (gateId === 'world_see_my_medals') {
+      var worldTab = document.getElementById('world-tab');
+      if (!worldTab) {
+        return;
+      }
+
+      worldTab.querySelectorAll('.competition-dropdown:not(#world-leaderboards)').forEach(function (dropdown) {
+        collapseCompetitionDropdown(dropdown);
+      });
+      return;
+    }
+
+    if (gateId === 'profile_social_media') {
+      collapseProfileSection('socialMediaBody', 'socialMediaArrow');
+      return;
+    }
+
+    if (gateId === 'profile_celebrity_followers_leagues') {
+      collapseProfileSection('celebLeaguesBody', 'celebLeaguesArrow');
+      return;
+    }
+
+    if (gateId === 'profile_international_league_team') {
+      collapseProfileSection('intlLeagueBody', 'intlLeagueArrow');
+      return;
+    }
+
+    if (gateId === 'profile_username_or_contact') {
+      collapseProfileSection('contactBody', 'contactArrow');
+    }
+  }
+
+  function scheduleCollapsedReassert(gateId) {
+    maintainCollapsedForGate(gateId);
+    window.requestAnimationFrame(function () {
+      maintainCollapsedForGate(gateId);
+    });
+    window.setTimeout(function () {
+      maintainCollapsedForGate(gateId);
+    }, 0);
+  }
+
+  function disableGuestBootstrapCollapseTriggers() {
+    document.querySelectorAll('#cpcAccordion1 > .cpc-accordion-header, #cpcAccordion2 > .cpc-accordion-header').forEach(function (header) {
+      if (header.getAttribute('data-bs-toggle')) {
+        header.setAttribute('data-ihq-bs-toggle', header.getAttribute('data-bs-toggle'));
+        header.removeAttribute('data-bs-toggle');
+      }
+      if (header.getAttribute('data-bs-target')) {
+        header.setAttribute('data-ihq-bs-target', header.getAttribute('data-bs-target'));
+        header.removeAttribute('data-bs-target');
+      }
+    });
+  }
+
+  function blockGuestBootstrapCollapsePanels() {
+    ['cpcCollapse1', 'cpcCollapse2'].forEach(function (panelId) {
+      var panel = document.getElementById(panelId);
+      if (!panel) {
+        return;
+      }
+
+      panel.addEventListener('show.bs.collapse', function (event) {
+        event.preventDefault();
+        collapsePrivateAccordion(panelId);
+      });
+    });
+  }
+
   /**
    * @param {string} gateId
    * @param {Event} [event]
@@ -98,6 +222,8 @@
         event.stopImmediatePropagation();
       }
     }
+
+    scheduleCollapsedReassert(gateId);
 
     if (window.console) {
       console.log('[IHQ Registry Gate] triggered:', gateId);
@@ -167,24 +293,61 @@
     });
   }
 
+  function collapseProfileSection(bodyId, arrowId) {
+    var body = document.getElementById(bodyId);
+    if (body) {
+      body.style.display = 'none';
+    }
+    if (arrowId) {
+      var arrow = document.getElementById(arrowId);
+      if (arrow) {
+        arrow.textContent = '\u25BC';
+      }
+    }
+  }
+
+  function collapsePrivateAccordion(collapseId) {
+    var panel = document.getElementById(collapseId);
+    if (!panel) {
+      return;
+    }
+
+    panel.classList.remove('show', 'collapsing');
+    panel.classList.add('ihq-gate-force-hidden');
+    panel.style.display = 'none';
+
+    var accordion = panel.closest('.cpc-accordion');
+    if (!accordion) {
+      return;
+    }
+
+    var header = accordion.querySelector('.cpc-accordion-header');
+    if (header) {
+      header.classList.add('collapsed');
+      header.setAttribute('aria-expanded', 'false');
+    }
+  }
+
   function initCollapsedSections() {
-    document.querySelectorAll('.equity-card').forEach(function (card) {
-      card.classList.add('ihq-gate-collapsed');
-    });
+    disableGuestBootstrapCollapseTriggers();
+    blockGuestBootstrapCollapsePanels();
+
+    collapseEquityAttributionCard();
 
     var worldTab = document.getElementById('world-tab');
     if (worldTab) {
       worldTab.querySelectorAll('.competition-dropdown').forEach(function (dropdown) {
-        dropdown.classList.add('ihq-gate-collapsed');
+        collapseCompetitionDropdown(dropdown);
       });
     }
 
-    ['socialMediaBody', 'celebLeaguesBody', 'intlLeagueBody', 'contactBody'].forEach(function (bodyId) {
-      var body = document.getElementById(bodyId);
-      if (body) {
-        body.style.display = 'none';
-      }
-    });
+    collapsePrivateAccordion('cpcCollapse1');
+    collapsePrivateAccordion('cpcCollapse2');
+
+    collapseProfileSection('socialMediaBody', 'socialMediaArrow');
+    collapseProfileSection('celebLeaguesBody', 'celebLeaguesArrow');
+    collapseProfileSection('intlLeagueBody', 'intlLeagueArrow');
+    collapseProfileSection('contactBody', 'contactArrow');
   }
 
   function registerGates() {
@@ -233,14 +396,20 @@
     bindGate('header_login', '#portalHeaderOpenLogin, .portal-header-auth-trigger[data-auth-tab="login"]');
   }
 
+  function bootRegistryGates() {
+    initCollapsedSections();
+    registerGates();
+  }
+
   document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape') {
       hideNotice();
     }
   });
 
-  document.addEventListener('DOMContentLoaded', function () {
-    initCollapsedSections();
-    registerGates();
-  });
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootRegistryGates);
+  } else {
+    bootRegistryGates();
+  }
 })(window);
