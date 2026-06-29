@@ -72,7 +72,7 @@ function ihq_build_marketing_notifications_payload_from_comm_methods( array $com
 /**
  * Flatten visitor intent for Braze attributes (marketing IDs + optional modal context).
  *
- * @param array<string, mixed> $intent Visitor intent cookie / magic-link record.
+ * @param array<string, mixed> $intent Visitor intent cookie / verification record.
  * @return array<string, mixed>
  */
 function ihq_visitor_intent_braze_attribute_extras( array $intent ) {

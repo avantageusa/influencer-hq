@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<p style="margin:0 0 12px;font-size:13px;line-height:1.5;color:#ccc;">
 		<?php esc_html_e( 'Cookie name:', 'influencer-hq' ); ?>
 		<code><?php echo esc_html( ihq_visitor_intent_cookie_name() ); ?></code>
-		<?php esc_html_e( '(30 days). Click TEST REGISTRY to send to Braze and generate a magic registration link.', 'influencer-hq' ); ?>
+		<?php esc_html_e( '(30 days). Click TEST REGISTRY to issue a 6-digit code and preview the Braze payload.', 'influencer-hq' ); ?>
 	</p>
 	<button type="button" class="auth-submit-btn" id="ihq-test-registry-btn" style="margin-bottom:14px;">
 		<?php esc_html_e( 'TEST REGISTRY', 'influencer-hq' ); ?>

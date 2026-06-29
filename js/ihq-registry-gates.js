@@ -9,8 +9,9 @@
     return;
   }
 
-  var MESSAGE = cfg.message || 'Check your selected method of communication to continue to registration process';
-  var registryInFlight = false;
+  var MESSAGE = cfg.message || 'Please check your preferred method of communication and enter the 6-digit code we sent you.';
+  var SUBMIT_LABEL = cfg.submitLabel || 'Continue';
+  var verifyInFlight = false;
 
   function hideNotice() {
     var backdrop = document.getElementById('ihq-registry-gate-backdrop');
@@ -20,11 +21,87 @@
     }
     if (el) {
       el.classList.remove('is-visible');
+      el.classList.remove('is-error');
+      var err = el.querySelector('.ihq-registry-gate-notice-error');
+      if (err) {
+        err.textContent = '';
+        err.hidden = true;
+      }
+      var input = el.querySelector('.ihq-registry-gate-code-input');
+      if (input) {
+        input.value = '';
+      }
     }
     document.body.classList.remove('ihq-registry-gate-open');
   }
 
-  function showNotice() {
+  function showCodeError(message) {
+    var el = document.getElementById('ihq-registry-gate-notice');
+    if (!el) {
+      return;
+    }
+    var err = el.querySelector('.ihq-registry-gate-notice-error');
+    if (err) {
+      err.textContent = message || '';
+      err.hidden = !message;
+    }
+    el.classList.toggle('is-error', Boolean(message));
+  }
+
+  function submitVerificationCode() {
+    if (verifyInFlight) {
+      return;
+    }
+
+    var el = document.getElementById('ihq-registry-gate-notice');
+    var input = el ? el.querySelector('.ihq-registry-gate-code-input') : null;
+    var submitBtn = el ? el.querySelector('.ihq-registry-gate-code-submit') : null;
+    var raw = input ? String(input.value || '').replace(/\D/g, '') : '';
+
+    showCodeError('');
+
+    if (raw.length !== 6) {
+      showCodeError('Enter the 6-digit code we sent you.');
+      if (input) {
+        input.focus();
+      }
+      return;
+    }
+
+    if (typeof window.ihqVisitorIntentVerifyCode !== 'function') {
+      showCodeError('Verification is unavailable. Please refresh and try again.');
+      return;
+    }
+
+    verifyInFlight = true;
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Verifying…';
+    }
+
+    window.ihqVisitorIntentVerifyCode(raw)
+      .then(function (data) {
+        if (!data || !data.success) {
+          var msg = (data && data.data && data.data.message) ? data.data.message : 'That code did not work. Try again.';
+          showCodeError(msg);
+          return;
+        }
+        var redirectUrl = (data.data && data.data.redirect_url) ? data.data.redirect_url : window.location.href;
+        window.location.href = redirectUrl;
+      })
+      .catch(function () {
+        showCodeError('Network error. Please try again.');
+      })
+      .finally(function () {
+        verifyInFlight = false;
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = SUBMIT_LABEL;
+        }
+      });
+  }
+
+  function showCodeEntry() {
     var backdrop = document.getElementById('ihq-registry-gate-backdrop');
     if (!backdrop) {
       backdrop = document.createElement('div');
@@ -48,6 +125,46 @@
       text.className = 'ihq-registry-gate-notice-text';
       el.appendChild(text);
 
+      var form = document.createElement('div');
+      form.className = 'ihq-registry-gate-code-form';
+
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.inputMode = 'numeric';
+      input.pattern = '[0-9]*';
+      input.maxLength = 6;
+      input.autocomplete = 'one-time-code';
+      input.className = 'ihq-registry-gate-code-input';
+      input.setAttribute('aria-label', '6-digit verification code');
+      input.placeholder = '000000';
+      form.appendChild(input);
+
+      var submitBtn = document.createElement('button');
+      submitBtn.type = 'button';
+      submitBtn.className = 'ihq-registry-gate-code-submit';
+      submitBtn.textContent = SUBMIT_LABEL;
+      submitBtn.addEventListener('click', submitVerificationCode);
+      form.appendChild(submitBtn);
+
+      var err = document.createElement('p');
+      err.className = 'ihq-registry-gate-notice-error';
+      err.hidden = true;
+      form.appendChild(err);
+
+      el.appendChild(form);
+
+      input.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          submitVerificationCode();
+        }
+      });
+
+      input.addEventListener('input', function () {
+        input.value = input.value.replace(/\D/g, '').slice(0, 6);
+        showCodeError('');
+      });
+
       var closeBtn = document.createElement('button');
       closeBtn.type = 'button';
       closeBtn.className = 'ihq-registry-gate-notice-close';
@@ -64,10 +181,22 @@
       textEl.textContent = MESSAGE;
     }
 
+    var inputEl = el.querySelector('.ihq-registry-gate-code-input');
+    if (inputEl) {
+      inputEl.value = '';
+    }
+    showCodeError('');
+
     backdrop.classList.add('is-visible');
     backdrop.setAttribute('aria-hidden', 'false');
     el.classList.add('is-visible');
     document.body.classList.add('ihq-registry-gate-open');
+
+    if (inputEl) {
+      window.setTimeout(function () {
+        inputEl.focus();
+      }, 80);
+    }
   }
 
   function hasCommMethods() {
@@ -76,8 +205,8 @@
   }
 
   function brazeAlreadySent() {
-    return typeof window.ihqVisitorIntentRegistryBrazeSent === 'function'
-      && window.ihqVisitorIntentRegistryBrazeSent();
+    return typeof window.ihqVisitorIntentVerificationCodeIssued === 'function'
+      && window.ihqVisitorIntentVerificationCodeIssued();
   }
 
   function openCommunicationModal() {
@@ -245,27 +374,10 @@
       return;
     }
 
-    showNotice();
+    showCodeEntry();
 
-    if (brazeAlreadySent()) {
-      if (window.console) {
-        console.log('[IHQ Registry Gate] Braze already sent — message only:', gateId);
-      }
-      return;
-    }
-
-    if (registryInFlight || typeof window.ihqVisitorIntentSendTestRegistry !== 'function') {
-      return;
-    }
-
-    registryInFlight = true;
-    var send = window.ihqVisitorIntentSendTestRegistry({ gateId: gateId });
-    if (send && typeof send.finally === 'function') {
-      send.finally(function () {
-        registryInFlight = false;
-      });
-    } else {
-      registryInFlight = false;
+    if (!brazeAlreadySent() && typeof window.ihqVisitorIntentIssueVerification === 'function') {
+      window.ihqVisitorIntentIssueVerification({ gateId: gateId });
     }
   }
 

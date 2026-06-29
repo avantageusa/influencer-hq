@@ -804,6 +804,8 @@ function lnRate(btn) {
   if (typeof window.ihqVisitorIntentSaveRating === 'function') {
     window.ihqVisitorIntentSaveRating(group, val);
   }
+  var accountUrl = (window.IHQ_VISITOR_INTENT && window.IHQ_VISITOR_INTENT.accountUrl) ? window.IHQ_VISITOR_INTENT.accountUrl : '/portal/account/';
+  window.location.href = accountUrl;
 }
 
 /* ── Concierge (ElevenLabs) ─────────────────────────────── */

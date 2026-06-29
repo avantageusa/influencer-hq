@@ -168,12 +168,28 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                 if ( function_exists( 'ihq_visitor_intent_cookie_name' ) ) {
                     get_template_part( 'template-parts/visitor-intent-test-registry' );
                 }
-                if ( isset( $_GET['ihq_magic_registered'] ) && $_GET['ihq_magic_registered'] === '1' ) :
-                ?>
+                if ( isset( $_GET['ihq_magic_registered'] ) && $_GET['ihq_magic_registered'] === '1' ) {
+                    ?>
                 <div class="sett-card" style="margin-bottom:14px;border-color:rgba(40,167,69,.45);">
                     <p style="margin:0;color:#6fcf97;"><?php esc_html_e( 'Account created from magic link. Welcome!', 'influencer-hq' ); ?></p>
                 </div>
-                <?php endif; ?>
+                    <?php
+                }
+                if ( isset( $_GET['ihq_visitor_registered'] ) && $_GET['ihq_visitor_registered'] === '1' ) {
+                    ?>
+                <div class="sett-card" style="margin-bottom:14px;border-color:rgba(40,167,69,.45);">
+                    <p style="margin:0;color:#6fcf97;"><?php esc_html_e( 'Account created. Welcome!', 'influencer-hq' ); ?></p>
+                </div>
+                    <?php
+                }
+                if ( isset( $_GET['ihq_visitor_existing'] ) && $_GET['ihq_visitor_existing'] === '1' ) {
+                    ?>
+                <div class="sett-card" style="margin-bottom:14px;border-color:rgba(184,151,47,.45);">
+                    <p style="margin:0;color:#e6cfa0;"><?php esc_html_e( 'You are now signed in with your existing account.', 'influencer-hq' ); ?></p>
+                </div>
+                    <?php
+                }
+                ?>
 
                 <!-- PROFILE Header -->
                 <header class="sett-header">

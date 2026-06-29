@@ -190,11 +190,17 @@
 
     if (isGateMode()) {
       saveVisitorIntentFromModal();
+      if (typeof window.ihqVisitorIntentIssueVerification === 'function') {
+        window.ihqVisitorIntentIssueVerification({ buttonPressUrl: window.location.href.split('#')[0] });
+      }
       closeModal();
       return;
     }
 
     saveVisitorIntentFromModal();
+    if (typeof window.ihqVisitorIntentIssueVerification === 'function') {
+      window.ihqVisitorIntentIssueVerification({ buttonPressUrl: window.location.href.split('#')[0] });
+    }
     closeModal();
   }
 

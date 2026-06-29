@@ -1,6 +1,6 @@
 <?php
 /**
- * Portal registry gates (AC#1 / AC#2): guest-only triggers → Braze + magic link flow.
+ * Portal registry gates (AC#1 / AC#2): guest-only triggers → 6-digit code registration.
  *
  * @package influencer-hq
  */
@@ -53,7 +53,8 @@ function ihq_enqueue_registry_gates_assets() {
 		'IHQ_REGISTRY_GATES',
 		array(
 			'isLoggedIn' => false,
-			'message'    => __( 'Check your selected method of communication to continue to registration process', 'influencer-hq' ),
+			'message'    => __( 'Please check your preferred method of communication and enter the 6-digit code we sent you.', 'influencer-hq' ),
+			'submitLabel' => __( 'Continue', 'influencer-hq' ),
 		)
 	);
 
@@ -67,6 +68,14 @@ function ihq_enqueue_registry_gates_assets() {
 		. '.ihq-registry-gate-notice{position:fixed;left:50%;top:50%;z-index:10050;max-width:min(520px,calc(100vw - 32px));padding:28px 48px 24px 24px;border-radius:12px;border:2px solid #b8972f;background:rgba(20,18,13,.98);color:#f5e6c8;font-family:"Be Vietnam Pro",sans-serif;font-size:15px;line-height:1.55;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,.55);transform:translate(-50%,-50%) scale(.96);opacity:0;pointer-events:none;transition:transform .35s ease,opacity .35s ease;}'
 		. '.ihq-registry-gate-notice.is-visible{transform:translate(-50%,-50%) scale(1);opacity:1;pointer-events:auto;}'
 		. '.ihq-registry-gate-notice-text{margin:0;padding:0 8px;}'
+		. '.ihq-registry-gate-code-form{margin-top:18px;display:flex;flex-direction:column;align-items:center;gap:12px;}'
+		. '.ihq-registry-gate-code-input{width:min(220px,100%);padding:12px 14px;border-radius:8px;border:2px solid rgba(184,151,47,.65);background:rgba(0,0,0,.35);color:#fff;font-family:"Be Vietnam Pro",sans-serif;font-size:22px;font-weight:700;letter-spacing:.28em;text-align:center;}'
+		. '.ihq-registry-gate-code-input:focus{outline:none;border-color:#d4b85a;box-shadow:0 0 0 3px rgba(184,151,47,.25);}'
+		. '.ihq-registry-gate-code-submit{min-width:160px;padding:10px 20px;border:0;border-radius:8px;background:linear-gradient(180deg,#d4b85a,#b8972f);color:#1a1408;font-family:"Be Vietnam Pro",sans-serif;font-size:14px;font-weight:700;letter-spacing:.04em;cursor:pointer;}'
+		. '.ihq-registry-gate-code-submit:hover:not(:disabled){filter:brightness(1.05);}'
+		. '.ihq-registry-gate-code-submit:disabled{opacity:.65;cursor:not-allowed;}'
+		. '.ihq-registry-gate-notice-error{margin:0;font-size:13px;color:#f5a3a3;}'
+		. '.ihq-registry-gate-notice.is-error .ihq-registry-gate-code-input{border-color:#c45c5c;}'
 		. '.ihq-registry-gate-notice-close{position:absolute;top:10px;right:12px;width:32px;height:32px;padding:0;border:0;border-radius:6px;background:transparent;color:#e6cfa0;font-size:18px;line-height:1;cursor:pointer;}'
 		. '.ihq-registry-gate-notice-close:hover{color:#fff;background:rgba(255,255,255,.08);}'
 		. 'body.ihq-portal-guest.page-template-page-portal-equity-php .equity-card .equity-card-body{display:none !important;}'

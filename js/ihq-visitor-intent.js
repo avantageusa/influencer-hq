@@ -1,14 +1,15 @@
 /**
- * Anonymous visitor intent — 30-day cookie + modal/lander capture.
+ * Anonymous visitor intent — 30-day cookie + modal/lander capture + 6-digit registration code.
  */
 (function (window) {
   'use strict';
 
   var cfg = window.IHQ_VISITOR_INTENT || {};
   var COOKIE_NAME = cfg.cookieName || 'ihq_visitor_intent';
-  var BRAZE_SENT_COOKIE = 'ihq_registry_braze_sent';
+  var CODE_ISSUED_COOKIE = 'ihq_visitor_code_issued';
   var COOKIE_DAYS = cfg.cookieDays || 30;
   var MAX_COOKIE_BYTES = 3800;
+  var CODE_EXPIRES_MINUTES = cfg.codeExpiresMinutes || 15;
 
   function readCookie(name) {
     var prefix = name + '=';
@@ -66,12 +67,17 @@
     });
   }
 
-  function readRegistryBrazeSent() {
-    return readCookie(BRAZE_SENT_COOKIE) === '1';
+  function readVerificationCodeIssued() {
+    return readCookie(CODE_ISSUED_COOKIE) === '1';
   }
 
-  function markRegistryBrazeSent() {
-    writeCookie(BRAZE_SENT_COOKIE, '1', COOKIE_DAYS);
+  function markVerificationCodeIssued() {
+    writeCookie(CODE_ISSUED_COOKIE, '1', COOKIE_DAYS);
+  }
+
+  function isPortalPage() {
+    var path = window.location.pathname || '';
+    return path.indexOf('/portal') !== -1;
   }
 
   function openCommunicationModal() {
@@ -190,18 +196,37 @@
     });
   }
 
-  function saveFromModalAndRedirect() {
-    var payload = collectFromModal();
-    mergeIntent(payload);
-    var target = cfg.accountUrl || '/portal/account/';
-    window.location.href = target;
+  function resolveCountryIso() {
+    return typeof window.ihqResolveClientCountryIsoAlpha2 === 'function'
+      ? window.ihqResolveClientCountryIsoAlpha2()
+      : '';
+  }
+
+  function buildIssueFormData(intent, options) {
+    options = options || {};
+    var buttonUrl = options.buttonPressUrl || window.location.href.split('#')[0];
+    if (options.gateId) {
+      buttonUrl += '#gate=' + encodeURIComponent(options.gateId);
+    }
+
+    var fd = new FormData();
+    fd.append('action', 'ihq_issue_visitor_verification');
+    fd.append('nonce', cfg.nonce || '');
+    fd.append('intent_json', JSON.stringify(intent));
+    fd.append('button_press_url', buttonUrl);
+    fd.append('country_iso', resolveCountryIso());
+    if (options.gateId) {
+      fd.append('gate_id', options.gateId);
+    }
+    return { fd: fd, buttonUrl: buttonUrl };
   }
 
   function buildBrazePreview(intent, extras) {
     var out = {
       intent: intent || {},
       button_press_url: extras && extras.button_press_url ? extras.button_press_url : '',
-      magic_register_url: extras && extras.magic_register_url ? extras.magic_register_url : '',
+      registration_code: extras && extras.registration_code ? extras.registration_code : '',
+      expires_minutes: extras && extras.expires_minutes ? extras.expires_minutes : CODE_EXPIRES_MINUTES,
     };
     if (extras && extras.braze_track_payload) {
       out.braze_track_payload = extras.braze_track_payload;
@@ -245,8 +270,8 @@
       console.group(prefix + ' — Braze HTTP response');
       console.log(payload.braze_response || payload);
       console.groupEnd();
-      if (payload.magic_register_url) {
-        console.log(prefix + ' — magic_register_url:', payload.magic_register_url);
+      if (payload.registration_code) {
+        console.log(prefix + ' — registration_code:', payload.registration_code);
       }
       return;
     }
@@ -255,27 +280,32 @@
     }
   }
 
-  function sendTestRegistry(options) {
+  function issueVisitorVerification(options) {
     options = options || {};
     var btn = document.getElementById('ihq-test-registry-btn');
     var preview = document.getElementById('ihq-visitor-intent-braze-preview');
     var intent = readIntent();
     var gateId = options.gateId || '';
-    var buttonUrl = window.location.href.split('#')[0];
-    if (gateId) {
-      buttonUrl += '#gate=' + encodeURIComponent(gateId);
+
+    if (!hasCommMethods(intent)) {
+      return Promise.resolve({ success: false });
     }
 
-    var countryIso = typeof window.ihqResolveClientCountryIsoAlpha2 === 'function'
-      ? window.ihqResolveClientCountryIsoAlpha2()
-      : '';
+    if (readVerificationCodeIssued() && !options.force) {
+      return Promise.resolve({ success: true, skipped: true });
+    }
+
+    var built = buildIssueFormData(intent, {
+      gateId: gateId,
+      buttonPressUrl: options.buttonPressUrl,
+    });
 
     if (gateId) {
       logGateRegistryConsole(gateId, 'request', {
-        action: 'ihq_test_registry_braze',
+        action: 'ihq_issue_visitor_verification',
         gate_id: gateId,
-        button_press_url: buttonUrl,
-        country_iso: countryIso,
+        button_press_url: built.buttonUrl,
+        country_iso: resolveCountryIso(),
         intent: intent,
       });
     }
@@ -285,17 +315,7 @@
       btn.textContent = 'Sending…';
     }
 
-    var fd = new FormData();
-    fd.append('action', 'ihq_test_registry_braze');
-    fd.append('nonce', cfg.nonce || '');
-    fd.append('intent_json', JSON.stringify(intent));
-    fd.append('button_press_url', buttonUrl);
-    fd.append('country_iso', countryIso);
-    if (gateId) {
-      fd.append('gate_id', gateId);
-    }
-
-    return fetch(cfg.ajaxUrl || '/wp-admin/admin-ajax.php', { method: 'POST', body: fd })
+    return fetch(cfg.ajaxUrl || '/wp-admin/admin-ajax.php', { method: 'POST', body: built.fd })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (btn) {
@@ -310,17 +330,30 @@
           renderPreview(preview, buildBrazePreview(intent, { error: msg }));
           return data;
         }
+
+        markVerificationCodeIssued();
+
+        var registrationCode = '';
+        if (data.data.registration_code_debug) {
+          registrationCode = data.data.registration_code_debug;
+        } else if (data.data.registration_code) {
+          registrationCode = data.data.registration_code;
+        } else if (data.data.braze_track_payload && data.data.braze_track_payload.attributes && data.data.braze_track_payload.attributes[0]) {
+          registrationCode = data.data.braze_track_payload.attributes[0].registration_code || '';
+        }
+
         if (gateId) {
-          markRegistryBrazeSent();
           logGateRegistryConsole(gateId, 'braze', {
             braze_track_payload: data.data.braze_track_payload || null,
             braze_response: data.data.braze_response || null,
-            magic_register_url: data.data.magic_register_url || '',
+            registration_code: registrationCode,
           });
         }
+
         renderPreview(preview, buildBrazePreview(intent, {
-          button_press_url: buttonUrl,
-          magic_register_url: data.data.magic_register_url || '',
+          button_press_url: built.buttonUrl,
+          registration_code: registrationCode,
+          expires_minutes: data.data.expires_minutes || CODE_EXPIRES_MINUTES,
           braze_track_payload: data.data.braze_track_payload || null,
           braze_response: data.data.braze_response || null,
         }));
@@ -338,6 +371,41 @@
       });
   }
 
+  function saveFromModalAndRedirect() {
+    var payload = collectFromModal();
+    mergeIntent(payload);
+    var target = cfg.accountUrl || '/portal/account/';
+
+    issueVisitorVerification({ buttonPressUrl: window.location.href.split('#')[0] })
+      .finally(function () {
+        window.location.href = target;
+      });
+  }
+
+  function verifyVisitorCode(code) {
+    var intent = readIntent();
+    var fd = new FormData();
+    fd.append('action', 'ihq_verify_visitor_code');
+    fd.append('nonce', cfg.nonce || '');
+    fd.append('intent_json', JSON.stringify(intent));
+    fd.append('code', String(code || '').replace(/\D/g, ''));
+    fd.append('country_iso', resolveCountryIso());
+
+    return fetch(cfg.ajaxUrl || '/wp-admin/admin-ajax.php', { method: 'POST', body: fd })
+      .then(function (r) { return r.json(); });
+  }
+
+  function sendTestRegistry(options) {
+    return issueVisitorVerification(options);
+  }
+
+  function maybeIssueVerificationOnPortalArrival() {
+    if (!isPortalPage() || !hasCommMethods() || readVerificationCodeIssued()) {
+      return;
+    }
+    issueVisitorVerification({ buttonPressUrl: window.location.href.split('#')[0] });
+  }
+
   window.ihqVisitorIntentRead = readIntent;
   window.ihqVisitorIntentMerge = mergeIntent;
   window.ihqVisitorIntentCollectFromModal = collectFromModal;
@@ -345,19 +413,26 @@
   window.ihqVisitorIntentSaveRating = saveRating;
   window.ihqVisitorIntentRefreshPreview = refreshTestRegistryPreview;
   window.ihqVisitorIntentSendTestRegistry = sendTestRegistry;
+  window.ihqVisitorIntentIssueVerification = issueVisitorVerification;
+  window.ihqVisitorIntentVerifyCode = verifyVisitorCode;
   window.ihqVisitorIntentHasCommMethods = hasCommMethods;
-  window.ihqVisitorIntentRegistryBrazeSent = readRegistryBrazeSent;
-  window.ihqVisitorIntentMarkRegistryBrazeSent = markRegistryBrazeSent;
+  window.ihqVisitorIntentVerificationCodeIssued = readVerificationCodeIssued;
+  window.ihqVisitorIntentMarkVerificationCodeIssued = markVerificationCodeIssued;
   window.ihqOpenVisitorCommunicationModal = openCommunicationModal;
+
+  // Legacy aliases
+  window.ihqVisitorIntentRegistryBrazeSent = readVerificationCodeIssued;
+  window.ihqVisitorIntentMarkRegistryBrazeSent = markVerificationCodeIssued;
 
   document.addEventListener('DOMContentLoaded', function () {
     refreshTestRegistryPreview();
+    maybeIssueVerificationOnPortalArrival();
 
     var testBtn = document.getElementById('ihq-test-registry-btn');
     if (testBtn) {
       testBtn.addEventListener('click', function (e) {
         e.preventDefault();
-        sendTestRegistry();
+        issueVisitorVerification({ force: true });
       });
     }
   });
