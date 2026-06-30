@@ -174,7 +174,7 @@ $ihq_modal_social_platforms = array(
         <div class="dealer-gradient-overlay" aria-hidden="true"></div>
         <img src="<?php echo esc_url( get_template_directory_uri() . '/images/concierge.png' ); ?>" alt="" class="dealer-image dealer-image--hero">
       </div>
-      <a href="#" class="concierge-title hero-dealer-link">Talk Now - Executive Concierge</a>
+      <a href="#" class="concierge-title hero-dealer-link" data-ihq-concierge-trigger data-ihq-concierge-agent="guest">Talk Now - Executive Concierge</a>
     </div>
   </div>
   <div class="scroll-hint"><span>Discover</span><div class="scroll-line"></div></div>
@@ -1994,94 +1994,6 @@ function handleAuthRegister(e) {
       btn.textContent = 'Send Verification Email';
     });
 }
-</script>
-
-<script>
-(function () {
-    document.addEventListener('DOMContentLoaded', function () {
-        var btn             = document.querySelector('.concierge-title');
-        var activeSession    = null;
-        var originalText     = 'Talk Now - Executive Concierge';
-        var DEFAULT_CONVAI_PAGE_LANGUAGE_CODE = 'en';
-
-        /** Primary ISO 639-1 tag from `<html lang>` — passed as ConvAI overrides per ElevenLabs language docs */
-        function pagePrimaryLangForElevenLabs() {
-            var raw = document.documentElement ? document.documentElement.getAttribute('lang') : '';
-            if (typeof raw !== 'string') {
-                raw = '';
-            }
-            raw = raw.trim();
-            if (!raw) {
-                return DEFAULT_CONVAI_PAGE_LANGUAGE_CODE;
-            }
-            var primary = raw.split(/[-_\s]/)[0].toLowerCase();
-            if (!/^[a-z]{2,10}$/.test(primary)) {
-                return DEFAULT_CONVAI_PAGE_LANGUAGE_CODE;
-            }
-            return primary;
-        }
-
-        if (!btn) return;
-
-        btn.addEventListener('click', function (e) {
-            e.preventDefault();
-            if (activeSession) {
-                activeSession.endSession();
-                return;
-            }
-            btn.style.pointerEvents = 'none';
-            btn.textContent = 'Connecting…';
-
-            fetch(ihqElevenLabs.ajax_url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'action=ihq_elevenlabs_signed_url&nonce=' + encodeURIComponent(ihqElevenLabs.nonce) + '&agent_id=' + encodeURIComponent(ihqElevenLabs.agent_id_portal_home_claude),
-            })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                if (data.success && data.data && data.data.signed_url) {
-                    var elevenLabsLanguageOverride = pagePrimaryLangForElevenLabs();
-                    console.log('[ElevenLabs] overrides.agent.language:', elevenLabsLanguageOverride);
-                    ElevenLabsClient.Conversation.startSession({
-                        signedUrl: data.data.signed_url,
-                        overrides: {
-                            agent: {
-                                language: elevenLabsLanguageOverride,
-                            },
-                        },
-                        onConnect: function () {
-                            btn.textContent = 'End Talk';
-                            btn.style.pointerEvents = '';
-                        },
-                        onDisconnect: function () {
-                            activeSession = null;
-                            btn.style.pointerEvents = '';
-                            btn.textContent = originalText;
-                        },
-                        onError: function () {
-                            activeSession = null;
-                            btn.style.pointerEvents = '';
-                            btn.textContent = originalText;
-                        },
-                        onMessage: function () {},
-                    }).then(function (session) {
-                        activeSession = session;
-                    }).catch(function () {
-                        btn.style.pointerEvents = '';
-                        btn.textContent = originalText;
-                    });
-                } else {
-                    btn.style.pointerEvents = '';
-                    btn.textContent = originalText;
-                }
-            })
-            .catch(function () {
-                btn.style.pointerEvents = '';
-                btn.textContent = originalText;
-            });
-        });
-    });
-})();
 </script>
 
 <div style="display:none">

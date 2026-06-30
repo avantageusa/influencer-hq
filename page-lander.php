@@ -188,7 +188,7 @@ $ihq_modal_social_platforms   = array(
         <p class="ln-concierge-title"><?php esc_html_e( 'Executive Concierge', 'influencer-hq' ); ?></p>
       </div>
       <div class="ln-concierge-right">
-        <a href="#" class="ln-concierge-ask" id="landerConciergeBtn"><?php esc_html_e( 'Ask Me Anything', 'influencer-hq' ); ?></a>
+        <a href="#" class="ln-concierge-ask" id="landerConciergeBtn" data-ihq-concierge-trigger data-ihq-concierge-agent="guest"><?php esc_html_e( 'Ask Me Anything', 'influencer-hq' ); ?></a>
       </div>
     </div>
   </div>
@@ -807,54 +807,6 @@ function lnRate(btn) {
   var accountUrl = (window.IHQ_VISITOR_INTENT && window.IHQ_VISITOR_INTENT.accountUrl) ? window.IHQ_VISITOR_INTENT.accountUrl : '/portal/account/';
   window.location.href = accountUrl;
 }
-
-/* ── Concierge (ElevenLabs) ─────────────────────────────── */
-(function () {
-  document.addEventListener('DOMContentLoaded', function () {
-    var btn = document.getElementById('landerConciergeBtn');
-    if (!btn || typeof ihqElevenLabs === 'undefined') return;
-    var activeSession = null;
-    var originalText  = 'Ask Me Anything';
-    var DEFAULT_LANG  = 'en';
-
-    function pageLang() {
-      var raw = (document.documentElement.getAttribute('lang') || '').trim();
-      if (!raw) return DEFAULT_LANG;
-      var p = raw.split(/[-_\s]/)[0].toLowerCase();
-      return /^[a-z]{2,10}$/.test(p) ? p : DEFAULT_LANG;
-    }
-
-    btn.addEventListener('click', function (e) {
-      e.preventDefault();
-      if (activeSession) { activeSession.endSession(); return; }
-      btn.style.pointerEvents = 'none';
-      btn.textContent = 'Connecting…';
-
-      fetch(ihqElevenLabs.ajax_url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'action=ihq_elevenlabs_signed_url&nonce=' + encodeURIComponent(ihqElevenLabs.nonce) +
-              '&agent_id=' + encodeURIComponent(ihqElevenLabs.agent_id_portal_home_claude),
-      })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        if (data.success && data.data && data.data.signed_url) {
-          ElevenLabsClient.Conversation.startSession({
-            signedUrl: data.data.signed_url,
-            overrides: { agent: { language: pageLang() } },
-            onConnect:    function () { btn.textContent = 'End Talk'; btn.style.pointerEvents = ''; },
-            onDisconnect: function () { activeSession = null; btn.style.pointerEvents = ''; btn.textContent = originalText; },
-            onError:      function () { activeSession = null; btn.style.pointerEvents = ''; btn.textContent = originalText; },
-            onMessage:    function () {},
-          }).then(function (s) { activeSession = s; }).catch(function () { btn.style.pointerEvents = ''; btn.textContent = originalText; });
-        } else {
-          btn.style.pointerEvents = ''; btn.textContent = originalText;
-        }
-      })
-      .catch(function () { btn.style.pointerEvents = ''; btn.textContent = originalText; });
-    });
-  });
-})();
 
 /* ── Turnstile helpers ───────────────────────────────────── */
 function ihqAuthLoginRemoveTurnstile() {

@@ -84,7 +84,7 @@ if ( ! defined( 'IHQ_PORTAL_ZONE_ROBOTS_HOOKS_REGISTERED' ) ) {
 			return;
 		}
 
-		echo '<meta name="robots" content="noindex, nofollow">' . "\n";
+		echo '<meta name="robots" content="noindex, nofollow">';
 	}
 
 	add_action( 'send_headers', 'ihq_portal_zone_robots_send_x_robots_tag', 1 );

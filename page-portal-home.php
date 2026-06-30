@@ -32,7 +32,7 @@ get_template_part( 'template-parts/portal-styles' );
                 <div class="dealer-image-wrap">
                     <img src="<?php echo get_template_directory_uri(); ?>/images/concierge.png" alt="Casino Dealer" class="dealer-image dealer-image--fade-bottom">
                 </div>
-                <a href="#" class="concierge-title">Talk Now - Executive Concierge</a>
+                <a href="#" class="concierge-title" data-ihq-concierge-trigger data-ihq-concierge-agent="default" data-ihq-concierge-sync=".concierge-title">Talk Now - Executive Concierge</a>
             </div>
         </div>
         
@@ -347,150 +347,22 @@ get_template_part( 'template-parts/portal-styles' );
     </main><!-- #main -->
 
 <script>
-(function () {
-    console.log('[ElevenLabs] Script block running');
-    console.log('[ElevenLabs] ihqElevenLabs defined:', typeof ihqElevenLabs !== 'undefined' ? ihqElevenLabs : 'NOT DEFINED');
-    document.addEventListener('DOMContentLoaded', function () {
-        var buttons = document.querySelectorAll('.concierge-title');
-        if (!buttons.length) return;
-        console.log('[ElevenLabs] Buttons found:', buttons.length);
-
-        var activeSession = null;
-        var buttonOriginalTexts = Array.from(buttons).map(function (button) { return button.textContent; });
-        var errMsg = null;
-        var DEFAULT_CONVAI_PAGE_LANGUAGE_CODE = 'en';
-
-        /** Primary ISO 639-1 tag from `<html lang>` — matches ElevenLabs agent language codes when possible. See https://elevenlabs.io/docs/eleven-agents/customization/voice/customization/language */
-        function pagePrimaryLangForElevenLabs() {
-            var raw = document.documentElement ? document.documentElement.getAttribute('lang') : '';
-            if (typeof raw !== 'string') {
-                raw = '';
-            }
-            raw = raw.trim();
-            if (!raw) {
-                return DEFAULT_CONVAI_PAGE_LANGUAGE_CODE;
-            }
-            var primary = raw.split(/[-_\s]/)[0].toLowerCase();
-            if (!/^[a-z]{2,10}$/.test(primary)) {
-                return DEFAULT_CONVAI_PAGE_LANGUAGE_CODE;
-            }
-            return primary;
-        }
-
-        function createErrorElement(target) {
-            if (!errMsg) {
-                errMsg = document.createElement('p');
-                errMsg.style.cssText = 'color:#f85149;font-size:.85rem;text-align:center;margin-top:8px;display:none;';
-            }
-            if (errMsg.parentNode !== target.parentNode) {
-                target.parentNode.insertBefore(errMsg, target.nextSibling);
-            }
-            return errMsg;
-        }
-
-        function showError(msg, target) {
-            var error = createErrorElement(target);
-            error.textContent = msg;
-            error.style.display = 'block';
-        }
-
-        function hideError() {
-            if (errMsg) errMsg.style.display = 'none';
-        }
-
-        function setAllButtonText(text) {
-            buttons.forEach(function (button) { button.textContent = text; });
-        }
-
-        function resetButtonText() {
-            buttons.forEach(function (button, index) {
-                button.textContent = buttonOriginalTexts[index];
-            });
-        }
-
-        buttons.forEach(function (btn) {
-            btn.addEventListener('click', function (e) {
-                e.preventDefault();
-                hideError();
-
-                if (activeSession) {
-                    activeSession.endSession();
-                    return;
-                }
-
-                setAllButtonText('Connecting…');
-
-                fetch(ihqElevenLabs.ajax_url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'action=ihq_elevenlabs_signed_url&nonce=' + encodeURIComponent(ihqElevenLabs.nonce),
-                })
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    console.log('[ElevenLabs] API response:', data);
-                    console.log('[ElevenLabs] Raw ElevenLabs data:', data.data);
-                    if (data.success && data.data && data.data.signed_url) {
-                        var signedUrl = data.data.signed_url;
-                        var elevenLabsLanguageOverride = pagePrimaryLangForElevenLabs();
-                        console.log('[ElevenLabs] Starting session with:', signedUrl);
-                        console.log('[ElevenLabs] overrides.agent.language:', elevenLabsLanguageOverride);
-                        ElevenLabsClient.Conversation.startSession({
-                            signedUrl: signedUrl,
-                            overrides: {
-                                agent: {
-                                    language: elevenLabsLanguageOverride,
-                                },
-                            },
-                            onConnect: function () {
-                                console.log('[ElevenLabs] Connected');
-                                setAllButtonText('End Talk');
-                            },
-                            onDisconnect: function () {
-                                console.log('[ElevenLabs] Disconnected');
-                                activeSession = null;
-                                resetButtonText();
-                            },
-                            onError: function (error) {
-                                console.error('[ElevenLabs] Error:', error);
-                                showError('Connection error. Please try again.', btn);
-                                activeSession = null;
-                                resetButtonText();
-                            },
-                            onMessage: function (msg) { console.log('[ElevenLabs] Message:', msg); },
-                        }).then(function (session) {
-                            activeSession = session;
-                        }).catch(function (err) {
-                            console.error('[ElevenLabs] startConversation failed:', err);
-                            showError('Could not start conversation. Please try again.', btn);
-                            activeSession = null;
-                            resetButtonText();
-                        });
-                    } else {
-                        showError('Could not connect. Please try again.', btn);
-                        resetButtonText();
-                    }
-                })
-                .catch(function (err) {
-                    console.error('[ElevenLabs] Fetch error:', err);
-                    showError('Connection error. Please try again.', btn);
-                    resetButtonText();
-                });
-            });
-        });
-    });
-})();
-</script>
-
-<script>
 // Auto-click .concierge-title if arriving with ?open=concierge
 if (window.location.search.indexOf('open=concierge') !== -1) {
     window.addEventListener('load', function () {
-        var el = document.querySelector('.concierge-title');
-        if (el) el.click();
+        var el = document.querySelector('.concierge-title[data-ihq-concierge-trigger]');
+        if (el) {
+            el.click();
+            return;
+        }
+        var fab = document.getElementById('ihq-concierge-fab');
+        if (fab) {
+            fab.click();
+        }
     });
 }
 </script>
 
-<?php 
+<?php
 get_template_part( 'template-parts/portal-scripts' );
 get_footer();

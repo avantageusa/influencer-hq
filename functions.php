@@ -134,6 +134,12 @@ function influencer_hq_widgets_init() {
 }
 add_action( 'widgets_init', 'influencer_hq_widgets_init' );
 
+/** Default ConvAI agent (logged-in portal concierge). */
+const IHQ_ELEVENLABS_AGENT_DEFAULT_ID = 'agent_2401kn7brtx3fdn93j5f4mxh70fa';
+
+/** ConvAI agent for guests (lander / logged-out FAB). */
+const IHQ_ELEVENLABS_AGENT_PORTAL_HOME_CLAUDE_ID = 'agent_6201kqzp5qxbeycvq88e6hy4fwq1';
+
 /**
  * Enqueue scripts and styles.
  */
@@ -155,16 +161,58 @@ function influencer_hq_scripts() {
 	// ElevenLabs Conversational AI
 	wp_enqueue_script( 'elevenlabs-client', 'https://cdn.jsdelivr.net/npm/@elevenlabs/client@latest/dist/lib.iife.js', array(), null, true );
 	wp_localize_script( 'elevenlabs-client', 'ihqElevenLabs', [
-		'ajax_url'                   => admin_url( 'admin-ajax.php' ),
-		'nonce'                      => wp_create_nonce( 'ihq_elevenlabs_nonce' ),
+		'ajax_url'                    => admin_url( 'admin-ajax.php' ),
+		'nonce'                       => wp_create_nonce( 'ihq_elevenlabs_nonce' ),
 		'agent_id_portal_home_claude' => IHQ_ELEVENLABS_AGENT_PORTAL_HOME_CLAUDE_ID,
+		'agent_id_default'            => IHQ_ELEVENLABS_AGENT_DEFAULT_ID,
+		'agent_id_guest'              => IHQ_ELEVENLABS_AGENT_PORTAL_HOME_CLAUDE_ID,
+		'is_logged_in'                => is_user_logged_in(),
+		'label_connecting'            => __( 'Connecting…', 'influencer-hq' ),
+		'label_end_talk'              => __( 'End Talk', 'influencer-hq' ),
+		'label_aria'                  => __( 'Talk to Executive Concierge', 'influencer-hq' ),
+		'error_connect'               => __( 'Connection error. Please try again.', 'influencer-hq' ),
+		'error_unavailable'           => __( 'Concierge is unavailable.', 'influencer-hq' ),
 	] );
+
+	$concierge_script_path = get_template_directory() . '/js/ihq-elevenlabs-concierge.js';
+	$concierge_script_ver  = file_exists( $concierge_script_path ) ? (string) filemtime( $concierge_script_path ) : _S_VERSION;
+	wp_enqueue_script(
+		'ihq-elevenlabs-concierge',
+		get_template_directory_uri() . '/js/ihq-elevenlabs-concierge.js',
+		array( 'elevenlabs-client' ),
+		$concierge_script_ver,
+		true
+	);
+
+	wp_register_style( 'ihq-concierge-fab', false, array(), $concierge_script_ver );
+	wp_enqueue_style( 'ihq-concierge-fab' );
+	wp_add_inline_style(
+		'ihq-concierge-fab',
+		'.ihq-concierge-fab{position:fixed;right:20px;bottom:20px;z-index:10030;width:64px;height:64px;padding:0;border:2px solid #b8972f;border-radius:50%;background:linear-gradient(145deg,#1f1b14,#0d0b08);box-shadow:0 8px 28px rgba(0,0,0,.55);cursor:pointer;overflow:visible;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;}'
+		. '.ihq-concierge-fab:hover{transform:scale(1.05);box-shadow:0 10px 32px rgba(0,0,0,.65);border-color:#d4b85a;}'
+		. '.ihq-concierge-fab:focus{outline:none;box-shadow:0 0 0 3px rgba(184,151,47,.45),0 8px 28px rgba(0,0,0,.55);}'
+		. '.ihq-concierge-fab-img{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%;}'
+		. '.ihq-concierge-fab-ring{position:absolute;inset:-4px;border-radius:50%;border:2px solid transparent;pointer-events:none;}'
+		. '.ihq-concierge-fab.is-connecting .ihq-concierge-fab-ring{border-color:rgba(212,184,90,.55);animation:ihq-concierge-pulse 1.2s ease-in-out infinite;}'
+		. '.ihq-concierge-fab.is-active .ihq-concierge-fab-ring{border-color:#6fcf97;box-shadow:0 0 0 4px rgba(111,207,151,.25);}'
+		. '.ihq-concierge-fab.is-error{border-color:#c45c5c;}'
+		. '@keyframes ihq-concierge-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.65}}'
+		. '@media (max-width:575px){.ihq-concierge-fab{right:14px;bottom:14px;width:56px;height:56px;}}'
+	);
 
 	if ( is_singular() && comments_open() && get_option( 'thread_comments' ) ) {
 		wp_enqueue_script( 'comment-reply' );
 	}
 }
 add_action( 'wp_enqueue_scripts', 'influencer_hq_scripts' );
+
+/**
+ * Render floating concierge button before wp_footer scripts.
+ */
+function ihq_render_concierge_fab() {
+	get_template_part( 'template-parts/concierge-fab' );
+}
+add_action( 'wp_footer', 'ihq_render_concierge_fab', 15 );
 
 /**
  * Game Portal URL — user profile field
@@ -1014,12 +1062,6 @@ function ihq_api_proxy() {
 }
 add_action('wp_ajax_ihq_api_proxy',        'ihq_api_proxy');
 add_action('wp_ajax_nopriv_ihq_api_proxy', 'ihq_api_proxy');
-
-/** Default ConvAI agent (e.g. portal home legacy concierge). */
-const IHQ_ELEVENLABS_AGENT_DEFAULT_ID = 'agent_2401kn7brtx3fdn93j5f4mxh70fa';
-
-/** ConvAI agent for Talk Now on page-portal-home-claude.php */
-const IHQ_ELEVENLABS_AGENT_PORTAL_HOME_CLAUDE_ID = 'agent_6201kqzp5qxbeycvq88e6hy4fwq1';
 
 /**
  * Resolve ElevenLabs agent_id from POST allowlist.
