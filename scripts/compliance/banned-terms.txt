@@ -1,0 +1,21 @@
+# M6 crawler audit — banned RMG / gambling terms (grep case-insensitive).
+# Replace with compliance-owned list (review ref M6). Lines starting with # are ignored.
+baccarat
+casino
+gambling
+wager
+wagers
+real money
+real-money
+sportsbook
+sports book
+betting
+jackpot
+poker
+roulette
+slots
+slot machine
+av-baccarat
+leaderboards
+hq_game_url
+game portal

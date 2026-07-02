@@ -168,7 +168,7 @@ $ihq_modal_social_platforms   = array(
 <!-- ═══ NAV ══════════════════════════════════════════════════════ -->
 <nav class="ln-nav">
   <a class="logo" href="<?php echo esc_url( home_url( '/' ) ); ?>">
-    <img src="<?php echo get_template_directory_uri(); ?>/images/logo-home-claude.jpg" alt="influencerHQ" style="max-height:52px;width:auto;">
+    <img src="<?php echo get_template_directory_uri(); ?>/images/logo-home-lander.jpg" alt="influencerHQ" style="max-height:52px;width:auto;">
   </a>
 </nav>
 

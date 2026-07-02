@@ -1,0 +1,7 @@
+M6 crawler audit - 2026-07-02_123147
+baseUrl: https://influencerhq.co
+Plain portal fetch: PASS - verify/turnstile only - https://influencerhq.co/portal/verify/?redirect_to=https://influencerhq.co/portal/account/
+SKIPPED: set originIp in config.json or omit -SkipOrigin
+AC1 crawler+grep: PASS
+AC3 plain portal:  PASS
+Evidence: C:\laragon\www\influencer-git\scripts\compliance\evidence\2026-07-02_123147

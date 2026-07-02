@@ -110,7 +110,7 @@ $ihq_portal_ts_show_retry = ! empty( $ts_error );
 <body>
 	<div class="ihq-portal-ts-wrap">
 		<img src="<?php echo esc_url( $logo_url ); ?>" alt="influencerHQ">
-		<p class="ihq-portal-ts-msg"><?php esc_html_e( 'Complete the security check below', 'influencer-hq' ); ?></p>
+		<p class="ihq-portal-ts-msg"><?php esc_html_e( 'Verifying you are human.', 'influencer-hq' ); ?></p>
 		<p class="ihq-portal-ts-sub"><?php esc_html_e( 'This only takes a moment.', 'influencer-hq' ); ?></p>
 		<div id="ihq-portal-ts-widget"></div>
 		<button type="button" id="ihq-portal-ts-retry"><?php esc_html_e( 'Try again', 'influencer-hq' ); ?></button>

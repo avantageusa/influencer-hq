@@ -1,0 +1,10 @@
+PASS lander / (AdsBot-Google): zero banned terms
+PASS portal /portal/portal-home/ (AdsBot-Google): verify/turnstile only
+PASS portal /portal/account/ (AdsBot-Google): verify/turnstile only
+PASS portal /portal/challenges/ (AdsBot-Google): verify/turnstile only
+PASS portal /portal/equity/ (AdsBot-Google): verify/turnstile only
+PASS lander / (facebookexternalhit): zero banned terms
+PASS portal /portal/portal-home/ (facebookexternalhit): verify/turnstile only
+PASS portal /portal/account/ (facebookexternalhit): verify/turnstile only
+PASS portal /portal/challenges/ (facebookexternalhit): verify/turnstile only
+PASS portal /portal/equity/ (facebookexternalhit): verify/turnstile only

@@ -1,0 +1,15 @@
+{
+  "baseUrl": "https://influencerhq.co",
+  "originIp": "",
+  "hostHeader": "influencerhq.co",
+  "landers": [
+    "/"
+  ],
+  "portal": [
+    "/portal/portal-home/",
+    "/portal/account/",
+    "/portal/challenges/",
+    "/portal/equity/"
+  ],
+  "plainFetchPortalPath": "/portal/account/"
+}

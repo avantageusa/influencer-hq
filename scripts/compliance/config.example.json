@@ -1,0 +1,15 @@
+{
+  "baseUrl": "https://YOUR-PRODUCTION-DOMAIN.com",
+  "originIp": "",
+  "hostHeader": "YOUR-PRODUCTION-DOMAIN.com",
+  "landers": [
+    "/"
+  ],
+  "portal": [
+    "/portal/portal-home/",
+    "/portal/account/",
+    "/portal/challenges/",
+    "/portal/equity/"
+  ],
+  "plainFetchPortalPath": "/portal/account/"
+}
