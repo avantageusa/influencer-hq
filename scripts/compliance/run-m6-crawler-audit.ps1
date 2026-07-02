@@ -172,9 +172,16 @@ foreach ($botKey in $bots.Keys) {
         $hits = Test-BannedTermsInFile -FilePath $out -Terms $terms
         if ($hits.Count -gt 0) {
             $landerFail = $true
-            "FAIL lander $path ($botKey): $($hits -join ', ')" | Add-Content $grepReport
+            "FAIL lander $path ($botKey): banned terms: $($hits -join ', ')" | Add-Content $grepReport
         } else {
             "PASS lander $path ($botKey): zero banned terms" | Add-Content $grepReport
+        }
+        $landerHtml = Get-Content $out -Raw -ErrorAction SilentlyContinue
+        if ($landerHtml -and $landerHtml -match '/portal/') {
+            $landerFail = $true
+            "FAIL lander $path ($botKey): contains /portal/ URL in crawler HTML" | Add-Content $grepReport
+        } elseif ($landerHtml) {
+            "PASS lander $path ($botKey): no /portal/ URLs in crawler HTML" | Add-Content $grepReport
         }
     }
     foreach ($path in $config.portal) {

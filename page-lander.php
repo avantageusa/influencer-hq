@@ -54,6 +54,32 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 	2
 );
 
+/**
+ * Lander SEO / social meta — recruitment & equity framing only; no portal URLs.
+ */
+add_action(
+	'wp_head',
+	function () {
+		$lander_url = home_url( '/' );
+		$title      = __( 'InfluencerHQ — Equity for Influence', 'influencer-hq' );
+		$desc       = __( 'InfluencerHQ partners with creators through equity participation. Build long-term ownership in the value your influence creates.', 'influencer-hq' );
+		$image      = get_template_directory_uri() . '/images/logo-home-lander.jpg';
+		?>
+<meta name="description" content="<?php echo esc_attr( $desc ); ?>">
+<meta property="og:title" content="<?php echo esc_attr( $title ); ?>">
+<meta property="og:description" content="<?php echo esc_attr( $desc ); ?>">
+<meta property="og:url" content="<?php echo esc_url( $lander_url ); ?>">
+<meta property="og:type" content="website">
+<meta property="og:image" content="<?php echo esc_url( $image ); ?>">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="<?php echo esc_attr( $title ); ?>">
+<meta name="twitter:description" content="<?php echo esc_attr( $desc ); ?>">
+<meta name="twitter:image" content="<?php echo esc_url( $image ); ?>">
+		<?php
+	},
+	3
+);
+
 get_header();
 
 $ihq_modal_reg_nonce       = wp_create_nonce( 'ihq_reg_code_nonce' );
@@ -690,7 +716,7 @@ $ihq_modal_social_platforms   = array(
           <div id="auth-challenge-section" style="display:none">
             <hr class="auth-section-sep">
             <h3 class="auth-section-title">Choose Your Path to Lead Global Competition</h3>
-            <p class="auth-section-sub">After your email is verified, you'll enter HQ², your private influencer portal. Choose how you want to lead:</p>
+            <p class="auth-section-sub">After your email is verified, you'll get access to your private member area. Choose how you want to lead:</p>
             <div class="auth-comp-cards">
               <div class="auth-comp-card" id="auth-cc-weekend" onclick="selectAuthComp('weekend_world',this)">
                 <input type="radio" name="auth_challenge_type" value="weekend_world" id="auth-comp-weekend">
@@ -785,7 +811,6 @@ var IHQ_AUTH_LOGIN = {
   ajaxUrl: <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>,
   nonce: <?php echo wp_json_encode( $ihq_modal_login_nonce ); ?>,
   turnstileSiteKey: <?php echo wp_json_encode( $ihq_turnstile_site_modal ); ?>,
-  redirectUrl: <?php echo wp_json_encode( home_url( '/portal/portal-home/' ) ); ?>,
   codeExpiresMinutes: 15
 };
 var ihqAuthLoginSignupToken = '';
@@ -804,8 +829,13 @@ function lnRate(btn) {
   if (typeof window.ihqVisitorIntentSaveRating === 'function') {
     window.ihqVisitorIntentSaveRating(group, val);
   }
-  var accountUrl = (window.IHQ_VISITOR_INTENT && window.IHQ_VISITOR_INTENT.accountUrl) ? window.IHQ_VISITOR_INTENT.accountUrl : '/portal/account/';
-  window.location.href = accountUrl;
+  if (typeof window.ihqVisitorIntentFetchPortalRedirect === 'function') {
+    window.ihqVisitorIntentFetchPortalRedirect('account').then(function (data) {
+      if (typeof window.ihqVisitorIntentFollowServerRedirect === 'function') {
+        window.ihqVisitorIntentFollowServerRedirect(data);
+      }
+    });
+  }
 }
 
 /* ── Turnstile helpers ───────────────────────────────────── */
@@ -882,10 +912,10 @@ function ihqAuthLoginVerify() {
   if(raw.length!==6){if(errEl)errEl.textContent='Enter the 6-digit code from your email.';return;}
   if(!ihqAuthLoginSignupToken){if(errEl)errEl.textContent='Send a code first.';ihqAuthLoginBackToEmail();return;}
   var btn=document.getElementById('auth-login-verify-btn'); if(btn)btn.disabled=true;
-  var fd=new FormData();fd.append('action','ihq_verify_login_code');fd.append('nonce',IHQ_AUTH_LOGIN.nonce);fd.append('signup_token',ihqAuthLoginSignupToken);fd.append('code',raw);fd.append('redirect_url',IHQ_AUTH_LOGIN.redirectUrl);fd.append('country_iso',window.ihqResolveClientCountryIsoAlpha2());
+  var fd=new FormData();fd.append('action','ihq_verify_login_code');fd.append('nonce',IHQ_AUTH_LOGIN.nonce);fd.append('signup_token',ihqAuthLoginSignupToken);fd.append('code',raw);fd.append('country_iso',window.ihqResolveClientCountryIsoAlpha2());
   fetch(IHQ_AUTH_LOGIN.ajaxUrl,{method:'POST',body:fd})
     .then(function(r){return r.json();})
-    .then(function(data){if(btn)btn.disabled=false;if(!data.success){if(errEl)errEl.textContent=ihqModalAjaxErrMessage(data);return;}window.location.href=data.data.redirect_url||IHQ_AUTH_LOGIN.redirectUrl;})
+    .then(function(data){if(btn)btn.disabled=false;if(!data.success){if(errEl)errEl.textContent=ihqModalAjaxErrMessage(data);return;}if(data.data&&data.data.redirect_url){window.location.href=data.data.redirect_url;}})
     .catch(function(){if(btn)btn.disabled=false;if(errEl)errEl.textContent='Network error. Please try again.';});
 }
 

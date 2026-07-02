@@ -959,10 +959,9 @@ function ihq_handle_verify_login_code_ajax() {
     $country_iso_login = isset( $_POST['country_iso'] ) ? sanitize_text_field( wp_unslash( $_POST['country_iso'] ) ) : '';
     ihq_refresh_influencer_oauth_tokens( $user_id, $country_iso_login );
 
-    $redirect = isset( $_POST['redirect_url'] ) ? esc_url_raw( wp_unslash( $_POST['redirect_url'] ) ) : home_url( '/portal/portal-home/' );
-    if ( $redirect === '' ) {
-        $redirect = home_url( '/portal/portal-home/' );
-    }
+    $redirect = function_exists( 'ihq_portal_redirect_url_for_context' )
+        ? ihq_portal_redirect_url_for_context( 'portal_home' )
+        : trailingslashit( home_url( '/portal/portal-home' ) );
 
     wp_send_json_success(
         array(

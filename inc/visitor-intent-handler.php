@@ -332,6 +332,40 @@ function ihq_visitor_intent_portal_account_url() {
 }
 
 /**
+ * Server-side portal redirect targets (never embed in lander HTML).
+ *
+ * @param string $context `account` or `portal_home`.
+ * @return string
+ */
+function ihq_portal_redirect_url_for_context( $context = 'account' ) {
+	if ( $context === 'portal_home' ) {
+		return trailingslashit( home_url( '/portal/portal-home' ) );
+	}
+
+	return ihq_visitor_intent_portal_account_url();
+}
+
+/**
+ * AJAX: return portal redirect URL after a lander interaction (no URL in page source).
+ */
+function ihq_handle_get_portal_redirect_url_ajax() {
+	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_visitor_intent_nonce' ) ) {
+		wp_send_json_error( array( 'message' => __( 'Invalid security token.', 'influencer-hq' ) ) );
+		return;
+	}
+
+	$context = isset( $_POST['context'] ) ? sanitize_key( wp_unslash( $_POST['context'] ) ) : 'account';
+
+	wp_send_json_success(
+		array(
+			'redirect_url' => ihq_portal_redirect_url_for_context( $context ),
+		)
+	);
+}
+add_action( 'wp_ajax_ihq_get_portal_redirect_url', 'ihq_handle_get_portal_redirect_url_ajax' );
+add_action( 'wp_ajax_nopriv_ihq_get_portal_redirect_url', 'ihq_handle_get_portal_redirect_url_ajax' );
+
+/**
  * Parse and normalize visitor intent from AJAX POST.
  *
  * @return array{intent:array,button_press_url:string,country_iso:string}|null
@@ -469,6 +503,7 @@ function ihq_handle_issue_visitor_verification_ajax() {
 		'braze_track_payload' => $result['braze_track_payload'] ?? array(),
 		'expires_minutes'     => $result['expires_minutes'] ?? (int) ( ihq_visitor_verification_code_ttl_seconds() / MINUTE_IN_SECONDS ),
 		'reused'              => ! empty( $result['reused'] ),
+		'redirect_url'        => ihq_visitor_intent_portal_account_url(),
 	);
 	if ( ! empty( $result['braze_response'] ) ) {
 		$response['braze_response'] = $result['braze_response'];
@@ -666,17 +701,24 @@ function ihq_enqueue_visitor_intent_assets() {
 		true
 	);
 
+	$ihq_visitor_intent_localize = array(
+		'cookieName'         => ihq_visitor_intent_cookie_name(),
+		'cookieDays'         => 30,
+		'ajaxUrl'            => admin_url( 'admin-ajax.php' ),
+		'nonce'              => wp_create_nonce( 'ihq_visitor_intent_nonce' ),
+		'codeExpiresMinutes' => (int) ( ihq_visitor_verification_code_ttl_seconds() / MINUTE_IN_SECONDS ),
+	);
+
+	if ( is_page_template( 'page-lander.php' ) ) {
+		$ihq_visitor_intent_localize['isLander'] = true;
+	} else {
+		$ihq_visitor_intent_localize['accountUrl'] = ihq_visitor_intent_portal_account_url();
+	}
+
 	wp_localize_script(
 		'ihq-visitor-intent',
 		'IHQ_VISITOR_INTENT',
-		array(
-			'cookieName' => ihq_visitor_intent_cookie_name(),
-			'cookieDays' => 30,
-			'accountUrl' => ihq_visitor_intent_portal_account_url(),
-			'ajaxUrl'    => admin_url( 'admin-ajax.php' ),
-			'nonce'      => wp_create_nonce( 'ihq_visitor_intent_nonce' ),
-			'codeExpiresMinutes' => (int) ( ihq_visitor_verification_code_ttl_seconds() / MINUTE_IN_SECONDS ),
-		)
+		$ihq_visitor_intent_localize
 	);
 }
 add_action( 'wp_enqueue_scripts', 'ihq_enqueue_visitor_intent_assets', 25 );

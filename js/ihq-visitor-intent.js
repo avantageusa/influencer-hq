@@ -371,14 +371,47 @@
       });
   }
 
+  function fetchPortalRedirectUrl(context) {
+    var fd = new FormData();
+    fd.append('action', 'ihq_get_portal_redirect_url');
+    fd.append('nonce', cfg.nonce || '');
+    fd.append('context', context || 'account');
+    return fetch(cfg.ajaxUrl || '/wp-admin/admin-ajax.php', { method: 'POST', body: fd })
+      .then(function (r) { return r.json(); });
+  }
+
+  function followServerRedirect(data) {
+    if (data && data.success && data.data && data.data.redirect_url) {
+      window.location.href = data.data.redirect_url;
+      return true;
+    }
+    return false;
+  }
+
   function saveFromModalAndRedirect() {
     var payload = collectFromModal();
     mergeIntent(payload);
-    var target = cfg.accountUrl || '/portal/account/';
 
     issueVisitorVerification({ buttonPressUrl: window.location.href.split('#')[0] })
-      .finally(function () {
-        window.location.href = target;
+      .then(function (data) {
+        if (followServerRedirect(data)) {
+          return null;
+        }
+        if (data && data.success) {
+          return fetchPortalRedirectUrl('account');
+        }
+        if (!cfg.isLander && cfg.accountUrl) {
+          window.location.href = cfg.accountUrl;
+        }
+        return null;
+      })
+      .then(function (data) {
+        if (data && followServerRedirect(data)) {
+          return;
+        }
+        if (!cfg.isLander && cfg.accountUrl) {
+          window.location.href = cfg.accountUrl;
+        }
       });
   }
 
@@ -414,6 +447,8 @@
   window.ihqVisitorIntentRefreshPreview = refreshTestRegistryPreview;
   window.ihqVisitorIntentSendTestRegistry = sendTestRegistry;
   window.ihqVisitorIntentIssueVerification = issueVisitorVerification;
+  window.ihqVisitorIntentFetchPortalRedirect = fetchPortalRedirectUrl;
+  window.ihqVisitorIntentFollowServerRedirect = followServerRedirect;
   window.ihqVisitorIntentVerifyCode = verifyVisitorCode;
   window.ihqVisitorIntentHasCommMethods = hasCommMethods;
   window.ihqVisitorIntentVerificationCodeIssued = readVerificationCodeIssued;

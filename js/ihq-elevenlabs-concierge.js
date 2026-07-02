@@ -34,12 +34,12 @@
       return cfg.agent_id_default || '';
     }
     if (agentMode === 'guest') {
-      return cfg.agent_id_guest || cfg.agent_id_portal_home_claude || '';
+      return cfg.agent_id_guest || '';
     }
     if (cfg.is_logged_in) {
       return cfg.agent_id_default || '';
     }
-    return cfg.agent_id_guest || cfg.agent_id_portal_home_claude || '';
+    return cfg.agent_id_guest || '';
   }
 
   function buildSignedUrlBody(agentId) {

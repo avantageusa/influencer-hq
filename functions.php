@@ -160,19 +160,22 @@ function influencer_hq_scripts() {
 
 	// ElevenLabs Conversational AI
 	wp_enqueue_script( 'elevenlabs-client', 'https://cdn.jsdelivr.net/npm/@elevenlabs/client@latest/dist/lib.iife.js', array(), null, true );
-	wp_localize_script( 'elevenlabs-client', 'ihqElevenLabs', [
-		'ajax_url'                    => admin_url( 'admin-ajax.php' ),
-		'nonce'                       => wp_create_nonce( 'ihq_elevenlabs_nonce' ),
-		'agent_id_portal_home_claude' => IHQ_ELEVENLABS_AGENT_PORTAL_HOME_CLAUDE_ID,
-		'agent_id_default'            => IHQ_ELEVENLABS_AGENT_DEFAULT_ID,
-		'agent_id_guest'              => IHQ_ELEVENLABS_AGENT_PORTAL_HOME_CLAUDE_ID,
-		'is_logged_in'                => is_user_logged_in(),
-		'label_connecting'            => __( 'Connecting…', 'influencer-hq' ),
-		'label_end_talk'              => __( 'End Talk', 'influencer-hq' ),
-		'label_aria'                  => __( 'Talk to Executive Concierge', 'influencer-hq' ),
-		'error_connect'               => __( 'Connection error. Please try again.', 'influencer-hq' ),
-		'error_unavailable'           => __( 'Concierge is unavailable.', 'influencer-hq' ),
-	] );
+	$ihq_elevenlabs_localize = array(
+		'ajax_url'         => admin_url( 'admin-ajax.php' ),
+		'nonce'            => wp_create_nonce( 'ihq_elevenlabs_nonce' ),
+		'agent_id_guest'   => IHQ_ELEVENLABS_AGENT_PORTAL_HOME_CLAUDE_ID,
+		'is_logged_in'     => is_user_logged_in(),
+		'label_connecting' => __( 'Connecting…', 'influencer-hq' ),
+		'label_end_talk'   => __( 'End Talk', 'influencer-hq' ),
+		'label_aria'       => __( 'Talk to Executive Concierge', 'influencer-hq' ),
+		'error_connect'    => __( 'Connection error. Please try again.', 'influencer-hq' ),
+		'error_unavailable'=> __( 'Concierge is unavailable.', 'influencer-hq' ),
+	);
+	if ( is_user_logged_in() || ( function_exists( 'ihq_is_portal_page_template' ) && ihq_is_portal_page_template() ) ) {
+		$ihq_elevenlabs_localize['agent_id_default']            = IHQ_ELEVENLABS_AGENT_DEFAULT_ID;
+		$ihq_elevenlabs_localize['agent_id_portal_home_claude'] = IHQ_ELEVENLABS_AGENT_PORTAL_HOME_CLAUDE_ID;
+	}
+	wp_localize_script( 'elevenlabs-client', 'ihqElevenLabs', $ihq_elevenlabs_localize );
 
 	$concierge_script_path = get_template_directory() . '/js/ihq-elevenlabs-concierge.js';
 	$concierge_script_ver  = file_exists( $concierge_script_path ) ? (string) filemtime( $concierge_script_path ) : _S_VERSION;
