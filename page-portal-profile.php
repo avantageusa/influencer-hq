@@ -57,6 +57,20 @@ if ( ! function_exists( 'ihq_extract_youtube_video_id' ) ) {
     }
 }
 
+// Handle OAuth start-session API URL (per-user override; SSO refresh via AJAX button).
+if ( isset( $_POST['ihq_oauth_start_session_url_submit'] ) && is_user_logged_in() ) {
+    check_admin_referer( 'ihq_oauth_start_session_url_save' );
+    $url = isset( $_POST['ihq_oauth_start_session_url'] ) ? esc_url_raw( wp_unslash( $_POST['ihq_oauth_start_session_url'] ) ) : '';
+    $account_url = function_exists( 'ihq_portal_account_url' ) ? ihq_portal_account_url() : trailingslashit( home_url( '/portal/account' ) );
+    if ( $url === '' ) {
+        delete_user_meta( get_current_user_id(), ihq_oauth_start_session_url_meta_key() );
+    } else {
+        update_user_meta( get_current_user_id(), ihq_oauth_start_session_url_meta_key(), $url );
+    }
+    wp_safe_redirect( add_query_arg( 'ihq_oauth_url_saved', '1', $account_url ) );
+    exit;
+}
+
 // Handle Game Portal URL form submission
 if ( isset( $_POST['hq_game_url_submit'] ) && is_user_logged_in() ) {
     check_admin_referer( 'hq_game_url_save' );
@@ -154,6 +168,19 @@ $gameplay_yt_id     = ihq_extract_youtube_video_id( $gameplay_video_url );
 $contact_platforms = [ 'Email', 'Telegram' ];
 
 $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
+$ihq_oauth_sso_nonce = wp_create_nonce( 'ihq_oauth_sso_nonce' );
+$ihq_oauth_session_url_stored = function_exists( 'ihq_oauth_start_session_url_meta_key' )
+    ? (string) get_user_meta( $user->ID, ihq_oauth_start_session_url_meta_key(), true )
+    : '';
+$ihq_oauth_session_url_default = function_exists( 'ihq_oauth_start_session_default_url' )
+    ? ihq_oauth_start_session_default_url()
+    : '';
+$ihq_current_sso_code = function_exists( 'ihq_get_hq_sso_code_for_user' )
+    ? ihq_get_hq_sso_code_for_user( $user->ID )
+    : '';
+$ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_url_for_user' )
+    ? ihq_get_oauth_start_session_url_for_user( $user->ID )
+    : $ihq_oauth_session_url_default;
 ?>
 
     <main id="primary" class="site-main">
@@ -202,15 +229,50 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                 <?php
                 $ihq_start_session_dump = (string) get_user_meta( $user->ID, 'ihq_oauth_start_session_last', true );
                 if ( $ihq_start_session_dump === '' ) {
-                    $ihq_start_session_dump = __( 'No start-session response saved yet. Log in to refresh.', 'influencer-hq' );
+                    $ihq_start_session_dump = __( 'No start-session response saved yet. Use Request SSO again below.', 'influencer-hq' );
                 }
                 ?>
-                <div class="sett-card" style="margin-bottom:14px;border:1px dashed rgba(184,151,47,.45);">
-                    <p style="margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#b8972f;">
-                        <?php esc_html_e( 'OAuth start-session response (last login)', 'influencer-hq' ); ?>
-                    </p>
-                    <pre style="margin:0;padding:10px 12px;max-height:320px;overflow:auto;font-size:11px;line-height:1.45;color:#ddd;background:rgba(0,0,0,.35);border-radius:6px;white-space:pre-wrap;word-break:break-word;"><?php echo esc_html( $ihq_start_session_dump ); ?></pre>
-                </div>
+                <form method="post" action="" class="ihq-oauth-session-url-form">
+                    <?php wp_nonce_field( 'ihq_oauth_start_session_url_save' ); ?>
+                    <div class="sett-card" style="margin-bottom:14px;border:1px dashed rgba(184,151,47,.45);">
+                        <p style="margin:0 0 10px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#b8972f;">
+                            <?php esc_html_e( 'OAuth start-session API URL', 'influencer-hq' ); ?>
+                        </p>
+                        <div class="sett-row">
+                            <label for="ihq_oauth_start_session_url" class="sett-row-lbl"><?php esc_html_e( 'API URL', 'influencer-hq' ); ?></label>
+                            <div class="sett-row-val" style="width:auto;flex:1;">
+                                <input
+                                    type="url"
+                                    id="ihq_oauth_start_session_url"
+                                    name="ihq_oauth_start_session_url"
+                                    value="<?php echo esc_attr( $ihq_oauth_session_url_stored ); ?>"
+                                    placeholder="<?php echo esc_attr( $ihq_oauth_session_url_default ); ?>"
+                                    class="hq-game-url-input"
+                                >
+                            </div>
+                            <button type="submit" name="ihq_oauth_start_session_url_submit" class="hq-game-url-save-btn"><?php esc_html_e( 'Save', 'influencer-hq' ); ?></button>
+                        </div>
+                        <div class="sett-row" style="border-bottom:none;">
+                            <span class="sett-row-lbl" style="color:#616161;font-size:13px;"><?php esc_html_e( 'Active URL', 'influencer-hq' ); ?></span>
+                            <span id="ihq-oauth-active-url" style="font-size:13px;color:#616161;flex:1;text-align:right;word-break:break-all;"><?php echo esc_html( $ihq_resolved_oauth_session_url ); ?></span>
+                        </div>
+                        <?php if ( isset( $_GET['ihq_oauth_url_saved'] ) ) : ?>
+                        <p style="color:#7CCA8A;font-size:13px;margin:10px 0 0;">&#10003; <?php esc_html_e( 'API URL saved. Click Request SSO again to run start-session against this URL.', 'influencer-hq' ); ?></p>
+                        <?php endif; ?>
+                        <div class="sett-row" style="border-bottom:none;margin-top:12px;align-items:center;">
+                            <span class="sett-row-lbl"><?php esc_html_e( 'SSO code', 'influencer-hq' ); ?></span>
+                            <span id="ihq-oauth-sso-code-display" style="font-size:13px;color:#e6cfa0;flex:1;text-align:right;word-break:break-all;"><?php echo $ihq_current_sso_code !== '' ? esc_html( $ihq_current_sso_code ) : esc_html__( 'Not set yet', 'influencer-hq' ); ?></span>
+                        </div>
+                        <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+                            <button type="button" id="ihq-request-sso-again-btn" class="hq-game-url-save-btn"><?php esc_html_e( 'Request SSO again', 'influencer-hq' ); ?></button>
+                            <span id="ihq-request-sso-again-status" style="font-size:13px;color:#b8972f;" hidden></span>
+                        </div>
+                        <p style="margin:14px 0 8px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#b8972f;">
+                            <?php esc_html_e( 'OAuth start-session response (last request)', 'influencer-hq' ); ?>
+                        </p>
+                        <pre id="ihq-oauth-start-session-dump" style="margin:0;padding:10px 12px;max-height:320px;overflow:auto;font-size:11px;line-height:1.45;color:#ddd;background:rgba(0,0,0,.35);border-radius:6px;white-space:pre-wrap;word-break:break-word;"><?php echo esc_html( $ihq_start_session_dump ); ?></pre>
+                    </div>
+                </form>
 
                 <!-- GAME PORTAL URL -->
                 <?php
@@ -594,6 +656,7 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
     var _ajax  = <?php echo wp_json_encode( admin_url('admin-ajax.php') ); ?>;
     var _nonce = <?php echo wp_json_encode( $_settings_nonce ); ?>;
     var _referralNonce = <?php echo wp_json_encode( $ihq_referral_nonce ); ?>;
+    var _oauthSsoNonce = <?php echo wp_json_encode( $ihq_oauth_sso_nonce ); ?>;
     var _needsPortalUsername = <?php echo $needs_portal_username_setup ? 'true' : 'false'; ?>;
     var _portalUsernameSetupMsg = <?php echo wp_json_encode( __( 'Please create your username to be able to continue your journey on Influencer HQ', 'influencer-hq' ) ); ?>;
 
@@ -648,6 +711,60 @@ $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
                     profileReferralCopyBtn.textContent = 'copy';
                 }, 2000);
             });
+        });
+    }
+
+    /* ── OAuth start-session: Request SSO again ── */
+    var ihqRequestSsoBtn = document.getElementById('ihq-request-sso-again-btn');
+    var ihqRequestSsoStatus = document.getElementById('ihq-request-sso-again-status');
+    var ihqOauthDumpEl = document.getElementById('ihq-oauth-start-session-dump');
+    var ihqOauthSsoCodeEl = document.getElementById('ihq-oauth-sso-code-display');
+    var ihqOauthActiveUrlEl = document.getElementById('ihq-oauth-active-url');
+
+    function ihqSetRequestSsoStatus(msg, isError) {
+        if (!ihqRequestSsoStatus) {
+            return;
+        }
+        ihqRequestSsoStatus.textContent = msg || '';
+        ihqRequestSsoStatus.hidden = !msg;
+        ihqRequestSsoStatus.style.color = isError ? '#f85149' : '#7CCA8A';
+    }
+
+    if (ihqRequestSsoBtn) {
+        ihqRequestSsoBtn.addEventListener('click', function() {
+            ihqSetRequestSsoStatus('', false);
+            ihqRequestSsoBtn.disabled = true;
+            var fd = new FormData();
+            fd.append('action', 'ihq_request_sso_again');
+            fd.append('nonce', _oauthSsoNonce);
+            if (typeof window.ihqResolveClientCountryIsoAlpha2 === 'function') {
+                fd.append('country_iso', window.ihqResolveClientCountryIsoAlpha2());
+            }
+            fetch(_ajax, { method: 'POST', body: fd })
+                .then(function(r) { return r.json(); })
+                .then(function(res) {
+                    ihqRequestSsoBtn.disabled = false;
+                    var dump = (res.data && res.data.start_session_dump) ? res.data.start_session_dump : '';
+                    if (dump && ihqOauthDumpEl) {
+                        ihqOauthDumpEl.textContent = dump;
+                    }
+                    if (res.data && res.data.api_url && ihqOauthActiveUrlEl) {
+                        ihqOauthActiveUrlEl.textContent = res.data.api_url;
+                    }
+                    if (!res.success) {
+                        var errMsg = (res.data && res.data.message) ? res.data.message : 'SSO request failed.';
+                        ihqSetRequestSsoStatus(errMsg, true);
+                        return;
+                    }
+                    if (res.data && res.data.sso_code && ihqOauthSsoCodeEl) {
+                        ihqOauthSsoCodeEl.textContent = res.data.sso_code;
+                    }
+                    ihqSetRequestSsoStatus((res.data && res.data.message) ? res.data.message : 'SSO request completed.', false);
+                })
+                .catch(function() {
+                    ihqRequestSsoBtn.disabled = false;
+                    ihqSetRequestSsoStatus('Network error. Please try again.', true);
+                });
         });
     }
 

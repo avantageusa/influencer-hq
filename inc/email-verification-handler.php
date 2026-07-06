@@ -1071,6 +1071,51 @@ function ihq_oauth_start_session_request_headers() {
 }
 
 /**
+ * Default OAuth start-session endpoint (QC).
+ *
+ * @return string
+ */
+function ihq_oauth_start_session_default_url() {
+	return 'https://02nvfvonol.execute-api.eu-west-2.amazonaws.com/qc/account/oauth/start-session';
+}
+
+/**
+ * User meta key for per-user OAuth start-session URL override.
+ *
+ * @return string
+ */
+function ihq_oauth_start_session_url_meta_key() {
+	return 'ihq_oauth_start_session_url';
+}
+
+/**
+ * Resolved start-session URL for a user (meta override or default).
+ *
+ * @param int $user_id WordPress user ID.
+ * @return string
+ */
+function ihq_get_oauth_start_session_url_for_user( $user_id ) {
+	$user_id = (int) $user_id;
+	$default = ihq_oauth_start_session_default_url();
+
+	if ( $user_id <= 0 ) {
+		return $default;
+	}
+
+	$stored = get_user_meta( $user_id, ihq_oauth_start_session_url_meta_key(), true );
+	if ( ! is_string( $stored ) || $stored === '' ) {
+		return $default;
+	}
+
+	$url = esc_url_raw( $stored );
+	if ( $url === '' ) {
+		return $default;
+	}
+
+	return $url;
+}
+
+/**
  * User meta key for iframe SSO code from start-session (`ssoCode`).
  *
  * @return string
@@ -1167,7 +1212,7 @@ function ihq_save_start_session_response_for_profile( $user_id, $data ) {
  * Returns the parsed `data` object on success, or false on failure.
  */
 function ihq_register_oauth_user( $user_id, $first_name, $last_name, $email, $country_iso = '', array $comm_methods = array(), array $social_handles = array() ) {
-    $api_url = 'https://02nvfvonol.execute-api.eu-west-2.amazonaws.com/qc/account/oauth/start-session';
+    $api_url = ihq_get_oauth_start_session_url_for_user( $user_id );
 
     $payload_inner = array(
         'id'         => 'wpu-' . $user_id,
@@ -1222,6 +1267,57 @@ function ihq_register_oauth_user( $user_id, $first_name, $last_name, $email, $co
 
     return $body['data'];
 }
+
+/**
+ * AJAX: re-run OAuth start-session for the logged-in user (profile "Request SSO again").
+ */
+function ihq_handle_request_sso_again_ajax() {
+	if ( ! is_user_logged_in() ) {
+		wp_send_json_error( array( 'message' => __( 'You must be logged in.', 'influencer-hq' ) ) );
+		return;
+	}
+
+	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_oauth_sso_nonce' ) ) {
+		wp_send_json_error( array( 'message' => __( 'Invalid security token.', 'influencer-hq' ) ) );
+		return;
+	}
+
+	$user_id = get_current_user_id();
+	$country_iso = isset( $_POST['country_iso'] ) ? sanitize_text_field( wp_unslash( $_POST['country_iso'] ) ) : '';
+	if ( $country_iso === '' ) {
+		$stored_country = get_user_meta( $user_id, 'ihq_oauth_country_iso', true );
+		if ( is_string( $stored_country ) && $stored_country !== '' ) {
+			$country_iso = $stored_country;
+		}
+	}
+
+	ihq_refresh_influencer_oauth_tokens( $user_id, $country_iso );
+
+	$dump      = (string) get_user_meta( $user_id, 'ihq_oauth_start_session_last', true );
+	$sso_code  = ihq_get_hq_sso_code_for_user( $user_id );
+	$has_token = (string) get_user_meta( $user_id, 'ihq_access_token', true ) !== '';
+
+	if ( ! $has_token && $sso_code === '' ) {
+		wp_send_json_error(
+			array(
+				'message'            => __( 'Start-session request failed. Check the API URL and response below.', 'influencer-hq' ),
+				'start_session_dump' => $dump !== '' ? $dump : '{}',
+				'api_url'            => ihq_get_oauth_start_session_url_for_user( $user_id ),
+			)
+		);
+		return;
+	}
+
+	wp_send_json_success(
+		array(
+			'message'            => __( 'SSO request completed.', 'influencer-hq' ),
+			'start_session_dump' => $dump !== '' ? $dump : __( 'No response body saved.', 'influencer-hq' ),
+			'sso_code'           => $sso_code,
+			'api_url'            => ihq_get_oauth_start_session_url_for_user( $user_id ),
+		)
+	);
+}
+add_action( 'wp_ajax_ihq_request_sso_again', 'ihq_handle_request_sso_again_ajax' );
 
 function cleanup_expired_registrations() {
     global $wpdb;
