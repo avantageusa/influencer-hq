@@ -36,7 +36,7 @@ if ( ! isset( $js_version ) || $js_version === '' ) {
 	$js_version = file_exists( $js_path ) ? (string) filemtime( $js_path ) : '1';
 }
 if ( ! isset( $logo_url ) || $logo_url === '' ) {
-	$logo_url = get_template_directory_uri() . '/images/logo-home-claude.jpg';
+	$logo_url = get_template_directory_uri() . '/images/logo-home-lander.jpg';
 }
 
 $ihq_portal_ts_show_retry = ! empty( $ts_error );

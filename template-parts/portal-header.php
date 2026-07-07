@@ -179,7 +179,7 @@ if ( isset( $ihq_portal_header_include_body ) && ! $ihq_portal_header_include_bo
                         <button type="button" class="header-login-link portal-header-auth-trigger" id="portalHeaderOpenLogin" data-auth-tab="login"><?php esc_html_e( 'Login', 'influencer-hq' ); ?></button>
                     <?php endif; ?>
                 </div>
-                <a href="<?php echo esc_url( $game_url ); ?>" target="_blank" rel="noopener noreferrer" style="display:none;"class="go-to-game-btn">PLAY</a>
+                <a href="<?php echo esc_url( $game_url ); ?>" target="_blank" rel="noopener noreferrer" style="" class="go-to-game-btn">PLAY</a>
             </div>
         </div>
     </div>
