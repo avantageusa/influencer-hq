@@ -192,9 +192,6 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
             <div class="sett-content">
 
                 <?php
-                if ( function_exists( 'ihq_visitor_intent_cookie_name' ) ) {
-                    get_template_part( 'template-parts/visitor-intent-test-registry' );
-                }
                 if ( isset( $_GET['ihq_magic_registered'] ) && $_GET['ihq_magic_registered'] === '1' ) {
                     ?>
                 <div class="sett-card" style="margin-bottom:14px;border-color:rgba(40,167,69,.45);">
@@ -225,86 +222,6 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                 </header>
 
                 <div class="sett-sep"></div>
-
-                <?php
-                $ihq_start_session_dump = (string) get_user_meta( $user->ID, 'ihq_oauth_start_session_last', true );
-                if ( $ihq_start_session_dump === '' ) {
-                    $ihq_start_session_dump = __( 'No start-session response saved yet. Use Request SSO again below.', 'influencer-hq' );
-                }
-                ?>
-                <form method="post" action="" class="ihq-oauth-session-url-form">
-                    <?php wp_nonce_field( 'ihq_oauth_start_session_url_save' ); ?>
-                    <div class="sett-card" style="margin-bottom:14px;border:1px dashed rgba(184,151,47,.45);">
-                        <p style="margin:0 0 10px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#b8972f;">
-                            <?php esc_html_e( 'OAuth start-session API URL', 'influencer-hq' ); ?>
-                        </p>
-                        <div class="sett-row">
-                            <label for="ihq_oauth_start_session_url" class="sett-row-lbl"><?php esc_html_e( 'API URL', 'influencer-hq' ); ?></label>
-                            <div class="sett-row-val" style="width:auto;flex:1;">
-                                <input
-                                    type="url"
-                                    id="ihq_oauth_start_session_url"
-                                    name="ihq_oauth_start_session_url"
-                                    value="<?php echo esc_attr( $ihq_oauth_session_url_stored ); ?>"
-                                    placeholder="<?php echo esc_attr( $ihq_oauth_session_url_default ); ?>"
-                                    class="hq-game-url-input"
-                                >
-                            </div>
-                            <button type="submit" name="ihq_oauth_start_session_url_submit" class="hq-game-url-save-btn"><?php esc_html_e( 'Save', 'influencer-hq' ); ?></button>
-                        </div>
-                        <div class="sett-row" style="border-bottom:none;">
-                            <span class="sett-row-lbl" style="color:#616161;font-size:13px;"><?php esc_html_e( 'Active URL', 'influencer-hq' ); ?></span>
-                            <span id="ihq-oauth-active-url" style="font-size:13px;color:#616161;flex:1;text-align:right;word-break:break-all;"><?php echo esc_html( $ihq_resolved_oauth_session_url ); ?></span>
-                        </div>
-                        <?php if ( isset( $_GET['ihq_oauth_url_saved'] ) ) : ?>
-                        <p style="color:#7CCA8A;font-size:13px;margin:10px 0 0;">&#10003; <?php esc_html_e( 'API URL saved. Click Request SSO again to run start-session against this URL.', 'influencer-hq' ); ?></p>
-                        <?php endif; ?>
-                        <div class="sett-row" style="border-bottom:none;margin-top:12px;align-items:center;">
-                            <span class="sett-row-lbl"><?php esc_html_e( 'SSO code', 'influencer-hq' ); ?></span>
-                            <span id="ihq-oauth-sso-code-display" style="font-size:13px;color:#e6cfa0;flex:1;text-align:right;word-break:break-all;"><?php echo $ihq_current_sso_code !== '' ? esc_html( $ihq_current_sso_code ) : esc_html__( 'Not set yet', 'influencer-hq' ); ?></span>
-                        </div>
-                        <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
-                            <button type="button" id="ihq-request-sso-again-btn" class="hq-game-url-save-btn"><?php esc_html_e( 'Request SSO again', 'influencer-hq' ); ?></button>
-                            <span id="ihq-request-sso-again-status" style="font-size:13px;color:#b8972f;" hidden></span>
-                        </div>
-                        <p style="margin:14px 0 8px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#b8972f;">
-                            <?php esc_html_e( 'OAuth start-session response (last request)', 'influencer-hq' ); ?>
-                        </p>
-                        <pre id="ihq-oauth-start-session-dump" style="margin:0;padding:10px 12px;max-height:320px;overflow:auto;font-size:11px;line-height:1.45;color:#ddd;background:rgba(0,0,0,.35);border-radius:6px;white-space:pre-wrap;word-break:break-word;"><?php echo esc_html( $ihq_start_session_dump ); ?></pre>
-                    </div>
-                </form>
-
-                <!-- GAME PORTAL URL -->
-                <?php
-                $hq_current_url = get_user_meta( $user->ID, 'hq_game_url', true );
-                $hq_default_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.games/av-baccarat';
-                ?>
-                <form method="post" action="" class="hq-game-url-form">
-                    <?php wp_nonce_field( 'hq_game_url_save' ); ?>
-                    <div class="sett-card" style="margin-bottom:14px;">
-                        <div class="sett-row">
-                            <label for="hq_game_url" class="sett-row-lbl">Game Portal URL</label>
-                            <div class="sett-row-val" style="width:auto;flex:1;">
-                                <input
-                                    type="url"
-                                    id="hq_game_url"
-                                    name="hq_game_url"
-                                    value="<?php echo esc_attr( $hq_current_url ); ?>"
-                                    placeholder="<?php echo esc_attr( $hq_default_url ); ?>"
-                                    class="hq-game-url-input"
-                                >
-                            </div>
-                            <button type="submit" name="hq_game_url_submit" class="hq-game-url-save-btn">Save</button>
-                        </div>
-                        <div class="sett-row" style="border-bottom:none;">
-                            <span class="sett-row-lbl" style="color:#616161;font-size:13px;">Default</span>
-                            <span style="font-size:13px;color:#616161;flex:1;text-align:right;word-break:break-all;"><?php echo esc_html( $hq_default_url ); ?></span>
-                        </div>
-                    </div>
-                    <?php if ( isset( $_GET['hq_saved'] ) ) : ?>
-                    <p style="color:#7CCA8A;font-size:13px;margin:-8px 0 10px;">&#10003; Saved.</p>
-                    <?php endif; ?>
-                </form>
 
                 <!-- Identity Badge -->
                 <div class="sett-identity">
@@ -641,6 +558,96 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                         <?php endforeach; ?>
                     </div>
                 </div>
+
+                <details class="sett-card ihq-dev-tools" style="margin-top:32px;padding:0;">
+                    <summary style="cursor:pointer;padding:18px 20px;font-size:14px;font-weight:700;letter-spacing:.08em;color:#b8972f;">
+                        <?php esc_html_e( 'DEV TOOLS', 'influencer-hq' ); ?>
+                    </summary>
+                    <div style="padding:0 16px 16px;">
+                        <?php
+                        if ( function_exists( 'ihq_visitor_intent_cookie_name' ) ) {
+                            get_template_part( 'template-parts/visitor-intent-test-registry' );
+                        }
+
+                        $ihq_start_session_dump = (string) get_user_meta( $user->ID, 'ihq_oauth_start_session_last', true );
+                        if ( $ihq_start_session_dump === '' ) {
+                            $ihq_start_session_dump = __( 'No start-session response saved yet. Use Request SSO again below.', 'influencer-hq' );
+                        }
+                        ?>
+                        <form method="post" action="" class="ihq-oauth-session-url-form">
+                            <?php wp_nonce_field( 'ihq_oauth_start_session_url_save' ); ?>
+                            <div class="sett-card" style="margin-bottom:14px;border:1px dashed rgba(184,151,47,.45);">
+                                <p style="margin:0 0 10px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#b8972f;">
+                                    <?php esc_html_e( 'OAuth start-session API URL', 'influencer-hq' ); ?>
+                                </p>
+                                <div class="sett-row">
+                                    <label for="ihq_oauth_start_session_url" class="sett-row-lbl"><?php esc_html_e( 'API URL', 'influencer-hq' ); ?></label>
+                                    <div class="sett-row-val" style="width:auto;flex:1;">
+                                        <input
+                                            type="url"
+                                            id="ihq_oauth_start_session_url"
+                                            name="ihq_oauth_start_session_url"
+                                            value="<?php echo esc_attr( $ihq_oauth_session_url_stored ); ?>"
+                                            placeholder="<?php echo esc_attr( $ihq_oauth_session_url_default ); ?>"
+                                            class="hq-game-url-input"
+                                        >
+                                    </div>
+                                    <button type="submit" name="ihq_oauth_start_session_url_submit" class="hq-game-url-save-btn"><?php esc_html_e( 'Save', 'influencer-hq' ); ?></button>
+                                </div>
+                                <div class="sett-row" style="border-bottom:none;">
+                                    <span class="sett-row-lbl" style="color:#616161;font-size:13px;"><?php esc_html_e( 'Active URL', 'influencer-hq' ); ?></span>
+                                    <span id="ihq-oauth-active-url" style="font-size:13px;color:#616161;flex:1;text-align:right;word-break:break-all;"><?php echo esc_html( $ihq_resolved_oauth_session_url ); ?></span>
+                                </div>
+                                <?php if ( isset( $_GET['ihq_oauth_url_saved'] ) ) : ?>
+                                <p style="color:#7CCA8A;font-size:13px;margin:10px 0 0;">&#10003; <?php esc_html_e( 'API URL saved. Click Request SSO again to run start-session against this URL.', 'influencer-hq' ); ?></p>
+                                <?php endif; ?>
+                                <div class="sett-row" style="border-bottom:none;margin-top:12px;align-items:center;">
+                                    <span class="sett-row-lbl"><?php esc_html_e( 'SSO code', 'influencer-hq' ); ?></span>
+                                    <span id="ihq-oauth-sso-code-display" style="font-size:13px;color:#e6cfa0;flex:1;text-align:right;word-break:break-all;"><?php echo $ihq_current_sso_code !== '' ? esc_html( $ihq_current_sso_code ) : esc_html__( 'Not set yet', 'influencer-hq' ); ?></span>
+                                </div>
+                                <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+                                    <button type="button" id="ihq-request-sso-again-btn" class="hq-game-url-save-btn"><?php esc_html_e( 'Request SSO again', 'influencer-hq' ); ?></button>
+                                    <span id="ihq-request-sso-again-status" style="font-size:13px;color:#b8972f;" hidden></span>
+                                </div>
+                                <p style="margin:14px 0 8px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#b8972f;">
+                                    <?php esc_html_e( 'OAuth start-session response (last request)', 'influencer-hq' ); ?>
+                                </p>
+                                <pre id="ihq-oauth-start-session-dump" style="margin:0;padding:10px 12px;max-height:320px;overflow:auto;font-size:11px;line-height:1.45;color:#ddd;background:rgba(0,0,0,.35);border-radius:6px;white-space:pre-wrap;word-break:break-word;"><?php echo esc_html( $ihq_start_session_dump ); ?></pre>
+                            </div>
+                        </form>
+
+                        <?php
+                        $hq_current_url = get_user_meta( $user->ID, 'hq_game_url', true );
+                        $hq_default_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.games/av-baccarat';
+                        ?>
+                        <form method="post" action="" class="hq-game-url-form">
+                            <?php wp_nonce_field( 'hq_game_url_save' ); ?>
+                            <div class="sett-card" style="margin-bottom:14px;">
+                                <div class="sett-row">
+                                    <label for="hq_game_url" class="sett-row-lbl"><?php esc_html_e( 'Game Portal URL', 'influencer-hq' ); ?></label>
+                                    <div class="sett-row-val" style="width:auto;flex:1;">
+                                        <input
+                                            type="url"
+                                            id="hq_game_url"
+                                            name="hq_game_url"
+                                            value="<?php echo esc_attr( $hq_current_url ); ?>"
+                                            placeholder="<?php echo esc_attr( $hq_default_url ); ?>"
+                                            class="hq-game-url-input"
+                                        >
+                                    </div>
+                                    <button type="submit" name="hq_game_url_submit" class="hq-game-url-save-btn"><?php esc_html_e( 'Save', 'influencer-hq' ); ?></button>
+                                </div>
+                                <div class="sett-row" style="border-bottom:none;">
+                                    <span class="sett-row-lbl" style="color:#616161;font-size:13px;"><?php esc_html_e( 'Default', 'influencer-hq' ); ?></span>
+                                    <span style="font-size:13px;color:#616161;flex:1;text-align:right;word-break:break-all;"><?php echo esc_html( $hq_default_url ); ?></span>
+                                </div>
+                            </div>
+                            <?php if ( isset( $_GET['hq_saved'] ) ) : ?>
+                            <p style="color:#7CCA8A;font-size:13px;margin:-8px 0 10px;">&#10003; <?php esc_html_e( 'Saved.', 'influencer-hq' ); ?></p>
+                            <?php endif; ?>
+                        </form>
+                    </div>
+                </details>
 
             </div><!-- .sett-content -->
             

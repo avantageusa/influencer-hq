@@ -63,7 +63,7 @@ add_action(
 		$lander_url = home_url( '/' );
 		$title      = __( 'InfluencerHQ — Equity for Influence', 'influencer-hq' );
 		$desc       = __( 'InfluencerHQ partners with creators through equity participation. Build long-term ownership in the value your influence creates.', 'influencer-hq' );
-		$image      = get_template_directory_uri() . '/images/logo-home-lander.jpg';
+		$image      = get_template_directory_uri() . '/images/logo-home-lander.png';
 		?>
 <meta name="description" content="<?php echo esc_attr( $desc ); ?>">
 <meta property="og:title" content="<?php echo esc_attr( $title ); ?>">
@@ -187,6 +187,19 @@ $ihq_modal_social_platforms   = array(
   object-fit: contain;
   object-position: center top;
 }
+@media (max-width: 600px) {
+  .ln-comp-card--comm {
+    position: relative;
+    margin-bottom: 68px;
+  }
+  .ln-comp-card--comm .ln-rating-row--in-card {
+    position: absolute;
+    top: calc(100% + 16px);
+    left: 50%;
+    margin-top: 0;
+    transform: translateX(-50%);
+  }
+}
 </style>
 
 <main id="primary" class="site-main">
@@ -194,7 +207,7 @@ $ihq_modal_social_platforms   = array(
 <!-- ═══ NAV ══════════════════════════════════════════════════════ -->
 <nav class="ln-nav">
   <a class="logo" href="<?php echo esc_url( home_url( '/' ) ); ?>">
-    <img src="<?php echo get_template_directory_uri(); ?>/images/logo-home-lander.jpg" alt="influencerHQ" style="max-height:52px;width:auto;">
+    <img src="<?php echo get_template_directory_uri(); ?>/images/logo-home-lander.png" alt="influencerHQ" style="max-height:52px;width:auto;">
   </a>
 </nav>
 
@@ -206,6 +219,9 @@ $ihq_modal_social_platforms   = array(
     <div class="ln-concierge-inner">
       <div class="ln-concierge-left">
         <span class="ln-concierge-label">Conversations should be easy.</span>
+      </div>
+      <div class="ln-concierge-left-mobile">
+      <a href="#" class="ln-concierge-ask" id="landerConciergeBtn" data-ihq-concierge-trigger data-ihq-concierge-agent="guest"><?php esc_html_e( 'Talk now!', 'influencer-hq' ); ?></a>
       </div>
       <div class="ln-concierge-center">
         <img class="ln-concierge-img"
