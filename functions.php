@@ -378,15 +378,7 @@ require_once get_template_directory() . '/inc/turnstile-verify.php';
 require_once get_template_directory() . '/inc/portal-turnstile-gate.php';
 
 /**
- * Portal zone robots (noindex). Registers hooks before wp_head / send_headers.
- */
-global $ihq_portal_header_include_body;
-$ihq_portal_header_include_body = false;
-require_once get_template_directory() . '/template-parts/portal-header.php';
-$ihq_portal_header_include_body = true;
-
-/**
- * Omit portal pages from WordPress core sitemaps (/wp-sitemap.xml).
+ * Portal zone crawl control (noindex, X-Robots-Tag, sitemap exclusion).
  */
 require_once get_template_directory() . '/inc/portal-sitemap-exclusion.php';
 

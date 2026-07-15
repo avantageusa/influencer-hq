@@ -1,7 +1,6 @@
 <?php
 /**
- * Exclude portal-zone pages from WordPress core sitemaps (/wp-sitemap.xml).
- * Pairs with portal noindex meta + X-Robots-Tag (see template-parts/portal-header.php).
+ * Portal zone crawl control: noindex/nofollow, X-Robots-Tag, and sitemap exclusion.
  *
  * @package influencer-hq
  */
@@ -65,6 +64,67 @@ function ihq_portal_zone_post_is_portal_page( $post ) {
 	$permalink_path = (string) parse_url( get_permalink( $post ), PHP_URL_PATH );
 	return ihq_portal_zone_path_is_portal_zone( $permalink_path );
 }
+
+/**
+ * Whether the current front-end request is in the portal URL zone.
+ *
+ * @return bool
+ */
+function ihq_portal_zone_request_is_portal_path() {
+	if ( is_admin() || wp_doing_ajax() || wp_doing_cron() ) {
+		return false;
+	}
+
+	if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+		return false;
+	}
+
+	$page_id = get_queried_object_id();
+	if ( $page_id > 0 ) {
+		$post = get_post( (int) $page_id );
+		if ( $post && ihq_portal_zone_post_is_portal_page( $post ) ) {
+			return true;
+		}
+	}
+
+	if ( function_exists( 'ihq_portal_turnstile_normalized_path' ) ) {
+		$path = ihq_portal_turnstile_normalized_path();
+	} else {
+		$uri  = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
+		$path = (string) parse_url( $uri, PHP_URL_PATH );
+	}
+
+	return ihq_portal_zone_path_is_portal_zone( $path );
+}
+
+/**
+ * @return void
+ */
+function ihq_portal_zone_robots_send_x_robots_tag() {
+	if ( ! ihq_portal_zone_request_is_portal_path() ) {
+		return;
+	}
+
+	if ( headers_sent() ) {
+		return;
+	}
+
+	header( 'X-Robots-Tag: noindex, nofollow', true );
+}
+
+/**
+ * @return void
+ */
+function ihq_portal_zone_robots_echo_meta() {
+	if ( ! ihq_portal_zone_request_is_portal_path() ) {
+		return;
+	}
+
+	echo '<meta name="robots" content="noindex, nofollow">';
+}
+
+add_action( 'send_headers', 'ihq_portal_zone_robots_send_x_robots_tag', 1 );
+add_action( 'wp_head', 'ihq_portal_zone_robots_echo_meta', 1 );
 
 /**
  * Published portal page IDs to omit from wp-sitemap page lists.
