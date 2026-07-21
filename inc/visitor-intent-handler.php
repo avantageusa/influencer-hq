@@ -707,6 +707,9 @@ function ihq_enqueue_visitor_intent_assets() {
 		'ajaxUrl'            => admin_url( 'admin-ajax.php' ),
 		'nonce'              => wp_create_nonce( 'ihq_visitor_intent_nonce' ),
 		'codeExpiresMinutes' => (int) ( ihq_visitor_verification_code_ttl_seconds() / MINUTE_IN_SECONDS ),
+		'line'               => function_exists( 'ihq_line_enrollment_js_config' )
+			? ihq_line_enrollment_js_config()
+			: array(),
 	);
 
 	if ( is_page_template( 'page-lander.php' ) ) {

@@ -103,22 +103,23 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
 }
 
 $ihq_modal_comm_placeholder = __( 'handle or URL', 'influencer-hq' );
+// Temporarily hidden: SMS, WeChat, WhatsApp, Viber, Botim, IMO, QQ, Signal.
 $ihq_modal_comm_methods_left  = array(
-	array( 'key' => 'botim', 'label' => 'Botim' ),
-	array( 'key' => 'email', 'label' => 'Email' ),
-	array( 'key' => 'imo', 'label' => 'IMO' ),
+	array( 'key' => 'botim',     'label' => 'Botim',     'hidden' => true ),
+	array( 'key' => 'email',     'label' => 'Email' ),
+	array( 'key' => 'imo',       'label' => 'IMO',       'hidden' => true ),
 	array( 'key' => 'kakaotalk', 'label' => 'KakaoTalk' ),
-	array( 'key' => 'line', 'label' => 'Line' ),
-	array( 'key' => 'qq', 'label' => 'QQ' ),
-	array( 'key' => 'signal', 'label' => 'Signal' ),
+	array( 'key' => 'line',      'label' => 'Line' ),
+	array( 'key' => 'qq',        'label' => 'QQ',        'hidden' => true ),
+	array( 'key' => 'signal',    'label' => 'Signal',    'hidden' => true ),
 );
 $ihq_modal_comm_methods_right = array(
-	array( 'key' => 'sms', 'label' => 'SMS' ),
-	array( 'key' => 'telegram', 'label' => 'Telegram' ),
-	array( 'key' => 'viber', 'label' => 'Viber' ),
-	array( 'key' => 'wechat', 'label' => 'WeChat' ),
-	array( 'key' => 'whatsapp', 'label' => 'WhatsApp' ),
-	array( 'key' => 'zalo', 'label' => 'Zalo' ),
+	array( 'key' => 'sms',       'label' => 'SMS',       'hidden' => true ),
+	array( 'key' => 'telegram',  'label' => 'Telegram' ),
+	array( 'key' => 'viber',     'label' => 'Viber',     'hidden' => true ),
+	array( 'key' => 'wechat',    'label' => 'WeChat',    'hidden' => true ),
+	array( 'key' => 'whatsapp',  'label' => 'WhatsApp',  'hidden' => true ),
+	array( 'key' => 'zalo',      'label' => 'Zalo' ),
 );
 $ihq_modal_comm_methods_all = array_merge( $ihq_modal_comm_methods_left, $ihq_modal_comm_methods_right );
 
@@ -491,7 +492,19 @@ $ihq_modal_social_platforms   = array(
     <button class="modal-x" onclick="closeModal()">✕</button>
     <div class="mstep on" id="ms1">
       <div class="modal-comm-thanks" id="modal-comm-thanks" hidden>
-        <p class="modal-comm-thanks-msg"><?php esc_html_e( 'Thank you for your submission, your message was received', 'influencer-hq' ); ?></p>
+        <p class="modal-comm-thanks-msg" id="modal-comm-thanks-default"><?php esc_html_e( 'Thank you for your submission, your message was received', 'influencer-hq' ); ?></p>
+        <div class="modal-comm-thanks-line" id="modal-comm-thanks-line" hidden>
+          <p class="modal-comm-thanks-msg"><?php esc_html_e( 'Your registration has been received. Add our LINE Official Account to receive LINE updates.', 'influencer-hq' ); ?></p>
+          <?php if ( function_exists( 'ihq_line_add_friend_url' ) && ihq_line_add_friend_url() !== '' ) : ?>
+          <a
+            class="modal-line-add-friend-btn modal-line-add-friend-btn--thanks"
+            href="<?php echo esc_url( ihq_line_add_friend_url() ); ?>"
+            target="_blank"
+            rel="noopener noreferrer"
+          ><?php esc_html_e( 'Add us on LINE', 'influencer-hq' ); ?></a>
+          <?php endif; ?>
+          <button type="button" class="send-btn modal-line-thanks-continue" id="modal-line-thanks-continue"><?php esc_html_e( 'Continue', 'influencer-hq' ); ?></button>
+        </div>
       </div>
       <div id="modal-comm-form-body">
       <h3 class="m-title m-title--conversation"><?php esc_html_e( "Let's Start The Conversation", 'influencer-hq' ); ?></h3>
@@ -500,6 +513,7 @@ $ihq_modal_social_platforms   = array(
         <div class="modal-comm-cols" role="group" aria-label="<?php esc_attr_e( 'Favorite methods of communication', 'influencer-hq' ); ?>">
           <div class="modal-comm-col">
             <?php foreach ( $ihq_modal_comm_methods_left as $ihq_comm ) : ?>
+            <?php if ( ! empty( $ihq_comm['hidden'] ) ) : continue; endif; ?>
             <label class="modal-comm-option" id="modal-comm-row-<?php echo esc_attr( $ihq_comm['key'] ); ?>" for="modal-comm-<?php echo esc_attr( $ihq_comm['key'] ); ?>">
               <input
                 type="checkbox"
@@ -514,6 +528,7 @@ $ihq_modal_social_platforms   = array(
           </div>
           <div class="modal-comm-col">
             <?php foreach ( $ihq_modal_comm_methods_right as $ihq_comm ) : ?>
+            <?php if ( ! empty( $ihq_comm['hidden'] ) ) : continue; endif; ?>
             <label class="modal-comm-option" id="modal-comm-row-<?php echo esc_attr( $ihq_comm['key'] ); ?>" for="modal-comm-<?php echo esc_attr( $ihq_comm['key'] ); ?>">
               <input
                 type="checkbox"
@@ -532,6 +547,16 @@ $ihq_modal_social_platforms   = array(
       <p class="modal-comm-tg-err" id="modal-comm-tg-err"></p>
       <div class="modal-comm-inputs" id="modal-comm-inputs-panel">
         <?php foreach ( $ihq_modal_comm_methods_all as $ihq_comm ) : ?>
+        <?php if ( ! empty( $ihq_comm['hidden'] ) ) : continue; endif; ?>
+        <?php if ( $ihq_comm['key'] === 'line' ) : ?>
+        <div class="modal-comm-input-row modal-line-enrollment" id="modal-comm-entry-line" hidden>
+          <?php
+          if ( function_exists( 'ihq_render_line_enrollment_fields' ) ) {
+          	ihq_render_line_enrollment_fields();
+          }
+          ?>
+        </div>
+        <?php else : ?>
         <div class="modal-comm-input-row" id="modal-comm-entry-<?php echo esc_attr( $ihq_comm['key'] ); ?>" hidden>
           <span class="modal-comm-input-label"><?php echo esc_html( strtoupper( $ihq_comm['label'] ) ); ?></span>
           <input
@@ -543,6 +568,7 @@ $ihq_modal_social_platforms   = array(
             aria-label="<?php echo esc_attr( $ihq_comm['label'] ); ?>"
           >
         </div>
+        <?php endif; ?>
         <?php endforeach; ?>
       </div>
 
@@ -974,14 +1000,21 @@ function ihqResetModalCommMethods() {
     if (entry) entry.hidden = true;
     if (input) input.value = '';
   });
+  if (typeof window.ihqLineResetEnrollment === 'function') {
+    window.ihqLineResetEnrollment();
+  }
   syncModalCommCardVisual();
   ihqClearModalCommErr();
 }
 function ihqHideModalCommThanks() {
   var thanks = document.getElementById('modal-comm-thanks');
   var body = document.getElementById('modal-comm-form-body');
+  var defaultMsg = document.getElementById('modal-comm-thanks-default');
+  var lineThanks = document.getElementById('modal-comm-thanks-line');
   if (thanks) thanks.hidden = true;
   if (body) body.hidden = false;
+  if (defaultMsg) defaultMsg.hidden = false;
+  if (lineThanks) lineThanks.hidden = true;
 }
 function ihqShowModalCommThanks() {
   var thanks = document.getElementById('modal-comm-thanks');
@@ -1377,16 +1410,30 @@ function validateModalStep1Communication() {
     return false;
   }
   var missingInput = false;
+  var lineConsentMissing = false;
+  if (typeof window.ihqLineClearConsentError === 'function') {
+    window.ihqLineClearConsentError();
+  }
   checked.forEach(function (box) {
     var key = box.getAttribute('data-comm-key');
-    var input = key ? document.getElementById('modal-comm-input-' + key) : null;
     var entry = key ? document.getElementById('modal-comm-entry-' + key) : null;
+    if (key === 'line') {
+      if (typeof window.ihqLineIsConsentChecked !== 'function' || !window.ihqLineIsConsentChecked()) {
+        lineConsentMissing = true;
+        if (typeof window.ihqLineShowConsentError === 'function') {
+          window.ihqLineShowConsentError('Please confirm LINE consent to continue');
+        }
+        if (entry) showFieldError(entry);
+      }
+      return;
+    }
+    var input = key ? document.getElementById('modal-comm-input-' + key) : null;
     if (!input || !input.value.trim()) {
       missingInput = true;
       if (entry) showFieldError(entry);
     }
   });
-  if (missingInput) return false;
+  if (lineConsentMissing || missingInput) return false;
   ihqClearModalCommErr();
   return true;
 }
@@ -1508,7 +1555,10 @@ document.addEventListener('DOMContentLoaded', function () {
       var input = key ? document.getElementById('modal-comm-input-' + key) : null;
       if (entry) entry.hidden = !box.checked;
       if (!box.checked && input) input.value = '';
-      if (box.checked && input) window.setTimeout(function () { input.focus(); }, 50);
+      if (key === 'line' && !box.checked && typeof window.ihqLineResetEnrollment === 'function') {
+        window.ihqLineResetEnrollment();
+      }
+      if (box.checked && input && key !== 'line') window.setTimeout(function () { input.focus(); }, 50);
       if (key === 'telegram' && !box.checked) {
         var ti = document.getElementById('modal-reg-telegram');
         if (ti) ti.value = '';

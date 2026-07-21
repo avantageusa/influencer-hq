@@ -65,6 +65,9 @@
         input.value = '';
       }
     });
+    if (typeof window.ihqLineResetEnrollment === 'function') {
+      window.ihqLineResetEnrollment();
+    }
     syncModalCommCardVisual();
     ihqClearModalCommErr();
   }
@@ -72,11 +75,19 @@
   function ihqHideModalCommThanks() {
     var thanks = document.getElementById('modal-comm-thanks');
     var body = document.getElementById('modal-comm-form-body');
+    var defaultMsg = document.getElementById('modal-comm-thanks-default');
+    var lineThanks = document.getElementById('modal-comm-thanks-line');
     if (thanks) {
       thanks.hidden = true;
     }
     if (body) {
       body.hidden = false;
+    }
+    if (defaultMsg) {
+      defaultMsg.hidden = false;
+    }
+    if (lineThanks) {
+      lineThanks.hidden = true;
     }
   }
 
@@ -131,10 +142,26 @@
       return false;
     }
     var missingInput = false;
+    var lineConsentMissing = false;
+    if (typeof window.ihqLineClearConsentError === 'function') {
+      window.ihqLineClearConsentError();
+    }
     checked.forEach(function (box) {
       var key = box.getAttribute('data-comm-key');
-      var input = key ? document.getElementById('modal-comm-input-' + key) : null;
       var entry = key ? document.getElementById('modal-comm-entry-' + key) : null;
+      if (key === 'line') {
+        if (typeof window.ihqLineIsConsentChecked !== 'function' || !window.ihqLineIsConsentChecked()) {
+          lineConsentMissing = true;
+          if (typeof window.ihqLineShowConsentError === 'function') {
+            window.ihqLineShowConsentError('Please confirm LINE consent to continue');
+          }
+          if (entry) {
+            showFieldError(entry);
+          }
+        }
+        return;
+      }
+      var input = key ? document.getElementById('modal-comm-input-' + key) : null;
       if (!input || !input.value.trim()) {
         missingInput = true;
         if (entry) {
@@ -142,7 +169,7 @@
         }
       }
     });
-    if (missingInput) {
+    if (lineConsentMissing || missingInput) {
       return false;
     }
     ihqClearModalCommErr();
@@ -188,20 +215,34 @@
       return;
     }
 
-    if (isGateMode()) {
-      saveVisitorIntentFromModal();
-      if (typeof window.ihqVisitorIntentIssueVerification === 'function') {
-        window.ihqVisitorIntentIssueVerification({ buttonPressUrl: window.location.href.split('#')[0] });
+    var lineBox = document.getElementById('modal-comm-line');
+    var lineSelected = Boolean(
+      lineBox &&
+      lineBox.checked &&
+      typeof window.ihqLineIsConsentChecked === 'function' &&
+      window.ihqLineIsConsentChecked()
+    );
+
+    saveVisitorIntentFromModal();
+
+    var afterIssue = function () {
+      if (lineSelected && typeof window.ihqShowLineEnrollmentThanks === 'function') {
+        window.ihqShowLineEnrollmentThanks(function () {
+          closeModal();
+        });
+        return;
       }
       closeModal();
+    };
+
+    if (typeof window.ihqVisitorIntentIssueVerification === 'function') {
+      window.ihqVisitorIntentIssueVerification({ buttonPressUrl: window.location.href.split('#')[0] })
+        .then(afterIssue)
+        .catch(afterIssue);
       return;
     }
 
-    saveVisitorIntentFromModal();
-    if (typeof window.ihqVisitorIntentIssueVerification === 'function') {
-      window.ihqVisitorIntentIssueVerification({ buttonPressUrl: window.location.href.split('#')[0] });
-    }
-    closeModal();
+    afterIssue();
   }
 
   function pickComp(id) {
@@ -260,7 +301,10 @@
         if (!box.checked && input) {
           input.value = '';
         }
-        if (box.checked && input) {
+        if (key === 'line' && !box.checked && typeof window.ihqLineResetEnrollment === 'function') {
+          window.ihqLineResetEnrollment();
+        }
+        if (box.checked && input && key !== 'line') {
           window.setTimeout(function () {
             input.focus();
           }, 50);

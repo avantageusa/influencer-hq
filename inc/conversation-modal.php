@@ -16,22 +16,23 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function ihq_conversation_modal_view_data() {
 	$ihq_modal_comm_placeholder = __( 'handle or URL', 'influencer-hq' );
+	// Temporarily hidden: SMS, WeChat, WhatsApp, Viber, Botim, IMO, QQ, Signal.
 	$ihq_modal_comm_methods_left  = array(
-		array( 'key' => 'botim', 'label' => 'Botim' ),
-		array( 'key' => 'email', 'label' => 'Email' ),
-		array( 'key' => 'imo', 'label' => 'IMO' ),
+		array( 'key' => 'botim',     'label' => 'Botim',     'hidden' => true ),
+		array( 'key' => 'email',     'label' => 'Email' ),
+		array( 'key' => 'imo',       'label' => 'IMO',       'hidden' => true ),
 		array( 'key' => 'kakaotalk', 'label' => 'KakaoTalk' ),
-		array( 'key' => 'line', 'label' => 'Line' ),
-		array( 'key' => 'qq', 'label' => 'QQ' ),
-		array( 'key' => 'signal', 'label' => 'Signal' ),
+		array( 'key' => 'line',      'label' => 'Line' ),
+		array( 'key' => 'qq',        'label' => 'QQ',        'hidden' => true ),
+		array( 'key' => 'signal',    'label' => 'Signal',    'hidden' => true ),
 	);
 	$ihq_modal_comm_methods_right = array(
-		array( 'key' => 'sms', 'label' => 'SMS' ),
-		array( 'key' => 'telegram', 'label' => 'Telegram' ),
-		array( 'key' => 'viber', 'label' => 'Viber' ),
-		array( 'key' => 'wechat', 'label' => 'WeChat' ),
-		array( 'key' => 'whatsapp', 'label' => 'WhatsApp' ),
-		array( 'key' => 'zalo', 'label' => 'Zalo' ),
+		array( 'key' => 'sms',       'label' => 'SMS',       'hidden' => true ),
+		array( 'key' => 'telegram',  'label' => 'Telegram' ),
+		array( 'key' => 'viber',     'label' => 'Viber',     'hidden' => true ),
+		array( 'key' => 'wechat',    'label' => 'WeChat',    'hidden' => true ),
+		array( 'key' => 'whatsapp',  'label' => 'WhatsApp',  'hidden' => true ),
+		array( 'key' => 'zalo',      'label' => 'Zalo' ),
 	);
 
 	$ihq_turnstile_site_modal = '';
@@ -109,6 +110,8 @@ function ihq_enqueue_portal_conversation_modal_assets() {
 		. '.field-error{box-sizing:border-box;border:2px solid rgba(255,75,75,.95)!important;box-shadow:0 0 0 4px rgba(255,75,75,.16);animation:field-error-pulse .9s ease both;}'
 		. '@keyframes field-error-pulse{0%,100%{transform:translateX(0)}15%{transform:translateX(-4px)}30%{transform:translateX(4px)}45%{transform:translateX(-2px)}60%{transform:translateX(2px)}75%{transform:translateX(-1px)}}'
 		. '#mainModal.overlay{z-index:10060;}'
+		. '.modal-line-enrollment{flex-direction:column;align-items:stretch;gap:14px;}'
+		. '.modal-line-add-friend-btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 20px;border:1px solid #06c755;border-radius:10px;background:#06c755;color:#fff;font-weight:700;text-decoration:none;}'
 	);
 
 	$view_data = ihq_conversation_modal_view_data();

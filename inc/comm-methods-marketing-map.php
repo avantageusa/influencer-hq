@@ -39,6 +39,15 @@ function ihq_sanitize_marketing_comm_id_value( $comm_key, $value ) {
 	if ( $comm_key === 'telegram' ) {
 		return sanitize_text_field( ltrim( $value, '@' ) );
 	}
+	// Phase 1 LINE consent marker is not a marketing ID; U... IDs go to native_line_id.
+	if ( $comm_key === 'line' ) {
+		if ( defined( 'IHQ_LINE_CONSENT_COMM_MARKER' ) && $value === IHQ_LINE_CONSENT_COMM_MARKER ) {
+			return '';
+		}
+		if ( function_exists( 'ihq_line_is_native_user_id' ) && ! ihq_line_is_native_user_id( $value ) ) {
+			return '';
+		}
+	}
 	return $value;
 }
 
@@ -81,6 +90,10 @@ function ihq_visitor_intent_braze_attribute_extras( array $intent ) {
 		: array();
 
 	$extras = ihq_build_marketing_notifications_payload_from_comm_methods( $comm_methods );
+
+	if ( function_exists( 'ihq_line_enrollment_braze_attributes' ) ) {
+		$extras = array_merge( $extras, ihq_line_enrollment_braze_attributes( $intent ) );
+	}
 
 	$platform_handle = function_exists( 'ihq_visitor_intent_build_platform_handle' )
 		? ihq_visitor_intent_build_platform_handle( $intent )

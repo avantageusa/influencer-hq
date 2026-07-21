@@ -109,15 +109,59 @@
     return next;
   }
 
+  function getLineConfig() {
+    return cfg.line && typeof cfg.line === 'object' ? cfg.line : {};
+  }
+
+  function isLineConsentChecked() {
+    var box = document.getElementById('modal-line-consent');
+    return Boolean(box && box.checked);
+  }
+
+  function clearLineConsentError() {
+    var err = document.getElementById('modal-line-consent-err');
+    if (err) {
+      err.textContent = '';
+      err.classList.remove('is-visible');
+    }
+  }
+
+  function showLineConsentError(msg) {
+    var err = document.getElementById('modal-line-consent-err');
+    if (err) {
+      err.textContent = msg || 'Please confirm LINE consent to continue';
+      err.classList.add('is-visible');
+    }
+  }
+
+  function resetLineEnrollment() {
+    var consent = document.getElementById('modal-line-consent');
+    if (consent) {
+      consent.checked = false;
+    }
+    clearLineConsentError();
+  }
+
   function collectModalCommMethods() {
     var methods = {};
+    var lineCfg = getLineConfig();
+    var consentMarker = lineCfg.consentMarker || 'consented';
     document.querySelectorAll('#modal-comm-pick .modal-comm-option input[type=checkbox]').forEach(function (box) {
       if (!box.checked) {
         return;
       }
       var key = box.getAttribute('data-comm-key');
-      var input = key ? document.getElementById('modal-comm-input-' + key) : null;
-      if (key && input && input.value.trim()) {
+      if (!key) {
+        return;
+      }
+      if (key === 'line') {
+        if (isLineConsentChecked()) {
+          methods.line = consentMarker;
+        }
+        return;
+      }
+      var input = document.getElementById('modal-comm-input-' + key);
+      if (input && input.value.trim()) {
         methods[key] = input.value.trim();
       }
     });
@@ -183,6 +227,16 @@
     if (Object.keys(ratings).length) {
       payload.competition_ratings = ratings;
     }
+
+    var lineBox = document.getElementById('modal-comm-line');
+    if (lineBox && lineBox.checked && isLineConsentChecked()) {
+      var lineCfg = getLineConfig();
+      payload.line_consent = true;
+      payload.line_consent_timestamp = new Date().toISOString();
+      payload.line_consent_source = lineCfg.consentSource || 'registration_modal';
+      payload.line_terms_version = lineCfg.termsVersion || '';
+    }
+
     return payload;
   }
 
@@ -388,30 +442,75 @@
     return false;
   }
 
-  function saveFromModalAndRedirect() {
-    var payload = collectFromModal();
-    mergeIntent(payload);
+  function showLineEnrollmentThanks(onContinue) {
+    var thanks = document.getElementById('modal-comm-thanks');
+    var body = document.getElementById('modal-comm-form-body');
+    var defaultMsg = document.getElementById('modal-comm-thanks-default');
+    var lineThanks = document.getElementById('modal-comm-thanks-line');
+    var continueBtn = document.getElementById('modal-line-thanks-continue');
+    var modal = document.getElementById('mainModal');
 
-    issueVisitorVerification({ buttonPressUrl: window.location.href.split('#')[0] })
-      .then(function (data) {
-        if (followServerRedirect(data)) {
-          return null;
+    if (body) {
+      body.hidden = true;
+    }
+    if (defaultMsg) {
+      defaultMsg.hidden = true;
+    }
+    if (lineThanks) {
+      lineThanks.hidden = false;
+    }
+    if (thanks) {
+      thanks.hidden = false;
+    }
+    if (modal) {
+      modal.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    if (continueBtn) {
+      continueBtn.onclick = function () {
+        if (typeof onContinue === 'function') {
+          onContinue();
         }
-        if (data && data.success) {
-          return fetchPortalRedirectUrl('account');
+      };
+    }
+  }
+
+  function redirectAfterModalSubmit(data) {
+    if (followServerRedirect(data)) {
+      return Promise.resolve(null);
+    }
+    if (data && data.success) {
+      return fetchPortalRedirectUrl('account').then(function (redirectData) {
+        if (followServerRedirect(redirectData)) {
+          return null;
         }
         if (!cfg.isLander && cfg.accountUrl) {
           window.location.href = cfg.accountUrl;
         }
         return null;
-      })
+      });
+    }
+    if (!cfg.isLander && cfg.accountUrl) {
+      window.location.href = cfg.accountUrl;
+    }
+    return Promise.resolve(null);
+  }
+
+  function saveFromModalAndRedirect() {
+    var payload = collectFromModal();
+    mergeIntent(payload);
+    var lineSelected = Boolean(payload.line_consent);
+
+    issueVisitorVerification({ buttonPressUrl: window.location.href.split('#')[0] })
       .then(function (data) {
-        if (data && followServerRedirect(data)) {
-          return;
+        if (lineSelected) {
+          showLineEnrollmentThanks(function () {
+            redirectAfterModalSubmit(data);
+          });
+          return null;
         }
-        if (!cfg.isLander && cfg.accountUrl) {
-          window.location.href = cfg.accountUrl;
-        }
+        return redirectAfterModalSubmit(data);
       });
   }
 
@@ -454,6 +553,11 @@
   window.ihqVisitorIntentVerificationCodeIssued = readVerificationCodeIssued;
   window.ihqVisitorIntentMarkVerificationCodeIssued = markVerificationCodeIssued;
   window.ihqOpenVisitorCommunicationModal = openCommunicationModal;
+  window.ihqLineIsConsentChecked = isLineConsentChecked;
+  window.ihqLineClearConsentError = clearLineConsentError;
+  window.ihqLineShowConsentError = showLineConsentError;
+  window.ihqLineResetEnrollment = resetLineEnrollment;
+  window.ihqShowLineEnrollmentThanks = showLineEnrollmentThanks;
 
   // Legacy aliases
   window.ihqVisitorIntentRegistryBrazeSent = readVerificationCodeIssued;

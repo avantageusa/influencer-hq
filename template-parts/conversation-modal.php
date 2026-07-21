@@ -16,7 +16,19 @@ if ( ! defined( 'ABSPATH' ) ) {
     <button type="button" class="modal-x" onclick="closeModal()">✕</button>
     <div class="mstep on" id="ms1">
       <div class="modal-comm-thanks" id="modal-comm-thanks" hidden>
-        <p class="modal-comm-thanks-msg"><?php esc_html_e( 'Thank you for your submission, your message was received', 'influencer-hq' ); ?></p>
+        <p class="modal-comm-thanks-msg" id="modal-comm-thanks-default"><?php esc_html_e( 'Thank you for your submission, your message was received', 'influencer-hq' ); ?></p>
+        <div class="modal-comm-thanks-line" id="modal-comm-thanks-line" hidden>
+          <p class="modal-comm-thanks-msg"><?php esc_html_e( 'Your registration has been received. Add our LINE Official Account to receive LINE updates.', 'influencer-hq' ); ?></p>
+          <?php if ( function_exists( 'ihq_line_add_friend_url' ) && ihq_line_add_friend_url() !== '' ) : ?>
+          <a
+            class="modal-line-add-friend-btn modal-line-add-friend-btn--thanks"
+            href="<?php echo esc_url( ihq_line_add_friend_url() ); ?>"
+            target="_blank"
+            rel="noopener noreferrer"
+          ><?php esc_html_e( 'Add us on LINE', 'influencer-hq' ); ?></a>
+          <?php endif; ?>
+          <button type="button" class="send-btn modal-line-thanks-continue" id="modal-line-thanks-continue"><?php esc_html_e( 'Continue', 'influencer-hq' ); ?></button>
+        </div>
       </div>
       <div id="modal-comm-form-body">
       <h3 class="m-title m-title--conversation"><?php esc_html_e( "Let's Start The Conversation", 'influencer-hq' ); ?></h3>
@@ -25,6 +37,7 @@ if ( ! defined( 'ABSPATH' ) ) {
         <div class="modal-comm-cols" role="group" aria-label="<?php esc_attr_e( 'Favorite methods of communication', 'influencer-hq' ); ?>">
           <div class="modal-comm-col">
             <?php foreach ( $ihq_modal_comm_methods_left as $ihq_comm ) : ?>
+            <?php if ( ! empty( $ihq_comm['hidden'] ) ) : continue; endif; ?>
             <label class="modal-comm-option" id="modal-comm-row-<?php echo esc_attr( $ihq_comm['key'] ); ?>" for="modal-comm-<?php echo esc_attr( $ihq_comm['key'] ); ?>">
               <input
                 type="checkbox"
@@ -39,6 +52,7 @@ if ( ! defined( 'ABSPATH' ) ) {
           </div>
           <div class="modal-comm-col">
             <?php foreach ( $ihq_modal_comm_methods_right as $ihq_comm ) : ?>
+            <?php if ( ! empty( $ihq_comm['hidden'] ) ) : continue; endif; ?>
             <label class="modal-comm-option" id="modal-comm-row-<?php echo esc_attr( $ihq_comm['key'] ); ?>" for="modal-comm-<?php echo esc_attr( $ihq_comm['key'] ); ?>">
               <input
                 type="checkbox"
@@ -57,6 +71,16 @@ if ( ! defined( 'ABSPATH' ) ) {
       <p class="modal-comm-tg-err" id="modal-comm-tg-err"></p>
       <div class="modal-comm-inputs" id="modal-comm-inputs-panel">
         <?php foreach ( $ihq_modal_comm_methods_all as $ihq_comm ) : ?>
+        <?php if ( ! empty( $ihq_comm['hidden'] ) ) : continue; endif; ?>
+        <?php if ( $ihq_comm['key'] === 'line' ) : ?>
+        <div class="modal-comm-input-row modal-line-enrollment" id="modal-comm-entry-line" hidden>
+          <?php
+          if ( function_exists( 'ihq_render_line_enrollment_fields' ) ) {
+          	ihq_render_line_enrollment_fields();
+          }
+          ?>
+        </div>
+        <?php else : ?>
         <div class="modal-comm-input-row" id="modal-comm-entry-<?php echo esc_attr( $ihq_comm['key'] ); ?>" hidden>
           <span class="modal-comm-input-label"><?php echo esc_html( strtoupper( $ihq_comm['label'] ) ); ?></span>
           <input
@@ -68,6 +92,7 @@ if ( ! defined( 'ABSPATH' ) ) {
             aria-label="<?php echo esc_attr( $ihq_comm['label'] ); ?>"
           >
         </div>
+        <?php endif; ?>
         <?php endforeach; ?>
       </div>
 

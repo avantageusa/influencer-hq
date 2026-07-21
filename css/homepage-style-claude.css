@@ -218,6 +218,23 @@ footer p{font-size:.65rem;letter-spacing:.2em;color:var(--soft);text-transform:u
 .modal-comm-thanks{text-align:center;padding:48px 12px 56px;animation:fadeUp .35s both}
 .modal-comm-thanks[hidden]{display:none!important}
 .modal-comm-thanks-msg{font-family:'Be Vietnam Pro',sans-serif;font-weight:600;font-size:clamp(1.05rem,2.6vw,1.35rem);color:#fff;line-height:1.55;margin:0}
+.modal-comm-thanks-line{display:flex;flex-direction:column;align-items:center;gap:18px}
+.modal-comm-thanks-line[hidden]{display:none!important}
+.modal-line-enrollment{flex-direction:column;align-items:stretch;gap:14px}
+.modal-line-enrollment-panel{display:flex;flex-direction:column;gap:12px;width:100%}
+.modal-line-helper{margin:0;font-family:'Be Vietnam Pro',sans-serif;font-size:.92rem;font-weight:600;color:var(--warm,#EAD9B0);line-height:1.5}
+.modal-line-helper--warn{color:#f85149}
+.modal-line-consent-copy{margin:0;font-family:'Be Vietnam Pro',sans-serif;font-size:.88rem;color:#fff;line-height:1.55}
+.modal-line-consent-label{display:flex;align-items:flex-start;gap:12px;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;font-size:.95rem;font-weight:600;color:#fff;line-height:1.4}
+.modal-line-consent-label input[type=checkbox]{width:28px;height:28px;flex-shrink:0;margin:2px 0 0;appearance:none;-webkit-appearance:none;border:2px solid #fdd65b;border-radius:6px;background:transparent;cursor:pointer;position:relative}
+.modal-line-consent-label input[type=checkbox]:checked{background:#fdd65b}
+.modal-line-consent-label input[type=checkbox]:checked::after{content:'✓';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:.9rem;color:#000;font-weight:700;line-height:1}
+.modal-line-consent-err{display:none;margin:0;font-family:'Be Vietnam Pro',sans-serif;font-size:.85rem;font-weight:600;color:#f85149}
+.modal-line-consent-err.is-visible{display:block}
+.modal-line-add-friend-btn{display:inline-flex;align-items:center;justify-content:center;align-self:flex-start;padding:12px 20px;border:1px solid #06c755;border-radius:10px;background:#06c755;color:#fff;font-family:'Be Vietnam Pro',sans-serif;font-size:.95rem;font-weight:700;text-decoration:none;cursor:pointer}
+.modal-line-add-friend-btn:hover{filter:brightness(1.05);color:#fff}
+.modal-line-add-friend-btn--thanks{align-self:center;min-width:220px}
+.modal-line-thanks-continue{margin-top:8px;max-width:280px}
 .modal-comm-deferred{display:none!important}
 .modal-comm-tg-err{display:none;margin:8px 0 0;font-family:'Be Vietnam Pro',sans-serif;font-size:.85rem;color:#f85149;text-align:center}
 @media(max-width:520px){.modal-comm-cols{gap:4px 16px}.modal-comm-option{gap:10px;padding:8px 2px}.modal-comm-input-label{min-width:72px;font-size:.85rem}}

@@ -368,6 +368,10 @@ require_once get_template_directory() . '/inc/auth-session-lifetime.php';
  */
 require_once get_template_directory() . '/inc/telegram-login-handler.php';
 /**
+ * LINE enrollment (Phase 1 consent + Add Friend) — optional IHQ_LINE_* in wp-config.php.
+ */
+require_once get_template_directory() . '/inc/line-enrollment.php';
+/**
  * Cloudflare Turnstile (optional; keys in wp-config.php).
  */
 require_once get_template_directory() . '/inc/turnstile-verify.php';
