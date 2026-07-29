@@ -2611,7 +2611,6 @@
 
     body.page-template-page-portal-live-php .live-intro-list,
     body.page-template-page-portal-live-php .live-form-block,
-    body.page-template-page-portal-live-php .kick-guide,
     body.page-template-page-portal-live-php .live-copy,
     body.page-template-page-portal-live-php .live-copy-muted,
     body.page-template-page-portal-live-php .live-schedule-item,

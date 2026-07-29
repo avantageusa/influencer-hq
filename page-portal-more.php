@@ -140,18 +140,18 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseCollectiveEquity" class="accordion-collapse collapse" aria-labelledby="headingCollectiveEquity">
-                                            <div class="accordion-body"><p>Your Equity page totals your earnings across every level: 1.5% of verified play from your Level 1 (direct) followers, 1.0% from Level 2, 0.5% from Level 3, plus the 1.0% Bonus Equity from your KICK streams and World Network live appearances. You also will see 1% base on your own play!</p></div>
+                                            <div class="accordion-body"><p>Your Equity page totals your earnings across every level: 1.5% of verified play from your Level 1 (direct) followers, 1.0% from Level 2, 0.5% from Level 3, plus the 1.0% Bonus Equity from World Network live appearances. You also will see 1% base on your own play!</p></div>
                                         </div>
                                     </div>
 
                                     <div class="accordion-item mb-3">
-                                        <h2 class="accordion-header" id="headingKickEquity">
-                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseKickEquity" aria-expanded="false" aria-controls="collapseKickEquity">
-                                                <span class="question-text">How do I see how much Equity I've earned from people watching on KICK or the World Network?</span>
+                                        <h2 class="accordion-header" id="headingWorldEquity">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseWorldEquity" aria-expanded="false" aria-controls="collapseWorldEquity">
+                                                <span class="question-text">How do I see how much Equity I've earned from people watching on the World Network?</span>
                                             </button>
                                         </h2>
-                                        <div id="collapseKickEquity" class="accordion-collapse collapse" aria-labelledby="headingKickEquity">
-                                            <div class="accordion-body"><p>Each is a 1.0% Bonus Equity on the verified play of everyone who plays along with your live KICK stream or your live appearance on the World Network. You can see this broken down in the My Equity screen. You can filter to view one specific type of equity award to see exactly how much you have earned from each.</p></div>
+                                        <div id="collapseWorldEquity" class="accordion-collapse collapse" aria-labelledby="headingWorldEquity">
+                                            <div class="accordion-body"><p>World Network live appearances earn a 1.0% Bonus Equity on the verified play of everyone who plays along. You can see this broken down in the My Equity screen. You can filter to view one specific type of equity award to see exactly how much you have earned from each.</p></div>
                                         </div>
                                     </div>
 
@@ -305,7 +305,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseMustPlay" class="accordion-collapse collapse" aria-labelledby="headingMustPlay">
-                                            <div class="accordion-body"><p>You don&#039;t have to play, but two things to weigh: your followers will notice when you&#039;re not in the game, and you won&#039;t earn equity on your own play (equity attributes to whoever recruited you, not yourself). Leading from the front keeps your community invested and stacks Live and Kick bonuses on top of your network attribution.</p></div>
+                                            <div class="accordion-body"><p>You don&#039;t have to play, but two things to weigh: your followers will notice when you&#039;re not in the game, and you won&#039;t earn equity on your own play (equity attributes to whoever recruited you, not yourself). Leading from the front keeps your community invested and stacks Live bonuses on top of your network attribution.</p></div>
                                         </div>
                                     </div>
 
@@ -369,7 +369,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseTwoInfluencers" class="accordion-collapse collapse" aria-labelledby="headingTwoInfluencers">
-                                            <div class="accordion-body"><p>Whoever&#039;s link they click first gets the base-level equity for that follower; that attribution stays. If they later click another Influencer&#039;s link, that second Influencer will begin receiving the Kick and Live bonuses on the player&#039;s play — but base-level attribution doesn&#039;t move.</p></div>
+                                            <div class="accordion-body"><p>Whoever&#039;s link they click first gets the base-level equity for that follower; that attribution stays. If they later click another Influencer&#039;s link, that second Influencer will begin receiving the Live bonus on the player&#039;s play — but base-level attribution doesn&#039;t move.</p></div>
                                         </div>
                                     </div>
 
@@ -606,84 +606,18 @@ get_template_part( 'template-parts/portal-styles' );
                                     <div class="accordion-item mb-3">
                                         <h2 class="accordion-header" id="headingLiveFaqHowMuchNoticeDo">
                                             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLiveFaqHowMuchNoticeDo" aria-expanded="false" aria-controls="collapseLiveFaqHowMuchNoticeDo">
-                                                <span class="question-text">How much notice do I need before a scheduled stream?</span>
+                                                <span class="question-text">How much notice do I need before a scheduled live appearance?</span>
                                             </button>
                                         </h2>
                                         <div id="collapseLiveFaqHowMuchNoticeDo" class="accordion-collapse collapse" aria-labelledby="headingLiveFaqHowMuchNoticeDo">
-                                            <div class="accordion-body"><p>There&#039;s no specific notice period stated. World Network Live Appearance requests go through HQ review and approval, and the request form asks for first, second, and third choice day-and-time — so submitting a range works best. For Kick streams, post your schedule to Report KICK Broadcast Schedule before you go live so we can publish your stream and provide tracked links.</p></div>
-                                        </div>
-                                    </div>
-
-                                    <div class="accordion-item mb-3">
-                                        <h2 class="accordion-header" id="headingLiveFaqWhatHappensIfMy">
-                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLiveFaqWhatHappensIfMy" aria-expanded="false" aria-controls="collapseLiveFaqWhatHappensIfMy">
-                                                <span class="question-text">What happens if my stream is cancelled after distributing my URL?</span>
-                                            </button>
-                                        </h2>
-                                        <div id="collapseLiveFaqWhatHappensIfMy" class="accordion-collapse collapse" aria-labelledby="headingLiveFaqWhatHappensIfMy">
-                                            <div class="accordion-body"><p>Each scheduled KICK broadcast can be cancelled from the KICK Broadcasting Schedule on the Live page.</p></div>
-                                        </div>
-                                    </div>
-
-                                    <div class="accordion-item mb-3">
-                                        <h2 class="accordion-header" id="headingLiveFaqCanIStreamOn">
-                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLiveFaqCanIStreamOn" aria-expanded="false" aria-controls="collapseLiveFaqCanIStreamOn">
-                                                <span class="question-text">Can I stream on platforms other than Kick?</span>
-                                            </button>
-                                        </h2>
-                                        <div id="collapseLiveFaqCanIStreamOn" class="accordion-collapse collapse" aria-labelledby="headingLiveFaqCanIStreamOn">
-                                            <div class="accordion-body"><p>KICK is the supported third-party streaming platform — viewer play during your KICK stream earns the 1% Bonus Equity. The World Broadcast Network is a separate live-appearance channel for approved 1-1 Private Challenges.</p></div>
-                                        </div>
-                                    </div>
-
-                                    <div class="accordion-item mb-3">
-                                        <h2 class="accordion-header" id="headingLiveFaqHowDoIKnow">
-                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLiveFaqHowDoIKnow" aria-expanded="false" aria-controls="collapseLiveFaqHowDoIKnow">
-                                                <span class="question-text">How do I know how many viewers generated play during my stream?</span>
-                                            </button>
-                                        </h2>
-                                        <div id="collapseLiveFaqHowDoIKnow" class="accordion-collapse collapse" aria-labelledby="headingLiveFaqHowDoIKnow">
-                                            <div class="accordion-body"><p>The KICK Stream Equity Bonus is 1% of the verified play generated by participating viewers during your stream. Your Equity page breaks out the Kick Bonus separately so you can see what each stream contributed.</p></div>
-                                        </div>
-                                    </div>
-
-                                    <div class="accordion-item mb-3">
-                                        <h2 class="accordion-header" id="headingLiveFaqWhatIfMyFollowers">
-                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLiveFaqWhatIfMyFollowers" aria-expanded="false" aria-controls="collapseLiveFaqWhatIfMyFollowers">
-                                                <span class="question-text">What if my followers use the wrong link?</span>
-                                            </button>
-                                        </h2>
-                                        <div id="collapseLiveFaqWhatIfMyFollowers" class="accordion-collapse collapse" aria-labelledby="headingLiveFaqWhatIfMyFollowers">
-                                            <div class="accordion-body"><p>The Kick Stream Equity Bonus is credited based on viewers participating through your official tracked link — generated when you submit your broadcast schedule. If a follower clicks an off-platform or untracked link, that play won&#039;t carry the Kick Bonus. Submit your schedule via Report KICK Broadcast Schedule before going live so the right link is in circulation.</p></div>
-                                        </div>
-                                    </div>
-
-                                    <div class="accordion-item mb-3">
-                                        <h2 class="accordion-header" id="headingLiveFaqCanIScheduleMultiple">
-                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLiveFaqCanIScheduleMultiple" aria-expanded="false" aria-controls="collapseLiveFaqCanIScheduleMultiple">
-                                                <span class="question-text">Can I schedule multiple streams in the same week?</span>
-                                            </button>
-                                        </h2>
-                                        <div id="collapseLiveFaqCanIScheduleMultiple" class="accordion-collapse collapse" aria-labelledby="headingLiveFaqCanIScheduleMultiple">
-                                            <div class="accordion-body"><p>Yes. You can post additional sessions on the KICK Broadcasting Schedule on the Live page.</p></div>
-                                        </div>
-                                    </div>
-
-                                    <div class="accordion-item mb-3">
-                                        <h2 class="accordion-header" id="headingLiveFaqWhatIsTheMinimum">
-                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLiveFaqWhatIsTheMinimum" aria-expanded="false" aria-controls="collapseLiveFaqWhatIsTheMinimum">
-                                                <span class="question-text">What is the minimum stream length to qualify for the equity bonus?</span>
-                                            </button>
-                                        </h2>
-                                        <div id="collapseLiveFaqWhatIsTheMinimum" class="accordion-collapse collapse" aria-labelledby="headingLiveFaqWhatIsTheMinimum">
-                                            <div class="accordion-body"><p>No minimum length is specified. The Kick Stream Equity Bonus is 1% of viewer play during your broadcast — whatever the length, qualifying play counts toward it.</p></div>
+                                            <div class="accordion-body"><p>There&#039;s no specific notice period stated. World Network Live Appearance requests go through HQ review and approval, and the request form asks for first, second, and third choice day-and-time — so submitting a range works best.</p></div>
                                         </div>
                                     </div>
 
                                     <div class="accordion-item mb-3">
                                         <h2 class="accordion-header" id="headingLiveFaqHowSoonAfterMy">
                                             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLiveFaqHowSoonAfterMy" aria-expanded="false" aria-controls="collapseLiveFaqHowSoonAfterMy">
-                                                <span class="question-text">How soon after my stream do I see the equity credited?</span>
+                                                <span class="question-text">How soon after my live appearance do I see the equity credited?</span>
                                             </button>
                                         </h2>
                                         <div id="collapseLiveFaqHowSoonAfterMy" class="accordion-collapse collapse" aria-labelledby="headingLiveFaqHowSoonAfterMy">
@@ -867,7 +801,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseTokenFaqWhereExactlyDoI" class="accordion-collapse collapse" aria-labelledby="headingTokenFaqWhereExactlyDoI">
-                                            <div class="accordion-body"><p>Open your Equity page. It shows your Total Equity Shares, Current Share Value, and Total Equity Value, with a breakdown by Level 1 (Direct Influence), Level 2 (Expanding Reach), Level 3 (Networking Momentum), Kick Bonus, and Live Bonus — plus an Influencer&#039;s Earned Equity Chart filterable by Today / This Week / This Month / This Year / All.</p></div>
+                                            <div class="accordion-body"><p>Open your Equity page. It shows your Total Equity Shares, Current Share Value, and Total Equity Value, with a breakdown by Level 1 (Direct Influence), Level 2 (Expanding Reach), Level 3 (Networking Momentum), and Live Bonus — plus an Influencer&#039;s Earned Equity Chart filterable by Today / This Week / This Month / This Year / All.</p></div>
                                         </div>
                                     </div>
 

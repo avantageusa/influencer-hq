@@ -53,7 +53,6 @@ $ihq_modal_comm_methods_all = array_merge( $ihq_modal_comm_methods_left, $ihq_mo
 $ihq_modal_social_placeholder = __( 'handle or URL', 'influencer-hq' );
 // Grid order: left-to-right, top-to-bottom (3 columns) to match Figma.
 $ihq_modal_social_platforms = array(
-	array( 'key' => 'kick', 'label' => 'Kick' ),
 	array( 'key' => 'facebook', 'label' => 'Facebook' ),
 	array( 'key' => 'reddit', 'label' => 'Reddit' ),
 	array( 'key' => 'tiktok', 'label' => 'TikTok' ),

@@ -134,7 +134,6 @@ $platform_handle_raw    = get_user_meta( $user->ID, 'platform_handle', true );
 $platform_handle_pairs  = ihq_parse_platform_handle_pairs( $platform_handle_raw );
 $ihq_profile_social_placeholder = __( 'handle or URL', 'influencer-hq' );
 $ihq_profile_social_platforms   = array(
-	array( 'key' => 'kick', 'label' => 'Kick' ),
 	array( 'key' => 'facebook', 'label' => 'Facebook' ),
 	array( 'key' => 'reddit', 'label' => 'Reddit' ),
 	array( 'key' => 'tiktok', 'label' => 'TikTok' ),
@@ -235,7 +234,6 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                             <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/youtube.png" alt="YouTube" class="sett-soc-icon">
                             <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/x.png" alt="X" class="sett-soc-icon">
                             <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/tiktok.png" alt="TikTok" class="sett-soc-icon">
-                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/kick.png" alt="Kick" class="sett-soc-icon">
                         </div>
                     </div>
                 </div>

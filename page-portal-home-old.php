@@ -238,22 +238,6 @@ get_header();
                     </div>
                 </div>
 
-                <!-- Q8 -->
-                <div class="accordion-item mb-3">
-                    <h2 class="accordion-header" id="headingEight">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEight" aria-expanded="false" aria-controls="collapseEight">
-                            <span class="question-number">Q8</span>
-                            <span class="question-text">Tell me more about Live Streaming on Kick?</span>
-                        </button>
-                    </h2>
-                    <div id="collapseEight" class="accordion-collapse collapse" aria-labelledby="headingEight" data-bs-parent="#equityAccordion">
-                        <div class="accordion-body">
-                            <p>Easy for experienced Streamers - Choose your own broadcast times and invite all your followers to compete by your side.</p>
-                            <p>New to Streaming? Just download our Streaming Made Easy tutorial from this website.</p>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Q9 -->
                 <div class="accordion-item mb-3">
                     <h2 class="accordion-header" id="headingNine">

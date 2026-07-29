@@ -47,7 +47,6 @@ function ihq_conversation_modal_view_data() {
 		'ihq_modal_comm_methods_all'   => array_merge( $ihq_modal_comm_methods_left, $ihq_modal_comm_methods_right ),
 		'ihq_modal_social_placeholder'   => $ihq_modal_comm_placeholder,
 		'ihq_modal_social_platforms'   => array(
-			array( 'key' => 'kick', 'label' => 'Kick' ),
 			array( 'key' => 'facebook', 'label' => 'Facebook' ),
 			array( 'key' => 'reddit', 'label' => 'Reddit' ),
 			array( 'key' => 'tiktok', 'label' => 'TikTok' ),

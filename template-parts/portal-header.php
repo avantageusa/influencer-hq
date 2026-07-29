@@ -219,7 +219,6 @@ $hm_ch = function ( $tab, $hash = '' ) {
                 </a>
                 <div class="hm-details-body">
                     <a href="<?php echo esc_url( home_url( '/portal/live' ) ); ?>#live-request" class="hm-link hm-icon-row hm-indent-1"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-live-request.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Request A Live Appearance', 'influencer-hq' ); ?></a>
-                    <a href="<?php echo esc_url( home_url( '/portal/live' ) ); ?>#kick-schedule" class="hm-link hm-icon-row hm-indent-1"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-kick-schedule.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Report KICK Broadcast Schedule', 'influencer-hq' ); ?></a>
                 </div>
             </section>
 

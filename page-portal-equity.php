@@ -120,16 +120,9 @@ $equity_attribution_expanded = is_user_logged_in();
                                         </li>
                                     </ul>
 
-                                    <p class="equity-participation-streaming-lead"><strong>And when you are streaming live or appearing on stage:</strong></p>
+                                    <p class="equity-participation-streaming-lead"><strong>And when you are appearing on stage:</strong></p>
 
                                     <ul class="equity-participation-list">
-                                        <li class="equity-participation-item">
-                                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="equity-participation-icon" width="24" height="24">
-                                            <div class="equity-participation-copy">
-                                                <strong>KICK Stream</strong>
-                                                <p>1.0% of the play of everyone who plays along.</p>
-                                            </div>
-                                        </li>
                                         <li class="equity-participation-item">
                                             <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="equity-participation-icon" width="24" height="24">
                                             <div class="equity-participation-copy">

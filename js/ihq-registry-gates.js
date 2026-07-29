@@ -482,11 +482,6 @@
       '#live-request-form input, #live-request-form select, #live-request-form textarea, #live-request-form button, #live-calendar-open-btn',
       ['mousedown', 'focusin', 'click']
     );
-    bindGate(
-      'kick_broadcasting_schedule',
-      '#kick-schedule-form input, #kick-schedule-form select, #kick-schedule-form button',
-      ['mousedown', 'focusin', 'click']
-    );
 
     bindGate(
       'profile_youtube_video',
