@@ -329,6 +329,7 @@ $hm_ch = function ( $tab, $hash = '' ) {
                     prevBtn.textContent = 'Previous';
                     prevBtn.addEventListener('click', function () {
                         var prevPanel = panels[index - 1];
+                        bootstrap.Collapse.getOrCreateInstance(panel).hide();
                         bootstrap.Collapse.getOrCreateInstance(prevPanel).show();
                     });
                     wrap.appendChild(prevBtn);
@@ -340,6 +341,7 @@ $hm_ch = function ( $tab, $hash = '' ) {
                     nextBtn.textContent = 'Next';
                     nextBtn.addEventListener('click', function () {
                         var nextPanel = panels[index + 1];
+                        bootstrap.Collapse.getOrCreateInstance(panel).hide();
                         bootstrap.Collapse.getOrCreateInstance(nextPanel).show();
                     });
                     wrap.appendChild(nextBtn);

@@ -31,22 +31,60 @@ $equity_attribution_expanded = is_user_logged_in();
                     </div>
                 </div>
 
-                <section class="equity-believe" aria-labelledby="equity-believe-heading">
-                    <h2 id="equity-believe-heading" class="equity-believe-title">We Believe...</h2>
-                    <ul class="equity-believe-list">
-                        <li class="equity-believe-item">
-                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="equity-believe-icon" width="24" height="24">
-                            <span>Influence deserves more than short-term payouts.</span>
-                        </li>
-                        <li class="equity-believe-item">
-                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="equity-believe-icon" width="24" height="24">
-                            <span>Your voice should create long-term value.</span>
-                        </li>
-                        <li class="equity-believe-item">
-                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="equity-believe-icon" width="24" height="24">
-                            <span>Those who drive the energy deserve to share in what they help build.</span>
-                        </li>
-                    </ul>
+                <section class="equity-intro" aria-labelledby="equity-believe-heading">
+                    <div class="equity-intro-believe">
+                        <p id="equity-believe-heading" class="equity-intro-believe-label">We Believe</p>
+                        <p class="equity-intro-believe-line">Influence Deserves More Than Short-Term Payouts.</p>
+                        <p class="equity-intro-believe-line">Your Voice Should Create Long-Term Value.</p>
+                        <p class="equity-intro-believe-line">Those Who Drive The Energy Deserve To Share In What They Help Build.</p>
+                    </div>
+
+                    <div class="equity-intro-multiplies">
+                        <h2 class="equity-intro-multiplies-title">How Equity Multiplies With Follower Participation</h2>
+                        <ul class="equity-intro-list">
+                            <li class="equity-intro-item">
+                                <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="equity-intro-icon" width="24" height="24">
+                                <div class="equity-intro-copy">
+                                    <strong>Level 1 – Direct Influence</strong>
+                                    <p>You earn 1.5% of play from your followers.</p>
+                                </div>
+                            </li>
+                            <li class="equity-intro-item">
+                                <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="equity-intro-icon" width="24" height="24">
+                                <div class="equity-intro-copy">
+                                    <strong>Level 2 – Expanding Reach</strong>
+                                    <p>As your community invites others, you earn 1.0% of their play.</p>
+                                </div>
+                            </li>
+                            <li class="equity-intro-item">
+                                <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="equity-intro-icon" width="24" height="24">
+                                <div class="equity-intro-copy">
+                                    <strong>Level 3 – Network Momentum</strong>
+                                    <p>As participation continues to grow, you earn 0.5% of the next layer.</p>
+                                </div>
+                            </li>
+                            <li class="equity-intro-item">
+                                <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="equity-intro-icon" width="24" height="24">
+                                <div class="equity-intro-copy">
+                                    <strong>KICK Stream</strong>
+                                    <p>1.0% of the play of everyone who plays along.</p>
+                                </div>
+                            </li>
+                            <li class="equity-intro-item">
+                                <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="equity-intro-icon" width="24" height="24">
+                                <div class="equity-intro-copy">
+                                    <strong>World Network Appearance</strong>
+                                    <p>1.0% of the play of everyone who plays along.</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="equity-intro-closing">
+                        <p>Influence Builds</p>
+                        <p>Participation Compounds</p>
+                        <p>Equity Grows with Every Layer of Play</p>
+                    </div>
                 </section>
 
                 <div class="equity-section" id="equity-attribution">
@@ -84,53 +122,73 @@ $equity_attribution_expanded = is_user_logged_in();
                 <div class="accordion-gradient-container">
                     <div class="accordion custom-accordion equity-accordion" id="equityInfoAccordion">
 
-                        <!-- How Equity Multiplies With Follower Participation -->
-                        <div class="accordion-item mb-3">
-                            <h2 class="accordion-header" id="headingEquityParticipation">
-                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEquityParticipation" aria-expanded="true" aria-controls="collapseEquityParticipation">
-                                    <span class="question-text">How Equity Multiplies With Follower Participation?</span>
+                        <!-- How To Earn Equity -->
+                        <div class="accordion-item mb-3 equity-earn-item">
+                            <h2 class="accordion-header" id="headingEquityEarn">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEquityEarn" aria-expanded="true" aria-controls="collapseEquityEarn">
+                                    <span class="question-text">How To Earn Equity?</span>
                                 </button>
                             </h2>
-                            <div id="collapseEquityParticipation" class="accordion-collapse collapse show" aria-labelledby="headingEquityParticipation" data-bs-parent="#equityInfoAccordion">
-                                <div class="accordion-body equity-participation-body">
-                                    <p class="equity-participation-lead">Every Moment Of Verified Play Creates Equity.</p>
-                                    <p class="equity-participation-lead">Your Equity Grows As Your Followers Increase Their Level Of Participation.</p>
-
-                                    <ul class="equity-participation-list">
-                                        <li class="equity-participation-item">
-                                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="equity-participation-icon" width="24" height="24">
-                                            <div class="equity-participation-copy">
-                                                <strong>Level 1 – Direct Influence</strong>
-                                                <p>You earn 1.5% of play from your followers.</p>
-                                            </div>
+                            <div id="collapseEquityEarn" class="accordion-collapse collapse show" aria-labelledby="headingEquityEarn" data-bs-parent="#equityInfoAccordion">
+                                <div class="accordion-body equity-earn-body">
+                                    <ul class="equity-earn-list equity-earn-list--actions">
+                                        <li class="equity-earn-item-row">
+                                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="equity-earn-icon" width="22" height="22">
+                                            <span>Invite your friends</span>
                                         </li>
-                                        <li class="equity-participation-item">
-                                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="equity-participation-icon" width="24" height="24">
-                                            <div class="equity-participation-copy">
-                                                <strong>Level 2 – Expanding Reach</strong>
-                                                <p>As your community invites others, you earn 1.0% of their play.</p>
-                                            </div>
-                                        </li>
-                                        <li class="equity-participation-item">
-                                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="equity-participation-icon" width="24" height="24">
-                                            <div class="equity-participation-copy">
-                                                <strong>Level 3 – Network Momentum</strong>
-                                                <p>As participation continues to grow, you earn 0.5% of the next layer.</p>
-                                            </div>
+                                        <li class="equity-earn-item-row">
+                                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="equity-earn-icon" width="22" height="22">
+                                            <span>Create Group Challenges</span>
                                         </li>
                                     </ul>
 
-                                    <p class="equity-participation-streaming-lead"><strong>And when you are appearing on stage:</strong></p>
+                                    <p class="equity-earn-watch"><?php esc_html_e( 'WATCH YOUR EQUITY TOTAL COME ALIVE', 'influencer-hq' ); ?></p>
 
-                                    <ul class="equity-participation-list">
-                                        <li class="equity-participation-item">
-                                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="equity-participation-icon" width="24" height="24">
-                                            <div class="equity-participation-copy">
-                                                <strong>World Network Appearance</strong>
-                                                <p>1.0% of the play of everyone who plays along.</p>
-                                            </div>
+                                    <div class="equity-earn-crowd">
+                                        <img
+                                            src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/equity-crowd-silhouette.png"
+                                            alt=""
+                                            class="equity-earn-crowd-img"
+                                            width="1456"
+                                            height="513"
+                                        >
+                                    </div>
+
+                                    <p class="equity-earn-circle"><?php esc_html_e( 'Your company. Your closest friends. Your hobby group. Your football buddies. Your whole circle.', 'influencer-hq' ); ?></p>
+
+                                    <ul class="equity-earn-list equity-earn-list--rates">
+                                        <li class="equity-earn-item-row">
+                                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="equity-earn-icon" width="22" height="22">
+                                            <span>Personal: 1% from your own play.</span>
+                                        </li>
+                                        <li class="equity-earn-item-row">
+                                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="equity-earn-icon" width="22" height="22">
+                                            <span>Level 1: 1.5% of the play of your followers.</span>
+                                        </li>
+                                        <li class="equity-earn-item-row">
+                                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="equity-earn-icon" width="22" height="22">
+                                            <span>Level 2: 1.0% of the play of Level 1 referrals.</span>
+                                        </li>
+                                        <li class="equity-earn-item-row">
+                                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="equity-earn-icon" width="22" height="22">
+                                            <span>Level 3: 0.5% of the play of Level 2 referrals.</span>
+                                        </li>
+                                        <li class="equity-earn-item-row equity-earn-item-row--bonus">
+                                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="equity-earn-icon" width="22" height="22">
+                                            <span>
+                                                Bonus: 1% of the play of everyone playing along on your World Network streams.
+                                                <button
+                                                    type="button"
+                                                    class="equity-earn-info"
+                                                    aria-label="<?php esc_attr_e( 'More information about World Network bonus equity', 'influencer-hq' ); ?>"
+                                                    title="<?php esc_attr_e( '1% Bonus Equity on verified play of everyone who plays along during your World Network appearance.', 'influencer-hq' ); ?>"
+                                                >i</button>
+                                            </span>
                                         </li>
                                     </ul>
+
+                                    <p class="equity-earn-closing"><?php esc_html_e( 'Your influence was never meant to be rented. It was meant to be owned.', 'influencer-hq' ); ?></p>
+                                    <p class="equity-earn-closing"><?php esc_html_e( "Every equity share is recorded the moment you earn it. This isn't a promotion. It's a seat at the table.", 'influencer-hq' ); ?></p>
                                 </div>
                             </div>
                         </div>

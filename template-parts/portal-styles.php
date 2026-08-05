@@ -1280,51 +1280,215 @@
         text-transform: uppercase;
     }
 
-    body.page-template-page-portal-equity-php .equity-believe {
-        text-align: center;
-        margin: 0 0 28px;
-        padding: 0 20px;
-    }
-
-    body.page-template-page-portal-equity-php .equity-believe-title {
+    body.page-template-page-portal-equity-php .equity-intro {
+        margin: 0 0 40px;
+        padding: 8px 12px 0;
         color: #ffffff;
         font-family: 'Be Vietnam Pro', sans-serif;
-        font-size: 22px;
-        font-weight: 700;
-        line-height: 1.3;
-        margin: 0 0 20px;
     }
 
-    body.page-template-page-portal-equity-php .equity-believe-list {
-        list-style: none;
-        margin: 0 auto;
-        padding: 0;
-        max-width: 520px;
+    body.page-template-page-portal-equity-php .equity-intro-believe {
+        text-align: center;
+        margin: 0 0 48px;
+    }
+
+    body.page-template-page-portal-equity-php .equity-intro-believe-label {
+        margin: 0 0 18px;
+        font-size: 18px;
+        font-weight: 400;
+        line-height: 1.4;
+        color: #ffffff;
+    }
+
+    body.page-template-page-portal-equity-php .equity-intro-believe-line {
+        margin: 0 0 10px;
+        font-size: clamp(1.05rem, 2.4vw, 1.35rem);
+        font-weight: 700;
+        line-height: 1.45;
+        color: #ffffff;
+    }
+
+    body.page-template-page-portal-equity-php .equity-intro-believe-line:last-child {
+        margin-bottom: 0;
+    }
+
+    body.page-template-page-portal-equity-php .equity-intro-multiplies {
+        max-width: 640px;
+        margin: 0 auto 48px;
+    }
+
+    body.page-template-page-portal-equity-php .equity-intro-multiplies-title {
+        margin: 0 0 28px;
+        font-size: clamp(1.15rem, 2.6vw, 1.45rem);
+        font-weight: 700;
+        line-height: 1.35;
+        color: #ffffff;
         text-align: left;
     }
 
-    body.page-template-page-portal-equity-php .equity-believe-item {
+    body.page-template-page-portal-equity-php .equity-intro-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    body.page-template-page-portal-equity-php .equity-intro-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        margin: 0 0 22px;
+    }
+
+    body.page-template-page-portal-equity-php .equity-intro-item:last-child {
+        margin-bottom: 0;
+    }
+
+    body.page-template-page-portal-equity-php .equity-intro-icon {
+        flex-shrink: 0;
+        width: 22px;
+        height: 22px;
+        object-fit: contain;
+        margin-top: 3px;
+    }
+
+    body.page-template-page-portal-equity-php .equity-intro-copy strong {
+        display: block;
+        margin: 0 0 4px;
+        font-size: 1.05rem;
+        font-weight: 700;
+        line-height: 1.35;
+        color: #ffffff;
+    }
+
+    body.page-template-page-portal-equity-php .equity-intro-copy p {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 400;
+        line-height: 1.45;
+        color: #ffffff;
+    }
+
+    body.page-template-page-portal-equity-php .equity-intro-closing {
+        text-align: center;
+        margin: 0 0 8px;
+    }
+
+    body.page-template-page-portal-equity-php .equity-intro-closing p {
+        margin: 0 0 8px;
+        font-size: clamp(1.05rem, 2.4vw, 1.3rem);
+        font-weight: 700;
+        line-height: 1.45;
+        color: #ffffff;
+    }
+
+    body.page-template-page-portal-equity-php .equity-intro-closing p:last-child {
+        margin-bottom: 0;
+    }
+
+    body.page-template-page-portal-equity-php .equity-earn-body {
+        color: #ffffff;
+        font-family: 'Inter', 'Be Vietnam Pro', sans-serif;
+        padding-top: 8px;
+        padding-bottom: 28px;
+    }
+
+    body.page-template-page-portal-equity-php .equity-earn-list {
+        list-style: none;
+        margin: 0 0 22px;
+        padding: 0;
+    }
+
+    body.page-template-page-portal-equity-php .equity-earn-list--rates {
+        margin-bottom: 28px;
+    }
+
+    body.page-template-page-portal-equity-php .equity-earn-item-row {
         display: flex;
         align-items: flex-start;
         gap: 12px;
         margin: 0 0 14px;
-        color: #ffffff;
-        font-family: 'Be Vietnam Pro', sans-serif;
-        font-size: 16px;
+        font-size: clamp(1rem, 2.2vw, 1.2rem);
         font-weight: 400;
         line-height: 1.45;
+        color: #ffffff;
     }
 
-    body.page-template-page-portal-equity-php .equity-believe-item:last-child {
+    body.page-template-page-portal-equity-php .equity-earn-item-row:last-child {
         margin-bottom: 0;
     }
 
-    body.page-template-page-portal-equity-php .equity-believe-icon {
+    body.page-template-page-portal-equity-php .equity-earn-icon {
         flex-shrink: 0;
-        width: 24px;
-        height: 24px;
+        width: 22px;
+        height: 22px;
         object-fit: contain;
-        margin-top: 2px;
+        margin-top: 3px;
+    }
+
+    body.page-template-page-portal-equity-php .equity-earn-watch {
+        margin: 8px 0 20px;
+        font-size: clamp(1.05rem, 2.4vw, 1.25rem);
+        font-weight: 700;
+        line-height: 1.35;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: #ffffff;
+    }
+
+    body.page-template-page-portal-equity-php .equity-earn-crowd {
+        margin: 0 0 22px;
+        overflow: hidden;
+        border-radius: 4px;
+    }
+
+    body.page-template-page-portal-equity-php .equity-earn-crowd-img {
+        display: block;
+        width: 100%;
+        height: auto;
+    }
+
+    body.page-template-page-portal-equity-php .equity-earn-circle {
+        margin: 0 0 24px;
+        font-size: clamp(1rem, 2.2vw, 1.2rem);
+        font-weight: 400;
+        line-height: 1.45;
+        color: #ffffff;
+    }
+
+    body.page-template-page-portal-equity-php .equity-earn-item-row--bonus span {
+        display: inline;
+    }
+
+    body.page-template-page-portal-equity-php .equity-earn-info {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        margin-left: 6px;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        background: #ffffff;
+        color: #000000;
+        font-family: 'Be Vietnam Pro', sans-serif;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1;
+        vertical-align: middle;
+        cursor: help;
+    }
+
+    body.page-template-page-portal-equity-php .equity-earn-closing {
+        margin: 0 0 14px;
+        font-size: clamp(1rem, 2.2vw, 1.2rem);
+        font-weight: 400;
+        line-height: 1.45;
+        color: #ffffff;
+    }
+
+    body.page-template-page-portal-equity-php .equity-earn-closing:last-child {
+        margin-bottom: 0;
     }
 
     body.page-template-page-portal-equity-php .equity-participation-body {
