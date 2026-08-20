@@ -2648,9 +2648,13 @@
     body.page-template-page-portal-challenges-php .cpc-table-head,
     body.page-template-page-portal-challenges-php .cpc-table-row{display:flex;align-items:center;gap:6px;font-family:'Be Vietnam Pro',sans-serif;font-size:13px;color:#fff;padding:4px 0}
     body.page-template-page-portal-challenges-php .cpc-table-head{font-weight:600;color:#b8972f}
-    body.page-template-page-portal-challenges-php .cpc-col-date{flex:0 0 60px}
+    body.page-template-page-portal-challenges-php .cpc-col-date{flex:0 0 110px}
+    body.page-template-page-portal-challenges-php .cpc-col-user{flex:0 0 140px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    body.page-template-page-portal-challenges-php .cpc-col-link{flex:1;min-width:0}
     body.page-template-page-portal-challenges-php .cpc-col-email{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     body.page-template-page-portal-challenges-php .cpc-col-yn{flex:0 0 44px;text-align:center}
+    body.page-template-page-portal-challenges-php .cpc-link-input{width:100%;background:#000;border:1px solid rgba(184,151,47,.55);border-radius:4px;padding:6px 8px;font-family:'Be Vietnam Pro',sans-serif;font-size:12px;color:#fff;outline:none}
+    body.page-template-page-portal-challenges-php .cpc-link-input:focus{border-color:#d4af37}
     body.page-template-page-portal-challenges-php .cpc-email-link{color:#fff;text-decoration:underline}
     body.page-template-page-portal-challenges-php .cpc-email-link:hover{color:#b8972f}
     body.page-template-page-portal-challenges-php .cpc-table-more{text-align:right;font-family:'Be Vietnam Pro',sans-serif;font-size:13px;color:#fff;text-decoration:underline;cursor:pointer;margin-top:6px}
@@ -2659,6 +2663,15 @@
     body.page-template-page-portal-challenges-php .cpc-input::placeholder{color:#616161}
     body.page-template-page-portal-challenges-php .cpc-input:focus{border-color:#d4af37}
     body.page-template-page-portal-challenges-php .cpc-input-muted{color:#616161}
+    body.page-template-page-portal-challenges-php .cpc-date-input{color-scheme:dark}
+    body.page-template-page-portal-challenges-php .cpc-search-wrap{position:relative;margin-bottom:8px}
+    body.page-template-page-portal-challenges-php .cpc-search-wrap .cpc-input{margin-bottom:0}
+    body.page-template-page-portal-challenges-php .cpc-search-results{position:absolute;left:0;right:0;top:100%;z-index:20;margin-top:4px;background:#0a0a0a;border:1px solid #b8972f;border-radius:4px;max-height:220px;overflow:auto;box-shadow:0 10px 28px rgba(0,0,0,.55)}
+    body.page-template-page-portal-challenges-php .cpc-search-item{display:block;width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid rgba(184,151,47,.25);padding:10px 12px;font-family:'Be Vietnam Pro',sans-serif;font-size:15px;color:#fff;cursor:pointer}
+    body.page-template-page-portal-challenges-php .cpc-search-item:last-child{border-bottom:0}
+    body.page-template-page-portal-challenges-php .cpc-search-item:hover{background:rgba(184,151,47,.15);color:#f5e6c8}
+    body.page-template-page-portal-challenges-php .cpc-search-empty{padding:10px 12px;font-family:'Be Vietnam Pro',sans-serif;font-size:13px;color:#888;font-style:italic}
+    body.page-template-page-portal-challenges-php .cpc-search-selected{border-color:#d4af37;color:#f5e6c8}
     body.page-template-page-portal-challenges-php .cpc-row-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
     body.page-template-page-portal-challenges-php .cpc-select-wrap{position:relative;display:inline-flex;align-items:center}
     body.page-template-page-portal-challenges-php .cpc-select{-webkit-appearance:none;appearance:none;background:#000;border:1px solid #b8972f;border-radius:4px;padding:6px 24px 6px 10px;font-family:'Be Vietnam Pro',sans-serif;font-size:16px;color:#fff;cursor:pointer;outline:none}

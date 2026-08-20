@@ -932,91 +932,238 @@ function ihq_update_fullname_ajax() {
 }
 
 // ---------------------------------------------------------------------------
-// Private Challenge: Create a CPT entry and return a shareable link
+// Private Challenge helpers + create / username search
 // ---------------------------------------------------------------------------
+
+/**
+ * Build the shareable challenge-handler URL for a challenge post.
+ *
+ * @param int $post_id Challenge CPT ID.
+ * @return string
+ */
+function ihq_challenge_invite_link( $post_id ) {
+	$token = (string) get_post_meta( (int) $post_id, '_challenge_token', true );
+	if ( $token === '' ) {
+		return '';
+	}
+	return add_query_arg( 'token', $token, home_url( '/challenge-handler/' ) );
+}
+
+/**
+ * Public-facing username for challenge UI (portal username preferred).
+ *
+ * @param int $user_id WP user ID.
+ * @return string
+ */
+function ihq_challenge_display_username( $user_id ) {
+	$user_id = (int) $user_id;
+	if ( $user_id <= 0 ) {
+		return '';
+	}
+
+	if ( function_exists( 'ihq_get_portal_username' ) ) {
+		$portal = ihq_get_portal_username( $user_id );
+		if ( $portal !== '' ) {
+			return $portal;
+		}
+	}
+
+	$handle = (string) get_user_meta( $user_id, '_ihq_handle', true );
+	$handle = ltrim( trim( $handle ), '@' );
+	if ( $handle !== '' ) {
+		return $handle;
+	}
+
+	$user = get_userdata( $user_id );
+	return $user ? (string) $user->user_login : '';
+}
+
+/**
+ * AJAX: search influencers by exact / partial portal username.
+ */
+add_action( 'wp_ajax_ihq_search_challenge_usernames', 'ihq_search_challenge_usernames_ajax' );
+
+function ihq_search_challenge_usernames_ajax() {
+	check_ajax_referer( 'challenge_api_nonce', 'nonce' );
+
+	$current_id = get_current_user_id();
+	if ( ! $current_id ) {
+		wp_send_json_error( array( 'message' => 'You must be logged in.' ), 403 );
+	}
+
+	$raw   = isset( $_POST['q'] ) ? wp_unslash( $_POST['q'] ) : '';
+	$query = function_exists( 'ihq_normalize_portal_username' )
+		? ihq_normalize_portal_username( $raw )
+		: strtolower( preg_replace( '/[^a-z0-9_]/', '', (string) $raw ) );
+
+	if ( strlen( $query ) < 1 ) {
+		wp_send_json_success( array( 'results' => array() ) );
+	}
+
+	$meta_key = function_exists( 'ihq_portal_username_meta_key' )
+		? ihq_portal_username_meta_key()
+		: 'portal_username';
+
+	$found = get_users(
+		array(
+			'role'       => 'influencer',
+			'number'     => 20,
+			'exclude'    => array( $current_id ),
+			'meta_query' => array(
+				array(
+					'key'     => $meta_key,
+					'value'   => $query,
+					'compare' => 'LIKE',
+				),
+			),
+			'orderby'    => 'login',
+			'order'      => 'ASC',
+		)
+	);
+
+	// Also allow exact WP login match when portal_username meta is empty / different.
+	$by_login = get_user_by( 'login', $query );
+	if ( $by_login instanceof WP_User
+		&& (int) $by_login->ID !== $current_id
+		&& in_array( 'influencer', (array) $by_login->roles, true )
+	) {
+		$already = false;
+		foreach ( $found as $u ) {
+			if ( (int) $u->ID === (int) $by_login->ID ) {
+				$already = true;
+				break;
+			}
+		}
+		if ( ! $already ) {
+			$found[] = $by_login;
+		}
+	}
+
+	$results = array();
+	$exact   = array();
+
+	foreach ( $found as $user ) {
+		if ( ! $user instanceof WP_User ) {
+			continue;
+		}
+		$username = ihq_challenge_display_username( $user->ID );
+		if ( $username === '' ) {
+			continue;
+		}
+		$row = array(
+			'id'       => (int) $user->ID,
+			'username' => $username,
+		);
+		if ( strtolower( $username ) === $query ) {
+			$exact[] = $row;
+		} else {
+			$results[] = $row;
+		}
+	}
+
+	wp_send_json_success(
+		array(
+			'results' => array_slice( array_merge( $exact, $results ), 0, 12 ),
+		)
+	);
+}
+
 add_action( 'wp_ajax_ihq_create_private_challenge', 'ihq_create_private_challenge_ajax' );
 
 function ihq_create_private_challenge_ajax() {
-    check_ajax_referer( 'challenge_api_nonce', 'nonce' );
+	check_ajax_referer( 'challenge_api_nonce', 'nonce' );
 
-    $challenger_id = get_current_user_id();
-    if ( ! $challenger_id ) {
-        wp_send_json_error( array( 'message' => 'You must be logged in to create a challenge.' ) );
-        return;
-    }
+	$challenger_id = get_current_user_id();
+	if ( ! $challenger_id ) {
+		wp_send_json_error( array( 'message' => 'You must be logged in to create a challenge.' ) );
+		return;
+	}
 
-    $first_name = sanitize_text_field( wp_unslash( $_POST['first_name'] ?? '' ) );
-    $last_name  = sanitize_text_field( wp_unslash( $_POST['last_name']  ?? '' ) );
-    $email      = sanitize_email( wp_unslash( $_POST['email']           ?? '' ) );
-    $month      = absint( $_POST['month'] ?? 0 );
-    $day        = absint( $_POST['day']   ?? 0 );
-    $year       = absint( $_POST['year']  ?? 0 );
+	$invitee_user_id = absint( $_POST['invitee_user_id'] ?? 0 );
+	$date_raw        = isset( $_POST['challenge_date'] ) ? sanitize_text_field( wp_unslash( $_POST['challenge_date'] ) ) : '';
 
-    if ( ! $first_name || ! $last_name ) {
-        wp_send_json_error( array( 'message' => 'First and last name are required.' ) );
-        return;
-    }
-    if ( ! $email || ! is_email( $email ) ) {
-        wp_send_json_error( array( 'message' => 'A valid email address is required.' ) );
-        return;
-    }
-    $current_year = (int) date( 'Y' );
-    if ( $month < 1 || $month > 12 || $day < 1 || $day > 31 || $year < $current_year || $year > $current_year + 2 ) {
-        wp_send_json_error( array( 'message' => 'A valid challenge start date is required.' ) );
-        return;
-    }
+	if ( $invitee_user_id <= 0 ) {
+		wp_send_json_error( array( 'message' => 'Select an opponent username from search results.' ) );
+		return;
+	}
+	if ( $invitee_user_id === $challenger_id ) {
+		wp_send_json_error( array( 'message' => 'You cannot challenge yourself.' ) );
+		return;
+	}
 
-    $token          = wp_generate_password( 32, false );
-    $challenge_date = sprintf( '%04d-%02d-%02d', $year, $month, $day );
+	$invitee = get_userdata( $invitee_user_id );
+	if ( ! $invitee || ! in_array( 'influencer', (array) $invitee->roles, true ) ) {
+		wp_send_json_error( array( 'message' => 'Opponent username was not found.' ) );
+		return;
+	}
 
-    $challenger = get_userdata( $challenger_id );
-    $c_name     = trim(
-        get_user_meta( $challenger_id, 'first_name', true ) . ' ' .
-        get_user_meta( $challenger_id, 'last_name',  true )
-    );
-    if ( ! $c_name ) {
-        $c_name = $challenger->display_name;
-    }
+	if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date_raw ) ) {
+		wp_send_json_error( array( 'message' => 'A valid challenge date is required.' ) );
+		return;
+	}
 
-    $post_id = wp_insert_post( array(
-        'post_title'  => $c_name . ' vs ' . $first_name . ' ' . $last_name,
-        'post_type'   => 'challenge',
-        'post_status' => 'publish',
-        'post_author' => $challenger_id,
-    ), true );
+	$date_parts = explode( '-', $date_raw );
+	$year       = (int) $date_parts[0];
+	$month      = (int) $date_parts[1];
+	$day        = (int) $date_parts[2];
+	$current_year = (int) date( 'Y' );
 
-    if ( is_wp_error( $post_id ) ) {
-        wp_send_json_error( array( 'message' => 'Could not create challenge: ' . $post_id->get_error_message() ) );
-        return;
-    }
+	if ( ! checkdate( $month, $day, $year ) || $year < $current_year || $year > $current_year + 2 ) {
+		wp_send_json_error( array( 'message' => 'A valid challenge date is required.' ) );
+		return;
+	}
 
-    update_post_meta( $post_id, '_challenger_id',      $challenger_id );
-    update_post_meta( $post_id, '_invitee_first_name', $first_name );
-    update_post_meta( $post_id, '_invitee_last_name',  $last_name );
-    update_post_meta( $post_id, '_invitee_email',      $email );
-    update_post_meta( $post_id, '_start_month',        $month );
-    update_post_meta( $post_id, '_start_day',          $day );
-    update_post_meta( $post_id, '_start_year',         $year );
-    update_post_meta( $post_id, '_challenge_date',     $challenge_date );
-    update_post_meta( $post_id, '_challenge_status',   'pending' );
-    update_post_meta( $post_id, '_challenge_token',    $token );
-    update_post_meta( $post_id, '_accepted_user_id',   '' );
+	$invitee_username = ihq_challenge_display_username( $invitee_user_id );
+	$first_name       = (string) get_user_meta( $invitee_user_id, 'first_name', true );
+	$last_name        = (string) get_user_meta( $invitee_user_id, 'last_name', true );
+	$email            = (string) $invitee->user_email;
 
-    $invitee_user   = get_user_by( 'email', $email );
-    $invitee_handle = '';
-    if ( $invitee_user ) {
-        $invitee_handle = get_user_meta( $invitee_user->ID, '_ihq_handle', true );
-        if ( ! $invitee_handle ) {
-            $invitee_handle = '@' . $invitee_user->user_login;
-        }
-    }
-    if ( ! $invitee_handle ) {
-        $invitee_handle = trim( $first_name . ' ' . $last_name );
-    }
+	$token          = wp_generate_password( 32, false );
+	$challenge_date = sprintf( '%04d-%02d-%02d', $year, $month, $day );
 
-    wp_send_json_success( array(
-        'post_id' => $post_id,
-        'link'    => add_query_arg( 'token', $token, home_url( '/challenge-handler/' ) ),
-        'handle'  => $invitee_handle,
-    ) );
+	$challenger_name = ihq_challenge_display_username( $challenger_id );
+	if ( $challenger_name === '' ) {
+		$challenger = get_userdata( $challenger_id );
+		$challenger_name = $challenger ? $challenger->display_name : 'Influencer';
+	}
+
+	$post_id = wp_insert_post(
+		array(
+			'post_title'  => $challenger_name . ' vs ' . $invitee_username,
+			'post_type'   => 'challenge',
+			'post_status' => 'publish',
+			'post_author' => $challenger_id,
+		),
+		true
+	);
+
+	if ( is_wp_error( $post_id ) ) {
+		wp_send_json_error( array( 'message' => 'Could not create challenge: ' . $post_id->get_error_message() ) );
+		return;
+	}
+
+	update_post_meta( $post_id, '_challenger_id', $challenger_id );
+	update_post_meta( $post_id, '_invitee_user_id', $invitee_user_id );
+	update_post_meta( $post_id, '_invitee_username', $invitee_username );
+	update_post_meta( $post_id, '_invitee_first_name', $first_name );
+	update_post_meta( $post_id, '_invitee_last_name', $last_name );
+	update_post_meta( $post_id, '_invitee_email', $email );
+	update_post_meta( $post_id, '_start_month', $month );
+	update_post_meta( $post_id, '_start_day', $day );
+	update_post_meta( $post_id, '_start_year', $year );
+	update_post_meta( $post_id, '_challenge_date', $challenge_date );
+	update_post_meta( $post_id, '_challenge_status', 'pending' );
+	update_post_meta( $post_id, '_challenge_token', $token );
+	update_post_meta( $post_id, '_accepted_user_id', '' );
+
+	$link = ihq_challenge_invite_link( $post_id );
+
+	wp_send_json_success(
+		array(
+			'post_id'  => $post_id,
+			'link'     => $link,
+			'username' => $invitee_username,
+			'date'     => $challenge_date,
+		)
+	);
 }

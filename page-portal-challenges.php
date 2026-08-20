@@ -778,6 +778,13 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                             ),
                         ));
 
+                        $cpc_issued_accepted = array();
+                        foreach ( $cpc_issued as $ci ) {
+                            if ( get_post_meta( $ci->ID, '_challenge_status', true ) === 'accepted' ) {
+                                $cpc_issued_accepted[] = $ci;
+                            }
+                        }
+
                         $cpc_received = get_posts(array(
                             'post_type'      => 'challenge',
                             'post_status'    => 'publish',
@@ -787,14 +794,15 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                             'meta_query'     => array(
                                 'relation' => 'OR',
                                 array('key' => '_invitee_email',    'value' => $cpc_email, 'compare' => '='),
+                                array('key' => '_invitee_user_id',  'value' => $cpc_uid,   'compare' => '='),
                                 array('key' => '_accepted_user_id', 'value' => $cpc_uid,   'compare' => '='),
                             ),
                         ));
 
-                        // Helper: render a status tick for each column
-                        function cpc_status_cell($status, $match) {
-                            return $status === $match ? '<span style="color:#b8972f;">&#10003;</span>' : '—';
-                        }
+                        // Drop challenges this user created (should only appear under "created").
+                        $cpc_received = array_values( array_filter( $cpc_received, function ( $cr ) use ( $cpc_uid ) {
+                            return (int) get_post_meta( $cr->ID, '_challenger_id', true ) !== (int) $cpc_uid;
+                        } ) );
                         ?>
                         <div class="cpc-accordion" id="cpcAccordion1">
                             <div class="cpc-accordion-header collapsed" data-bs-toggle="collapse" data-bs-target="#cpcCollapse1" aria-expanded="false" aria-controls="cpcCollapse1">
@@ -804,64 +812,79 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                             <div id="cpcCollapse1" class="collapse">
                                 <div class="cpc-accordion-body">
 
-                                    <div class="competition-block-title">Invitations You've Issued</div>
+                                    <div class="competition-block-title">Challenges you created that have been accepted</div>
                                     <div class="cpc-divider-thin"></div>
                                     <div class="cpc-table">
                                         <div class="cpc-table-head">
                                             <span class="cpc-col-date">Date</span>
-                                            <span class="cpc-col-email">Email</span>
-                                            <span class="cpc-col-yn">Yes</span>
-                                            <span class="cpc-col-yn">Maybe</span>
-                                            <span class="cpc-col-yn">No</span>
+                                            <span class="cpc-col-user">Username</span>
+                                            <span class="cpc-col-link">Challenge link</span>
                                         </div>
                                         <div class="cpc-divider-thin"></div>
-                                        <?php if (empty($cpc_issued)) : ?>
-                                        <div class="cpc-table-row cpc-table-empty"><span>No challenges issued yet.</span></div>
-                                        <?php else : foreach ($cpc_issued as $ci) :
-                                            $ci_email  = get_post_meta($ci->ID, '_invitee_email',  true);
-                                            $ci_status = get_post_meta($ci->ID, '_challenge_status', true);
-                                            $ci_date   = get_post_meta($ci->ID, '_challenge_date',   true)
-                                                         ?: get_the_date('M j', $ci->ID);
+                                        <?php if ( empty( $cpc_issued_accepted ) ) : ?>
+                                        <div class="cpc-table-row cpc-table-empty"><span>No accepted challenges yet.</span></div>
+                                        <?php else : foreach ( $cpc_issued_accepted as $ci ) :
+                                            $ci_invitee_id = (int) get_post_meta( $ci->ID, '_invitee_user_id', true );
+                                            $ci_username   = (string) get_post_meta( $ci->ID, '_invitee_username', true );
+                                            if ( $ci_username === '' && $ci_invitee_id > 0 && function_exists( 'ihq_challenge_display_username' ) ) {
+                                                $ci_username = ihq_challenge_display_username( $ci_invitee_id );
+                                            }
+                                            if ( $ci_username === '' ) {
+                                                $ci_username = trim(
+                                                    (string) get_post_meta( $ci->ID, '_invitee_first_name', true ) . ' ' .
+                                                    (string) get_post_meta( $ci->ID, '_invitee_last_name', true )
+                                                );
+                                            }
+                                            $ci_date = get_post_meta( $ci->ID, '_challenge_date', true ) ?: get_the_date( 'Y-m-d', $ci->ID );
+                                            $ci_link = function_exists( 'ihq_challenge_invite_link' )
+                                                ? ihq_challenge_invite_link( $ci->ID )
+                                                : '';
                                         ?>
                                         <div class="cpc-table-row">
-                                            <span class="cpc-col-date"><?php echo esc_html(date('M j', strtotime($ci_date))); ?></span>
-                                            <a class="cpc-col-email cpc-email-link" href="mailto:<?php echo esc_attr($ci_email); ?>"><?php echo esc_html($ci_email); ?></a>
-                                            <span class="cpc-col-yn"><?php echo cpc_status_cell($ci_status, 'accepted'); ?></span>
-                                            <span class="cpc-col-yn"><?php echo cpc_status_cell($ci_status, 'pending'); ?></span>
-                                            <span class="cpc-col-yn"><?php echo cpc_status_cell($ci_status, 'declined'); ?></span>
+                                            <span class="cpc-col-date"><?php echo esc_html( date( 'M j, Y', strtotime( $ci_date ) ) ); ?></span>
+                                            <span class="cpc-col-user"><?php echo esc_html( $ci_username !== '' ? $ci_username : '—' ); ?></span>
+                                            <span class="cpc-col-link">
+                                                <?php if ( $ci_link !== '' ) : ?>
+                                                <input class="cpc-link-input" type="text" readonly value="<?php echo esc_attr( $ci_link ); ?>" onclick="this.select();">
+                                                <?php else : ?>
+                                                —
+                                                <?php endif; ?>
+                                            </span>
                                         </div>
                                         <?php endforeach; endif; ?>
                                     </div>
 
-                                    <div class="competition-block-title" style="margin-top:18px;">Invitations You've Received</div>
+                                    <div class="competition-block-title" style="margin-top:18px;">Challenges you received</div>
                                     <div class="cpc-divider-thin"></div>
                                     <div class="cpc-table">
                                         <div class="cpc-table-head">
                                             <span class="cpc-col-date">Date</span>
-                                            <span class="cpc-col-email">From</span>
-                                            <span class="cpc-col-yn">Yes</span>
-                                            <span class="cpc-col-yn">Maybe</span>
-                                            <span class="cpc-col-yn">No</span>
+                                            <span class="cpc-col-user">Username</span>
+                                            <span class="cpc-col-link">Link</span>
                                         </div>
                                         <div class="cpc-divider-thin"></div>
-                                        <?php if (empty($cpc_received)) : ?>
-                                        <div class="cpc-table-row cpc-table-empty"><span>No invitations received yet.</span></div>
-                                        <?php else : foreach ($cpc_received as $cr) :
-                                            $cr_chal_id = (int) get_post_meta($cr->ID, '_challenger_id', true);
-                                            $cr_chal    = get_userdata($cr_chal_id);
-                                            $cr_from    = $cr_chal
-                                                          ? trim(get_user_meta($cr_chal_id,'first_name',true).' '.get_user_meta($cr_chal_id,'last_name',true)) ?: $cr_chal->display_name
-                                                          : '—';
-                                            $cr_status  = get_post_meta($cr->ID, '_challenge_status', true);
-                                            $cr_date    = get_post_meta($cr->ID, '_challenge_date', true)
-                                                          ?: get_the_date('M j', $cr->ID);
+                                        <?php if ( empty( $cpc_received ) ) : ?>
+                                        <div class="cpc-table-row cpc-table-empty"><span>No challenges received yet.</span></div>
+                                        <?php else : foreach ( $cpc_received as $cr ) :
+                                            $cr_chal_id = (int) get_post_meta( $cr->ID, '_challenger_id', true );
+                                            $cr_username = function_exists( 'ihq_challenge_display_username' )
+                                                ? ihq_challenge_display_username( $cr_chal_id )
+                                                : '';
+                                            $cr_date = get_post_meta( $cr->ID, '_challenge_date', true ) ?: get_the_date( 'Y-m-d', $cr->ID );
+                                            $cr_link = function_exists( 'ihq_challenge_invite_link' )
+                                                ? ihq_challenge_invite_link( $cr->ID )
+                                                : '';
                                         ?>
                                         <div class="cpc-table-row">
-                                            <span class="cpc-col-date"><?php echo esc_html(date('M j', strtotime($cr_date))); ?></span>
-                                            <span class="cpc-col-email" title="<?php echo esc_attr($cr_chal ? $cr_chal->user_email : ''); ?>"><?php echo esc_html($cr_from); ?></span>
-                                            <span class="cpc-col-yn"><?php echo cpc_status_cell($cr_status, 'accepted'); ?></span>
-                                            <span class="cpc-col-yn"><?php echo cpc_status_cell($cr_status, 'pending'); ?></span>
-                                            <span class="cpc-col-yn"><?php echo cpc_status_cell($cr_status, 'declined'); ?></span>
+                                            <span class="cpc-col-date"><?php echo esc_html( date( 'M j, Y', strtotime( $cr_date ) ) ); ?></span>
+                                            <span class="cpc-col-user"><?php echo esc_html( $cr_username !== '' ? $cr_username : '—' ); ?></span>
+                                            <span class="cpc-col-link">
+                                                <?php if ( $cr_link !== '' ) : ?>
+                                                <input class="cpc-link-input" type="text" readonly value="<?php echo esc_attr( $cr_link ); ?>" onclick="this.select();">
+                                                <?php else : ?>
+                                                —
+                                                <?php endif; ?>
+                                            </span>
                                         </div>
                                         <?php endforeach; endif; ?>
                                     </div>
@@ -880,44 +903,28 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                                 <div class="cpc-accordion-body">
                                     <p class="cpc-desc">Invite Influencers to compete in a private competition.</p>
 
-                                    <div class="competition-block-title">Influencer</div>
-                                    <input class="cpc-input" id="cpc-fname" type="text" placeholder="First Name">
-                                    <input class="cpc-input" id="cpc-lname" type="text" placeholder="Last Name">
-                                    <input class="cpc-input" id="cpc-email" type="email" placeholder="Email Address">
+                                    <div class="competition-block-title">Username</div>
+                                    <div class="cpc-search-wrap">
+                                        <input class="cpc-input" id="cpc-username-search" type="text" placeholder="search username" autocomplete="off">
+                                        <div class="cpc-search-results" id="cpc-search-results" hidden></div>
+                                    </div>
+                                    <input type="hidden" id="cpc-invitee-user-id" value="">
+                                    <input type="hidden" id="cpc-username" value="">
 
-                                    <div class="cpc-row-controls">
-                                        <div class="cpc-select-wrap">
-                                            <select class="cpc-select" id="cpc-month">
-                                                <option value="">month</option>
-                                                <?php for($m=1;$m<=12;$m++) echo '<option value="'.$m.'">'.date('F', mktime(0,0,0,$m,1)).'</option>'; ?>
-                                            </select>
-                                            <svg class="cpc-select-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#b8972f" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-                                        </div>
-                                        <div class="cpc-select-wrap">
-                                            <select class="cpc-select" id="cpc-day">
-                                                <option value="">day</option>
-                                                <?php for($d=1;$d<=31;$d++) echo '<option value="'.$d.'">'.$d.'</option>'; ?>
-                                            </select>
-                                            <svg class="cpc-select-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#b8972f" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-                                        </div>
-                                        <div class="cpc-select-wrap">
-                                            <select class="cpc-select" id="cpc-year">
-                                                <option value="">year</option>
-                                                <?php for($y=(int)date('Y');$y<=(int)date('Y')+2;$y++) echo '<option value="'.$y.'">'.$y.'</option>'; ?>
-                                            </select>
-                                            <svg class="cpc-select-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#b8972f" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-                                        </div>
+                                    <div class="competition-block-title">Challenge date</div>
+                                    <input class="cpc-input cpc-date-input" id="cpc-date" type="date" min="<?php echo esc_attr( date( 'Y-m-d' ) ); ?>" max="<?php echo esc_attr( date( 'Y-m-d', strtotime( '+2 years' ) ) ); ?>">
+
+                                    <div class="cpc-row-controls" style="margin-top:10px;">
                                         <span class="cpc-info-icon" title="Start time and end time for all Private Challenges are 00:01 HK time (24 clock) through midnight each night.">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="#b8972f" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"/><text x="12" y="16" text-anchor="middle" font-size="13" font-family="serif" fill="#000">i</text></svg>
                                         </span>
-                                        <button id="cpc-create-btn" type="button" class="cpc-btn-create">Create</button>
+                                        <button id="cpc-create-btn" type="button" class="cpc-btn-create">Create Challenge link</button>
                                     </div>
 
                                     <div id="cpc-form-msg" style="display:none;font-family:'Be Vietnam Pro',sans-serif;font-size:13px;margin-bottom:6px;"></div>
 
-                                    <div class="competition-block-title" style="margin-top:14px;">Shareable Link</div>
-                                    <input class="cpc-input cpc-input-muted" id="cpc-share-link" type="text" placeholder="(Invitation URL appears here)" readonly>
-                                    <input class="cpc-input cpc-input-muted" id="cpc-invitee-handle" type="text" placeholder="(Invitee handle appears here)" readonly>
+                                    <div class="competition-block-title" style="margin-top:14px;">Challenge link</div>
+                                    <input class="cpc-input cpc-input-muted" id="cpc-share-link" type="text" placeholder="(Shareable challenge URL appears here)" readonly>
                                 </div>
                             </div>
                         </div>
@@ -1576,30 +1583,125 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // ── CPC: Create Private Challenge ──────────────────────────────────────────
-    var cpcCreateBtn = document.getElementById('cpc-create-btn');
+    var cpcCreateBtn   = document.getElementById('cpc-create-btn');
+    var cpcSearchInput = document.getElementById('cpc-username-search');
+    var cpcSearchResults = document.getElementById('cpc-search-results');
+    var cpcUsernameEl  = document.getElementById('cpc-username');
+    var cpcInviteeIdEl = document.getElementById('cpc-invitee-user-id');
+    var cpcSearchTimer = null;
+
+    function cpcMsg(text, isError) {
+        var msgEl = document.getElementById('cpc-form-msg');
+        if (!msgEl) return;
+        msgEl.textContent = text;
+        msgEl.style.display = text ? 'block' : 'none';
+        msgEl.style.color = isError ? '#f87b87' : '#b8972f';
+    }
+
+    function cpcHideSearchResults() {
+        if (!cpcSearchResults) return;
+        cpcSearchResults.hidden = true;
+        cpcSearchResults.innerHTML = '';
+    }
+
+    function cpcSelectOpponent(id, username) {
+        if (cpcInviteeIdEl) cpcInviteeIdEl.value = String(id);
+        if (cpcUsernameEl) cpcUsernameEl.value = username;
+        if (cpcSearchInput) {
+            cpcSearchInput.value = username;
+            cpcSearchInput.classList.add('cpc-search-selected');
+        }
+        cpcHideSearchResults();
+        cpcMsg('Opponent selected: ' + username, false);
+    }
+
+    function cpcClearOpponentSelection() {
+        if (cpcInviteeIdEl) cpcInviteeIdEl.value = '';
+        if (cpcUsernameEl) cpcUsernameEl.value = '';
+        if (cpcSearchInput) cpcSearchInput.classList.remove('cpc-search-selected');
+    }
+
+    function cpcRenderSearchResults(results) {
+        if (!cpcSearchResults) return;
+        cpcSearchResults.innerHTML = '';
+        if (!results || !results.length) {
+            var empty = document.createElement('div');
+            empty.className = 'cpc-search-empty';
+            empty.textContent = 'No matching username found.';
+            cpcSearchResults.appendChild(empty);
+            cpcSearchResults.hidden = false;
+            return;
+        }
+        results.forEach(function (row) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'cpc-search-item';
+            btn.textContent = row.username;
+            btn.addEventListener('click', function () {
+                cpcSelectOpponent(row.id, row.username);
+            });
+            cpcSearchResults.appendChild(btn);
+        });
+        cpcSearchResults.hidden = false;
+    }
+
+    if (cpcSearchInput) {
+        cpcSearchInput.addEventListener('input', function () {
+            var q = cpcSearchInput.value.trim();
+            cpcClearOpponentSelection();
+            if (cpcSearchTimer) clearTimeout(cpcSearchTimer);
+            if (q.length < 1) {
+                cpcHideSearchResults();
+                return;
+            }
+            cpcSearchTimer = setTimeout(function () {
+                var fd = new FormData();
+                fd.append('action', 'ihq_search_challenge_usernames');
+                fd.append('nonce', _challengeNonce);
+                fd.append('q', q);
+                fetch(_compAjaxUrl, { method: 'POST', body: fd })
+                    .then(function (r) { return r.json(); })
+                    .then(function (res) {
+                        if (res.success) {
+                            cpcRenderSearchResults(res.data.results || []);
+                        } else {
+                            cpcHideSearchResults();
+                        }
+                    })
+                    .catch(function () {
+                        cpcHideSearchResults();
+                    });
+            }, 200);
+        });
+
+        cpcSearchInput.addEventListener('focus', function () {
+            var q = cpcSearchInput.value.trim();
+            if (q.length >= 1 && cpcSearchResults && cpcSearchResults.children.length) {
+                cpcSearchResults.hidden = false;
+            }
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!cpcSearchResults || cpcSearchResults.hidden) return;
+            var wrap = document.querySelector('.cpc-search-wrap');
+            if (wrap && !wrap.contains(e.target)) {
+                cpcHideSearchResults();
+            }
+        });
+    }
+
     if (cpcCreateBtn) {
         cpcCreateBtn.addEventListener('click', function () {
-            var fname    = (document.getElementById('cpc-fname')  || {}).value || '';
-            var lname    = (document.getElementById('cpc-lname')  || {}).value || '';
-            var email    = (document.getElementById('cpc-email')  || {}).value || '';
-            var month    = (document.getElementById('cpc-month')  || {}).value || '';
-            var day      = (document.getElementById('cpc-day')    || {}).value || '';
-            var year     = (document.getElementById('cpc-year')   || {}).value || '';
-            var linkEl   = document.getElementById('cpc-share-link');
-            var handleEl = document.getElementById('cpc-invitee-handle');
-            var msgEl    = document.getElementById('cpc-form-msg');
+            var inviteeId = (cpcInviteeIdEl && cpcInviteeIdEl.value) ? cpcInviteeIdEl.value : '';
+            var dateVal   = (document.getElementById('cpc-date') || {}).value || '';
+            var linkEl    = document.getElementById('cpc-share-link');
 
-            fname = fname.trim(); lname = lname.trim(); email = email.trim();
-
-            function cpcMsg(text, isError) {
-                if (!msgEl) return;
-                msgEl.textContent = text;
-                msgEl.style.display = text ? 'block' : 'none';
-                msgEl.style.color = isError ? '#f87b87' : '#b8972f';
+            if (!inviteeId) {
+                cpcMsg('Search and select an opponent username first.', true);
+                return;
             }
-
-            if (!fname || !lname || !email || !month || !day || !year) {
-                cpcMsg('Please fill in all fields before creating the challenge.', true);
+            if (!dateVal) {
+                cpcMsg('Please choose a challenge date.', true);
                 return;
             }
 
@@ -1608,14 +1710,10 @@ document.addEventListener('DOMContentLoaded', function() {
             cpcMsg('', false);
 
             var fd = new FormData();
-            fd.append('action',     'ihq_create_private_challenge');
-            fd.append('nonce',      _challengeNonce);
-            fd.append('first_name', fname);
-            fd.append('last_name',  lname);
-            fd.append('email',      email);
-            fd.append('month',      month);
-            fd.append('day',        day);
-            fd.append('year',       year);
+            fd.append('action', 'ihq_create_private_challenge');
+            fd.append('nonce', _challengeNonce);
+            fd.append('invitee_user_id', inviteeId);
+            fd.append('challenge_date', dateVal);
 
             fetch(_compAjaxUrl, { method: 'POST', body: fd })
                 .then(function (r) { return r.json(); })
@@ -1624,12 +1722,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (linkEl) {
                             linkEl.value = res.data.link;
                             linkEl.classList.remove('cpc-input-muted');
+                            linkEl.select();
                         }
-                        if (handleEl) {
-                            handleEl.value = res.data.handle;
-                            handleEl.classList.remove('cpc-input-muted');
-                        }
-                        if (linkEl) { linkEl.select(); }
                         cpcMsg('Challenge created! Copy and share the link below.', false);
                     } else {
                         var msg = (res.data && res.data.message) ? res.data.message : 'Could not create challenge.';
@@ -1641,7 +1735,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .finally(function () {
                     cpcCreateBtn.disabled    = false;
-                    cpcCreateBtn.textContent = 'Create';
+                    cpcCreateBtn.textContent = 'Create Challenge link';
                 });
         });
     }
