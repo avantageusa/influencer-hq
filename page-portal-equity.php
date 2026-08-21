@@ -87,7 +87,7 @@ $equity_attribution_expanded = is_user_logged_in();
                     </div>
                 </section>
 
-                <div class="equity-section" id="equity-attribution">
+                <div class="equity-section" id="equity-earned">
                     <div class="equity-card<?php echo $equity_attribution_expanded ? '' : ' ihq-gate-collapsed'; ?>" id="equityAttributionCard">
                         <div
                             class="equity-card-header"
@@ -123,7 +123,7 @@ $equity_attribution_expanded = is_user_logged_in();
                     <div class="accordion custom-accordion equity-accordion" id="equityInfoAccordion">
 
                         <!-- How To Earn Equity -->
-                        <div class="accordion-item mb-3 equity-earn-item">
+                        <div class="accordion-item mb-3 equity-earn-item" id="how-to-earn-equity">
                             <h2 class="accordion-header" id="headingEquityEarn">
                                 <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEquityEarn" aria-expanded="true" aria-controls="collapseEquityEarn">
                                     <span class="question-text">How To Earn Equity?</span>
@@ -470,9 +470,61 @@ $equity_attribution_expanded = is_user_logged_in();
             onToggle();
         }
     });
+
+    window.ihqEquitySetAttributionExpanded = setExpanded;
 })();
 </script>
 <?php endif; ?>
+
+<script>
+(function () {
+    function portalScrollToId(id) {
+        var el = document.getElementById(id);
+        if (!el) {
+            return;
+        }
+        if (typeof window.portalScrollSmoothToElement === 'function') {
+            window.portalScrollSmoothToElement(el);
+            return;
+        }
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function applyEquityHash() {
+        var hash = window.location.hash.replace(/^#/, '');
+        if (!hash) {
+            return;
+        }
+
+        if (hash === 'how-to-earn-equity') {
+            var earnCollapse = document.getElementById('collapseEquityEarn');
+            if (earnCollapse && window.bootstrap && bootstrap.Collapse) {
+                bootstrap.Collapse.getOrCreateInstance(earnCollapse).show();
+            }
+            window.setTimeout(function () {
+                portalScrollToId('how-to-earn-equity');
+            }, 80);
+            return;
+        }
+
+        if (hash === 'equity-earned') {
+            if (typeof window.ihqEquitySetAttributionExpanded === 'function') {
+                window.ihqEquitySetAttributionExpanded(true);
+            }
+            window.setTimeout(function () {
+                portalScrollToId('equity-earned');
+            }, 80);
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyEquityHash);
+    } else {
+        applyEquityHash();
+    }
+    window.addEventListener('hashchange', applyEquityHash);
+})();
+</script>
 
 <?php 
 get_template_part( 'template-parts/portal-scripts' );

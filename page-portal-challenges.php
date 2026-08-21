@@ -44,6 +44,7 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                 </div>
 
                 <!-- Lead Section: Game of Kings / Traditional / Avantage -->
+                <div id="baccarat-intro" class="hm-scroll-anchor" aria-hidden="true"></div>
                 <!-- Lead Section: Mobile (<1024px) -->
                 <div class="comp-lead comp-lead--mobile">
                     <div class="comp-lead-sep"></div>
@@ -1038,7 +1039,7 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                         <p>That is why we built Leagues. To give your followers a team. And give your team a reason to rise.</p>
                     </div>
 
-                    <h2 class="competition-section-title">Leagues</h2>
+                    <h2 class="competition-section-title" id="leagues-results">Leagues</h2>
 
                     <div class="competition-panel-card">
                         <div class="competition-panel-title" id="leagues-celebrity">Celebrity Follower Leagues</div>
@@ -1476,11 +1477,21 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!hash) {
             return;
         }
+
+        // Deep link into Create New Challenges: open accordion then scroll to the create button.
+        if (hash === 'cpc-create-btn') {
+            var createCollapse = document.getElementById('cpcCollapse2');
+            if (createCollapse && window.bootstrap && bootstrap.Collapse) {
+                bootstrap.Collapse.getOrCreateInstance(createCollapse).show();
+            }
+        }
+
         var target = document.getElementById(hash);
         if (!target) {
             return;
         }
         var attempts = 0;
+        var initialDelayMs = hash === 'cpc-create-btn' ? 220 : 0;
 
         function tryScroll() {
             var panel = target.closest('.competition-panel');
@@ -1512,7 +1523,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         requestAnimationFrame(function () {
-            setTimeout(tryScroll, 0);
+            setTimeout(tryScroll, initialDelayMs);
         });
     }
 

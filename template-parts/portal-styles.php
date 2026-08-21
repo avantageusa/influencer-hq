@@ -961,11 +961,11 @@
     }
 
     .hm-indent-1 {
-        padding-left: 22px;
+        padding-left: 28px;
     }
 
     .hm-indent-2 {
-        padding-left: 42px;
+        padding-left: 54px;
     }
 
     .hm-bullet {
