@@ -89,9 +89,9 @@
 
     .custom-accordion .accordion-item {
         background: #000000;
-        border: 0.888px solid #b8972f;
-        border-radius: 4.438px;
-        box-shadow: 0 3.55px 3.55px 0 rgba(0, 0, 0, 0.25);
+        border: 2px solid #b8972f;
+        border-radius: 45px;
+        box-shadow: 0 8.681px 8.681px 0 rgba(0, 0, 0, 0.25);
         overflow: hidden;
         margin-bottom: 12px;
     }
@@ -100,7 +100,7 @@
         background: transparent;
         color: #ffffff;
         border: none;
-        padding: 14px 16px 14px 36px;
+        padding: 14px 20px 14px 36px;
         position: relative;
     }
 
@@ -118,7 +118,7 @@
     .custom-accordion .accordion-body {
         background: transparent;
         color: #ffffff;
-        padding: 14px 16px 16px 36px;
+        padding: 14px 20px 20px 36px;
     }
 
     .custom-accordion .accordion-button::after {
@@ -134,6 +134,22 @@
         color: #b8972f;
         font-size: 28px;
         line-height: 1;
+    }
+
+    /* Figma: no leading chevron on desktop */
+    @media (min-width: 1025px) {
+        .custom-accordion .accordion-button::before {
+            content: none;
+            display: none;
+        }
+
+        .custom-accordion .accordion-button {
+            padding-left: 20px;
+        }
+
+        .custom-accordion .accordion-body {
+            padding-left: 20px;
+        }
     }
 
     .question-number {
@@ -226,7 +242,20 @@
     }
 
     body.page-template-page-portal-home-php .dealer-image-wrap {
-        padding-bottom: 10px;
+        width: min(450px, 72vw);
+        aspect-ratio: 1;
+        margin: 0 auto;
+        padding-bottom: 0;
+        border-radius: 50%;
+        overflow: hidden;
+    }
+
+    body.page-template-page-portal-home-php .dealer-image-wrap .dealer-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center top;
+        border-radius: 50%;
     }
 
     body.page-template-page-portal-home-php .dealer-image-container {
@@ -3211,12 +3240,12 @@
             background: transparent;
             font-size: 20px;
             font-weight: 700;
-            border-radius: 30px;
+            border-radius: 45px;
         }
 
         .custom-accordion .accordion-button:not(.collapsed) {
             background: transparent;
-            border-radius: 30px 30px 0 0;
+            border-radius: 45px 45px 0 0;
         }
 
         .custom-accordion .accordion-body {

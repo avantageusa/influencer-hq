@@ -30,9 +30,9 @@ get_template_part( 'template-parts/portal-styles' );
             <div class="dealer-image-container">
                 <p class="concierge-text-above">We believe conversations should be easy.</p>
                 <div class="dealer-image-wrap">
-                    <img src="<?php echo get_template_directory_uri(); ?>/images/concierge.png" alt="Casino Dealer" class="dealer-image dealer-image--fade-bottom">
+                    <img src="<?php echo get_template_directory_uri(); ?>/images/concierge-coach.png" alt="<?php esc_attr_e( 'Coach', 'influencer-hq' ); ?>" class="dealer-image dealer-image--fade-bottom" width="450" height="450">
                 </div>
-                <a href="#" class="concierge-title" data-ihq-concierge-trigger data-ihq-concierge-agent="default" data-ihq-concierge-sync=".concierge-title">Talk Now - Executive Concierge</a>
+                <a href="#" class="concierge-title" data-ihq-concierge-trigger data-ihq-concierge-agent="default" data-ihq-concierge-sync=".concierge-title"><?php esc_html_e( 'Ask Me Anything!', 'influencer-hq' ); ?></a>
             </div>
         </div>
         
@@ -123,25 +123,23 @@ get_template_part( 'template-parts/portal-styles' );
                         
                         <!-- Accordion Questions -->
                         <div class="accordion custom-accordion" id="equityAccordion">
-                        
-                            <!-- Q1 -->
+
                             <div class="accordion-item mb-3">
                                 <h2 class="accordion-header" id="headingOne">
-                                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
-                                        <span class="question-text">What's "this" Opportunity All About?</span>
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                                        <span class="question-text">What’s “this” Opportunity All About?</span>
                                     </button>
                                 </h2>
-                                <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#equityAccordion">
+                                <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#equityAccordion">
                                     <div class="accordion-body">
                                         <p>Brands everywhere rely on influencers to shape culture, spark engagement, and build communities.</p>
                                         <p>But the vast majority of traditional partnerships offer only short-term payouts — and no opportunity to share in the long-term value created by their influence.</p>
                                         <p>We believe in a different path.</p>
-                                        <p>When your influence helps grow a platform, you'll be guaranteed to receive a share in the long-term value created in the form of equity.</p>
+                                        <p>When your influence helps grow a platform, you’ll be guaranteed to receive a share in the long-term value created in the form of equity.</p>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Q2 -->
                             <div class="accordion-item mb-3">
                                 <h2 class="accordion-header" id="headingTwo">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
@@ -150,13 +148,12 @@ get_template_part( 'template-parts/portal-styles' );
                                 </h2>
                                 <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#equityAccordion">
                                     <div class="accordion-body">
-                                        <p>There's never a guarantee in the equity game, but it's a fact that Global equity markets added roughly $20 trillion in value from 2015 to 2020 — and more than twice that, about $50 trillion, from 2020 to 2025."</p>
-                                        <p>One of the world's most famous "missed equity opportunities" was when 3-time NBA MVP Magic Johnson, fresh out of college, turned down Nike's 1 cent per shoe royalty and 11 cent stock in exchange for promoting Nike shoes. The 11 cent stock is now worth over $5.4 billion.</p>
+                                        <p>There’s never a guarantee in the equity game, but it’s a fact that Global equity markets added roughly $20 trillion in value from 2015 to 2020 — and more than twice that, about $50 trillion, from 2020 to 2025.”</p>
+                                        <p>One of the world’s most famous “missed equity opportunities” was when 3-time NBA MVP Magic Johnson, fresh out of college, turned down Nike’s 1 cent per shoe royalty and 11 cent stock in exchange for promoting Nike shoes. The 11 cent stock is now worth over $5.4 billion.</p>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Q3 -->
                             <div class="accordion-item mb-3">
                                 <h2 class="accordion-header" id="headingThree">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
@@ -165,16 +162,15 @@ get_template_part( 'template-parts/portal-styles' );
                                 </h2>
                                 <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#equityAccordion">
                                     <div class="accordion-body">
-                                        <p>Competition is the oldest language in the world.From the earliest days of civilization, competition has united people across cultures.</p>
+                                        <p>Competition is the oldest language in the world. From the earliest days of civilization, competition has united people across cultures.</p>
                                         <p>It began in ancient Greece, where the first Olympic Games ignited national pride.</p>
-                                        <p>It filled the arenas of Rome, and it lives in Asia's legendary traditions — games of mastery, precision, rhythm, and strategy celebrated for centuries.</p>
+                                        <p>It filled the arenas of Rome, and it lives in Asia’s legendary traditions — games of mastery, precision, rhythm, and strategy celebrated for centuries.</p>
                                         <p>Competition represents elegance… prestige… global legacy.</p>
                                         <p>And most of all — it represents memorable moments we share together.</p>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Q4 -->
                             <div class="accordion-item mb-3">
                                 <h2 class="accordion-header" id="headingFour">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
@@ -183,7 +179,7 @@ get_template_part( 'template-parts/portal-styles' );
                                 </h2>
                                 <div id="collapseFour" class="accordion-collapse collapse" aria-labelledby="headingFour" data-bs-parent="#equityAccordion">
                                     <div class="accordion-body">
-                                        <p>People don't buy what you do.</p>
+                                        <p>People don’t buy what you do.</p>
                                         <p>They buy what you believe.</p>
                                         <p>When your followers watch you play, cheer, and celebrate, they become part of a shared experience — the same way great sports, music, and global competitions always have.</p>
                                         <p>This is what influence looks like when it comes alive.</p>
@@ -191,11 +187,10 @@ get_template_part( 'template-parts/portal-styles' );
                                 </div>
                             </div>
 
-                            <!-- Q5 -->
                             <div class="accordion-item mb-3">
                                 <h2 class="accordion-header" id="headingFive">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFive" aria-expanded="false" aria-controls="collapseFive">
-                                        <span class="question-text">Tell me more about this particular opportunity.</span>
+                                        <span class="question-text">What sets this opportunity apart?</span>
                                     </button>
                                 </h2>
                                 <div id="collapseFive" class="accordion-collapse collapse" aria-labelledby="headingFive" data-bs-parent="#equityAccordion">
@@ -205,13 +200,13 @@ get_template_part( 'template-parts/portal-styles' );
                                         <p>Each table alive with anticipation.</p>
                                         <p>Each card squeezed in ritual suspense.</p>
                                         <p>The game is Baccarat.</p>
-                                        <p>Known as the Game of the Kings for over 500 years, Baccarat became Asia's game of choice — and the choice of high rollers worldwide after James Bond introduced it to the modern era more than 40 years ago.</p>
+                                        <p>Known as the Game of the Kings for over 500 years, Baccarat became Asia’s game of choice — and the choice of high rollers worldwide after James Bond introduced it to the modern era more than 40 years ago.</p>
                                         <p>The founder asked himself:</p>
-                                        <p>Why couldn't there be an online version of Baccarat that captures the same elegance on display in Macau?</p>
-                                        <p>Influencer HQ World Tour and World Championship are the result of that vision.</p>
-                                        <p>But Influencer HQ is more than just a game.</p>
+                                        <p>Why couldn’t there be an online version of Baccarat that captures the same elegance on display in Macau?</p>
+                                        <p>Avantage Baccarat World Tour and World Championship are the result of that vision.</p>
+                                        <p>But Avantage Baccarat is more than just a game.</p>
                                         <p>It is a Competition System — built around the Avantage model of International Competition, including Celebrity Followers Leagues and the Influencer Challenge Series — where top Influencers and their followers compete in Private Challenges and the World Challenge Series.</p>
-                                        <p>All of this culminates in the Influencer HQ World Championship —</p>
+                                        <p>All of this culminates in the Avantage Baccarat World Championship —</p>
                                         <p>$100 Million Guaranteed Prize Pool.</p>
                                         <p>Baccarat succeeded in Asia for the same reason it became the game of choice in Monte Carlo, Asia and other elite locations across the world:</p>
                                         <p>Simple rules.</p>
@@ -221,7 +216,6 @@ get_template_part( 'template-parts/portal-styles' );
                                 </div>
                             </div>
 
-                            <!-- Q6 -->
                             <div class="accordion-item mb-3">
                                 <h2 class="accordion-header" id="headingSix">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSix" aria-expanded="false" aria-controls="collapseSix">
@@ -232,6 +226,7 @@ get_template_part( 'template-parts/portal-styles' );
                                     <div class="accordion-body">
                                         <p><strong>Influencer HQ equity on play related to your direct or indirect referral</strong></p>
                                         <ul>
+                                            <li>Personal - You earn 1% from your own play</li>
                                             <li>Level 1 - Direct Referral 1.5% x amount played</li>
                                             <li>Level 2 - 1% x amount played by referrals of your L1 Players</li>
                                             <li>Level 3 - .5% x amount played by Persons referred by your Level 2 players</li>
@@ -246,24 +241,35 @@ get_template_part( 'template-parts/portal-styles' );
                                 </div>
                             </div>
 
-                            <!-- Q7 -->
                             <div class="accordion-item mb-3">
                                 <h2 class="accordion-header" id="headingSeven">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSeven" aria-expanded="false" aria-controls="collapseSeven">
-                                        <span class="question-text">Tell me more about the Live Appearances on the World Broadcasts.</span>
+                                        <span class="question-text">How is the Equity Award System managed and regulated?</span>
                                     </button>
                                 </h2>
                                 <div id="collapseSeven" class="accordion-collapse collapse" aria-labelledby="headingSeven" data-bs-parent="#equityAccordion">
                                     <div class="accordion-body">
+                                        <p>The Equity Award System is administered through Apex Group — a leading global financial services provider, established in Bermuda in 2003, operating in more than fifty countries with over $3.4 trillion in assets under administration. The tokenized equity runs on the technology rail of Tokeny, the Luxembourg firm now part of Apex Group, which issues, manages, transfers, and administers the tokenized securities. Regulatory oversight is led by the Bermuda Monetary Authority. The complete regulatory framework and full disclosures appear in the footer below.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item mb-3">
+                                <h2 class="accordion-header" id="headingEight">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEight" aria-expanded="false" aria-controls="collapseEight">
+                                        <span class="question-text">Tell me more about the Live Appearances on the World Broadcasts.</span>
+                                    </button>
+                                </h2>
+                                <div id="collapseEight" class="accordion-collapse collapse" aria-labelledby="headingEight" data-bs-parent="#equityAccordion">
+                                    <div class="accordion-body">
                                         <p>Influencers and streamers who deliver outstanding engagement will be invited to appear live on the World Broadcast alongside top creators from around the world.</p>
                                         <p>Each broadcast showcases competitors from different regions, appearing together from their own locations — sharing reactions, commentary, and competitive energy in real time.</p>
-                                        <p>It's prime time somewhere in the world, 24 hours a day.</p>
+                                        <p>It’s prime time somewhere in the world, 24 hours a day.</p>
                                         <p>Live appearances amplify influence — and create unforgettable shared moments.</p>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Q9 -->
                             <div class="accordion-item mb-3">
                                 <h2 class="accordion-header" id="headingNine">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNine" aria-expanded="false" aria-controls="collapseNine">
@@ -272,12 +278,11 @@ get_template_part( 'template-parts/portal-styles' );
                                 </h2>
                                 <div id="collapseNine" class="accordion-collapse collapse" aria-labelledby="headingNine" data-bs-parent="#equityAccordion">
                                     <div class="accordion-body">
-                                        <p>As with most all founder equity, there's a 2 year holding period on equity awarded as described above.</p>
+                                        <p>As with most all founder equity, there’s a 2 year holding period on equity awarded as described above.</p>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Q10 -->
                             <div class="accordion-item mb-3">
                                 <h2 class="accordion-header" id="headingTen">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTen" aria-expanded="false" aria-controls="collapseTen">
@@ -288,37 +293,37 @@ get_template_part( 'template-parts/portal-styles' );
                                     <div class="accordion-body">
                                         <p><strong>STEP 1 — Communicate Invitations to Compete to Your Followers</strong></p>
                                         <p>Competition is the moment where influence turns into participation.</p>
-                                        <p>Your followers aren't just watching anymore — they're playing along with you.</p>
+                                        <p>Your followers aren’t just watching anymore — they’re playing along with you.</p>
                                         <p>By entering your first Challenge, you step onto a competitive stage where every hand played, every moment shared, and every decision made begins to create measurable participation.</p>
                                         <p>This is where influence stops being abstract — and starts being counted.</p>
-                                        
+
                                         <p><strong>STEP 2 — Challenges Concentrate Attention</strong></p>
                                         <p>Avantage Private and World Challenge Events are designed to bring people together at the same time, around the same experience.</p>
                                         <p>They concentrate energy, participation, and momentum.</p>
                                         <p>Whether you create a private Challenge for your own community or join a global competition open to all Influencers, Challenges turn everyday play into shared moments that matter.</p>
                                         <p>And shared moments are what generate real engagement.</p>
-                                        
+
                                         <p><strong>STEP 3 — Genius Protects Your Influence</strong></p>
                                         <p>As participation grows, accuracy matters.</p>
-                                        <p>That's why every follower, every level of participation, and every moment of play is tracked by Genius — the private system that ensures your influence is recognized and recorded correctly.</p>
+                                        <p>That’s why every follower, every level of participation, and every moment of play is tracked by Genius — the private system that ensures your influence is recognized and recorded correctly.</p>
                                         <p>Genius exists for one reason:</p>
                                         <p>to make sure that when your influence drives participation, you receive credit for it.</p>
                                         <p>Email verification activated Genius; so the door to earning equity for influence has already been opened.</p>
-                                        
+
                                         <p><strong>STEP 4 — Equity Is Earned Through Play</strong></p>
                                         <p>Equity is created by participation — not promises.</p>
                                         <p>You earn equity shares from:</p>
                                         <p>• Play generated by people in your referral network, and</p>
                                         <p>• Bonus equity from anyone who plays while watching your live streams or participating during your live appearances.</p>
-                                        
+
                                         <p><strong>STEP 5 — Performance Reveals What Works</strong></p>
                                         <p>Inside your private portal, Performance shows you exactly where your influence is most effective.</p>
-                                        <p>You'll see:</p>
+                                        <p>You’ll see:</p>
                                         <p>• How much play your influence generated</p>
                                         <p>• Where your equity came from</p>
                                         <p>• Which Challenges, time windows, and formats perform best</p>
-                                        <p>When something works — you'll know it.</p>
-                                        <p>And when it doesn't — you'll know that too.</p>
+                                        <p>When something works — you’ll know it.</p>
+                                        <p>And when it doesn’t — you’ll know that too.</p>
                                         <p>Clarity replaces guesswork.</p>
                                         <p><strong>Have Fun and Good Luck!</strong></p>
                                     </div>
