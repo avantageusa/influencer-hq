@@ -90,7 +90,7 @@
     .custom-accordion .accordion-item {
         background: #000000;
         border: 2px solid #b8972f;
-        border-radius: 45px;
+        border-radius: 25px;
         box-shadow: 0 8.681px 8.681px 0 rgba(0, 0, 0, 0.25);
         overflow: hidden;
         margin-bottom: 12px;
@@ -134,6 +134,17 @@
         color: #b8972f;
         font-size: 28px;
         line-height: 1;
+        transition: transform 0.2s ease;
+    }
+
+    /* Open: chevron points down; title stays left */
+    .custom-accordion .accordion-button:not(.collapsed)::before {
+        transform: translateY(-50%) rotate(90deg);
+    }
+
+    .custom-accordion .accordion-button .question-text,
+    .custom-accordion .accordion-button:not(.collapsed) .question-text {
+        text-align: left;
     }
 
     /* Figma: no leading chevron on desktop */
@@ -1300,7 +1311,7 @@
 
     body.page-template-page-portal-equity-php .equity-title,
     body.page-template-page-portal-more-php .equity-title {
-        color: #ffffff;
+        color: #b8972f;
         font-family: 'Cinzel', serif;
         font-size: 28px;
         font-weight: 600;
@@ -1310,65 +1321,43 @@
     }
 
     body.page-template-page-portal-equity-php .equity-intro {
-        margin: 0 0 40px;
+        margin: 0 0 32px;
         padding: 8px 12px 0;
         color: #ffffff;
-        font-family: 'Be Vietnam Pro', sans-serif;
-    }
-
-    body.page-template-page-portal-equity-php .equity-intro-believe {
-        text-align: center;
-        margin: 0 0 48px;
+        font-family: 'Inter', 'Be Vietnam Pro', sans-serif;
     }
 
     body.page-template-page-portal-equity-php .equity-intro-believe-label {
-        margin: 0 0 18px;
-        font-size: 18px;
-        font-weight: 400;
-        line-height: 1.4;
-        color: #ffffff;
-    }
-
-    body.page-template-page-portal-equity-php .equity-intro-believe-line {
-        margin: 0 0 10px;
-        font-size: clamp(1.05rem, 2.4vw, 1.35rem);
-        font-weight: 700;
-        line-height: 1.45;
-        color: #ffffff;
-    }
-
-    body.page-template-page-portal-equity-php .equity-intro-believe-line:last-child {
-        margin-bottom: 0;
-    }
-
-    body.page-template-page-portal-equity-php .equity-intro-multiplies {
-        max-width: 640px;
-        margin: 0 auto 48px;
-    }
-
-    body.page-template-page-portal-equity-php .equity-intro-multiplies-title {
         margin: 0 0 28px;
-        font-size: clamp(1.15rem, 2.6vw, 1.45rem);
+        font-family: 'Inter', sans-serif;
+        font-size: clamp(2rem, 4.2vw, 48.89px);
         font-weight: 700;
-        line-height: 1.35;
+        line-height: 1.25;
         color: #ffffff;
-        text-align: left;
+        text-align: center;
     }
 
-    body.page-template-page-portal-equity-php .equity-intro-list {
+    body.page-template-page-portal-equity-php .equity-intro-believe-list {
         list-style: none;
         margin: 0;
         padding: 0;
+        max-width: 820px;
+        margin-left: auto;
+        margin-right: auto;
     }
 
-    body.page-template-page-portal-equity-php .equity-intro-item {
+    body.page-template-page-portal-equity-php .equity-intro-believe-item {
         display: flex;
         align-items: flex-start;
         gap: 14px;
         margin: 0 0 22px;
+        font-size: clamp(1.05rem, 2.4vw, 1.35rem);
+        font-weight: 400;
+        line-height: 1.45;
+        color: #ffffff;
     }
 
-    body.page-template-page-portal-equity-php .equity-intro-item:last-child {
+    body.page-template-page-portal-equity-php .equity-intro-believe-item:last-child {
         margin-bottom: 0;
     }
 
@@ -1377,48 +1366,35 @@
         width: 22px;
         height: 22px;
         object-fit: contain;
-        margin-top: 3px;
+        margin-top: 4px;
     }
 
-    body.page-template-page-portal-equity-php .equity-intro-copy strong {
-        display: block;
-        margin: 0 0 4px;
-        font-size: 1.05rem;
+    body.page-template-page-portal-equity-php .equity-earn-panel {
+        position: relative;
+        background: #000000;
+        border: 2px solid #b8972f;
+        border-radius: 25px;
+        box-shadow: 0 8.681px 8.681px 0 rgba(0, 0, 0, 0.25);
+        padding: 22px 24px 28px;
+        margin: 0 0 28px;
+        overflow: visible;
+    }
+
+    body.page-template-page-portal-equity-php .equity-earn-title {
+        margin: 0 0 16px;
+        padding: 0;
+        color: #ffffff;
+        font-family: 'Inter', 'Be Vietnam Pro', sans-serif;
+        font-size: clamp(1.35rem, 2.8vw, 1.75rem);
         font-weight: 700;
-        line-height: 1.35;
-        color: #ffffff;
-    }
-
-    body.page-template-page-portal-equity-php .equity-intro-copy p {
-        margin: 0;
-        font-size: 1rem;
-        font-weight: 400;
-        line-height: 1.45;
-        color: #ffffff;
-    }
-
-    body.page-template-page-portal-equity-php .equity-intro-closing {
-        text-align: center;
-        margin: 0 0 8px;
-    }
-
-    body.page-template-page-portal-equity-php .equity-intro-closing p {
-        margin: 0 0 8px;
-        font-size: clamp(1.05rem, 2.4vw, 1.3rem);
-        font-weight: 700;
-        line-height: 1.45;
-        color: #ffffff;
-    }
-
-    body.page-template-page-portal-equity-php .equity-intro-closing p:last-child {
-        margin-bottom: 0;
+        line-height: 1.25;
+        text-align: left;
     }
 
     body.page-template-page-portal-equity-php .equity-earn-body {
         color: #ffffff;
         font-family: 'Inter', 'Be Vietnam Pro', sans-serif;
-        padding-top: 8px;
-        padding-bottom: 28px;
+        padding: 0;
     }
 
     body.page-template-page-portal-equity-php .equity-earn-list {
@@ -1462,6 +1438,7 @@
         letter-spacing: 0.02em;
         text-transform: uppercase;
         color: #ffffff;
+        text-align: center;
     }
 
     body.page-template-page-portal-equity-php .equity-earn-crowd {
@@ -1518,6 +1495,29 @@
 
     body.page-template-page-portal-equity-php .equity-earn-closing:last-child {
         margin-bottom: 0;
+    }
+
+    /* Overlay the coach FAB; do not reserve layout space */
+    body.page-template-page-portal-equity-php .equity-earn-panel .ihq-concierge-fab {
+        position: absolute !important;
+        right: -18px;
+        top: 56px;
+        bottom: auto !important;
+        left: auto !important;
+        width: 110px;
+        height: 110px;
+        margin: 0;
+        z-index: 5;
+        pointer-events: auto;
+    }
+
+    @media (max-width: 767px) {
+        body.page-template-page-portal-equity-php .equity-earn-panel .ihq-concierge-fab {
+            width: 72px;
+            height: 72px;
+            right: -8px;
+            top: 44px;
+        }
     }
 
     body.page-template-page-portal-equity-php .equity-participation-body {
@@ -3240,12 +3240,12 @@
             background: transparent;
             font-size: 20px;
             font-weight: 700;
-            border-radius: 45px;
+            border-radius: 25px;
         }
 
         .custom-accordion .accordion-button:not(.collapsed) {
             background: transparent;
-            border-radius: 45px 45px 0 0;
+            border-radius: 25px 25px 0 0;
         }
 
         .custom-accordion .accordion-body {

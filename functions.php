@@ -194,7 +194,7 @@ function influencer_hq_scripts() {
 		'.ihq-concierge-fab{position:fixed;right:20px;bottom:20px;z-index:10030;width:64px;height:64px;padding:0;border:2px solid #b8972f;border-radius:50%;background:linear-gradient(145deg,#1f1b14,#0d0b08);box-shadow:0 8px 28px rgba(0,0,0,.55);cursor:pointer;overflow:visible;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;}'
 		. '.ihq-concierge-fab:hover{transform:scale(1.05);box-shadow:0 10px 32px rgba(0,0,0,.65);border-color:#d4b85a;}'
 		. '.ihq-concierge-fab:focus{outline:none;box-shadow:0 0 0 3px rgba(184,151,47,.45),0 8px 28px rgba(0,0,0,.55);}'
-		. '.ihq-concierge-fab-img{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%;}'
+		. '.ihq-concierge-fab-img{display:block;width:100%;height:100%;object-fit:cover;object-position:center 18%;border-radius:50%;}'
 		. '.ihq-concierge-fab-ring{position:absolute;inset:-4px;border-radius:50%;border:2px solid transparent;pointer-events:none;}'
 		. '.ihq-concierge-fab.is-connecting .ihq-concierge-fab-ring{border-color:rgba(212,184,90,.55);animation:ihq-concierge-pulse 1.2s ease-in-out infinite;}'
 		. '.ihq-concierge-fab.is-active .ihq-concierge-fab-ring{border-color:#6fcf97;box-shadow:0 0 0 4px rgba(111,207,151,.25);}'

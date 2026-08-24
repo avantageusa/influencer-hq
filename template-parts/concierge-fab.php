@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$concierge_img = trailingslashit( get_template_directory_uri() ) . 'images/concierge.png';
+$concierge_img = trailingslashit( get_template_directory_uri() ) . 'images/concierge-coach.png';
 $aria_label    = __( 'Talk to Executive Concierge', 'influencer-hq' );
 ?>
 <button
