@@ -169,7 +169,7 @@ $hm_ch = function ( $tab, $hash = '' ) {
                     <span><?php esc_html_e( 'Competitions', 'influencer-hq' ); ?></span>
                 </a>
                 <div class="hm-details-body hm-tree">
-                    <a href="<?php echo esc_url( home_url( '/portal/challenges/' ) ); ?>#baccarat-intro" class="hm-link hm-icon-row hm-indent-1"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-baccarat-intro.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Baccarat Intro', 'influencer-hq' ); ?></a>
+                    <a href="<?php echo $hm_ch( 'intro', 'baccarat-intro' ); ?>" class="hm-link hm-icon-row hm-indent-1"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-baccarat-intro.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Baccarat Intro', 'influencer-hq' ); ?></a>
 
                     <a href="<?php echo $hm_ch( 'private' ); ?>" class="hm-link hm-icon-row hm-indent-1">
                         <img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-private.png' ); ?>" width="16" height="16" alt="">

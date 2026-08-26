@@ -43,50 +43,92 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                     </div>
                 </div>
 
+                <div class="competition-types">
+                    <div class="competition-tabs">
+                        <button class="competition-tab-btn active" data-tab="intro" type="button">
+                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-intro.svg" alt="" class="competition-tab-icon competition-tab-icon--intro">
+                            <span>Intro</span>
+                        </button>
+                        <button class="competition-tab-btn" data-tab="private" type="button">
+                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-private.png" alt="" class="competition-tab-icon">
+                            <span>Private</span>
+                        </button>
+                        <button class="competition-tab-btn" data-tab="community" type="button">
+                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-community.png" alt="" class="competition-tab-icon">
+                            <span>Community</span>
+                        </button>
+                        <button class="competition-tab-btn" data-tab="world" type="button">
+                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-world.png" alt="" class="competition-tab-icon">
+                            <span>World</span>
+                        </button>
+                        <button class="competition-tab-btn" data-tab="leagues" type="button">
+                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-leagues.png" alt="" class="competition-tab-icon">
+                            <span>Leagues</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="competition-panel active" id="intro-tab">
                 <!-- Lead Section: Game of Kings / Traditional / Avantage -->
                 <div id="baccarat-intro" class="hm-scroll-anchor" aria-hidden="true"></div>
                 <!-- Lead Section: Mobile (<1024px) -->
                 <div class="comp-lead comp-lead--mobile">
                     <div class="comp-lead-sep"></div>
                     <h2 class="comp-lead-kings">The Game of Kings</h2>
-
                     <div class="comp-lead-body">
                         <p>For over 500 years, Baccarat has been known as the Game of Kings.</p>
-                        <!-- <p>Propelled into the modern era over 40 years ago by James Bond, it remains the preferred game of high rollers worldwide, and stands as Asia's game of choice.</p> -->
+                    </div>
+                    <div class="comp-lead-mobile-img">
+                        <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/image-left-kings.jpg" alt="The Game of Kings" width="900">
                     </div>
 
+                    <div class="comp-lead-sep"></div>
+                    <h3 class="comp-lead-kings">The Modern Era</h3>
+                    <div class="comp-lead-body">
+                        <p>Propelled into the modern era over 40 years ago by James Bond. Baccarat remains the preferred game of high rollers worldwide, and stands as Asia's game of choice with over 100 million active players.</p>
+                    </div>
+                    <div class="comp-lead-modern-wrap">
+                        <div class="comp-lead-mobile-img">
+                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/image-right-kings.png" alt="The Modern Era">
+                        </div>
+                        <div class="intro-coach-fab-host" id="intro-coach-fab-host-mobile" aria-hidden="true"></div>
+                    </div>
+
+                    <div class="comp-lead-sep"></div>
                     <h3 class="comp-lead-kings">TRADITIONAL BACCARAT</h3>
                     <div class="comp-lead-row">
-                        <span>Matchup - 1 Bank vs. Player</span>
+                        <span>Matchup - 1 Bank vs. 1 Player</span>
                     </div>
                     <div class="comp-lead-row">
                         <span>All Plays - Before the Hand</span>
                     </div>
-                    <div class="comp-lead-sep"></div>
-                    <h3 class="comp-lead-kings">The modern era</h3>
-                    <div class="comp-lead-body">
-                        <p>Propelled into the modern era over 40 years ago by James Bond, it remains the preferred game of high rollers worldwide, and stands as Asia's game of choice.</p>
-                    </div>
 
+                    <div class="comp-lead-sep"></div>
                     <div class="comp-lead-avantage-head">
-                        <h3 class="comp-lead-kings">Influencer HQ</h3>
+                        <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="comp-lead-avantage-icon">
+                        <h3 class="comp-lead-kings">Avantage Baccarat</h3>
                     </div>
                     <div class="comp-lead-sep"></div>
-                    <div class="comp-lead-row"><span>Matchup - 1 Bank vs. 5 Players</span></div>
+                    <div class="comp-lead-row"><span>Matchups - 1 Bank vs. 5 Players</span></div>
                     <div class="comp-lead-sep"></div>
                     <div class="comp-lead-row">
-                        <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="comp-lead-avantage-icon">
                         <span>All Plays - Throughout the Hand</span>
                     </div>
                     <div class="comp-lead-sep"></div>
+                    <div class="comp-lead-row comp-lead-row--single">Pools - Top 30% Split</div>
+                    <div class="comp-lead-sep"></div>
                     <div class="comp-lead-row comp-lead-row--single">$100 Million World Championship</div>
+                    <div class="comp-lead-sep"></div>
+                    <div class="comp-lead-row comp-lead-row--single">52 World Tour Events</div>
+                    <div class="comp-lead-sep"></div>
+                    <div class="comp-lead-row comp-lead-row--single">Leading Money Winner Competitions</div>
+                    <div class="comp-lead-sep"></div>
+                    <div class="comp-lead-row comp-lead-row--single">Olympic Style Medal Competitions</div>
                     <div class="comp-lead-sep"></div>
                     <div class="comp-lead-row comp-lead-row--stack">
                         <span class="comp-lead-row-main">Influencer Competitions</span><br>
                         <span class="comp-lead-row-sub">Private - Community - World</span>
                     </div>
-                    <div class="comp-lead-sep"></div>
-                    <div class="comp-lead-row comp-lead-row--single">52 World Tour Events</div>
                     <div class="comp-lead-sep"></div>
                     <div class="comp-lead-row comp-lead-row--stack">
                         <span class="comp-lead-row-main">Celebrity Followers Leagues</span><br>
@@ -95,13 +137,6 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                     <div class="comp-lead-sep"></div>
                     <div class="comp-lead-row comp-lead-row--single">International League</div>
                     <div class="comp-lead-sep"></div>
-                    <div class="comp-lead-row comp-lead-row--single">Leading Money Winner Competitions</div>
-                    <div class="comp-lead-sep"></div>
-                    <div class="comp-lead-row comp-lead-row--single">Olympic Style Medal Competitions</div>
-                    <div class="comp-lead-sep"></div>
-                    <div class="comp-lead-row comp-lead-row--single">Pools - Top 30% Split</div>
-                    <div class="comp-lead-sep"></div>
-
                 </div>
 
                 <!-- Lead Section: Desktop (>1024px) -->
@@ -110,45 +145,45 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                     <!-- Game of Kings: image left, text right -->
                     <div class="comp-lead-desktop-row" style="margin-top: 20px;">
                         <div class="comp-lead-desktop-img">
-                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/image-left-kings.png" alt="The Game of Kings">
+                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/image-left-kings.jpg" alt="The Game of Kings" width="900">
                         </div>
                         <div class="comp-lead-desktop-text">
                             <h2 class="comp-lead-kings comp-lead-kings--desktop">The Game of Kings</h2>
                             <p>For over 500 years, Baccarat has been known as the Game of Kings.</p>
-                            <h3 class="comp-lead-game-title" style="text-align: left;padding-left: 0;">Traditional Baccarat</h3>
-                            <p>Matchup - 1 Bank vs. Player</p>
-                            <p>All Plays - Before the Hand</p>
                         </div>
                     </div>
 
-                    <!-- The Modern Era: text left, image right -->
-                    <div class="comp-lead-desktop-row" style="margin-top: 75px;">
+                    <!-- The Modern Era: text left, image right + coach -->
+                    <div class="comp-lead-desktop-row comp-lead-desktop-row--modern" style="margin-top: 75px;">
                         <div class="comp-lead-desktop-text">
                             <h2 class="comp-lead-kings comp-lead-kings--desktop">The Modern Era</h2>
-                            <p style="width:85%;"> Propelled into the modern era over 40 years ago by James Bond, Baccarat remains the preferred game of high rollers worldwide, and stands as Asia's game of choice with over 100 million active players.</p>
+                            <p style="width:85%;">Propelled into the modern era over 40 years ago by James Bond. Baccarat remains the preferred game of high rollers worldwide, and stands as Asia's game of choice with over 100 million active players.</p>
                         </div>
-                        <div class="comp-lead-desktop-img">
+                        <div class="comp-lead-desktop-img comp-lead-modern-wrap">
                             <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/image-right-kings.png" alt="The Modern Era">
+                            <div class="intro-coach-fab-host" id="intro-coach-fab-host-desktop" aria-hidden="true"></div>
                         </div>
                     </div>
 
                     <div class="comp-lead-sep"></div>
-                    <!-- Influencer HQ -->
+                    <h3 class="comp-lead-game-title">Traditional Baccarat</h3>
+                    <div class="comp-lead-row comp-lead-row--single">Matchup - 1 Bank vs. 1 Player</div>
+                    <div class="comp-lead-row comp-lead-row--single">All Plays - Before the Hand</div>
+
+                    <div class="comp-lead-sep"></div>
                     <div class="comp-lead-avantage-head">
                         <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="comp-lead-avantage-icon">
-                        <h3 class="comp-lead-game-title">Influencer HQ</h3>
+                        <h3 class="comp-lead-game-title">Avantage Baccarat</h3>
                     </div>
                     <div class="comp-lead-sep"></div>
 
-                    <!-- Two-column Matchup / All Plays row -->
                     <div class="comp-lead-desktop-2col">
-                        <span>Matchup - 1 Bank vs. 5 Players</span>
+                        <span>Matchups - 1 Bank vs. 5 Players</span>
                         <span>All Plays - Throughout the Hand</span>
                     </div>
 
                     <div class="comp-lead-row comp-lead-row--single">Pools - Top 30% Split</div>
 
-                    <!-- Diamond separator -->
                     <div class="comp-lead-diamond">
                         <img style="width: 50px; height: 50px;margin: 10px 0px;" src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="comp-lead-avantage-icon">
                     </div>
@@ -163,7 +198,6 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                     <div class="comp-lead-row comp-lead-row--single">Olympic Style Medal Competitions</div>
                     <div class="comp-lead-sep"></div>
 
-                    <!-- Diamond separator -->
                     <div class="comp-lead-diamond">
                         <img style="width: 50px; height: 50px;margin: 10px 0px;" src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/logo-hero-red-small.png" alt="" class="comp-lead-avantage-icon">
                     </div>
@@ -202,28 +236,7 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                         </div>
                     </div>
                 </div>
-
-                <div class="competition-types">
-                    <div class="competition-types-label">Competition Types</div>
-                    <div class="competition-tabs">
-                        <button class="competition-tab-btn active" data-tab="private">
-                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-private.png" alt="Private" class="competition-tab-icon">
-                            <span>Private</span>
-                        </button>
-                        <button class="competition-tab-btn" data-tab="community">
-                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-community.png" alt="Community" class="competition-tab-icon">
-                            <span>Community</span>
-                        </button>
-                        <button class="competition-tab-btn" data-tab="world">
-                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-world.png" alt="World" class="competition-tab-icon">
-                            <span>World</span>
-                        </button>
-                        <button class="competition-tab-btn" data-tab="leagues">
-                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-leagues.png" alt="Leagues" class="competition-tab-icon">
-                            <span>Leagues</span>
-                        </button>
-                    </div>
-                </div>
+                </div><!-- /#intro-tab -->
 
                 <!-- World Tab -->
                 <div class="competition-panel" id="world-tab">
@@ -625,56 +638,67 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                 </div>
 
                 <!-- Private Tab -->
-                <div class="competition-panel active" id="private-tab">
-                    <div class="competition-card">
-                        <p>We believe leadership is personal. Sometimes it is strategic. Sometimes it is personal.</p>
-                        <p>In a Private Challenge, there is no crowd to hide behind. Your followers versus theirs.</p>
-                        <p>Every hand played is a vote for your leadership. Not with words - but with action.</p>
-                        <p>Not over weeks - but in a single 24-hour test. When the clock is running, who can activate, motivate, and win?</p>
+                <div class="competition-panel" id="private-tab">
+                    <div class="private-desc-row">
+                        <div class="accordion custom-accordion private-desc-accordion" id="privateDescAccordion">
+                            <div class="accordion-item mb-3" id="private-full-description">
+                                <h2 class="accordion-header" id="headingPrivateFullDesc">
+                                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePrivateFullDesc" aria-expanded="true" aria-controls="collapsePrivateFullDesc">
+                                        <span class="question-text"><?php esc_html_e( 'Full Description of Private Challenges', 'influencer-hq' ); ?></span>
+                                    </button>
+                                </h2>
+                                <div id="collapsePrivateFullDesc" class="accordion-collapse collapse show" aria-labelledby="headingPrivateFullDesc" data-bs-parent="#privateDescAccordion">
+                                    <div class="accordion-body">
+                                        <p><?php esc_html_e( 'A Private Challenge is a head-to-head competition between two verified influencers who already have a personal relationship OR two groups competing against each other. We believe leadership is personal. In a Private Challenge, there is no crowd to hide behind. Every contest is a vote for your leadership. Not with words – but with action. Not over weeks – but in a single 24-hour test. This format is designed to showcase authentic rivalry, chemistry, and competitive storytelling.', 'influencer-hq' ); ?></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="private-coach-fab-host" id="private-coach-fab-host" aria-hidden="true"></div>
                     </div>
 
-                    <h2 class="competition-section-title">Private</h2>
+                    <button type="button" class="private-schedule-cta" id="private-schedule-cta">
+                        <?php esc_html_e( 'CLICK HERE TO SCHEDULE PRIVATE CHALLENGE', 'influencer-hq' ); ?>
+                    </button>
 
-                    <div class="competition-block" id="private-results">
-                        <div class="competition-block-title">Private Challenges</div>
-                        <div class="accordion custom-accordion" id="privateAccordion">
-                            <div class="accordion-item mb-3">
-                                <h2 class="accordion-header" id="headingPrivateWhat">
-                                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePrivateWhat" aria-expanded="true" aria-controls="collapsePrivateWhat">
-                                        <span class="question-text">What is a Private Challenge?</span>
-                                    </button>
-                                </h2>
-                                <div id="collapsePrivateWhat" class="accordion-collapse collapse show" aria-labelledby="headingPrivateWhat" data-bs-parent="#privateAccordion">
-                                    <div class="accordion-body">
-                                        <p>A direct, one-to-one contest between two Influencers.</p>
-                                        <p>One challenges. The other accepts. The match runs for 24 hours.</p>
-                                    </div>
+                    <div class="accordion custom-accordion" id="privateAccordion">
+                        <div class="accordion-item mb-3">
+                            <h2 class="accordion-header" id="headingPrivateEquity">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePrivateEquity" aria-expanded="false" aria-controls="collapsePrivateEquity">
+                                    <span class="question-text"><?php esc_html_e( 'Why Competition = Equity', 'influencer-hq' ); ?></span>
+                                </button>
+                            </h2>
+                            <div id="collapsePrivateEquity" class="accordion-collapse collapse" aria-labelledby="headingPrivateEquity" data-bs-parent="#privateAccordion">
+                                <div class="accordion-body">
+                                    <p><?php esc_html_e( 'We believe competition creates fun. Fun creates the desire to keep playing. And every moment of play creates equity.', 'influencer-hq' ); ?></p>
+                                    <p><?php esc_html_e( 'If you can lead — you can own. If you can build momentum — you deserve to share in what you\'ve built.', 'influencer-hq' ); ?></p>
+                                    <p><?php esc_html_e( 'That\'s why Competition = Equity. And that\'s why we built this platform for you.', 'influencer-hq' ); ?></p>
                                 </div>
                             </div>
-                            <div class="accordion-item mb-3">
-                                <h2 class="accordion-header" id="headingPrivatePerf">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePrivatePerf" aria-expanded="false" aria-controls="collapsePrivatePerf">
-                                        <span class="question-text">How is performance calculated?</span>
-                                    </button>
-                                </h2>
-                                <div id="collapsePrivatePerf" class="accordion-collapse collapse" aria-labelledby="headingPrivatePerf" data-bs-parent="#privateAccordion">
-                                    <div class="accordion-body">
-                                        <p>Net Gain / Total Amount Played = Performance Percent.</p>
-                                        <p>Scores can never be negative. The lowest possible score is 0 percent.</p>
-                                    </div>
+                        </div>
+                        <div class="accordion-item mb-3">
+                            <h2 class="accordion-header" id="headingPrivatePerf">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePrivatePerf" aria-expanded="false" aria-controls="collapsePrivatePerf">
+                                    <span class="question-text"><?php esc_html_e( 'How is Win % calculated?', 'influencer-hq' ); ?></span>
+                                </button>
+                            </h2>
+                            <div id="collapsePrivatePerf" class="accordion-collapse collapse" aria-labelledby="headingPrivatePerf" data-bs-parent="#privateAccordion">
+                                <div class="accordion-body">
+                                    <p><?php esc_html_e( 'Net Gain / Total Amount Played = Performance Percent.', 'influencer-hq' ); ?></p>
+                                    <p><?php esc_html_e( 'Scores can never be negative. The lowest possible score is 0 percent.', 'influencer-hq' ); ?></p>
                                 </div>
                             </div>
-                            <div class="accordion-item mb-3">
-                                <h2 class="accordion-header" id="headingPrivateWinner">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePrivateWinner" aria-expanded="false" aria-controls="collapsePrivateWinner">
-                                        <span class="question-text">How is the winner determined?</span>
-                                    </button>
-                                </h2>
-                                <div id="collapsePrivateWinner" class="accordion-collapse collapse" aria-labelledby="headingPrivateWinner" data-bs-parent="#privateAccordion">
-                                    <div class="accordion-body">
-                                        <p>The Influencer with the higher Performance Percent wins.</p>
-                                        <p>Private Challenges determine a match winner. Points are still awarded based on placement within the broader contest framework.</p>
-                                    </div>
+                        </div>
+                        <div class="accordion-item mb-3">
+                            <h2 class="accordion-header" id="headingPrivateWinner">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePrivateWinner" aria-expanded="false" aria-controls="collapsePrivateWinner">
+                                    <span class="question-text"><?php esc_html_e( 'How is the winner determined?', 'influencer-hq' ); ?></span>
+                                </button>
+                            </h2>
+                            <div id="collapsePrivateWinner" class="accordion-collapse collapse" aria-labelledby="headingPrivateWinner" data-bs-parent="#privateAccordion">
+                                <div class="accordion-body">
+                                    <p><?php esc_html_e( 'The Influencer with the higher Performance Percent wins.', 'influencer-hq' ); ?></p>
+                                    <p><?php esc_html_e( 'Private Challenges determine a match winner. Points are still awarded based on placement within the broader contest framework.', 'influencer-hq' ); ?></p>
                                 </div>
                             </div>
                         </div>
@@ -753,17 +777,15 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                     </div>
 
                     <!-- Create Private Challenge Section -->
-                    <div class="cpc-wrap">
+                    <div class="cpc-wrap" id="private-results">
 
                         <!-- Section header -->
                         <div class="cpc-header">
                             <img src="<?php echo get_template_directory_uri(); ?>/images/portal-competition.png" alt="" class="cpc-icon">
-                            <span class="cpc-title">CREATE PRIVATE CHALLENGE</span>
+                            <span class="cpc-title"><?php esc_html_e( 'CREATE PRIVATE CHALLENGE', 'influencer-hq' ); ?></span>
                         </div>
                         <div class="cpc-divider"></div>
-                        <p class="cpc-subtitle">Invite Influencers to compete in a private competition.</p>
 
-                        <!-- Accordion 1: See Current Challenges -->
                         <?php
                         $cpc_uid   = get_current_user_id();
                         $cpc_email = wp_get_current_user()->user_email;
@@ -805,25 +827,90 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                             return (int) get_post_meta( $cr->ID, '_challenger_id', true ) !== (int) $cpc_uid;
                         } ) );
                         ?>
+
+                        <!-- Accordion 1: Instructions -->
+                        <div class="cpc-accordion" id="cpcAccordionInstructions">
+                            <div class="cpc-accordion-header collapsed" data-bs-toggle="collapse" data-bs-target="#cpcCollapseInstructions" aria-expanded="false" aria-controls="cpcCollapseInstructions">
+                                <svg class="cpc-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b8972f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                                <span class="competition-block-title" style="margin:0;"><?php esc_html_e( 'Instructions to Create Private Challenges', 'influencer-hq' ); ?></span>
+                            </div>
+                            <div id="cpcCollapseInstructions" class="collapse">
+                                <div class="cpc-accordion-body">
+                                    <p class="cpc-instructions-lead"><?php esc_html_e( 'Each day, you can originate and accept one private challenge which includes both influencers and their followers.', 'influencer-hq' ); ?></p>
+                                    <p class="cpc-instructions-lead"><?php esc_html_e( 'Private challenges run from midnight to midnight, Hong Kong Time.', 'influencer-hq' ); ?></p>
+                                    <ol class="cpc-instructions-steps">
+                                        <li><?php esc_html_e( 'Reach out by any method to the Influencer you want to challenge.', 'influencer-hq' ); ?></li>
+                                        <li><?php esc_html_e( 'Don\'t officially create a challenge until you receive yes from the challenged influencer.', 'influencer-hq' ); ?></li>
+                                        <li><?php esc_html_e( 'Record the challenge in the form below AFTER you receive YES.', 'influencer-hq' ); ?></li>
+                                        <li><?php esc_html_e( 'We will generate challenge link that you should share with your influencer opponent.', 'influencer-hq' ); ?></li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Accordion 2: Create New Private Challenges -->
+                        <div class="cpc-accordion" id="cpcAccordion2">
+                            <div class="cpc-accordion-header collapsed" data-bs-toggle="collapse" data-bs-target="#cpcCollapse2" aria-expanded="false" aria-controls="cpcCollapse2">
+                                <svg class="cpc-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b8972f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                                <span class="competition-block-title" style="margin:0;"><?php esc_html_e( 'Create New Private Challenges', 'influencer-hq' ); ?></span>
+                            </div>
+                            <div id="cpcCollapse2" class="collapse">
+                                <div class="cpc-accordion-body">
+                                    <div class="competition-block-title"><?php esc_html_e( 'Influencer', 'influencer-hq' ); ?></div>
+                                    <div class="cpc-search-wrap">
+                                        <input class="cpc-input" id="cpc-username-search" type="text" placeholder="<?php esc_attr_e( 'username', 'influencer-hq' ); ?>" autocomplete="off">
+                                        <div class="cpc-search-results" id="cpc-search-results" hidden></div>
+                                    </div>
+                                    <input type="hidden" id="cpc-invitee-user-id" value="">
+                                    <input type="hidden" id="cpc-username" value="">
+
+                                    <div class="competition-block-title"><?php esc_html_e( 'Challenge Date', 'influencer-hq' ); ?></div>
+                                    <input class="cpc-input cpc-date-input" id="cpc-date" type="date" min="<?php echo esc_attr( date( 'Y-m-d' ) ); ?>" max="<?php echo esc_attr( date( 'Y-m-d', strtotime( '+2 years' ) ) ); ?>">
+
+                                    <div class="cpc-row-controls" style="margin-top:10px;">
+                                        <span class="cpc-info-icon" title="<?php esc_attr_e( 'Start time and end time for all Private Challenges are 00:01 HK time (24 clock) through midnight each night.', 'influencer-hq' ); ?>">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="#b8972f" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"/><text x="12" y="16" text-anchor="middle" font-size="13" font-family="serif" fill="#000">i</text></svg>
+                                        </span>
+                                        <button id="cpc-create-btn" type="button" class="cpc-btn-create"><?php esc_html_e( 'Create Challenge Links', 'influencer-hq' ); ?></button>
+                                    </div>
+
+                                    <div id="cpc-form-msg" style="display:none;font-family:'Be Vietnam Pro',sans-serif;font-size:13px;margin-bottom:6px;"></div>
+
+                                    <div class="competition-block-title" style="margin-top:14px;"><?php esc_html_e( 'My Shareable Link', 'influencer-hq' ); ?></div>
+                                    <div class="cpc-share-row">
+                                        <input class="cpc-input cpc-input-muted" id="cpc-share-link" type="text" placeholder="<?php esc_attr_e( '(Shareable challenge URL appears here)', 'influencer-hq' ); ?>" readonly>
+                                        <button type="button" class="cpc-icon-btn" id="cpc-copy-link" aria-label="<?php esc_attr_e( 'Copy link', 'influencer-hq' ); ?>" title="<?php esc_attr_e( 'Copy', 'influencer-hq' ); ?>">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b8972f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                        </button>
+                                        <button type="button" class="cpc-icon-btn" id="cpc-share-link-btn" aria-label="<?php esc_attr_e( 'Share link', 'influencer-hq' ); ?>" title="<?php esc_attr_e( 'Share', 'influencer-hq' ); ?>">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b8972f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
+                                        </button>
+                                    </div>
+                                    <p class="cpc-share-help"><?php esc_html_e( 'Share this link with your influencer opponent so he/she can accept the challenge.', 'influencer-hq' ); ?></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Accordion 3: See Current Challenges -->
                         <div class="cpc-accordion" id="cpcAccordion1">
                             <div class="cpc-accordion-header collapsed" data-bs-toggle="collapse" data-bs-target="#cpcCollapse1" aria-expanded="false" aria-controls="cpcCollapse1">
                                 <svg class="cpc-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b8972f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                                <span class="competition-block-title" style="margin:0;">See Current Challenges</span>
+                                <span class="competition-block-title" style="margin:0;"><?php esc_html_e( 'See Current Challenges', 'influencer-hq' ); ?></span>
                             </div>
                             <div id="cpcCollapse1" class="collapse">
                                 <div class="cpc-accordion-body">
 
-                                    <div class="competition-block-title">Challenges you created that have been accepted</div>
+                                    <div class="competition-block-title"><?php esc_html_e( 'Private Challenges You\'ve Created That Have Been Accepted', 'influencer-hq' ); ?></div>
                                     <div class="cpc-divider-thin"></div>
                                     <div class="cpc-table">
                                         <div class="cpc-table-head">
-                                            <span class="cpc-col-date">Date</span>
-                                            <span class="cpc-col-user">Username</span>
-                                            <span class="cpc-col-link">Challenge link</span>
+                                            <span class="cpc-col-date"><?php esc_html_e( 'Challenge Date', 'influencer-hq' ); ?></span>
+                                            <span class="cpc-col-user"><?php esc_html_e( 'Challenged Person\'s Username', 'influencer-hq' ); ?></span>
+                                            <span class="cpc-col-link"><?php esc_html_e( 'Link', 'influencer-hq' ); ?></span>
                                         </div>
                                         <div class="cpc-divider-thin"></div>
                                         <?php if ( empty( $cpc_issued_accepted ) ) : ?>
-                                        <div class="cpc-table-row cpc-table-empty"><span>No accepted challenges yet.</span></div>
+                                        <div class="cpc-table-row cpc-table-empty"><span><?php esc_html_e( 'No accepted challenges yet.', 'influencer-hq' ); ?></span></div>
                                         <?php else : foreach ( $cpc_issued_accepted as $ci ) :
                                             $ci_invitee_id = (int) get_post_meta( $ci->ID, '_invitee_user_id', true );
                                             $ci_username   = (string) get_post_meta( $ci->ID, '_invitee_username', true );
@@ -854,18 +941,19 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                                         </div>
                                         <?php endforeach; endif; ?>
                                     </div>
+                                    <a class="cpc-table-more" href="#private-leaderboards"><?php esc_html_e( 'more >', 'influencer-hq' ); ?></a>
 
-                                    <div class="competition-block-title" style="margin-top:18px;">Challenges you received</div>
+                                    <div class="competition-block-title" style="margin-top:18px;"><?php esc_html_e( 'Private Challenges You\'ve Received', 'influencer-hq' ); ?></div>
                                     <div class="cpc-divider-thin"></div>
                                     <div class="cpc-table">
                                         <div class="cpc-table-head">
-                                            <span class="cpc-col-date">Date</span>
-                                            <span class="cpc-col-user">Username</span>
-                                            <span class="cpc-col-link">Link</span>
+                                            <span class="cpc-col-date"><?php esc_html_e( 'Challenge Date', 'influencer-hq' ); ?></span>
+                                            <span class="cpc-col-user"><?php esc_html_e( 'Challenger\'s Username', 'influencer-hq' ); ?></span>
+                                            <span class="cpc-col-link"><?php esc_html_e( 'Link', 'influencer-hq' ); ?></span>
                                         </div>
                                         <div class="cpc-divider-thin"></div>
                                         <?php if ( empty( $cpc_received ) ) : ?>
-                                        <div class="cpc-table-row cpc-table-empty"><span>No challenges received yet.</span></div>
+                                        <div class="cpc-table-row cpc-table-empty"><span><?php esc_html_e( 'No challenges received yet.', 'influencer-hq' ); ?></span></div>
                                         <?php else : foreach ( $cpc_received as $cr ) :
                                             $cr_chal_id = (int) get_post_meta( $cr->ID, '_challenger_id', true );
                                             $cr_username = function_exists( 'ihq_challenge_display_username' )
@@ -889,43 +977,8 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                                         </div>
                                         <?php endforeach; endif; ?>
                                     </div>
+                                    <a class="cpc-table-more" href="#private-leaderboards"><?php esc_html_e( 'more >', 'influencer-hq' ); ?></a>
 
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Accordion 2: Create New Challenges -->
-                        <div class="cpc-accordion" id="cpcAccordion2">
-                            <div class="cpc-accordion-header collapsed" data-bs-toggle="collapse" data-bs-target="#cpcCollapse2" aria-expanded="false" aria-controls="cpcCollapse2">
-                                <svg class="cpc-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b8972f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                                <span class="competition-block-title" style="margin:0;">Create New Challenges</span>
-                            </div>
-                            <div id="cpcCollapse2" class="collapse">
-                                <div class="cpc-accordion-body">
-                                    <p class="cpc-desc">Invite Influencers to compete in a private competition.</p>
-
-                                    <div class="competition-block-title">Username</div>
-                                    <div class="cpc-search-wrap">
-                                        <input class="cpc-input" id="cpc-username-search" type="text" placeholder="search username" autocomplete="off">
-                                        <div class="cpc-search-results" id="cpc-search-results" hidden></div>
-                                    </div>
-                                    <input type="hidden" id="cpc-invitee-user-id" value="">
-                                    <input type="hidden" id="cpc-username" value="">
-
-                                    <div class="competition-block-title">Challenge date</div>
-                                    <input class="cpc-input cpc-date-input" id="cpc-date" type="date" min="<?php echo esc_attr( date( 'Y-m-d' ) ); ?>" max="<?php echo esc_attr( date( 'Y-m-d', strtotime( '+2 years' ) ) ); ?>">
-
-                                    <div class="cpc-row-controls" style="margin-top:10px;">
-                                        <span class="cpc-info-icon" title="Start time and end time for all Private Challenges are 00:01 HK time (24 clock) through midnight each night.">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="#b8972f" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"/><text x="12" y="16" text-anchor="middle" font-size="13" font-family="serif" fill="#000">i</text></svg>
-                                        </span>
-                                        <button id="cpc-create-btn" type="button" class="cpc-btn-create">Create Challenge link</button>
-                                    </div>
-
-                                    <div id="cpc-form-msg" style="display:none;font-family:'Be Vietnam Pro',sans-serif;font-size:13px;margin-bottom:6px;"></div>
-
-                                    <div class="competition-block-title" style="margin-top:14px;">Challenge link</div>
-                                    <input class="cpc-input cpc-input-muted" id="cpc-share-link" type="text" placeholder="(Shareable challenge URL appears here)" readonly>
                                 </div>
                             </div>
                         </div>
@@ -1480,10 +1533,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Deep link into Create New Challenges: open accordion then scroll to the create button.
         if (hash === 'cpc-create-btn') {
-            var createCollapse = document.getElementById('cpcCollapse2');
-            if (createCollapse && window.bootstrap && bootstrap.Collapse) {
-                bootstrap.Collapse.getOrCreateInstance(createCollapse).show();
-            }
+            openCreatePrivateChallengeForm();
+            return;
         }
 
         var target = document.getElementById(hash);
@@ -1538,17 +1589,107 @@ document.addEventListener('DOMContentLoaded', function() {
             // Add active class to clicked button and corresponding content
             this.classList.add('active');
             document.getElementById(tabName + '-tab').classList.add('active');
+            syncCompetitionCoachFab();
             if (ev && ev.isTrusted) {
                 scrollCompetitionPanelIntoView(tabName);
             }
         });
     });
 
+    function getActiveCompetitionTabName() {
+        var active = document.querySelector('.competition-tab-btn.active');
+        return active ? active.getAttribute('data-tab') : '';
+    }
+
+    function getIntroCoachHost() {
+        if (window.matchMedia && window.matchMedia('(min-width: 1025px)').matches) {
+            return document.getElementById('intro-coach-fab-host-desktop');
+        }
+        return document.getElementById('intro-coach-fab-host-mobile');
+    }
+
+    function syncCompetitionCoachFab() {
+        var fab = document.getElementById('ihq-concierge-fab');
+        if (!fab) {
+            return;
+        }
+        var tab = getActiveCompetitionTabName();
+        var host = null;
+        if (tab === 'intro') {
+            host = getIntroCoachHost();
+        } else if (tab === 'private') {
+            host = document.getElementById('private-coach-fab-host');
+        }
+        if (host) {
+            if (fab.parentNode !== host) {
+                host.appendChild(fab);
+            }
+            return;
+        }
+        if (fab.parentNode && fab.parentNode.classList && fab.parentNode.classList.contains('intro-coach-fab-host')) {
+            document.body.appendChild(fab);
+            return;
+        }
+        if (fab.parentNode && fab.parentNode.id === 'private-coach-fab-host') {
+            document.body.appendChild(fab);
+        }
+    }
+
+    function syncCompetitionTabsCompact() {
+        var tabs = document.querySelector('.competition-types');
+        if (!tabs) {
+            return;
+        }
+        var stickyNav = document.querySelector('.sticky-nav');
+        var topOffset = 164;
+        if (stickyNav) {
+            var navRect = stickyNav.getBoundingClientRect();
+            topOffset = Math.max(0, Math.round(navRect.bottom));
+        }
+        document.documentElement.style.setProperty('--portal-comp-tabs-top', topOffset + 'px');
+        var tabsTop = tabs.getBoundingClientRect().top;
+        var stuck = tabsTop <= (topOffset + 2);
+        tabs.classList.toggle('is-compact', stuck);
+    }
+
+    window.addEventListener('scroll', syncCompetitionTabsCompact, { passive: true });
+    window.addEventListener('resize', function () {
+        syncCompetitionTabsCompact();
+        syncCompetitionCoachFab();
+    }, { passive: true });
+
+    function openCreatePrivateChallengeForm() {
+        var privateBtn = document.querySelector('.competition-tab-btn[data-tab="private"]');
+        if (privateBtn && !privateBtn.classList.contains('active')) {
+            privateBtn.click();
+        }
+        var createCollapse = document.getElementById('cpcCollapse2');
+        if (createCollapse && window.bootstrap && bootstrap.Collapse) {
+            bootstrap.Collapse.getOrCreateInstance(createCollapse).show();
+        }
+        window.setTimeout(function () {
+            var target = document.getElementById('cpcAccordion2') || document.getElementById('cpc-create-btn');
+            if (target) {
+                portalScrollSmoothToElement(target);
+            }
+        }, 220);
+    }
+
+    var privateScheduleCta = document.getElementById('private-schedule-cta');
+    if (privateScheduleCta) {
+        privateScheduleCta.addEventListener('click', function () {
+            openCreatePrivateChallengeForm();
+        });
+    }
+
+    syncCompetitionCoachFab();
+    syncCompetitionTabsCompact();
+
     (function applyCompetitionTabFromQuery() {
         var params = new URLSearchParams(window.location.search);
         var tab = params.get('tab');
         var appliedTabFromQuery = false;
-        if (tab && /^(private|community|world|leagues)$/.test(tab)) {
+        if (tab && /^(intro|private|community|world|leagues)$/.test(tab)) {
             var btn = document.querySelector('.competition-tab-btn[data-tab="' + tab + '"]');
             if (btn) {
                 btn.click();
@@ -1556,6 +1697,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         var hashKey = window.location.hash.replace(/^#/, '');
+        if (hashKey === 'baccarat-intro') {
+            var introBtn = document.querySelector('.competition-tab-btn[data-tab="intro"]');
+            if (introBtn && !introBtn.classList.contains('active')) {
+                introBtn.click();
+            }
+        }
         if (hashKey) {
             scheduleScrollToCompetitionHash(hashKey);
         } else if (appliedTabFromQuery && tab) {
@@ -1746,8 +1893,63 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .finally(function () {
                     cpcCreateBtn.disabled    = false;
-                    cpcCreateBtn.textContent = 'Create Challenge link';
+                    cpcCreateBtn.textContent = 'Create Challenge Links';
                 });
+        });
+    }
+
+    function cpcReadShareLink() {
+        var linkEl = document.getElementById('cpc-share-link');
+        return linkEl && linkEl.value ? linkEl.value.trim() : '';
+    }
+
+    var cpcCopyBtn = document.getElementById('cpc-copy-link');
+    if (cpcCopyBtn) {
+        cpcCopyBtn.addEventListener('click', function () {
+            var link = cpcReadShareLink();
+            if (!link) {
+                cpcMsg('Create a challenge link first.', true);
+                return;
+            }
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(link).then(function () {
+                    cpcMsg('Link copied.', false);
+                }).catch(function () {
+                    var linkEl = document.getElementById('cpc-share-link');
+                    if (linkEl) {
+                        linkEl.select();
+                    }
+                    cpcMsg('Select and copy the link manually.', true);
+                });
+                return;
+            }
+            var linkEl = document.getElementById('cpc-share-link');
+            if (linkEl) {
+                linkEl.select();
+            }
+            cpcMsg('Select and copy the link manually.', false);
+        });
+    }
+
+    var cpcShareBtn = document.getElementById('cpc-share-link-btn');
+    if (cpcShareBtn) {
+        cpcShareBtn.addEventListener('click', function () {
+            var link = cpcReadShareLink();
+            if (!link) {
+                cpcMsg('Create a challenge link first.', true);
+                return;
+            }
+            if (navigator.share) {
+                navigator.share({ title: 'Private Challenge', url: link }).catch(function () {});
+                return;
+            }
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(link).then(function () {
+                    cpcMsg('Link copied — paste it to share.', false);
+                });
+                return;
+            }
+            cpcMsg('Copy the shareable link below to share it.', false);
         });
     }
 });

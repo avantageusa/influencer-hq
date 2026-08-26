@@ -1991,7 +1991,7 @@
 
     body.page-template-page-portal-challenges-php .competition-header {
         text-align: center;
-        margin-bottom: 16px;
+        margin-bottom: 8px;
     }
 
     body.page-template-page-portal-challenges-php .competition-header-top {
@@ -2020,7 +2020,7 @@
     /* Competition Lead Section */
     body.page-template-page-portal-challenges-php .comp-lead {
         margin-bottom: 16px;
-        overflow: hidden;
+        overflow: visible;
     }
     body.page-template-page-portal-challenges-php .comp-lead--desktop { display: none; }
     body.page-template-page-portal-challenges-php .comp-lead--mobile  { display: block; }
@@ -2036,10 +2036,12 @@
         body.page-template-page-portal-challenges-php .comp-lead-desktop-img {
             flex: 0 0 40%;
             max-width: 40%;
+            position: relative;
+            overflow: visible;
         }
         body.page-template-page-portal-challenges-php .comp-lead-desktop-img img {
             width: 100%;
-            border-radius: 6px;
+            border-radius: 25px;
             display: block;
         }
         body.page-template-page-portal-challenges-php .comp-lead-desktop-text {
@@ -2147,49 +2149,128 @@
     }
 
     body.page-template-page-portal-challenges-php .competition-types {
-        margin: 12px 0 18px;
+        position: sticky;
+        top: var(--portal-comp-tabs-top, 164px);
+        z-index: 40;
+        margin: 0 0 22px;
+        padding: 6px 0 10px;
         text-align: left;
+        background: #000000;
         scroll-margin-top: var(--portal-anchor-scroll-margin);
+        transition: padding 0.2s ease;
     }
 
-    body.page-template-page-portal-challenges-php .competition-types-label {
-        font-family: 'Be Vietnam Pro', sans-serif;
-        font-size: 12px;
-        font-weight: 600;
-        text-transform: uppercase;
-        margin-bottom: 8px;
+    body.page-template-page-portal-challenges-php .competition-types.is-compact {
+        padding: 2px 0 6px;
     }
 
     body.page-template-page-portal-challenges-php .competition-tabs {
         display: flex;
         justify-content: space-between;
-        gap: 12px;
+        gap: 8px;
     }
 
     body.page-template-page-portal-challenges-php .competition-tab-btn {
         flex: 1;
         background: transparent;
-        border: 1px solid rgba(184, 151, 47, 0.4);
+        border: none;
         color: #ffffff;
-        padding: 8px 6px;
-        border-radius: 6px;
+        padding: 8px 4px;
+        border-radius: 0;
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 6px;
         font-family: 'Be Vietnam Pro', sans-serif;
-        font-size: 16px;
+        font-size: 14px;
         cursor: pointer;
+        transition: padding 0.2s ease, gap 0.2s ease, font-size 0.2s ease;
     }
 
     body.page-template-page-portal-challenges-php .competition-tab-btn.active {
-        border-color: #b8972f;
-        background: rgba(184, 151, 47, 0.1);
+        color: #b8972f;
+        background: transparent;
+        border-color: transparent;
+    }
+
+    body.page-template-page-portal-challenges-php .competition-tab-btn.active span {
+        text-decoration: underline;
+        text-underline-offset: 4px;
     }
 
     body.page-template-page-portal-challenges-php .competition-tab-icon {
-        width: 22px;
-        height: 22px;
+        width: 28px;
+        height: 28px;
+        object-fit: contain;
+        transition: width 0.2s ease, height 0.2s ease;
+    }
+
+    body.page-template-page-portal-challenges-php .competition-tab-icon--intro {
+        width: 32px;
+        height: 32px;
+    }
+
+    body.page-template-page-portal-challenges-php .competition-types.is-compact .competition-tab-btn {
+        padding: 4px 2px;
+        gap: 2px;
+        font-size: 11px;
+    }
+
+    body.page-template-page-portal-challenges-php .competition-types.is-compact .competition-tab-icon,
+    body.page-template-page-portal-challenges-php .competition-types.is-compact .competition-tab-icon--intro {
+        width: 18px;
+        height: 18px;
+    }
+
+    body.page-template-page-portal-challenges-php .comp-lead-mobile-img {
+        margin: 8px 0 16px;
+    }
+
+    body.page-template-page-portal-challenges-php .comp-lead-mobile-img img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-radius: 25px;
+    }
+
+    body.page-template-page-portal-challenges-php .comp-lead-modern-wrap {
+        position: relative;
+    }
+
+    body.page-template-page-portal-challenges-php .intro-coach-fab-host {
+        position: absolute;
+        right: -10px;
+        top: -18px;
+        width: 84px;
+        height: 84px;
+        z-index: 5;
+        pointer-events: none;
+    }
+
+    body.page-template-page-portal-challenges-php .intro-coach-fab-host .ihq-concierge-fab {
+        position: absolute !important;
+        right: 0;
+        top: 0;
+        bottom: auto !important;
+        left: auto !important;
+        width: 84px;
+        height: 84px;
+        margin: 0;
+        pointer-events: auto;
+    }
+
+    @media (min-width: 1025px) {
+        body.page-template-page-portal-challenges-php .intro-coach-fab-host {
+            right: -28px;
+            top: -24px;
+            width: 110px;
+            height: 110px;
+        }
+
+        body.page-template-page-portal-challenges-php .intro-coach-fab-host .ihq-concierge-fab {
+            width: 110px;
+            height: 110px;
+        }
     }
 
     body.page-template-page-portal-challenges-php .competition-panel {
@@ -2658,6 +2739,83 @@
     }
 
     /* ── Create Private Challenge (cpc) ── */
+    body.page-template-page-portal-challenges-php .private-desc-row{
+        position:relative;
+        display:flex;
+        align-items:flex-start;
+        gap:12px;
+        margin-bottom:16px;
+        overflow:visible;
+    }
+    body.page-template-page-portal-challenges-php .private-desc-accordion{
+        flex:1;
+        min-width:0;
+        margin:0;
+    }
+    body.page-template-page-portal-challenges-php .private-desc-accordion .accordion-item{
+        margin-bottom:0;
+    }
+    body.page-template-page-portal-challenges-php .private-coach-fab-host{
+        position:relative;
+        flex:0 0 96px;
+        width:96px;
+        height:96px;
+        align-self:flex-start;
+        margin-top:8px;
+    }
+    body.page-template-page-portal-challenges-php .private-coach-fab-host .ihq-concierge-fab{
+        position:absolute !important;
+        right:0;
+        top:0;
+        bottom:auto !important;
+        left:auto !important;
+        width:96px;
+        height:96px;
+        margin:0;
+        z-index:5;
+    }
+    body.page-template-page-portal-challenges-php .private-schedule-cta{
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        width:min(220px, 52vw);
+        height:min(220px, 52vw);
+        margin:8px auto 28px;
+        padding:24px;
+        border:none;
+        border-radius:50%;
+        background:#eecd5d;
+        color:#000;
+        font-family:'Be Vietnam Pro',sans-serif;
+        font-size:clamp(13px, 3.2vw, 16px);
+        font-weight:700;
+        line-height:1.25;
+        text-align:center;
+        text-transform:uppercase;
+        letter-spacing:.02em;
+        cursor:pointer;
+        box-shadow:0 8px 24px rgba(0,0,0,.35);
+    }
+    body.page-template-page-portal-challenges-php .private-schedule-cta:hover{
+        filter:brightness(1.05);
+    }
+    @media (min-width:768px){
+        body.page-template-page-portal-challenges-php .private-coach-fab-host{
+            flex-basis:110px;
+            width:110px;
+            height:110px;
+        }
+        body.page-template-page-portal-challenges-php .private-coach-fab-host .ihq-concierge-fab{
+            width:110px;
+            height:110px;
+        }
+        body.page-template-page-portal-challenges-php .private-schedule-cta{
+            width:200px;
+            height:200px;
+            margin-left:12px;
+            margin-right:auto;
+        }
+    }
     body.page-template-page-portal-challenges-php .cpc-wrap{background:#000;border:1px solid #b8972f;border-radius:5px;padding:20px 18px 24px;margin-top:24px}
     body.page-template-page-portal-challenges-php .portal-leaderboards-iframe-wrap{width:100%;max-width:100%;margin:24px 0 12px}
     body.page-template-page-portal-challenges-php .portal-leaderboards-iframe-wrap iframe{display:block;width:100%;height:600px;border:0;background:#111}
@@ -2708,6 +2866,14 @@
     body.page-template-page-portal-challenges-php .cpc-info-icon{display:inline-flex;align-items:center;cursor:pointer;opacity:.85}
     body.page-template-page-portal-challenges-php .cpc-btn-create{background:#b8972f;border:1px solid #b8972f;border-radius:4px;padding:8px 20px;font-family:'Be Vietnam Pro',sans-serif;font-size:16px;font-weight:600;color:#000;cursor:pointer;transition:opacity .2s}
     body.page-template-page-portal-challenges-php .cpc-btn-create:hover{opacity:.85}
+    body.page-template-page-portal-challenges-php .cpc-instructions-lead{font-family:'Be Vietnam Pro',sans-serif;font-size:16px;color:#fff;line-height:1.45;margin:0 0 12px}
+    body.page-template-page-portal-challenges-php .cpc-instructions-steps{margin:8px 0 0;padding-left:22px;font-family:'Be Vietnam Pro',sans-serif;font-size:16px;color:#fff;line-height:1.5}
+    body.page-template-page-portal-challenges-php .cpc-instructions-steps li{margin:0 0 10px}
+    body.page-template-page-portal-challenges-php .cpc-share-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+    body.page-template-page-portal-challenges-php .cpc-share-row .cpc-input{flex:1;min-width:0;margin-bottom:0}
+    body.page-template-page-portal-challenges-php .cpc-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;border:1px solid rgba(184,151,47,.55);border-radius:4px;background:transparent;cursor:pointer;flex-shrink:0}
+    body.page-template-page-portal-challenges-php .cpc-icon-btn:hover{border-color:#d4af37;background:rgba(184,151,47,.12)}
+    body.page-template-page-portal-challenges-php .cpc-share-help{font-family:'Be Vietnam Pro',sans-serif;font-size:14px;color:rgba(255,255,255,.75);margin:0 0 4px;line-height:1.4}
 
     /* Portal Live Styles */
     body.page-template-page-portal-live-php .live-page-wrap {
