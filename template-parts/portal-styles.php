@@ -2167,6 +2167,7 @@
     body.page-template-page-portal-challenges-php .competition-tabs {
         display: flex;
         justify-content: space-between;
+        align-items: flex-end;
         gap: 8px;
     }
 
@@ -2180,6 +2181,7 @@
         display: flex;
         flex-direction: column;
         align-items: center;
+        justify-content: flex-end;
         gap: 6px;
         font-family: 'Be Vietnam Pro', sans-serif;
         font-size: 14px;
@@ -2198,16 +2200,16 @@
         text-underline-offset: 4px;
     }
 
-    body.page-template-page-portal-challenges-php .competition-tab-icon {
-        width: 28px;
-        height: 28px;
-        object-fit: contain;
-        transition: width 0.2s ease, height 0.2s ease;
-    }
-
+    /* Same slot for every tab so active/glyph padding cannot lift one icon */
+    body.page-template-page-portal-challenges-php .competition-tab-icon,
     body.page-template-page-portal-challenges-php .competition-tab-icon--intro {
-        width: 32px;
-        height: 32px;
+        width: 52px;
+        height: 52px;
+        object-fit: contain;
+        object-position: center;
+        display: block;
+        flex-shrink: 0;
+        transition: width 0.2s ease, height 0.2s ease;
     }
 
     body.page-template-page-portal-challenges-php .competition-types.is-compact .competition-tab-btn {
@@ -2218,8 +2220,8 @@
 
     body.page-template-page-portal-challenges-php .competition-types.is-compact .competition-tab-icon,
     body.page-template-page-portal-challenges-php .competition-types.is-compact .competition-tab-icon--intro {
-        width: 18px;
-        height: 18px;
+        width: 28px;
+        height: 28px;
     }
 
     body.page-template-page-portal-challenges-php .comp-lead-mobile-img {
@@ -2738,58 +2740,69 @@
         margin-top: 4px;
     }
 
-    /* ── Create Private Challenge (cpc) ── */
-    body.page-template-page-portal-challenges-php .private-desc-row{
+    /*
+     * Private panel: schedule CTA + coach are pinned to #private-tab.
+     * Accordions are normal — no circles inside / overlapping copy.
+     */
+    body.page-template-page-portal-challenges-php #private-tab{
         position:relative;
-        display:flex;
-        align-items:flex-start;
-        gap:12px;
-        margin-bottom:16px;
         overflow:visible;
     }
-    body.page-template-page-portal-challenges-php .private-desc-accordion{
-        flex:1;
-        min-width:0;
-        margin:0;
+    body.page-template-page-portal-challenges-php .competition-page-wrap,
+    body.page-template-page-portal-challenges-php .competition-page-content{
+        overflow:visible;
     }
-    body.page-template-page-portal-challenges-php .private-desc-accordion .accordion-item{
+
+    /* Accordion stack inset so side circles sit in the panel gutters */
+    body.page-template-page-portal-challenges-php #private-tab > .accordion{
+        position:relative;
+        z-index:1;
+        margin-left:64px;
+        margin-right:64px;
+    }
+
+    body.page-template-page-portal-challenges-php .private-desc-accordion .accordion-button .question-text,
+    body.page-template-page-portal-challenges-php .private-desc-accordion .accordion-button:not(.collapsed) .question-text{
+        text-align:center;
+    }
+    body.page-template-page-portal-challenges-php .private-desc-copy p,
+    body.page-template-page-portal-challenges-php .private-equity-copy p{
+        margin:0 0 12px;
+        font-style:italic;
+        line-height:1.45;
+        text-align:left;
+    }
+    body.page-template-page-portal-challenges-php .private-equity-copy p{
+        font-style:normal;
+    }
+    body.page-template-page-portal-challenges-php .private-desc-copy p:last-child,
+    body.page-template-page-portal-challenges-php .private-equity-copy p:last-child{
         margin-bottom:0;
     }
-    body.page-template-page-portal-challenges-php .private-coach-fab-host{
-        position:relative;
-        flex:0 0 96px;
-        width:96px;
-        height:96px;
-        align-self:flex-start;
-        margin-top:8px;
+    body.page-template-page-portal-challenges-php .private-copy-gap{
+        margin-top:16px !important;
     }
-    body.page-template-page-portal-challenges-php .private-coach-fab-host .ihq-concierge-fab{
-        position:absolute !important;
-        right:0;
-        top:0;
-        bottom:auto !important;
-        left:auto !important;
-        width:96px;
-        height:96px;
-        margin:0;
-        z-index:5;
-    }
+
     body.page-template-page-portal-challenges-php .private-schedule-cta{
+        position:absolute;
+        z-index:5;
+        left:-25px;
+        top:72px;
         display:flex;
         align-items:center;
         justify-content:center;
-        width:min(220px, 52vw);
-        height:min(220px, 52vw);
-        margin:8px auto 28px;
-        padding:24px;
+        width:120px;
+        height:120px;
+        margin:0;
+        padding:14px;
         border:none;
         border-radius:50%;
         background:#eecd5d;
         color:#000;
         font-family:'Be Vietnam Pro',sans-serif;
-        font-size:clamp(13px, 3.2vw, 16px);
+        font-size:11px;
         font-weight:700;
-        line-height:1.25;
+        line-height:1.15;
         text-align:center;
         text-transform:uppercase;
         letter-spacing:.02em;
@@ -2799,21 +2812,44 @@
     body.page-template-page-portal-challenges-php .private-schedule-cta:hover{
         filter:brightness(1.05);
     }
-    @media (min-width:768px){
-        body.page-template-page-portal-challenges-php .private-coach-fab-host{
-            flex-basis:110px;
-            width:110px;
-            height:110px;
-        }
-        body.page-template-page-portal-challenges-php .private-coach-fab-host .ihq-concierge-fab{
-            width:110px;
-            height:110px;
+    body.page-template-page-portal-challenges-php .private-coach-fab-host{
+        position:absolute;
+        z-index:5;
+        right:-20px;
+        top:72px;
+        width:120px;
+        height:120px;
+        margin:0;
+        pointer-events:none;
+    }
+    body.page-template-page-portal-challenges-php .private-coach-fab-host .ihq-concierge-fab{
+        position:absolute !important;
+        inset:0;
+        width:100% !important;
+        height:100% !important;
+        margin:0;
+        pointer-events:auto;
+        box-shadow:none;
+    }
+
+    @media (min-width:1025px){
+        body.page-template-page-portal-challenges-php #private-tab > .accordion{
+            margin-left:80px;
+            margin-right:80px;
         }
         body.page-template-page-portal-challenges-php .private-schedule-cta{
-            width:200px;
-            height:200px;
-            margin-left:12px;
-            margin-right:auto;
+            left:-25px;
+            top:100px;
+            width:120px;
+            height:120px;
+            font-size:11px;
+            padding:14px;
+        }
+        body.page-template-page-portal-challenges-php .private-coach-fab-host{
+            right:-20px;
+            top:100px;
+            width:120px;
+            height:120px;
         }
     }
     body.page-template-page-portal-challenges-php .cpc-wrap{background:#000;border:1px solid #b8972f;border-radius:5px;padding:20px 18px 24px;margin-top:24px}

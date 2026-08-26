@@ -639,40 +639,51 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
 
                 <!-- Private Tab -->
                 <div class="competition-panel" id="private-tab">
-                    <div class="private-desc-row">
-                        <div class="accordion custom-accordion private-desc-accordion" id="privateDescAccordion">
-                            <div class="accordion-item mb-3" id="private-full-description">
-                                <h2 class="accordion-header" id="headingPrivateFullDesc">
-                                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePrivateFullDesc" aria-expanded="true" aria-controls="collapsePrivateFullDesc">
-                                        <span class="question-text"><?php esc_html_e( 'Full Description of Private Challenges', 'influencer-hq' ); ?></span>
-                                    </button>
-                                </h2>
-                                <div id="collapsePrivateFullDesc" class="accordion-collapse collapse show" aria-labelledby="headingPrivateFullDesc" data-bs-parent="#privateDescAccordion">
-                                    <div class="accordion-body">
-                                        <p><?php esc_html_e( 'A Private Challenge is a head-to-head competition between two verified influencers who already have a personal relationship OR two groups competing against each other. We believe leadership is personal. In a Private Challenge, there is no crowd to hide behind. Every contest is a vote for your leadership. Not with words – but with action. Not over weeks – but in a single 24-hour test. This format is designed to showcase authentic rivalry, chemistry, and competitive storytelling.', 'influencer-hq' ); ?></p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="private-coach-fab-host" id="private-coach-fab-host" aria-hidden="true"></div>
-                    </div>
-
+                    <!-- Circles belong to the panel, not the accordion -->
                     <button type="button" class="private-schedule-cta" id="private-schedule-cta">
                         <?php esc_html_e( 'CLICK HERE TO SCHEDULE PRIVATE CHALLENGE', 'influencer-hq' ); ?>
                     </button>
+                    <div class="private-coach-fab-host" id="private-coach-fab-host" aria-hidden="true"></div>
+
+                    <div class="accordion custom-accordion private-desc-accordion" id="privateDescAccordion">
+                        <div class="accordion-item mb-3" id="private-full-description">
+                            <h2 class="accordion-header" id="headingPrivateFullDesc">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePrivateFullDesc" aria-expanded="true" aria-controls="collapsePrivateFullDesc">
+                                    <span class="question-text"><?php esc_html_e( 'Full Description of Private Challenges', 'influencer-hq' ); ?></span>
+                                </button>
+                            </h2>
+                            <div id="collapsePrivateFullDesc" class="accordion-collapse collapse show" aria-labelledby="headingPrivateFullDesc" data-bs-parent="#privateDescAccordion">
+                                <div class="accordion-body private-desc-copy">
+                                    <p><?php esc_html_e( 'A Private Challenge is a head-to-head competition between two verified Influencers who already have a personal relationship OR two groups competing against each other.', 'influencer-hq' ); ?></p>
+                                    <p><?php esc_html_e( 'We believe leadership is personal.', 'influencer-hq' ); ?></p>
+                                    <p><?php esc_html_e( 'In a Private Challenge, there is no crowd to hide behind.', 'influencer-hq' ); ?></p>
+                                    <p><?php esc_html_e( 'Every contest is a vote for your leadership.', 'influencer-hq' ); ?></p>
+                                    <p><?php esc_html_e( 'Not with words —', 'influencer-hq' ); ?></p>
+                                    <p><?php esc_html_e( 'but with action.', 'influencer-hq' ); ?></p>
+                                    <p><?php esc_html_e( 'Not over weeks —', 'influencer-hq' ); ?></p>
+                                    <p><?php esc_html_e( 'but in a single 24-hour test.', 'influencer-hq' ); ?></p>
+                                    <p><?php esc_html_e( 'This format is designed to showcase authentic rivalry, chemistry, and competitive storytelling.', 'influencer-hq' ); ?></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="accordion custom-accordion" id="privateAccordion">
                         <div class="accordion-item mb-3">
                             <h2 class="accordion-header" id="headingPrivateEquity">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePrivateEquity" aria-expanded="false" aria-controls="collapsePrivateEquity">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePrivateEquity" aria-expanded="true" aria-controls="collapsePrivateEquity">
                                     <span class="question-text"><?php esc_html_e( 'Why Competition = Equity', 'influencer-hq' ); ?></span>
                                 </button>
                             </h2>
-                            <div id="collapsePrivateEquity" class="accordion-collapse collapse" aria-labelledby="headingPrivateEquity" data-bs-parent="#privateAccordion">
-                                <div class="accordion-body">
-                                    <p><?php esc_html_e( 'We believe competition creates fun. Fun creates the desire to keep playing. And every moment of play creates equity.', 'influencer-hq' ); ?></p>
-                                    <p><?php esc_html_e( 'If you can lead — you can own. If you can build momentum — you deserve to share in what you\'ve built.', 'influencer-hq' ); ?></p>
-                                    <p><?php esc_html_e( 'That\'s why Competition = Equity. And that\'s why we built this platform for you.', 'influencer-hq' ); ?></p>
+                            <div id="collapsePrivateEquity" class="accordion-collapse collapse show" aria-labelledby="headingPrivateEquity" data-bs-parent="#privateAccordion">
+                                <div class="accordion-body private-equity-copy">
+                                    <p><?php esc_html_e( 'We believe competition creates fun.', 'influencer-hq' ); ?></p>
+                                    <p><?php esc_html_e( 'Fun creates the desire to keep playing.', 'influencer-hq' ); ?></p>
+                                    <p><?php esc_html_e( 'And every moment of play creates equity.', 'influencer-hq' ); ?></p>
+                                    <p class="private-copy-gap"><?php esc_html_e( 'If you can lead — you can own.', 'influencer-hq' ); ?></p>
+                                    <p><?php esc_html_e( 'If you can build momentum — you deserve to share in what you\'ve built.', 'influencer-hq' ); ?></p>
+                                    <p class="private-copy-gap"><?php esc_html_e( 'That\'s why Competition = Equity.', 'influencer-hq' ); ?></p>
+                                    <p><?php esc_html_e( 'And that\'s why we built this platform for you.', 'influencer-hq' ); ?></p>
                                 </div>
                             </div>
                         </div>
@@ -1647,8 +1658,22 @@ document.addEventListener('DOMContentLoaded', function() {
             topOffset = Math.max(0, Math.round(navRect.bottom));
         }
         document.documentElement.style.setProperty('--portal-comp-tabs-top', topOffset + 'px');
+
+        /*
+         * Hysteresis: entering compact shrinks padding/icons, which bumps
+         * getBoundingClientRect().top and would otherwise flip the class
+         * every scroll frame. Enter tight, exit loose.
+         */
+        var COMPACT_ENTER_PX = 2;
+        var COMPACT_EXIT_PX = 28;
         var tabsTop = tabs.getBoundingClientRect().top;
-        var stuck = tabsTop <= (topOffset + 2);
+        var isCompact = tabs.classList.contains('is-compact');
+        var stuck;
+        if (isCompact) {
+            stuck = tabsTop <= (topOffset + COMPACT_EXIT_PX);
+        } else {
+            stuck = tabsTop <= (topOffset + COMPACT_ENTER_PX);
+        }
         tabs.classList.toggle('is-compact', stuck);
     }
 
