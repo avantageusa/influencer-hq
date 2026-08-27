@@ -1,0 +1,7 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Belief Coin">
+<circle id="Coin" cx="60" cy="60" r="46" stroke="#fdd65b" stroke-width="10"/>
+<path id="Dollar" d="M60 38V82M50 74C50 79 54.5 82 60 82C67 82 72 78 72 72C72 62 50 66 50 55C50 49 55 46 60 46C65 46 69 48 70 52" stroke="#fdd65b" stroke-width="6" stroke-linecap="round"/>
+<line id="Strike" x1="20" y1="100" x2="100" y2="20" stroke="#fdd65b" stroke-width="10"/>
+</g>
+</svg>

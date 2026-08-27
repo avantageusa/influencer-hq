@@ -19,11 +19,13 @@ $aicoach_sami_cfg = array(
 );
 
 $aicoach_img = array(
-	'portrait' => $theme_uri . '/images/aicoach/coach-portrait.png',
-	'bts'      => $theme_uri . '/images/aicoach/bts.jpg',
-	'magic'    => $theme_uri . '/images/aicoach/magic-johnson.png',
-	'check'    => $theme_uri . '/images/aicoach/icon-check.svg',
-	'x'        => $theme_uri . '/images/aicoach/icon-x.svg',
+	'portrait'     => $theme_uri . '/images/aicoach/coach-portrait.png',
+	'bts'          => $theme_uri . '/images/aicoach/bts.jpg',
+	'magic'        => $theme_uri . '/images/aicoach/magic-johnson.png',
+	'check'        => $theme_uri . '/images/aicoach/icon-check.svg',
+	'x'            => $theme_uri . '/images/aicoach/icon-x.svg',
+	'belief-coin'  => $theme_uri . '/images/aicoach/icon-belief-coin.svg',
+	'belief-chart' => $theme_uri . '/images/aicoach/icon-belief-chart.svg',
 );
 
 $aicoach_tiers = array(
@@ -88,7 +90,23 @@ $aicoach_tiers = array(
                 <div class="aicoach-stage" id="aicoach-stage">
 
                     <div class="aicoach-panel is-active" data-panel="intro" aria-hidden="false">
-                        <p class="aicoach-caption" id="aicoach-caption" aria-live="polite"></p>
+                        <p class="aicoach-caption" data-caption-for="intro" aria-live="polite"></p>
+                    </div>
+
+                    <div class="aicoach-panel" data-panel="believe-1" aria-hidden="true">
+                        <div class="aicoach-believe">
+                            <img class="aicoach-believe-icon" src="<?php echo esc_url( $aicoach_img['belief-coin'] ); ?>" alt="" width="72" height="72" aria-hidden="true">
+                            <span class="aicoach-believe-kicker"><?php esc_html_e( 'We Believe', 'influencer-hq' ); ?></span>
+                            <p class="aicoach-caption" data-caption-for="believe-1" aria-live="polite"></p>
+                        </div>
+                    </div>
+
+                    <div class="aicoach-panel" data-panel="believe-2" aria-hidden="true">
+                        <div class="aicoach-believe">
+                            <img class="aicoach-believe-icon" src="<?php echo esc_url( $aicoach_img['belief-chart'] ); ?>" alt="" width="72" height="72" aria-hidden="true">
+                            <span class="aicoach-believe-kicker"><?php esc_html_e( 'We Believe', 'influencer-hq' ); ?></span>
+                            <p class="aicoach-caption" data-caption-for="believe-2" aria-live="polite"></p>
+                        </div>
                     </div>
 
                     <div class="aicoach-panel" data-panel="home" aria-hidden="true">
@@ -320,6 +338,29 @@ $aicoach_tiers = array(
         line-height: 1.5;
         text-align: center;
         color: #fff;
+    }
+
+    .aicoach-believe {
+        max-width: 560px;
+        margin: 0 auto;
+        text-align: center;
+    }
+
+    .aicoach-believe-icon {
+        display: block;
+        margin: 0 auto 20px;
+        width: 72px;
+        height: 72px;
+    }
+
+    .aicoach-believe-kicker {
+        display: block;
+        margin: 0 0 16px;
+        font-weight: 800;
+        font-size: clamp(1.3rem, 4vw, 1.75rem);
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #fdd65b;
     }
 
     .aicoach-stage {
@@ -565,21 +606,36 @@ $aicoach_tiers = array(
 import { createClient, AnamEvent } from 'https://cdn.jsdelivr.net/npm/@anam-ai/js-sdk@4/+esm';
 
 /*
- * FR-01 — coach intro plays automatically on arrival, speaking the approved
- * script verbatim via Sami's existing Anam avatar (same session-token proxy
- * page-portal-poc.php already uses), with on-screen captions built from the
- * SDK's own MESSAGE_STREAM_EVENT_RECEIVED content stream (Anam's documented
- * captioning pattern — append role="persona" chunks in arrival order). On
- * finishing, the page auto-advances into the existing tier-selection panel;
- * behavior is identical regardless of which tier is picked afterward, since
- * no tier is chosen yet at this point. Unlike page-portal-poc.php this is
- * NOT tap-to-start — the AC requires the video to begin on load.
+ * FR-01 + FR-02 — on arrival, the coach speaks a fixed sequence of screens
+ * (intro, then two "We Believe" screens) verbatim via Sami's existing Anam
+ * avatar (same session-token proxy page-portal-poc.php already uses), with
+ * on-screen captions built from the SDK's own MESSAGE_STREAM_EVENT_RECEIVED
+ * content stream (Anam's documented captioning pattern — append
+ * role="persona" chunks in arrival order). Each screen advances to the next
+ * when its line finishes, or immediately on a visitor tap/click (FR-02's
+ * "narration timing or visitor tap/click"); after the last screen the page
+ * hands off to the existing tier-selection panel. Unlike page-portal-poc.php
+ * this is NOT tap-to-start — the AC requires the video to begin on load.
  */
 const FADE_MS = 400;
-const INTRO_ADVANCE_DELAY_MS = 1200; // natural pause after she finishes before the panel swaps
-const FALLBACK_READ_MS = 9000;       // dwell time for the static-text fallback (no speech to sync against)
+const SCREEN_ADVANCE_DELAY_MS = 1200; // natural pause after a line finishes before the panel swaps
+const FALLBACK_READ_MS = 9000;        // per-screen dwell for the static-text fallback (no speech to sync against)
 const AVATAR_VIDEO_ID = 'aicoach-avatar-video';
-const INTRO_SCRIPT = "Hello. I'm Sami. Your Executive Coach. Welcome to InfluencerHQ. My job is to help you understand one simple idea. We believe influencers who help build our company should have the opportunity to earn meaningful equity. Over the next few minutes, I'll show you why we believe that… how successful people have benefited from ownership… and how InfluencerHQ can help you begin your own journey. You don't need to remember everything today. I'll always be here to answer your questions… continue exactly where we leave off… or meet with you whenever you'd like. Let's begin.";
+
+const SCREENS = [
+    {
+        panel: 'intro',
+        script: "Hello. I'm Sami. Your Executive Coach. Welcome to InfluencerHQ. My job is to help you understand one simple idea. We believe influencers who help build our company should have the opportunity to earn meaningful equity. Over the next few minutes, I'll show you why we believe that… how successful people have benefited from ownership… and how InfluencerHQ can help you begin your own journey. You don't need to remember everything today. I'll always be here to answer your questions… continue exactly where we leave off… or meet with you whenever you'd like. Let's begin.",
+    },
+    {
+        panel: 'believe-1',
+        script: "Every successful company begins with a set of beliefs. Here's one of ours. We believe influence is about more than creating content. It's about creating lasting value. Most influencers are rewarded for what they do today. We believe influencers who help build tomorrow should also have the opportunity to benefit from what they help create. That's why meaningful equity is at the heart of InfluencerHQ. Let me show you what I mean.",
+    },
+    {
+        panel: 'believe-2',
+        script: "There's another belief that's just as important. We believe the people who help create value should have the opportunity to share in that value. Not someday… From the very beginning. That's very different from the traditional way most influencers are rewarded. When meaningful ownership is available, it can become worth far more than a one-time payment. This isn't just our opinion. Let me show you a few real examples.",
+    },
+];
 
 const cfg = window.AICOACH_SAMI || {};
 const SESSION_TOKEN_URL = cfg.restBase + '/session-token';
@@ -589,8 +645,11 @@ const stage = document.getElementById('aicoach-stage');
 const avatarWrap = document.getElementById('aicoach-avatar-wrap');
 const video = document.getElementById('aicoach-avatar-video');
 const portrait = document.getElementById('aicoach-portrait');
-const caption = document.getElementById('aicoach-caption');
 const unmuteBtn = document.getElementById('aicoach-unmute');
+
+function getCaptionEl( panelKey ) {
+    return stage.querySelector( '.aicoach-panel[data-panel="' + panelKey + '"] .aicoach-caption' );
+}
 
 if ( stage && avatarWrap ) {
     const tiers = stage.querySelectorAll( '.aicoach-tier' );
@@ -653,12 +712,15 @@ if ( stage && avatarWrap ) {
 
     const sleep = ( ms ) => new Promise( ( resolve ) => window.setTimeout( resolve, ms ) );
 
-    let introFinished = false;
-    function finishIntro() {
-        if ( introFinished ) {
+    let sequenceIndex = 0;
+    let sequenceFinished = false;
+    let skipCurrent = null; // set while a screen's line is in flight; a tap calls this to advance early
+
+    function finishSequence() {
+        if ( sequenceFinished ) {
             return;
         }
-        introFinished = true;
+        sequenceFinished = true;
         showPanel( 'home' );
     }
 
@@ -678,29 +740,40 @@ if ( stage && avatarWrap ) {
         }
     }() );
 
-    // Text has nothing to sync against here, so it's shown in full and paced by
-    // an estimated reading dwell rather than word-by-word reveal.
-    function runFallback() {
+    // Text has nothing to sync against here, so each screen is shown in full
+    // and paced by an estimated reading dwell rather than word-by-word reveal.
+    // Resumes from sequenceIndex, so a mid-sequence connection drop picks up
+    // wherever the live playback left off instead of restarting from the intro.
+    async function runFallback() {
         avatarWrap.dataset.status = 'idle';
-        if ( caption ) {
-            caption.textContent = INTRO_SCRIPT;
+        for ( ; sequenceIndex < SCREENS.length; sequenceIndex++ ) {
+            const screen = SCREENS[ sequenceIndex ];
+            showPanel( screen.panel );
+            const captionEl = getCaptionEl( screen.panel );
+            if ( captionEl ) {
+                captionEl.textContent = screen.script;
+            }
+            await sleep( FALLBACK_READ_MS );
         }
-        sleep( FALLBACK_READ_MS ).then( finishIntro );
+        finishSequence();
     }
 
-    async function runIntro( client ) {
-        if ( caption ) {
-            caption.textContent = '';
+    // Speaks one screen's line and resolves on endOfSpeech (or an early tap-to-advance).
+    function speakScreen( client, screen ) {
+        const captionEl = getCaptionEl( screen.panel );
+        if ( captionEl ) {
+            captionEl.textContent = '';
         }
 
         let activeUtteranceId = null;
-        await new Promise( ( resolve ) => {
+        return new Promise( ( resolve ) => {
             let settled = false;
             const finish = () => {
                 if ( settled ) {
                     return;
                 }
                 settled = true;
+                skipCurrent = null;
                 client.removeListener( AnamEvent.MESSAGE_STREAM_EVENT_RECEIVED, onEvent );
                 resolve();
             };
@@ -718,21 +791,51 @@ if ( stage && avatarWrap ) {
                 if ( evt.utteranceId !== activeUtteranceId ) {
                     return;
                 }
-                if ( evt.content && caption ) {
-                    caption.textContent += evt.content;
+                if ( evt.content && captionEl ) {
+                    captionEl.textContent += evt.content;
                 }
                 if ( evt.endOfSpeech ) {
                     finish();
                 }
             }
 
+            skipCurrent = finish;
             client.addListener( AnamEvent.MESSAGE_STREAM_EVENT_RECEIVED, onEvent );
-            client.talk( INTRO_SCRIPT ).catch( finish );
+            client.talk( screen.script ).catch( finish );
         } );
-
-        await sleep( INTRO_ADVANCE_DELAY_MS );
-        finishIntro();
     }
+
+    async function runSequence( client ) {
+        for ( ; sequenceIndex < SCREENS.length; sequenceIndex++ ) {
+            const screen = SCREENS[ sequenceIndex ];
+            showPanel( screen.panel );
+            await speakScreen( client, screen );
+            if ( sequenceFinished ) {
+                return; // the fallback path already took over mid-sequence
+            }
+            await sleep( SCREEN_ADVANCE_DELAY_MS );
+        }
+        finishSequence();
+    }
+
+    // Tap/click to skip ahead — FR-02's "narration timing or visitor tap/click".
+    // Only applies to the We Believe screens (not the FR-01 intro), and never
+    // hijacks clicks on the tier-selection controls once the sequence is done.
+    stage.addEventListener( 'click', function ( event ) {
+        if ( isAnimating ) {
+            return; // avoid desyncing the caption/panel if tapped mid-fade
+        }
+        const current = SCREENS[ sequenceIndex ];
+        if ( ! current || current.panel === 'intro' ) {
+            return;
+        }
+        if ( event.target.closest( '.aicoach-tier' ) ) {
+            return;
+        }
+        if ( skipCurrent ) {
+            skipCurrent();
+        }
+    } );
 
     unmuteBtn?.addEventListener( 'click', function () {
         video.muted = ! video.muted;
@@ -755,14 +858,14 @@ if ( stage && avatarWrap ) {
 
             client.addListener( AnamEvent.VIDEO_PLAY_STARTED, function () {
                 avatarWrap.dataset.status = 'live';
-                runIntro( client );
+                runSequence( client );
             } );
             client.addListener( AnamEvent.CONNECTION_CLOSED, function ( event ) {
-                if ( handledClose || introFinished ) {
+                if ( handledClose || sequenceFinished ) {
                     return;
                 }
                 handledClose = true;
-                console.warn( '[aicoach] Sami CONNECTION_CLOSED before intro finished', event );
+                console.warn( '[aicoach] Sami CONNECTION_CLOSED before sequence finished', event );
                 runFallback();
             } );
 

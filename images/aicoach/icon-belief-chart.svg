@@ -1,0 +1,6 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Belief Chart">
+<polyline id="Trend" points="14,96 42,66 64,80 106,24" stroke="#fdd65b" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline id="Arrowhead" points="80,24 106,24 106,50" stroke="#fdd65b" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</svg>
