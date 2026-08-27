@@ -219,22 +219,16 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                 </div>
 
                 <div class="competition-top-accordion">
-                    <div class="accordion custom-accordion" id="competitionIntroAccordion">
-                        <div class="accordion-item mb-3">
-                            <h2 class="accordion-header" id="headingCompetitionEquity">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCompetitionEquity" aria-expanded="false" aria-controls="collapseCompetitionEquity">
-                                    <span class="question-text">Why Competition = Equity</span>
-                                </button>
-                            </h2>
-                            <div id="collapseCompetitionEquity" class="accordion-collapse collapse" aria-labelledby="headingCompetitionEquity" data-bs-parent="#competitionIntroAccordion">
-                                <div class="accordion-body">
-                                    <p>We believe competition creates fun. Fun creates the desire to keep playing. And every moment of play creates equity.</p>
-                                    <p>If you can lead - you can own. If you can build momentum - you deserve to share in what you have built.</p>
-                                    <p>That is why Competition = Equity. And that is why we built this platform for you.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <?php
+                    get_template_part(
+                        'template-parts/competition-why-equity',
+                        null,
+                        array(
+                            'instance_id' => 'intro',
+                            'expanded'    => false,
+                        )
+                    );
+                    ?>
                 </div>
                 </div><!-- /#intro-tab -->
 
@@ -248,6 +242,17 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                         <p>This is global visibility. Global comparison. Global recognition.</p>
                         <p>When the clock closes, the standings speak for themselves.</p>
                     </div>
+
+                    <?php
+                    get_template_part(
+                        'template-parts/competition-why-equity',
+                        null,
+                        array(
+                            'instance_id' => 'world',
+                            'expanded'    => true,
+                        )
+                    );
+                    ?>
 
                     <h2 class="competition-section-title">World</h2>
 
@@ -669,24 +674,17 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                     </div>
 
                     <div class="accordion custom-accordion" id="privateAccordion">
-                        <div class="accordion-item mb-3">
-                            <h2 class="accordion-header" id="headingPrivateEquity">
-                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePrivateEquity" aria-expanded="true" aria-controls="collapsePrivateEquity">
-                                    <span class="question-text"><?php esc_html_e( 'Why Competition = Equity', 'influencer-hq' ); ?></span>
-                                </button>
-                            </h2>
-                            <div id="collapsePrivateEquity" class="accordion-collapse collapse show" aria-labelledby="headingPrivateEquity" data-bs-parent="#privateAccordion">
-                                <div class="accordion-body private-equity-copy">
-                                    <p><?php esc_html_e( 'We believe competition creates fun.', 'influencer-hq' ); ?></p>
-                                    <p><?php esc_html_e( 'Fun creates the desire to keep playing.', 'influencer-hq' ); ?></p>
-                                    <p><?php esc_html_e( 'And every moment of play creates equity.', 'influencer-hq' ); ?></p>
-                                    <p class="private-copy-gap"><?php esc_html_e( 'If you can lead — you can own.', 'influencer-hq' ); ?></p>
-                                    <p><?php esc_html_e( 'If you can build momentum — you deserve to share in what you\'ve built.', 'influencer-hq' ); ?></p>
-                                    <p class="private-copy-gap"><?php esc_html_e( 'That\'s why Competition = Equity.', 'influencer-hq' ); ?></p>
-                                    <p><?php esc_html_e( 'And that\'s why we built this platform for you.', 'influencer-hq' ); ?></p>
-                                </div>
-                            </div>
-                        </div>
+                        <?php
+                        get_template_part(
+                            'template-parts/competition-why-equity',
+                            null,
+                            array(
+                                'instance_id' => 'private',
+                                'expanded'    => true,
+                                'parent_id'   => 'privateAccordion',
+                            )
+                        );
+                        ?>
                         <div class="accordion-item mb-3">
                             <h2 class="accordion-header" id="headingPrivatePerf">
                                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePrivatePerf" aria-expanded="false" aria-controls="collapsePrivatePerf">
@@ -1012,85 +1010,130 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
 
                 <!-- Community Tab -->
                 <div class="competition-panel" id="community-tab">
-                    <div class="competition-card">
-                        <p>We believe leadership begins at home.</p>
-                        <p>This is your chance to activate the people who already believe in you.</p>
-                        <p>Not to watch - but to participate. Every action becomes momentum.</p>
-                        <p>Not through posts. Not through promises. Through performance.</p>
-                        <p>A community that plays together rises together.</p>
+                    <div class="community-intro-row">
+                        <div class="community-intro-card">
+                            <p><?php esc_html_e( 'Community Competitions last weekly from Sunday to Saturday, and automatically includes all play of your followers, who are competing against each other for bragging rights.', 'influencer-hq' ); ?></p>
+                            <p><?php esc_html_e( 'All of your followers\' play will automatically be included in the results of each week\'s competition.', 'influencer-hq' ); ?></p>
+                            <p><?php esc_html_e( 'We believe leadership begins at home.', 'influencer-hq' ); ?></p>
+                            <p><?php esc_html_e( 'This is your chance to motivate the people who already believe in you.', 'influencer-hq' ); ?></p>
+                            <p><?php esc_html_e( 'Not to watch —', 'influencer-hq' ); ?></p>
+                            <p><?php esc_html_e( 'but to participate.', 'influencer-hq' ); ?></p>
+                            <p><?php esc_html_e( 'Every action becomes momentum.', 'influencer-hq' ); ?></p>
+                            <p><?php esc_html_e( 'Not through posts.', 'influencer-hq' ); ?></p>
+                            <p><?php esc_html_e( 'Not through promises.', 'influencer-hq' ); ?></p>
+                            <p><?php esc_html_e( 'Through performance.', 'influencer-hq' ); ?></p>
+                            <p><?php esc_html_e( 'We believe Community Competitions build follower loyalty.', 'influencer-hq' ); ?></p>
+                            <p>
+                                <a class="community-live-link" href="<?php echo esc_url( home_url( '/portal/live#live-request' ) ); ?>">
+                                    <?php esc_html_e( 'CLICK HERE to schedule Live Appearances on the World Network.', 'influencer-hq' ); ?>
+                                </a>
+                            </p>
+                        </div>
+                        <div class="community-coach-fab-host" id="community-coach-fab-host" aria-hidden="true"></div>
                     </div>
 
-                    <h2 class="competition-section-title" id="community-results">Community Competitions</h2>
+                    <?php
+                    get_template_part(
+                        'template-parts/competition-why-equity',
+                        null,
+                        array(
+                            'instance_id' => 'community',
+                            'expanded'    => true,
+                        )
+                    );
+                    ?>
+
+                    <h2 class="competition-section-title" id="community-results"><?php esc_html_e( 'Community Competitions', 'influencer-hq' ); ?></h2>
 
                     <span id="community-influencer" class="hm-scroll-anchor" aria-hidden="true"></span>
                     <span id="community-follower" class="hm-scroll-anchor" aria-hidden="true"></span>
 
                     <div class="competition-block">
-                        <div class="competition-block-title">Community Competition</div>
+                        <div class="competition-block-title"><?php esc_html_e( 'Community Competition', 'influencer-hq' ); ?></div>
                         <div class="accordion custom-accordion" id="communityAccordion">
                             <div class="accordion-item mb-3">
                                 <h2 class="accordion-header" id="headingCommunityWhat">
                                     <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCommunityWhat" aria-expanded="true" aria-controls="collapseCommunityWhat">
-                                        <span class="question-text">What is Community Competition?</span>
+                                        <span class="question-text"><?php esc_html_e( 'What is Community Competition?', 'influencer-hq' ); ?></span>
                                     </button>
                                 </h2>
                                 <div id="collapseCommunityWhat" class="accordion-collapse collapse show" aria-labelledby="headingCommunityWhat" data-bs-parent="#communityAccordion">
                                     <div class="accordion-body">
-                                        <p>Community Competition measures how effectively an Influencer activates their own followers.</p>
-                                        <p>It focuses on participation and shared performance.</p>
+                                        <p><?php esc_html_e( 'Community Competition measures how effectively an Influencer activates their own followers.', 'influencer-hq' ); ?></p>
+                                        <p><?php esc_html_e( 'It focuses on participation and shared performance.', 'influencer-hq' ); ?></p>
                                     </div>
                                 </div>
                             </div>
                             <div class="accordion-item mb-3">
                                 <h2 class="accordion-header" id="headingCommunityPerf">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCommunityPerf" aria-expanded="false" aria-controls="collapseCommunityPerf">
-                                        <span class="question-text">How is performance calculated?</span>
+                                        <span class="question-text"><?php esc_html_e( 'How is performance calculated?', 'influencer-hq' ); ?></span>
                                     </button>
                                 </h2>
                                 <div id="collapseCommunityPerf" class="accordion-collapse collapse" aria-labelledby="headingCommunityPerf" data-bs-parent="#communityAccordion">
                                     <div class="accordion-body">
-                                        <p>Net Gain / Total Amount Played = Performance Percent.</p>
+                                        <p><?php esc_html_e( 'Net Gain / Total Amount Played = Performance Percent.', 'influencer-hq' ); ?></p>
                                     </div>
                                 </div>
                             </div>
                             <div class="accordion-item mb-3">
                                 <h2 class="accordion-header" id="headingCommunityPoints">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCommunityPoints" aria-expanded="false" aria-controls="collapseCommunityPoints">
-                                        <span class="question-text">How are points and medals awarded?</span>
+                                        <span class="question-text"><?php esc_html_e( 'How are points and medals awarded?', 'influencer-hq' ); ?></span>
                                     </button>
                                 </h2>
                                 <div id="collapseCommunityPoints" class="accordion-collapse collapse" aria-labelledby="headingCommunityPoints" data-bs-parent="#communityAccordion">
                                     <div class="accordion-body">
-                                        <p>Points are awarded using the same percentile system described above.</p>
-                                        <p>Quarterly medal tiers are identical.</p>
-                                        <p>Community results contribute to Team totals.</p>
+                                        <p><?php esc_html_e( 'Points are awarded using the same percentile system described above.', 'influencer-hq' ); ?></p>
+                                        <p><?php esc_html_e( 'Quarterly medal tiers are identical.', 'influencer-hq' ); ?></p>
+                                        <p><?php esc_html_e( 'Community results contribute to Team totals.', 'influencer-hq' ); ?></p>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="competition-rule-block" id="community-leaderboards">
-                        <div class="competition-rule-header">Scoring System</div>
-                        <p class="competition-rule-note">Points are awarded at the end of each contest. Medals are awarded based on total points at the end of each quarter.</p>
-                        <div class="competition-rule-grid">
-                            <div>
-                                <div class="competition-rule-title">Finish</div>
-                                <div class="competition-rule-list">Top 10%<br>11%-20%<br>21%-30%<br>31%-40%<br>41%-50%</div>
-                            </div>
-                            <div>
-                                <div class="competition-rule-title">Points</div>
-                                <div class="competition-rule-list">5<br>4<br>3<br>2<br>1</div>
-                            </div>
-                            <div>
-                                <div class="competition-rule-title">Total Points</div>
-                                <div class="competition-rule-list">Top 10%<br>11%-20%<br>21%-30%<br>31%-40%</div>
-                            </div>
-                            <div>
-                                <div class="competition-rule-title">Medals</div>
-                                <div class="competition-rule-list">Diamond<br>Gold<br>Silver<br>Bronze</div>
+                    <div class="accordion custom-accordion competition-scoring-accordion" id="communityScoringAccordion">
+                        <div class="accordion-item mb-3">
+                            <h2 class="accordion-header" id="headingCommunityScoring">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCommunityScoring" aria-expanded="true" aria-controls="collapseCommunityScoring">
+                                    <span class="question-text"><?php esc_html_e( 'SCORING SYSTEM', 'influencer-hq' ); ?></span>
+                                </button>
+                            </h2>
+                            <div id="collapseCommunityScoring" class="accordion-collapse collapse show" aria-labelledby="headingCommunityScoring" data-bs-parent="#communityScoringAccordion">
+                                <div class="accordion-body">
+                                    <p class="competition-rule-note"><?php esc_html_e( 'Points are awarded at the end of each contest. Medals are awarded based on total points at the end of each quarter.', 'influencer-hq' ); ?></p>
+                                    <div class="competition-rule-grid">
+                                        <div>
+                                            <div class="competition-rule-title"><?php esc_html_e( 'Finish', 'influencer-hq' ); ?></div>
+                                            <div class="competition-rule-list">Top 10%<br>11%-20%<br>21%-30%<br>31%-40%<br>41%-50%</div>
+                                        </div>
+                                        <div>
+                                            <div class="competition-rule-title"><?php esc_html_e( 'Points', 'influencer-hq' ); ?></div>
+                                            <div class="competition-rule-list">5<br>4<br>3<br>2<br>1</div>
+                                        </div>
+                                        <div>
+                                            <div class="competition-rule-title"><?php esc_html_e( 'Total Points', 'influencer-hq' ); ?></div>
+                                            <div class="competition-rule-list">Top 10%<br>11%-20%<br>21%-30%<br>31%-40%</div>
+                                        </div>
+                                        <div>
+                                            <div class="competition-rule-title"><?php esc_html_e( 'Medals', 'influencer-hq' ); ?></div>
+                                            <div class="competition-rule-list">Diamond<br>Gold<br>Silver<br>Bronze</div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="portal-leaderboards-iframe-wrap" id="community-leaderboards">
+                        <iframe
+                            title="<?php echo esc_attr__( 'Influencer / Follower Competition Results', 'influencer-hq' ); ?>"
+                            src="<?php echo esc_url( $portal_leaderboards_iframe_url ); ?>"
+                            loading="lazy"
+                            referrerpolicy="strict-origin-when-cross-origin"
+                            allowfullscreen
+                        ></iframe>
                     </div>
                 </div>
 
@@ -1102,6 +1145,17 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                         <p>Leagues turn influence into legacy. Where your stream represents something bigger than yourself - and everyone knows what you stand for.</p>
                         <p>That is why we built Leagues. To give your followers a team. And give your team a reason to rise.</p>
                     </div>
+
+                    <?php
+                    get_template_part(
+                        'template-parts/competition-why-equity',
+                        null,
+                        array(
+                            'instance_id' => 'leagues',
+                            'expanded'    => true,
+                        )
+                    );
+                    ?>
 
                     <h2 class="competition-section-title" id="leagues-results">Leagues</h2>
 
@@ -1630,6 +1684,8 @@ document.addEventListener('DOMContentLoaded', function() {
             host = getIntroCoachHost();
         } else if (tab === 'private') {
             host = document.getElementById('private-coach-fab-host');
+        } else if (tab === 'community') {
+            host = document.getElementById('community-coach-fab-host');
         }
         if (host) {
             if (fab.parentNode !== host) {
@@ -1642,6 +1698,10 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         if (fab.parentNode && fab.parentNode.id === 'private-coach-fab-host') {
+            document.body.appendChild(fab);
+            return;
+        }
+        if (fab.parentNode && fab.parentNode.id === 'community-coach-fab-host') {
             document.body.appendChild(fab);
         }
     }

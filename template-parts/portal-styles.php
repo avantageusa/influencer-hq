@@ -2295,6 +2295,92 @@
         line-height: 1.4;
     }
 
+    body.page-template-page-portal-challenges-php .community-intro-row{
+        position:relative;
+        overflow:visible;
+        margin-bottom:12px;
+    }
+    /* Same chrome as equity accordion; coach overlays the right edge only */
+    body.page-template-page-portal-challenges-php .community-intro-card{
+        width:100%;
+        margin:0;
+        padding:18px 24px 24px;
+        background:#000000;
+        border:2px solid #b8972f;
+        border-radius:25px;
+        box-shadow:0 8.681px 8.681px 0 rgba(0,0,0,0.25);
+        font-family:'Be Vietnam Pro',sans-serif;
+        color:#ffffff;
+    }
+    body.page-template-page-portal-challenges-php .community-intro-card p{
+        margin:0 0 12px;
+        color:#ffffff;
+        font-family:'Be Vietnam Pro',sans-serif;
+        font-size:16px;
+        font-weight:700;
+        font-style:italic;
+        line-height:1.45;
+    }
+    body.page-template-page-portal-challenges-php .community-intro-card p:last-child{
+        margin-bottom:0;
+    }
+    body.page-template-page-portal-challenges-php .community-live-link{
+        color:#eecd5d;
+        text-decoration:underline;
+        text-underline-offset:3px;
+        font-family:'Be Vietnam Pro',sans-serif;
+        font-size:16px;
+        font-weight:700;
+        font-style:italic;
+    }
+    body.page-template-page-portal-challenges-php .community-live-link:hover{
+        color:#f5d76e;
+    }
+    body.page-template-page-portal-challenges-php .community-coach-fab-host{
+        position:absolute;
+        z-index:5;
+        right:-20px;
+        top:50%;
+        transform:translateY(-50%);
+        width:120px;
+        height:120px;
+        margin:0;
+        pointer-events:none;
+    }
+    body.page-template-page-portal-challenges-php .community-coach-fab-host .ihq-concierge-fab{
+        position:absolute !important;
+        inset:0;
+        width:100% !important;
+        height:100% !important;
+        margin:0;
+        pointer-events:auto;
+        box-shadow:none;
+    }
+    body.page-template-page-portal-challenges-php .competition-equity-copy p{
+        margin:0 0 8px;
+        line-height:1.45;
+    }
+    body.page-template-page-portal-challenges-php .competition-equity-copy p:last-child{
+        margin-bottom:0;
+    }
+    body.page-template-page-portal-challenges-php .competition-equity-gap{
+        margin-top:16px !important;
+    }
+    body.page-template-page-portal-challenges-php .competition-scoring-accordion{
+        margin-bottom:16px;
+    }
+    body.page-template-page-portal-challenges-php .competition-scoring-accordion .competition-rule-grid{
+        margin-top:8px;
+    }
+
+    @media (min-width:1025px){
+        body.page-template-page-portal-challenges-php .community-coach-fab-host{
+            right:-20px;
+            top:50%;
+            transform:translateY(-50%);
+        }
+    }
+
     body.page-template-page-portal-challenges-php .competition-section-title {
         color: #ffffff;
         font-family: 'Cinzel', serif;
@@ -2766,20 +2852,21 @@
         text-align:center;
     }
     body.page-template-page-portal-challenges-php .private-desc-copy p,
-    body.page-template-page-portal-challenges-php .private-equity-copy p{
+    body.page-template-page-portal-challenges-php .competition-equity-copy p{
         margin:0 0 12px;
         font-style:italic;
         line-height:1.45;
         text-align:left;
     }
-    body.page-template-page-portal-challenges-php .private-equity-copy p{
+    body.page-template-page-portal-challenges-php .competition-equity-copy p{
         font-style:normal;
     }
     body.page-template-page-portal-challenges-php .private-desc-copy p:last-child,
-    body.page-template-page-portal-challenges-php .private-equity-copy p:last-child{
+    body.page-template-page-portal-challenges-php .competition-equity-copy p:last-child{
         margin-bottom:0;
     }
-    body.page-template-page-portal-challenges-php .private-copy-gap{
+    body.page-template-page-portal-challenges-php .private-copy-gap,
+    body.page-template-page-portal-challenges-php .competition-equity-gap{
         margin-top:16px !important;
     }
 
