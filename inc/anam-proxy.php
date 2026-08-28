@@ -238,3 +238,55 @@ function anam_hq_suppress_concierge_on_poc() {
 	wp_dequeue_style( 'ihq-concierge-fab' );
 }
 add_action( 'wp_enqueue_scripts', 'anam_hq_suppress_concierge_on_poc', 100 );
+
+/**
+ * Enqueue the AI Coach screen-sequence script (PO-3092/PO-3093), page-home-
+ * aicoach.php only. Split out of the template into js/aicoach-coach-flow.js
+ * per review feedback that the template file was getting too large.
+ *
+ * The script is an ES module (uses `import`), so it's registered normally
+ * and `type="module"` is added to its tag via the script_loader_tag filter
+ * below — this theme has no first-class module-script enqueue API.
+ */
+function ihq_aicoach_enqueue_coach_flow() {
+	if ( ! is_page_template( 'page-home-aicoach.php' ) ) {
+		return;
+	}
+
+	$script_path = get_template_directory() . '/js/aicoach-coach-flow.js';
+	$script_ver  = file_exists( $script_path ) ? (string) filemtime( $script_path ) : _S_VERSION;
+
+	wp_register_script(
+		'ihq-aicoach-coach-flow',
+		get_template_directory_uri() . '/js/aicoach-coach-flow.js',
+		array(),
+		$script_ver,
+		true
+	);
+	wp_localize_script(
+		'ihq-aicoach-coach-flow',
+		'AICOACH_SAMI',
+		array(
+			'restBase' => esc_url_raw( rest_url( 'anam/v1' ) ),
+			'nonce'    => wp_create_nonce( 'wp_rest' ),
+		)
+	);
+	wp_enqueue_script( 'ihq-aicoach-coach-flow' );
+}
+add_action( 'wp_enqueue_scripts', 'ihq_aicoach_enqueue_coach_flow' );
+
+/**
+ * Add type="module" to ihq-aicoach-coach-flow's <script> tag so its `import`
+ * statement works. Scoped to this one handle only.
+ *
+ * @param string $tag    The <script> tag WordPress generated.
+ * @param string $handle The script's registered handle.
+ * @return string
+ */
+function ihq_aicoach_module_script_tag( $tag, $handle ) {
+	if ( 'ihq-aicoach-coach-flow' !== $handle ) {
+		return $tag;
+	}
+	return str_replace( ' src=', ' type="module" src=', $tag );
+}
+add_filter( 'script_loader_tag', 'ihq_aicoach_module_script_tag', 10, 2 );
