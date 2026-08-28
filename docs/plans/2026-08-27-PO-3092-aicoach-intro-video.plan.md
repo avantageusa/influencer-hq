@@ -117,3 +117,10 @@ Visiting the AI Coach template today shows the tier picker directly; there is no
 - **Unverified:** no PHP CLI is available in this environment, so `composer lint:php` / `phpcs`
   could not be run against the touched file — reviewed by hand against the existing, deployed
   `page-portal-poc.php` patterns instead. Dev should run the repo's normal lint gate before merge.
+- **2026-08-28 — known interim architecture:** the epic description is being revised so that the
+  full agent (Anam avatar/session/streaming + the coaching "brain") is owned by a different
+  engineer ("Gary") via his own API, not built directly against the Anam SDK from this theme.
+  Confirmed explicitly by Filip Milinković (PM) that this PR's direct Anam integration is fine to
+  ship as a **temporary** solution now and get swapped for Gary's API once it exists — not a
+  blocker, not urgent to rework, just flagging so a future reader isn't confused about why FE code
+  talks to Anam directly here.
