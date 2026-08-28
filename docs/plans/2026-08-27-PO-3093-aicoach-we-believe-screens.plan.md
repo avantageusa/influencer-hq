@@ -87,3 +87,7 @@ isn't picked yet, same reasoning as FR-01).
   noted above) — flagging so this isn't mistaken for a client bug if the voice trails slightly.
 - Same **unverified** note as PO-3092: no PHP CLI in this environment; relies on the dev running
   `composer lint:php` locally (confirmed working in that PR's thread) before merge.
+- **2026-08-28 — known interim architecture:** same note as PO-3092's plan — Filip Milinković
+  confirmed the direct Anam integration this story builds on (via PO-3092) is an approved
+  temporary solution, to be swapped for a separate engineer's ("Gary") agent API once it exists.
+  Not a blocker for this PR.
