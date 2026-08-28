@@ -11,6 +11,13 @@ get_template_part( 'template-parts/portal-styles' );
 
 $theme_uri = get_template_directory_uri();
 
+// REST base + nonce for the Anam token proxy (see inc/anam-proxy.php) — same
+// session-token/persona-preview endpoints page-portal-poc.php already uses.
+$aicoach_sami_cfg = array(
+	'restBase' => esc_url_raw( rest_url( 'anam/v1' ) ),
+	'nonce'    => wp_create_nonce( 'wp_rest' ),
+);
+
 $aicoach_img = array(
 	'portrait' => $theme_uri . '/images/aicoach/coach-portrait.png',
 	'bts'      => $theme_uri . '/images/aicoach/bts.jpg',
@@ -64,19 +71,27 @@ $aicoach_tiers = array(
 
                 <p class="aicoach-belief"><?php esc_html_e( 'We believe conversations should be easy.', 'influencer-hq' ); ?></p>
 
-                <div class="aicoach-portrait-wrap">
+                <div class="aicoach-avatar-wrap" id="aicoach-avatar-wrap" data-status="idle">
                     <img
                         class="aicoach-portrait"
+                        id="aicoach-portrait"
                         src="<?php echo esc_url( $aicoach_img['portrait'] ); ?>"
                         alt="<?php esc_attr_e( 'AI Coach', 'influencer-hq' ); ?>"
                         width="452"
                         height="452"
                     >
+                    <video class="aicoach-avatar-video" id="aicoach-avatar-video" autoplay playsinline muted></video>
+                    <div class="aicoach-avatar-loading" aria-hidden="true"><div class="aicoach-avatar-spinner"></div></div>
+                    <button type="button" class="aicoach-unmute" id="aicoach-unmute" aria-pressed="false" aria-label="<?php esc_attr_e( 'Turn on Sami\'s voice', 'influencer-hq' ); ?>">&#128264;</button>
                 </div>
 
                 <div class="aicoach-stage" id="aicoach-stage">
 
-                    <div class="aicoach-panel is-active" data-panel="home" aria-hidden="false">
+                    <div class="aicoach-panel is-active" data-panel="intro" aria-hidden="false">
+                        <p class="aicoach-caption" id="aicoach-caption" aria-live="polite"></p>
+                    </div>
+
+                    <div class="aicoach-panel" data-panel="home" aria-hidden="true">
                         <div class="aicoach-tiers" role="radiogroup" aria-label="<?php esc_attr_e( 'Conversation length', 'influencer-hq' ); ?>">
                             <?php foreach ( $aicoach_tiers as $index => $tier ) : ?>
                             <?php
@@ -222,20 +237,89 @@ $aicoach_tiers = array(
         color: #fff;
     }
 
-    .aicoach-portrait-wrap {
+    .aicoach-avatar-wrap {
+        position: relative;
         width: min(280px, 62vw);
         aspect-ratio: 1;
         margin: 0 auto 48px;
         border-radius: 50%;
         overflow: hidden;
+        background: #12131a;
     }
 
-    .aicoach-portrait {
+    .aicoach-portrait,
+    .aicoach-avatar-video {
+        position: absolute;
+        inset: 0;
         display: block;
         width: 100%;
         height: 100%;
         object-fit: cover;
         object-position: center top;
+        transition: opacity 0.32s ease;
+    }
+
+    .aicoach-avatar-video { opacity: 0; }
+    .aicoach-avatar-wrap[data-status="live"] .aicoach-avatar-video { opacity: 1; }
+    .aicoach-avatar-wrap[data-status="live"] .aicoach-portrait { opacity: 0; }
+    .aicoach-avatar-wrap[data-status="connecting"] .aicoach-portrait { opacity: .4; filter: brightness(.55) blur(1px); }
+
+    .aicoach-avatar-loading {
+        position: absolute;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(18, 19, 26, .85);
+        backdrop-filter: blur(8px);
+        z-index: 1;
+    }
+
+    .aicoach-avatar-wrap[data-status="connecting"] .aicoach-avatar-loading { display: flex; }
+
+    .aicoach-avatar-spinner {
+        width: 44px;
+        height: 44px;
+        border: 3px solid rgba(253, 214, 91, .2);
+        border-top-color: #fdd65b;
+        border-radius: 50%;
+        animation: aicoach-spin 0.8s linear infinite;
+    }
+
+    @keyframes aicoach-spin { to { transform: rotate(360deg); } }
+
+    .aicoach-unmute {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        width: 34px;
+        height: 34px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, .55);
+        color: #fff;
+        font-size: 16px;
+        cursor: pointer;
+        z-index: 2;
+    }
+
+    .aicoach-unmute:hover { background: rgba(0, 0, 0, .8); }
+    .aicoach-avatar-wrap[data-status="live"] .aicoach-unmute { display: flex; }
+    .aicoach-avatar-wrap[data-status="live"][data-muted="false"] .aicoach-unmute { opacity: .5; }
+
+    .aicoach-caption {
+        max-width: 560px;
+        margin: 0 auto;
+        min-height: 4.5em;
+        font-weight: 600;
+        font-size: clamp(1rem, 2.8vw, 1.25rem);
+        line-height: 1.5;
+        text-align: center;
+        color: #fff;
     }
 
     .aicoach-stage {
@@ -475,69 +559,220 @@ $aicoach_tiers = array(
 </style>
 
 <script>
-(function () {
-    var FADE_MS = 400;
-    var stage = document.getElementById('aicoach-stage');
-    if (!stage) return;
+    window.AICOACH_SAMI = <?php echo wp_json_encode( $aicoach_sami_cfg ); ?>;
+</script>
+<script type="module">
+import { createClient, AnamEvent } from 'https://cdn.jsdelivr.net/npm/@anam-ai/js-sdk@4/+esm';
 
-    var tiers = stage.querySelectorAll('.aicoach-tier');
-    var isAnimating = false;
+/*
+ * FR-01 — coach intro plays automatically on arrival, speaking the approved
+ * script verbatim via Sami's existing Anam avatar (same session-token proxy
+ * page-portal-poc.php already uses), with on-screen captions built from the
+ * SDK's own MESSAGE_STREAM_EVENT_RECEIVED content stream (Anam's documented
+ * captioning pattern — append role="persona" chunks in arrival order). On
+ * finishing, the page auto-advances into the existing tier-selection panel;
+ * behavior is identical regardless of which tier is picked afterward, since
+ * no tier is chosen yet at this point. Unlike page-portal-poc.php this is
+ * NOT tap-to-start — the AC requires the video to begin on load.
+ */
+const FADE_MS = 400;
+const INTRO_ADVANCE_DELAY_MS = 1200; // natural pause after she finishes before the panel swaps
+const FALLBACK_READ_MS = 9000;       // dwell time for the static-text fallback (no speech to sync against)
+const AVATAR_VIDEO_ID = 'aicoach-avatar-video';
+const INTRO_SCRIPT = "Hello. I'm Sami. Your Executive Coach. Welcome to InfluencerHQ. My job is to help you understand one simple idea. We believe influencers who help build our company should have the opportunity to earn meaningful equity. Over the next few minutes, I'll show you why we believe that… how successful people have benefited from ownership… and how InfluencerHQ can help you begin your own journey. You don't need to remember everything today. I'll always be here to answer your questions… continue exactly where we leave off… or meet with you whenever you'd like. Let's begin.";
+
+const cfg = window.AICOACH_SAMI || {};
+const SESSION_TOKEN_URL = cfg.restBase + '/session-token';
+const PERSONA_PREVIEW_URL = cfg.restBase + '/persona-preview';
+
+const stage = document.getElementById('aicoach-stage');
+const avatarWrap = document.getElementById('aicoach-avatar-wrap');
+const video = document.getElementById('aicoach-avatar-video');
+const portrait = document.getElementById('aicoach-portrait');
+const caption = document.getElementById('aicoach-caption');
+const unmuteBtn = document.getElementById('aicoach-unmute');
+
+if ( stage && avatarWrap ) {
+    const tiers = stage.querySelectorAll( '.aicoach-tier' );
+    let isAnimating = false;
 
     function syncSelected() {
-        tiers.forEach(function (tier) {
-            var input = tier.querySelector('.aicoach-tier-check');
-            if (input && input.checked) {
-                tier.classList.add('is-selected');
-            } else {
-                tier.classList.remove('is-selected');
-            }
-        });
+        tiers.forEach( function ( tier ) {
+            const input = tier.querySelector( '.aicoach-tier-check' );
+            tier.classList.toggle( 'is-selected', Boolean( input && input.checked ) );
+        } );
     }
 
     function getActivePanel() {
-        return stage.querySelector('.aicoach-panel.is-active');
+        return stage.querySelector( '.aicoach-panel.is-active' );
     }
 
-    function showPanel(panelKey) {
-        var next = stage.querySelector('.aicoach-panel[data-panel="' + panelKey + '"]');
-        var current = getActivePanel();
-        if (!next || !current || next === current || isAnimating) return;
+    function showPanel( panelKey ) {
+        const next = stage.querySelector( '.aicoach-panel[data-panel="' + panelKey + '"]' );
+        const current = getActivePanel();
+        if ( ! next || ! current || next === current || isAnimating ) {
+            return;
+        }
 
         isAnimating = true;
         stage.style.minHeight = current.offsetHeight + 'px';
 
-        current.classList.remove('is-active');
-        current.setAttribute('aria-hidden', 'true');
+        current.classList.remove( 'is-active' );
+        current.setAttribute( 'aria-hidden', 'true' );
 
-        window.setTimeout(function () {
-            next.classList.add('is-active');
-            next.setAttribute('aria-hidden', 'false');
+        window.setTimeout( function () {
+            next.classList.add( 'is-active' );
+            next.setAttribute( 'aria-hidden', 'false' );
             stage.style.minHeight = next.offsetHeight + 'px';
 
-            window.setTimeout(function () {
+            window.setTimeout( function () {
                 stage.style.minHeight = '';
                 isAnimating = false;
-            }, FADE_MS);
-        }, FADE_MS);
+            }, FADE_MS );
+        }, FADE_MS );
     }
 
     // Use click so a pre-checked tier (e.g. 2 minutes) still opens its story.
-    tiers.forEach(function (tier) {
-        var input = tier.querySelector('.aicoach-tier-check');
-        if (!input) return;
+    tiers.forEach( function ( tier ) {
+        const input = tier.querySelector( '.aicoach-tier-check' );
+        if ( ! input ) {
+            return;
+        }
 
-        tier.addEventListener('click', function () {
+        tier.addEventListener( 'click', function () {
             input.checked = true;
             syncSelected();
-            var panelKey = input.getAttribute('data-panel');
-            if (panelKey) {
-                showPanel(panelKey);
+            const panelKey = input.getAttribute( 'data-panel' );
+            if ( panelKey ) {
+                showPanel( panelKey );
             }
-        });
-    });
+        } );
+    } );
 
     syncSelected();
-}());
+
+    const sleep = ( ms ) => new Promise( ( resolve ) => window.setTimeout( resolve, ms ) );
+
+    let introFinished = false;
+    function finishIntro() {
+        if ( introFinished ) {
+            return;
+        }
+        introFinished = true;
+        showPanel( 'home' );
+    }
+
+    // Best-effort: use Sami's own portrait as the idle face so it matches the live video.
+    ( async function loadPreview() {
+        try {
+            const res = await fetch( PERSONA_PREVIEW_URL, { headers: { 'X-WP-Nonce': cfg.nonce } } );
+            if ( ! res.ok ) {
+                return;
+            }
+            const data = await res.json();
+            if ( data.portraitUrl && portrait ) {
+                portrait.src = data.portraitUrl;
+            }
+        } catch ( error ) {
+            // No portrait available — the placeholder image stays.
+        }
+    }() );
+
+    // Text has nothing to sync against here, so it's shown in full and paced by
+    // an estimated reading dwell rather than word-by-word reveal.
+    function runFallback() {
+        avatarWrap.dataset.status = 'idle';
+        if ( caption ) {
+            caption.textContent = INTRO_SCRIPT;
+        }
+        sleep( FALLBACK_READ_MS ).then( finishIntro );
+    }
+
+    async function runIntro( client ) {
+        if ( caption ) {
+            caption.textContent = '';
+        }
+
+        let activeUtteranceId = null;
+        await new Promise( ( resolve ) => {
+            let settled = false;
+            const finish = () => {
+                if ( settled ) {
+                    return;
+                }
+                settled = true;
+                client.removeListener( AnamEvent.MESSAGE_STREAM_EVENT_RECEIVED, onEvent );
+                resolve();
+            };
+
+            // Anam's documented captioning pattern: consecutive persona chunks
+            // sharing an utteranceId are appended in arrival order to build the
+            // live caption; endOfSpeech on that utterance marks completion.
+            function onEvent( evt ) {
+                if ( ! evt || evt.role !== 'persona' ) {
+                    return;
+                }
+                if ( activeUtteranceId === null ) {
+                    activeUtteranceId = evt.utteranceId;
+                }
+                if ( evt.utteranceId !== activeUtteranceId ) {
+                    return;
+                }
+                if ( evt.content && caption ) {
+                    caption.textContent += evt.content;
+                }
+                if ( evt.endOfSpeech ) {
+                    finish();
+                }
+            }
+
+            client.addListener( AnamEvent.MESSAGE_STREAM_EVENT_RECEIVED, onEvent );
+            client.talk( INTRO_SCRIPT ).catch( finish );
+        } );
+
+        await sleep( INTRO_ADVANCE_DELAY_MS );
+        finishIntro();
+    }
+
+    unmuteBtn?.addEventListener( 'click', function () {
+        video.muted = ! video.muted;
+        unmuteBtn.setAttribute( 'aria-pressed', String( ! video.muted ) );
+        avatarWrap.dataset.muted = String( video.muted );
+    } );
+
+    // Auto-start on arrival — no tap required (unlike page-portal-poc.php).
+    ( async function start() {
+        avatarWrap.dataset.status = 'connecting';
+        try {
+            const res = await fetch( SESSION_TOKEN_URL, { method: 'POST', headers: { 'X-WP-Nonce': cfg.nonce } } );
+            const data = await res.json();
+            if ( ! res.ok || ! data.sessionToken ) {
+                throw new Error( data.error || 'Failed to start Sami.' );
+            }
+
+            const client = createClient( data.sessionToken );
+            let handledClose = false;
+
+            client.addListener( AnamEvent.VIDEO_PLAY_STARTED, function () {
+                avatarWrap.dataset.status = 'live';
+                runIntro( client );
+            } );
+            client.addListener( AnamEvent.CONNECTION_CLOSED, function ( event ) {
+                if ( handledClose || introFinished ) {
+                    return;
+                }
+                handledClose = true;
+                console.warn( '[aicoach] Sami CONNECTION_CLOSED before intro finished', event );
+                runFallback();
+            } );
+
+            await client.streamToVideoElement( AVATAR_VIDEO_ID );
+        } catch ( error ) {
+            console.warn( '[aicoach] falling back to static intro text:', error );
+            runFallback();
+        }
+    }() );
+}
 </script>
 
 <?php
