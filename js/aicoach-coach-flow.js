@@ -5,16 +5,19 @@
 import { createClient, AnamEvent } from 'https://cdn.jsdelivr.net/npm/@anam-ai/js-sdk@4/+esm';
 
 /*
- * FR-01 + FR-02 — on arrival, the coach speaks a fixed sequence of screens
- * (intro, then two "We Believe" screens) verbatim via Sami's existing Anam
- * avatar (same session-token proxy page-portal-poc.php already uses), with
- * on-screen captions built from the SDK's own MESSAGE_STREAM_EVENT_RECEIVED
- * content stream (Anam's documented captioning pattern — append
- * role="persona" chunks in arrival order). Each screen advances to the next
- * when its line finishes, or immediately on a visitor tap/click (FR-02's
- * "narration timing or visitor tap/click"); after the last screen the page
- * hands off to the existing tier-selection panel. Unlike page-portal-poc.php
- * this is NOT tap-to-start — the AC requires the video to begin on load.
+ * FR-01 + FR-02 + FR-03 — on arrival, the coach speaks a fixed sequence of
+ * screens (intro, two "We Believe" screens, then the time-selection pitch —
+ * this last one spoken over the existing tier-selection UI rather than a
+ * separate screen) verbatim via Sami's existing Anam avatar (same session-
+ * token proxy page-portal-poc.php already uses), with on-screen captions
+ * built from the SDK's own MESSAGE_STREAM_EVENT_RECEIVED content stream
+ * (Anam's documented captioning pattern — append role="persona" chunks in
+ * arrival order). Each screen advances to the next when its line finishes,
+ * or immediately on a visitor tap/click (FR-02's "narration timing or
+ * visitor tap/click"); confirming a time tier (FR-03) is the same kind of
+ * early-advance, plus it marks the sequence done and starts elapsed-time
+ * tracking. Unlike page-portal-poc.php this is NOT tap-to-start — the AC
+ * requires the video to begin on load.
  */
 const FADE_MS = 400;
 const SCREEN_ADVANCE_DELAY_MS = 1200; // natural pause after a line finishes before the panel swaps
@@ -33,6 +36,13 @@ const SCREENS = [
     {
         panel: 'believe-2',
         script: "There's another belief that's just as important. We believe the people who help create value should have the opportunity to share in that value. Not someday… From the very beginning. That's very different from the traditional way most influencers are rewarded. When meaningful ownership is available, it can become worth far more than a one-time payment. This isn't just our opinion. Let me show you a few real examples.",
+    },
+    {
+        // FR-03 — spoken over the existing tier-selection UI (the "home" panel), not a
+        // separate screen: the AC has the coach's script play while the three time
+        // options are already on screen, not before them.
+        panel: 'home',
+        script: "Now it's your turn. How much time would you like to spend with me today? Whether you have two minutes… five minutes… or ten minutes… I'll make sure our time together is worthwhile. Simply choose the amount of time that works best for you… and I'll personally guide you every step of the way. And remember… if we don't finish today… we'll simply continue exactly where we leave off. Go ahead… choose the amount of time that's right for you.",
     },
 ];
 
@@ -90,7 +100,33 @@ if ( stage && avatarWrap ) {
         }, FADE_MS );
     }
 
-    // Use click so a pre-checked tier (e.g. 2 minutes) still opens its story.
+    const sleep = ( ms ) => new Promise( ( resolve ) => window.setTimeout( resolve, ms ) );
+
+    let sequenceIndex = 0;
+    let sequenceFinished = false;
+    let skipCurrent = null; // set while a screen's line is in flight; a tap calls this to advance early
+
+    // FR-03 — timestamp + chosen tier, captured the moment the visitor confirms a
+    // selection. This is only the starting mark; FR-17 (time-remaining check) is a
+    // separate story and owns the actual countdown/prompt logic built on top of it.
+    // Deliberately in-memory only, not persisted — cross-session resume is FR-11's
+    // job (Luna), not this one's.
+    let elapsedStartedAt = null;
+    let selectedTierMinutes = null;
+
+    function finishSequence() {
+        if ( sequenceFinished ) {
+            return;
+        }
+        sequenceFinished = true;
+        showPanel( 'home' );
+    }
+
+    // Use click so a pre-checked tier (e.g. 2 minutes) still opens its story. A click
+    // is also the FR-03 "confirm" action: it ends the coach's time-selection line
+    // early if she's still mid-sentence (same tap-to-advance mechanism as the We
+    // Believe screens) so her voice doesn't fight the panel the visitor just chose,
+    // and marks the sequence finished so runSequence's own advance doesn't undo it.
     tiers.forEach( function ( tier ) {
         const input = tier.querySelector( '.aicoach-tier-check' );
         if ( ! input ) {
@@ -101,27 +137,21 @@ if ( stage && avatarWrap ) {
             input.checked = true;
             syncSelected();
             const panelKey = input.getAttribute( 'data-panel' );
-            if ( panelKey ) {
-                showPanel( panelKey );
+            if ( ! panelKey ) {
+                return;
             }
+
+            elapsedStartedAt = Date.now();
+            selectedTierMinutes = panelKey;
+            sequenceFinished = true;
+            if ( skipCurrent ) {
+                skipCurrent();
+            }
+            showPanel( panelKey );
         } );
     } );
 
     syncSelected();
-
-    const sleep = ( ms ) => new Promise( ( resolve ) => window.setTimeout( resolve, ms ) );
-
-    let sequenceIndex = 0;
-    let sequenceFinished = false;
-    let skipCurrent = null; // set while a screen's line is in flight; a tap calls this to advance early
-
-    function finishSequence() {
-        if ( sequenceFinished ) {
-            return;
-        }
-        sequenceFinished = true;
-        showPanel( 'home' );
-    }
 
     // Best-effort: use Sami's own portrait as the idle face so it matches the live video.
     ( async function loadPreview() {
@@ -217,9 +247,10 @@ if ( stage && avatarWrap ) {
         finishSequence();
     }
 
-    // Tap/click to skip ahead — FR-02's "narration timing or visitor tap/click".
-    // Only applies to the We Believe screens (not the FR-01 intro), and never
-    // hijacks clicks on the tier-selection controls once the sequence is done.
+    // Tap/click to skip ahead — FR-02's "narration timing or visitor tap/click",
+    // covers the We Believe screens and the FR-03 time-selection narration (not
+    // the FR-01 intro). Tier clicks have their own handler above and are excluded
+    // here so this listener never double-handles them.
     stage.addEventListener( 'click', function ( event ) {
         if ( isAnimating ) {
             return; // avoid desyncing the caption/panel if tapped mid-fade

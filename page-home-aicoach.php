@@ -103,6 +103,7 @@ $aicoach_tiers = array(
                     </div>
 
                     <div class="aicoach-panel" data-panel="home" aria-hidden="true">
+                        <p class="aicoach-caption" data-caption-for="home" aria-live="polite"></p>
                         <div class="aicoach-tiers" role="radiogroup" aria-label="<?php esc_attr_e( 'Conversation length', 'influencer-hq' ); ?>">
                             <?php foreach ( $aicoach_tiers as $index => $tier ) : ?>
                             <?php
@@ -324,7 +325,7 @@ $aicoach_tiers = array(
 
     .aicoach-caption {
         max-width: 560px;
-        margin: 0 auto;
+        margin: 0 auto 32px;
         min-height: 4.5em;
         font-weight: 600;
         font-size: clamp(1rem, 2.8vw, 1.25rem);
