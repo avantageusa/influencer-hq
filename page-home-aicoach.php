@@ -15,6 +15,9 @@ $aicoach_img = array(
 	'portrait'     => $theme_uri . '/images/aicoach/coach-portrait.png',
 	'bts'          => $theme_uri . '/images/aicoach/bts.jpg',
 	'magic'        => $theme_uri . '/images/aicoach/magic-johnson.png',
+	// Placeholder — no licensed Alix Earle photo exists in this repo yet; swap
+	// this src for the real asset once design/legal supplies one.
+	'alix'         => $theme_uri . '/images/aicoach/alix-earle-placeholder.svg',
 	'check'        => $theme_uri . '/images/aicoach/icon-check.svg',
 	'x'            => $theme_uri . '/images/aicoach/icon-x.svg',
 	'belief-coin'  => $theme_uri . '/images/aicoach/icon-belief-coin.svg',
@@ -134,32 +137,7 @@ $aicoach_tiers = array(
                         </div>
                     </div>
 
-                    <div class="aicoach-panel" data-panel="2" aria-hidden="true">
-                        <div class="aicoach-story aicoach-story--bts">
-                            <h2 class="aicoach-story-title"><?php esc_html_e( 'BTS', 'influencer-hq' ); ?></h2>
-                            <div class="aicoach-story-media">
-                                <img
-                                    class="aicoach-story-photo"
-                                    src="<?php echo esc_url( $aicoach_img['bts'] ); ?>"
-                                    alt="<?php esc_attr_e( 'BTS', 'influencer-hq' ); ?>"
-                                    width="624"
-                                    height="471"
-                                >
-                            </div>
-                            <ul class="aicoach-story-points">
-                                <li class="aicoach-story-point">
-                                    <img class="aicoach-story-icon" src="<?php echo esc_url( $aicoach_img['check'] ); ?>" alt="" width="48" height="45" aria-hidden="true">
-                                    <span><?php esc_html_e( 'said yes to shared ownership, valued at 103.6 million', 'influencer-hq' ); ?></span>
-                                </li>
-                                <li class="aicoach-story-point">
-                                    <img class="aicoach-story-icon" src="<?php echo esc_url( $aicoach_img['x'] ); ?>" alt="" width="48" height="48" aria-hidden="true">
-                                    <span><?php esc_html_e( 'turned down cash', 'influencer-hq' ); ?></span>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <div class="aicoach-panel" data-panel="5" aria-hidden="true">
+                    <div class="aicoach-panel" data-panel="equity-magic" aria-hidden="true">
                         <div class="aicoach-story aicoach-story--magic">
                             <div class="aicoach-magic">
                                 <img
@@ -187,38 +165,62 @@ $aicoach_tiers = array(
                                     </span>
                                 </li>
                             </ul>
+                            <p class="aicoach-caption" data-caption-for="equity-magic" aria-live="polite"></p>
                         </div>
                     </div>
 
-                    <div class="aicoach-panel" data-panel="10" aria-hidden="true">
+                    <div class="aicoach-panel" data-panel="equity-alix" aria-hidden="true">
                         <div class="aicoach-story aicoach-story--magic">
-                            <h2 class="aicoach-duration-label"><?php esc_html_e( '10 minutes', 'influencer-hq' ); ?></h2>
                             <div class="aicoach-magic">
                                 <img
                                     class="aicoach-magic-img"
-                                    src="<?php echo esc_url( $aicoach_img['magic'] ); ?>"
-                                    alt="<?php esc_attr_e( 'Magic Johnson', 'influencer-hq' ); ?>"
+                                    src="<?php echo esc_url( $aicoach_img['alix'] ); ?>"
+                                    alt="<?php esc_attr_e( 'Alix Earle', 'influencer-hq' ); ?>"
                                     width="596"
                                     height="844"
                                 >
-                                <p class="aicoach-magic-name" role="presentation">
-                                    <span><?php esc_html_e( 'Magic', 'influencer-hq' ); ?></span>
-                                    <span><?php esc_html_e( 'Johnson', 'influencer-hq' ); ?></span>
-                                </p>
+                                <h2 class="aicoach-magic-name">
+                                    <span><?php esc_html_e( 'Alix', 'influencer-hq' ); ?></span>
+                                    <span><?php esc_html_e( 'Earle', 'influencer-hq' ); ?></span>
+                                </h2>
+                            </div>
+                            <ul class="aicoach-story-points">
+                                <li class="aicoach-story-point aicoach-story-point--stacked">
+                                    <img class="aicoach-story-icon" src="<?php echo esc_url( $aicoach_img['check'] ); ?>" alt="" width="48" height="45" aria-hidden="true">
+                                    <span><?php esc_html_e( 'Said yes to an ownership-based partnership with Poppi', 'influencer-hq' ); ?></span>
+                                </li>
+                                <li class="aicoach-story-point">
+                                    <img class="aicoach-story-icon" src="<?php echo esc_url( $aicoach_img['x'] ); ?>" alt="" width="48" height="48" aria-hidden="true">
+                                    <span><?php esc_html_e( 'Turned down cash', 'influencer-hq' ); ?></span>
+                                </li>
+                            </ul>
+                            <p class="aicoach-caption" data-caption-for="equity-alix" aria-live="polite"></p>
+                        </div>
+                    </div>
+
+                    <div class="aicoach-panel" data-panel="equity-bts" aria-hidden="true">
+                        <div class="aicoach-story aicoach-story--bts">
+                            <h2 class="aicoach-story-title"><?php esc_html_e( 'BTS', 'influencer-hq' ); ?></h2>
+                            <div class="aicoach-story-media">
+                                <img
+                                    class="aicoach-story-photo"
+                                    src="<?php echo esc_url( $aicoach_img['bts'] ); ?>"
+                                    alt="<?php esc_attr_e( 'BTS', 'influencer-hq' ); ?>"
+                                    width="624"
+                                    height="471"
+                                >
                             </div>
                             <ul class="aicoach-story-points">
                                 <li class="aicoach-story-point">
                                     <img class="aicoach-story-icon" src="<?php echo esc_url( $aicoach_img['check'] ); ?>" alt="" width="48" height="45" aria-hidden="true">
-                                    <span><?php esc_html_e( 'Adidas $100k cash', 'influencer-hq' ); ?></span>
+                                    <span><?php esc_html_e( 'Said yes to shared ownership, valued at 103.6 million', 'influencer-hq' ); ?></span>
                                 </li>
-                                <li class="aicoach-story-point aicoach-story-point--stacked">
+                                <li class="aicoach-story-point">
                                     <img class="aicoach-story-icon" src="<?php echo esc_url( $aicoach_img['x'] ); ?>" alt="" width="48" height="48" aria-hidden="true">
-                                    <span>
-                                        <?php esc_html_e( "Nike's 11 cent stock", 'influencer-hq' ); ?>
-                                        <span class="aicoach-story-sub"><?php esc_html_e( 'Now worth 5.4 billion', 'influencer-hq' ); ?></span>
-                                    </span>
+                                    <span><?php esc_html_e( 'Turned down cash', 'influencer-hq' ); ?></span>
                                 </li>
                             </ul>
+                            <p class="aicoach-caption" data-caption-for="equity-bts" aria-live="polite"></p>
                         </div>
                     </div>
 

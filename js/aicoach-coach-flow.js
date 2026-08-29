@@ -46,6 +46,33 @@ const SCREENS = [
     },
 ];
 
+// FR-05 — equity examples. Which of these play, and in what order, depends on
+// the tier confirmed in FR-03 (see getEquityScreensForTier below); they are
+// appended to SCREENS at that point rather than being fixed here upfront.
+const EQUITY_SCREENS = {
+    magic: {
+        panel: 'equity-magic',
+        script: "Basketball star Magic Johnson was offered one of the greatest ownership opportunities in history. Instead… he accepted a traditional endorsement. That decision has been estimated to have cost him approximately $5.4 billion in ownership value. No one can predict the future. Not every ownership opportunity succeeds. But when the right ownership opportunity comes along… it can become worth far more than immediate cash. Today… for the first time… influencers are beginning to receive similar ownership opportunities. Let's look at one.",
+    },
+    alix: {
+        panel: 'equity-alix',
+        script: "Influencer Alix Earle made a different decision. Instead of accepting only a traditional cash sponsorship… she negotiated an ownership opportunity with Poppi. Less than three years later… PepsiCo acquired Poppi for nearly $2 billion. Her story reminds us that ownership opportunities are no longer limited to athletes, entertainers, or business leaders. Today… influencers also have the opportunity to think beyond immediate cash… and participate in the long-term value they help create. Now… let's look at an international example.",
+    },
+    bts: {
+        panel: 'equity-bts',
+        script: "International music group BTS also recognized the power of ownership. Instead of relying only on traditional compensation… they also participated in the long-term value created by what they helped build. Their ownership became worth hundreds of millions of dollars. The lesson isn't about basketball… or social media… or music. It's about recognizing the right ownership opportunity when it comes along. That's exactly why InfluencerHQ was created. Now… let me show you what you can accomplish in just a few minutes.",
+    },
+};
+
+// FR-05 — Scenario 7/8: 10-minute tier gets all three in order; 5- and
+// 2-minute tiers get BTS only.
+function getEquityScreensForTier( tierMinutes ) {
+    if ( tierMinutes === '10' ) {
+        return [ EQUITY_SCREENS.magic, EQUITY_SCREENS.alix, EQUITY_SCREENS.bts ];
+    }
+    return [ EQUITY_SCREENS.bts ];
+}
+
 const cfg = window.AICOACH_SAMI || {};
 const SESSION_TOKEN_URL = cfg.restBase + '/session-token';
 const PERSONA_PREVIEW_URL = cfg.restBase + '/persona-preview';
@@ -113,20 +140,29 @@ if ( stage && avatarWrap ) {
     // job (Luna), not this one's.
     let elapsedStartedAt = null;
     let selectedTierMinutes = null;
+    let tierConfirmed = false; // FR-03 confirm is one-time; ignore further tier clicks after that
+    let activeClient = null;   // set once Anam connects; lets a late tier click resume a finished live sequence
+    let usingFallback = false; // true once runFallback has taken over, so a late tier click resumes the right runner
 
     function finishSequence() {
         if ( sequenceFinished ) {
             return;
         }
         sequenceFinished = true;
-        showPanel( 'home' );
+        // No further screens are implemented yet — FR-06 (competition types) or
+        // FR-07 (identity capture) will extend SCREENS the same way FR-05's tier
+        // confirm does, once those stories exist. Until then, the flow just stops
+        // on whatever the last available screen was; nothing to navigate back to.
     }
 
     // Use click so a pre-checked tier (e.g. 2 minutes) still opens its story. A click
     // is also the FR-03 "confirm" action: it ends the coach's time-selection line
     // early if she's still mid-sentence (same tap-to-advance mechanism as the We
-    // Believe screens) so her voice doesn't fight the panel the visitor just chose,
-    // and marks the sequence finished so runSequence's own advance doesn't undo it.
+    // Believe screens), then queues that tier's FR-05 equity examples onto SCREENS
+    // — runSequence's own loop picks them up and shows them in the usual way. If
+    // that loop already finished by the time the visitor clicks (they took a
+    // moment to decide), nothing is left running to notice the new screens, so
+    // resume whichever runner (live or fallback) was active.
     tiers.forEach( function ( tier ) {
         const input = tier.querySelector( '.aicoach-tier-check' );
         if ( ! input ) {
@@ -134,6 +170,11 @@ if ( stage && avatarWrap ) {
         }
 
         tier.addEventListener( 'click', function () {
+            if ( tierConfirmed ) {
+                return;
+            }
+            tierConfirmed = true;
+
             input.checked = true;
             syncSelected();
             const panelKey = input.getAttribute( 'data-panel' );
@@ -143,11 +184,21 @@ if ( stage && avatarWrap ) {
 
             elapsedStartedAt = Date.now();
             selectedTierMinutes = panelKey;
-            sequenceFinished = true;
+            const loopAlreadyExited = sequenceFinished;
+            SCREENS.push( ...getEquityScreensForTier( panelKey ) );
+
             if ( skipCurrent ) {
                 skipCurrent();
             }
-            showPanel( panelKey );
+
+            if ( loopAlreadyExited ) {
+                sequenceFinished = false;
+                if ( usingFallback ) {
+                    runFallback();
+                } else if ( activeClient ) {
+                    runSequence( activeClient );
+                }
+            }
         } );
     } );
 
@@ -174,6 +225,7 @@ if ( stage && avatarWrap ) {
     // Resumes from sequenceIndex, so a mid-sequence connection drop picks up
     // wherever the live playback left off instead of restarting from the intro.
     async function runFallback() {
+        usingFallback = true;
         avatarWrap.dataset.status = 'idle';
         for ( ; sequenceIndex < SCREENS.length; sequenceIndex++ ) {
             const screen = SCREENS[ sequenceIndex ];
@@ -284,6 +336,7 @@ if ( stage && avatarWrap ) {
             }
 
             const client = createClient( data.sessionToken );
+            activeClient = client;
             let handledClose = false;
 
             client.addListener( AnamEvent.VIDEO_PLAY_STARTED, function () {
