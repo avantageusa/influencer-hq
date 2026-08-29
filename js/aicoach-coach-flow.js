@@ -73,6 +73,34 @@ function getEquityScreensForTier( tierMinutes ) {
     return [ EQUITY_SCREENS.bts ];
 }
 
+// FR-06 — competition types explained, no selection requested. 5- and 10-minute
+// tiers only; the 2-minute tier skips this section entirely (Scenario 9).
+// NOTE: the Private screen's closing/transition line is not yet approved copy
+// (the ticket explicitly removed the old "let's choose one" close and flags the
+// replacement as pending) — using the given text verbatim, without inventing a
+// transition sentence of our own.
+const COMPETITION_SCREENS = {
+    world: {
+        panel: 'competition-world',
+        script: "Now let's look at the first way many influencers choose to begin. It's called a World Competition. You and your followers participate together… while competing against other influencers and their communities from around the world. InfluencerHQ already provides the competition format. You don't have to create anything from scratch. Later… inside your Coaching Center… I'll explain exactly how it works and help you decide whether it's the right place for you to begin. Now… let's look at another option.",
+    },
+    community: {
+        panel: 'competition-community',
+        script: "Many influencers choose to begin with a Community Competition. It's a simple way to bring together the followers who already support you. Your community stays together… encourages one another… and enjoys participating as a team. Again… InfluencerHQ already provides the competition format. I'll help you get everything set up… step by step. If building your own community first feels right… this may be the perfect place to begin. There's one more option I'd like to show you.",
+    },
+    private: {
+        panel: 'competition-private',
+        script: "The third option is called a Private Challenge. It allows you and your followers… to compete with another influencer and their community… someone you already know. Many influencers enjoy Private Challenges because they create friendly competition… encourage engagement… and bring two communities together. Like every competition on InfluencerHQ… the format is already provided. When we continue into your Coaching Center… I'll help you decide whether this is the right place to begin.",
+    },
+};
+
+function getCompetitionScreensForTier( tierMinutes ) {
+    if ( tierMinutes === '2' ) {
+        return [];
+    }
+    return [ COMPETITION_SCREENS.world, COMPETITION_SCREENS.community, COMPETITION_SCREENS.private ];
+}
+
 const cfg = window.AICOACH_SAMI || {};
 const SESSION_TOKEN_URL = cfg.restBase + '/session-token';
 const PERSONA_PREVIEW_URL = cfg.restBase + '/persona-preview';
@@ -158,8 +186,9 @@ if ( stage && avatarWrap ) {
     // Use click so a pre-checked tier (e.g. 2 minutes) still opens its story. A click
     // is also the FR-03 "confirm" action: it ends the coach's time-selection line
     // early if she's still mid-sentence (same tap-to-advance mechanism as the We
-    // Believe screens), then queues that tier's FR-05 equity examples onto SCREENS
-    // — runSequence's own loop picks them up and shows them in the usual way. If
+    // Believe screens), then queues that tier's FR-05 equity examples and (for
+    // 5/10-minute tiers) FR-06 competition-type screens onto SCREENS — runSequence's
+    // own loop picks them up and shows them in the usual way. If
     // that loop already finished by the time the visitor clicks (they took a
     // moment to decide), nothing is left running to notice the new screens, so
     // resume whichever runner (live or fallback) was active.
@@ -185,7 +214,7 @@ if ( stage && avatarWrap ) {
             elapsedStartedAt = Date.now();
             selectedTierMinutes = panelKey;
             const loopAlreadyExited = sequenceFinished;
-            SCREENS.push( ...getEquityScreensForTier( panelKey ) );
+            SCREENS.push( ...getEquityScreensForTier( panelKey ), ...getCompetitionScreensForTier( panelKey ) );
 
             if ( skipCurrent ) {
                 skipCurrent();
