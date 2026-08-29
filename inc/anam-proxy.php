@@ -267,8 +267,16 @@ function ihq_aicoach_enqueue_coach_flow() {
 		'ihq-aicoach-coach-flow',
 		'AICOACH_SAMI',
 		array(
-			'restBase' => esc_url_raw( rest_url( 'anam/v1' ) ),
-			'nonce'    => wp_create_nonce( 'wp_rest' ),
+			'restBase'         => esc_url_raw( rest_url( 'anam/v1' ) ),
+			// FR-07 — username availability check. Namespace/route/response shape
+			// (GET ?username=, expects { available: bool }) is this FE's assumption;
+			// confirm with BE once they build the real endpoint (PO-3098 note).
+			'identityRestBase' => esc_url_raw( rest_url( 'ihq/v1' ) ),
+			'nonce'            => wp_create_nonce( 'wp_rest' ),
+			'i18n'             => array(
+				'usernameTaken'  => __( 'That username is already taken.', 'influencer-hq' ),
+				'identitySaved'  => __( 'Saved', 'influencer-hq' ),
+			),
 		)
 	);
 	wp_enqueue_script( 'ihq-aicoach-coach-flow' );
