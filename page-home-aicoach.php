@@ -260,6 +260,31 @@ $aicoach_tiers = array(
                         </div>
                     </div>
 
+                    <div class="aicoach-panel" data-panel="identity" aria-hidden="true">
+                        <div class="aicoach-identity">
+                            <h2 class="aicoach-identity-title"><?php esc_html_e( "Let's Start The Conversation", 'influencer-hq' ); ?></h2>
+                            <p class="aicoach-identity-subtitle"><?php esc_html_e( 'Let us know who you are', 'influencer-hq' ); ?></p>
+                            <form class="aicoach-identity-form" id="aicoach-identity-form" novalidate>
+                                <label class="aicoach-identity-field">
+                                    <span class="aicoach-identity-label"><?php esc_html_e( 'First Name', 'influencer-hq' ); ?></span>
+                                    <input type="text" class="aicoach-identity-input" id="aicoach-first-name" autocomplete="given-name" required>
+                                </label>
+                                <label class="aicoach-identity-field">
+                                    <span class="aicoach-identity-label"><?php esc_html_e( 'Last Name', 'influencer-hq' ); ?></span>
+                                    <input type="text" class="aicoach-identity-input" id="aicoach-last-name" autocomplete="family-name" required>
+                                </label>
+                                <label class="aicoach-identity-field">
+                                    <span class="aicoach-identity-label"><?php esc_html_e( 'Username', 'influencer-hq' ); ?></span>
+                                    <input type="text" class="aicoach-identity-input" id="aicoach-username" autocomplete="username" required>
+                                    <span class="aicoach-identity-error" id="aicoach-username-error" role="alert"></span>
+                                </label>
+                                <button type="submit" class="aicoach-identity-continue" id="aicoach-identity-continue" disabled>
+                                    <?php esc_html_e( 'Continue', 'influencer-hq' ); ?>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
                 </div>
 
             </section>
@@ -432,6 +457,89 @@ $aicoach_tiers = array(
         text-transform: uppercase;
         font-size: clamp(0.85rem, 2.4vw, 1rem);
         color: #a9a9b3;
+    }
+
+    .aicoach-identity {
+        max-width: 440px;
+        margin: 0 auto;
+        text-align: center;
+    }
+
+    .aicoach-identity-title {
+        margin: 0 0 8px;
+        font-weight: 800;
+        font-size: clamp(1.5rem, 4.5vw, 2rem);
+        color: #fdd65b;
+    }
+
+    .aicoach-identity-subtitle {
+        margin: 0 0 32px;
+        font-weight: 600;
+        font-size: clamp(1rem, 2.8vw, 1.15rem);
+        color: #fff;
+    }
+
+    .aicoach-identity-form {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .aicoach-identity-field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        text-align: left;
+    }
+
+    .aicoach-identity-label {
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: #fff;
+    }
+
+    .aicoach-identity-input {
+        padding: 12px 14px;
+        border: 2px solid #3a3b47;
+        border-radius: 8px;
+        background: #1b1c24;
+        color: #fff;
+        font-size: 1rem;
+        font-family: inherit;
+    }
+
+    .aicoach-identity-input:focus {
+        outline: none;
+        border-color: #fdd65b;
+    }
+
+    .aicoach-identity-input.is-invalid {
+        border-color: #eb0000;
+    }
+
+    .aicoach-identity-error {
+        min-height: 1.2em;
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: #eb0000;
+    }
+
+    .aicoach-identity-continue {
+        margin-top: 8px;
+        padding: 14px;
+        border: none;
+        border-radius: 8px;
+        background: #fdd65b;
+        color: #12131a;
+        font-weight: 800;
+        font-size: 1.05rem;
+        cursor: pointer;
+    }
+
+    .aicoach-identity-continue:disabled {
+        background: #3a3b47;
+        color: #7a7b87;
+        cursor: not-allowed;
     }
 
     .aicoach-stage {

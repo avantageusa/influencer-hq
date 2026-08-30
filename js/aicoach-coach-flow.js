@@ -177,10 +177,12 @@ if ( stage && avatarWrap ) {
             return;
         }
         sequenceFinished = true;
-        // No further screens are implemented yet — FR-06 (competition types) or
-        // FR-07 (identity capture) will extend SCREENS the same way FR-05's tier
-        // confirm does, once those stories exist. Until then, the flow just stops
-        // on whatever the last available screen was; nothing to navigate back to.
+        // FR-07 — identity capture has no approved coach script (unlike every
+        // screen before it), so it's not part of SCREENS/speakScreen at all —
+        // it's the fixed destination once the spoken sequence naturally ends,
+        // for every tier (2-minute lands here right after BTS; 5/10-minute
+        // after the FR-06 competition screens).
+        showPanel( 'identity' );
     }
 
     // Use click so a pre-checked tier (e.g. 2 minutes) still opens its story. A click
@@ -353,6 +355,114 @@ if ( stage && avatarWrap ) {
         unmuteBtn.setAttribute( 'aria-pressed', String( ! video.muted ) );
         avatarWrap.dataset.muted = String( video.muted );
     } );
+
+    // FR-07 — identity capture form (First Name, Last Name, Username). No coach
+    // narration exists for this screen (no approved script, unlike every prior
+    // one), so it's plain form logic: CONTINUE is gated only on all three
+    // fields being non-empty (Scenario 10); the username-uniqueness check runs
+    // on blur or on submit (Scenario 11) and blocks proceeding if taken.
+    //
+    // The uniqueness-check endpoint is owned by BE (not built as of this
+    // story) — checkUsernameAvailability's contract (GET .../username-available
+    // ?username=, expects { available: bool }) is this FE's assumption, and it
+    // fails open (treats a network/404 error as "available") purely so this
+    // form stays usable end-to-end before BE ships the real endpoint. Confirm
+    // the actual contract with BE and remove the fail-open once it's live.
+    const identityForm = document.getElementById( 'aicoach-identity-form' );
+    const firstNameInput = document.getElementById( 'aicoach-first-name' );
+    const lastNameInput = document.getElementById( 'aicoach-last-name' );
+    const usernameInput = document.getElementById( 'aicoach-username' );
+    const usernameError = document.getElementById( 'aicoach-username-error' );
+    const identityContinueBtn = document.getElementById( 'aicoach-identity-continue' );
+
+    let capturedIdentity = null;      // { firstName, lastName, username } once FR-07 completes; FR-08/09 read this next
+    let usernameCheckedValue = null;  // last username value a check actually ran against
+    let usernameAvailable = null;     // null = needs a (re)check, true/false = last check's result
+    let usernameCheckToken = 0;       // guards a stale async response from overwriting a newer one
+
+    function identityFieldsFilled() {
+        return Boolean(
+            firstNameInput?.value.trim() &&
+            lastNameInput?.value.trim() &&
+            usernameInput?.value.trim()
+        );
+    }
+
+    function updateIdentityContinueState() {
+        if ( identityContinueBtn ) {
+            identityContinueBtn.disabled = ! identityFieldsFilled();
+        }
+    }
+
+    async function checkUsernameAvailability( username ) {
+        try {
+            const res = await fetch(
+                cfg.identityRestBase + '/username-available?username=' + encodeURIComponent( username ),
+                { headers: { 'X-WP-Nonce': cfg.nonce } }
+            );
+            if ( ! res.ok ) {
+                throw new Error( 'username-available returned ' + res.status );
+            }
+            const data = await res.json();
+            return Boolean( data.available );
+        } catch ( error ) {
+            console.warn( '[aicoach] username-available check failed, assuming available (BE endpoint not live yet):', error );
+            return true;
+        }
+    }
+
+    async function runUsernameCheck() {
+        const value = usernameInput.value.trim();
+        if ( ! value ) {
+            return;
+        }
+        if ( value === usernameCheckedValue && usernameAvailable !== null ) {
+            return; // already have a fresh answer for this exact value
+        }
+
+        const token = ++usernameCheckToken;
+        const available = await checkUsernameAvailability( value );
+        if ( token !== usernameCheckToken ) {
+            return; // a newer check superseded this one
+        }
+
+        usernameCheckedValue = value;
+        usernameAvailable = available;
+        usernameInput.classList.toggle( 'is-invalid', ! available );
+        usernameError.textContent = available ? '' : ( cfg.i18n?.usernameTaken || 'That username is already taken.' );
+    }
+
+    if ( identityForm ) {
+        [ firstNameInput, lastNameInput ].forEach( function ( input ) {
+            input?.addEventListener( 'input', updateIdentityContinueState );
+        } );
+
+        usernameInput?.addEventListener( 'input', function () {
+            usernameAvailable = null; // the typed value no longer matches what was last checked
+            usernameError.textContent = '';
+            usernameInput.classList.remove( 'is-invalid' );
+            updateIdentityContinueState();
+        } );
+        usernameInput?.addEventListener( 'blur', runUsernameCheck );
+
+        identityForm.addEventListener( 'submit', async function ( event ) {
+            event.preventDefault();
+            if ( ! identityFieldsFilled() ) {
+                return;
+            }
+            await runUsernameCheck();
+            if ( usernameAvailable === false ) {
+                return; // inline error already shown by runUsernameCheck
+            }
+            capturedIdentity = {
+                firstName: firstNameInput.value.trim(),
+                lastName: lastNameInput.value.trim(),
+                username: usernameInput.value.trim(),
+            };
+            identityContinueBtn.disabled = true;
+            identityContinueBtn.textContent = cfg.i18n?.identitySaved || 'Saved';
+        } );
+    }
 
     // Auto-start on arrival — no tap required (unlike page-portal-poc.php).
     ( async function start() {
