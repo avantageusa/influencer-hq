@@ -22,6 +22,7 @@ $aicoach_img = array(
 	'x'            => $theme_uri . '/images/aicoach/icon-x.svg',
 	'belief-coin'  => $theme_uri . '/images/aicoach/icon-belief-coin.svg',
 	'belief-chart' => $theme_uri . '/images/aicoach/icon-belief-chart.svg',
+	'trophy'       => $theme_uri . '/images/aicoach/icon-trophy.svg',
 );
 
 $aicoach_tiers = array(
@@ -224,6 +225,41 @@ $aicoach_tiers = array(
                         </div>
                     </div>
 
+                    <div class="aicoach-panel" data-panel="competition-world" aria-hidden="true">
+                        <div class="aicoach-competition">
+                            <img class="aicoach-competition-icon" src="<?php echo esc_url( $aicoach_img['trophy'] ); ?>" alt="" width="72" height="72" aria-hidden="true">
+                            <h2 class="aicoach-competition-name"><?php esc_html_e( 'World Competition', 'influencer-hq' ); ?></h2>
+                            <p class="aicoach-competition-format">
+                                <?php esc_html_e( 'You + Followers', 'influencer-hq' ); ?>
+                                <span class="aicoach-competition-vs"><?php esc_html_e( 'versus', 'influencer-hq' ); ?></span>
+                                <?php esc_html_e( 'All Influencers + Followers', 'influencer-hq' ); ?>
+                            </p>
+                            <p class="aicoach-caption" data-caption-for="competition-world" aria-live="polite"></p>
+                        </div>
+                    </div>
+
+                    <div class="aicoach-panel" data-panel="competition-community" aria-hidden="true">
+                        <div class="aicoach-competition">
+                            <img class="aicoach-competition-icon" src="<?php echo esc_url( $aicoach_img['trophy'] ); ?>" alt="" width="72" height="72" aria-hidden="true">
+                            <h2 class="aicoach-competition-name"><?php esc_html_e( 'Community Competition', 'influencer-hq' ); ?></h2>
+                            <p class="aicoach-competition-format"><?php esc_html_e( 'Weekly competition for your followers only', 'influencer-hq' ); ?></p>
+                            <p class="aicoach-caption" data-caption-for="competition-community" aria-live="polite"></p>
+                        </div>
+                    </div>
+
+                    <div class="aicoach-panel" data-panel="competition-private" aria-hidden="true">
+                        <div class="aicoach-competition">
+                            <img class="aicoach-competition-icon" src="<?php echo esc_url( $aicoach_img['trophy'] ); ?>" alt="" width="72" height="72" aria-hidden="true">
+                            <h2 class="aicoach-competition-name"><?php esc_html_e( 'Private Challenge', 'influencer-hq' ); ?></h2>
+                            <p class="aicoach-competition-format">
+                                <?php esc_html_e( 'You + Followers', 'influencer-hq' ); ?>
+                                <span class="aicoach-competition-vs"><?php esc_html_e( 'versus', 'influencer-hq' ); ?></span>
+                                <?php esc_html_e( 'An Influencer Friend + Followers', 'influencer-hq' ); ?>
+                            </p>
+                            <p class="aicoach-caption" data-caption-for="competition-private" aria-live="polite"></p>
+                        </div>
+                    </div>
+
                 </div>
 
             </section>
@@ -357,6 +393,45 @@ $aicoach_tiers = array(
         text-transform: uppercase;
         letter-spacing: .04em;
         color: #fdd65b;
+    }
+
+    .aicoach-competition {
+        max-width: 560px;
+        margin: 0 auto;
+        text-align: center;
+    }
+
+    .aicoach-competition-icon {
+        display: block;
+        margin: 0 auto 20px;
+        width: 72px;
+        height: 72px;
+    }
+
+    .aicoach-competition-name {
+        margin: 0 0 16px;
+        font-weight: 800;
+        font-size: clamp(1.5rem, 4.5vw, 2.25rem);
+        text-transform: uppercase;
+        color: #fdd65b;
+    }
+
+    .aicoach-competition-format {
+        margin: 0 0 28px;
+        font-weight: 700;
+        font-size: clamp(1.05rem, 3vw, 1.3rem);
+        line-height: 1.4;
+        color: #fff;
+    }
+
+    .aicoach-competition-vs {
+        display: block;
+        margin: 4px 0;
+        font-weight: 600;
+        font-style: italic;
+        text-transform: uppercase;
+        font-size: clamp(0.85rem, 2.4vw, 1rem);
+        color: #a9a9b3;
     }
 
     .aicoach-stage {
