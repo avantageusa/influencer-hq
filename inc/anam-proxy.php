@@ -276,6 +276,7 @@ function ihq_aicoach_enqueue_coach_flow() {
 			'i18n'             => array(
 				'usernameTaken'  => __( 'That username is already taken.', 'influencer-hq' ),
 				'identitySaved'  => __( 'Saved', 'influencer-hq' ),
+				'channelInvalid' => __( 'Please check this value and try again.', 'influencer-hq' ),
 			),
 		)
 	);
