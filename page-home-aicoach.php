@@ -58,6 +58,70 @@ $aicoach_tiers = array(
 		),
 	),
 );
+
+// FR-08 — the 8 available communication channels. KakaoTalk, Telegram, WeChat,
+// and Zalo's exact contact-detail format/Braze attribute is marked "TBD" in the
+// ticket itself, so those four take a plain non-empty value rather than an
+// invented strict format (see js/aicoach-coach-flow.js CHANNELS for the
+// matching client-side validation).
+$aicoach_channels = array(
+	array(
+		'key'         => 'email',
+		'label'       => 'Email',
+		'input_label' => 'Email address',
+		'input_type'  => 'email',
+		'placeholder' => 'you@example.com',
+	),
+	array(
+		'key'         => 'kakaotalk',
+		'label'       => 'KakaoTalk',
+		'input_label' => 'KakaoTalk ID or phone number',
+		'input_type'  => 'text',
+		'placeholder' => '',
+	),
+	array(
+		'key'         => 'line',
+		'label'       => 'Line',
+		'input_label' => 'Line ID',
+		'input_type'  => 'text',
+		'placeholder' => 'U0123456789abcdef0123456789abcdef',
+	),
+	array(
+		'key'         => 'sms',
+		'label'       => 'SMS',
+		'input_label' => 'Phone number',
+		'input_type'  => 'tel',
+		'placeholder' => '+66812345678',
+	),
+	array(
+		'key'         => 'telegram',
+		'label'       => 'Telegram',
+		'input_label' => 'Telegram username or chat ID',
+		'input_type'  => 'text',
+		'placeholder' => '@username',
+	),
+	array(
+		'key'         => 'wechat',
+		'label'       => 'WeChat',
+		'input_label' => 'WeChat ID',
+		'input_type'  => 'text',
+		'placeholder' => '',
+	),
+	array(
+		'key'         => 'whatsapp',
+		'label'       => 'WhatsApp',
+		'input_label' => 'Phone number',
+		'input_type'  => 'tel',
+		'placeholder' => '+66812345678',
+	),
+	array(
+		'key'         => 'zalo',
+		'label'       => 'Zalo',
+		'input_label' => 'Phone number or Zalo ID',
+		'input_type'  => 'text',
+		'placeholder' => '',
+	),
+);
 ?>
 
     <main id="primary" class="site-main">
@@ -278,11 +342,44 @@ $aicoach_tiers = array(
                                     <input type="text" class="aicoach-identity-input" id="aicoach-username" autocomplete="username" required>
                                     <span class="aicoach-identity-error" id="aicoach-username-error" role="alert"></span>
                                 </label>
-                                <button type="submit" class="aicoach-identity-continue" id="aicoach-identity-continue" disabled>
+                                <button type="submit" class="aicoach-form-continue" id="aicoach-form-continue" disabled>
                                     <?php esc_html_e( 'Continue', 'influencer-hq' ); ?>
                                 </button>
                             </form>
                         </div>
+                    </div>
+
+                    <div class="aicoach-panel" data-panel="comm-channels" aria-hidden="true">
+                        <p class="aicoach-caption" data-caption-for="comm-channels" aria-live="polite"></p>
+                        <form class="aicoach-channels" id="aicoach-channels-form" novalidate>
+                            <p class="aicoach-channels-hint" id="aicoach-channels-hint">
+                                <?php esc_html_e( 'Please select at least one communication method.', 'influencer-hq' ); ?>
+                            </p>
+                            <div class="aicoach-channel-list">
+                                <?php foreach ( $aicoach_channels as $channel ) : ?>
+                                <div class="aicoach-channel" data-channel="<?php echo esc_attr( $channel['key'] ); ?>">
+                                    <label class="aicoach-channel-toggle">
+                                        <input type="checkbox" class="aicoach-channel-check" data-channel="<?php echo esc_attr( $channel['key'] ); ?>">
+                                        <span class="aicoach-channel-box" aria-hidden="true"></span>
+                                        <span class="aicoach-channel-label"><?php echo esc_html( $channel['label'] ); ?></span>
+                                    </label>
+                                    <div class="aicoach-channel-field" hidden>
+                                        <label class="aicoach-channel-field-label"><?php echo esc_html( $channel['input_label'] ); ?></label>
+                                        <input
+                                            type="<?php echo esc_attr( $channel['input_type'] ); ?>"
+                                            class="aicoach-channel-input"
+                                            data-channel="<?php echo esc_attr( $channel['key'] ); ?>"
+                                            placeholder="<?php echo esc_attr( $channel['placeholder'] ); ?>"
+                                        >
+                                        <span class="aicoach-channel-error" role="alert"></span>
+                                    </div>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <button type="submit" class="aicoach-form-continue" id="aicoach-channels-continue" disabled>
+                                <?php esc_html_e( 'Continue', 'influencer-hq' ); ?>
+                            </button>
+                        </form>
                     </div>
 
                 </div>
@@ -524,7 +621,7 @@ $aicoach_tiers = array(
         color: #eb0000;
     }
 
-    .aicoach-identity-continue {
+    .aicoach-form-continue {
         margin-top: 8px;
         padding: 14px;
         border: none;
@@ -536,10 +633,119 @@ $aicoach_tiers = array(
         cursor: pointer;
     }
 
-    .aicoach-identity-continue:disabled {
+    .aicoach-form-continue:disabled {
         background: #3a3b47;
         color: #7a7b87;
         cursor: not-allowed;
+    }
+
+    .aicoach-channels {
+        max-width: 440px;
+        margin: 0 auto;
+    }
+
+    .aicoach-channels-hint {
+        margin: 0 0 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-align: center;
+        color: #a9a9b3;
+    }
+
+    .aicoach-channels-hint.is-error {
+        color: #eb0000;
+    }
+
+    .aicoach-channel-list {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        margin: 0 0 24px;
+    }
+
+    .aicoach-channel {
+        padding: 14px 16px;
+        border: 2px solid #3a3b47;
+        border-radius: 10px;
+        background: #1b1c24;
+    }
+
+    .aicoach-channel-toggle {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .aicoach-channel-check {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .aicoach-channel-box {
+        flex-shrink: 0;
+        width: 24px;
+        height: 24px;
+        border: 2px solid #fdd65b;
+        border-radius: 6px;
+        background: transparent;
+        box-sizing: border-box;
+    }
+
+    .aicoach-channel-toggle:has(.aicoach-channel-check:checked) .aicoach-channel-box {
+        background: #fdd65b;
+    }
+
+    .aicoach-channel-label {
+        font-weight: 700;
+        color: #fff;
+    }
+
+    .aicoach-channel-field {
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid #3a3b47;
+        text-align: left;
+    }
+
+    .aicoach-channel-field-label {
+        display: block;
+        margin: 0 0 8px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #fff;
+    }
+
+    .aicoach-channel-input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px 12px;
+        border: 2px solid #3a3b47;
+        border-radius: 8px;
+        background: #12131a;
+        color: #fff;
+        font-size: 0.95rem;
+        font-family: inherit;
+    }
+
+    .aicoach-channel-input:focus {
+        outline: none;
+        border-color: #fdd65b;
+    }
+
+    .aicoach-channel-input.is-invalid {
+        border-color: #eb0000;
+    }
+
+    .aicoach-channel-error {
+        display: block;
+        min-height: 1.1em;
+        margin-top: 6px;
+        font-weight: 600;
+        font-size: 0.8rem;
+        color: #eb0000;
     }
 
     .aicoach-stage {

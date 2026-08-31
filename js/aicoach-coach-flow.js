@@ -101,6 +101,29 @@ function getCompetitionScreensForTier( tierMinutes ) {
     return [ COMPETITION_SCREENS.world, COMPETITION_SCREENS.community, COMPETITION_SCREENS.private ];
 }
 
+// FR-08 — communication channels. One screen, same for every tier, queued once
+// FR-07's identity form succeeds (see the identity submit handler below).
+const COMM_CHANNELS_SCREEN = {
+    panel: 'comm-channels',
+    script: "Before we continue… I'd like to ask one small favor. Please tell me the communication methods you actually use. I'll use them to answer your questions… send reminders… share personalized reports… help you prepare competitions… and continue coaching you as new opportunities become available. Please choose the methods you genuinely use. That way… I'll always know the best way to stay in touch.",
+};
+
+// FR-08 — one entry per channel. KakaoTalk/Telegram/WeChat/Zalo's contact-detail
+// format is marked "TBD" in the ticket (format/Braze attribute not yet
+// confirmed), so those four only require a non-empty value rather than an
+// invented strict pattern — Email/SMS/WhatsApp/Line have concrete formats given
+// in the ticket, so those get real validation.
+const CHANNELS = [
+    { key: 'email', validate: ( v ) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test( v ) },
+    { key: 'kakaotalk', validate: ( v ) => v.length > 0 }, // TBD format
+    { key: 'line', validate: ( v ) => /^U[0-9a-fA-F]{32}$/.test( v ) },
+    { key: 'sms', validate: ( v ) => /^\+[1-9]\d{7,14}$/.test( v ) },
+    { key: 'telegram', validate: ( v ) => v.length > 0 }, // TBD format
+    { key: 'wechat', validate: ( v ) => v.length > 0 },   // TBD format
+    { key: 'whatsapp', validate: ( v ) => /^\+[1-9]\d{7,14}$/.test( v ) },
+    { key: 'zalo', validate: ( v ) => v.length > 0 },     // TBD format
+];
+
 const cfg = window.AICOACH_SAMI || {};
 const SESSION_TOKEN_URL = cfg.restBase + '/session-token';
 const PERSONA_PREVIEW_URL = cfg.restBase + '/persona-preview';
@@ -130,10 +153,25 @@ if ( stage && avatarWrap ) {
         return stage.querySelector( '.aicoach-panel.is-active' );
     }
 
+    let pendingPanelKey = null; // a showPanel() call that arrived mid-transition; applied once the current one settles
+
     function showPanel( panelKey ) {
         const next = stage.querySelector( '.aicoach-panel[data-panel="' + panelKey + '"]' );
+        if ( ! next ) {
+            return;
+        }
+
+        if ( isAnimating ) {
+            // Don't silently drop this — e.g. FR-08's screen gets queued right after
+            // FR-07's own showPanel('identity') call, well within the 800ms fade
+            // window on a fast/automated submit. Remember the latest request and
+            // apply it once the in-flight transition finishes.
+            pendingPanelKey = panelKey;
+            return;
+        }
+
         const current = getActivePanel();
-        if ( ! next || ! current || next === current || isAnimating ) {
+        if ( ! current || next === current ) {
             return;
         }
 
@@ -151,6 +189,14 @@ if ( stage && avatarWrap ) {
             window.setTimeout( function () {
                 stage.style.minHeight = '';
                 isAnimating = false;
+
+                if ( pendingPanelKey && pendingPanelKey !== panelKey ) {
+                    const queued = pendingPanelKey;
+                    pendingPanelKey = null;
+                    showPanel( queued );
+                } else {
+                    pendingPanelKey = null;
+                }
             }, FADE_MS );
         }, FADE_MS );
     }
@@ -172,17 +218,29 @@ if ( stage && avatarWrap ) {
     let activeClient = null;   // set once Anam connects; lets a late tier click resume a finished live sequence
     let usingFallback = false; // true once runFallback has taken over, so a late tier click resumes the right runner
 
+    // Where finishSequence() navigates once the current SCREENS queue is fully
+    // consumed — this changes as later FRs queue more content after their own
+    // predecessor's success handler runs. FR-07 is the first destination (no
+    // spoken script of its own); FR-08's success handler clears this back to
+    // null since nothing is built after comm-channels yet. Without this, calling
+    // finishSequence() a second time (after FR-08's one queued screen finishes)
+    // would incorrectly snap back to 'identity' instead of just stopping.
+    let sequenceEndDestination = 'identity';
+
     function finishSequence() {
         if ( sequenceFinished ) {
             return;
         }
         sequenceFinished = true;
-        // FR-07 — identity capture has no approved coach script (unlike every
-        // screen before it), so it's not part of SCREENS/speakScreen at all —
-        // it's the fixed destination once the spoken sequence naturally ends,
-        // for every tier (2-minute lands here right after BTS; 5/10-minute
-        // after the FR-06 competition screens).
-        showPanel( 'identity' );
+        // No coach script exists for identity capture (unlike every screen
+        // before it) or anything after it yet, so those steps aren't part of
+        // SCREENS/speakScreen — they're plain showPanel() destinations reached
+        // once whatever's currently queued in SCREENS runs out. Which
+        // destination that is changes as later stories queue more content (see
+        // sequenceEndDestination); null means nothing built yet, just stop.
+        if ( sequenceEndDestination ) {
+            showPanel( sequenceEndDestination );
+        }
     }
 
     // Use click so a pre-checked tier (e.g. 2 minutes) still opens its story. A click
@@ -373,7 +431,7 @@ if ( stage && avatarWrap ) {
     const lastNameInput = document.getElementById( 'aicoach-last-name' );
     const usernameInput = document.getElementById( 'aicoach-username' );
     const usernameError = document.getElementById( 'aicoach-username-error' );
-    const identityContinueBtn = document.getElementById( 'aicoach-identity-continue' );
+    const identityContinueBtn = document.getElementById( 'aicoach-form-continue' );
 
     let capturedIdentity = null;      // { firstName, lastName, username } once FR-07 completes; FR-08/09 read this next
     let usernameCheckedValue = null;  // last username value a check actually ran against
@@ -461,6 +519,134 @@ if ( stage && avatarWrap ) {
             };
             identityContinueBtn.disabled = true;
             identityContinueBtn.textContent = cfg.i18n?.identitySaved || 'Saved';
+
+            // FR-08 — queue the comm-channels screen the same way FR-03's tier
+            // confirm queues equity/competition screens: push onto SCREENS and
+            // resume whichever runner was active (the loop exited when we first
+            // reached 'identity', so it needs an explicit resume here, same as a
+            // late tier click in PO-3096. sequenceFinished is always true at this
+            // point in real usage (finishSequence() is the only way to reach the
+            // identity panel at all, and it sets this first) — the loopAlreadyExited
+            // check just keeps this self-consistent with the tier-click pattern
+            // rather than relying on that invariant implicitly.
+            const loopAlreadyExited = sequenceFinished;
+            SCREENS.push( COMM_CHANNELS_SCREEN );
+            // Nothing is built after comm-channels yet (that's FR-09) — clear the
+            // destination so finishSequence(), once comm-channels' single queued
+            // screen finishes, just stops instead of bouncing back to 'identity'.
+            sequenceEndDestination = null;
+            if ( loopAlreadyExited ) {
+                sequenceFinished = false;
+                if ( usingFallback ) {
+                    runFallback();
+                } else if ( activeClient ) {
+                    runSequence( activeClient );
+                }
+            }
+        } );
+    }
+
+    // FR-08 — communication channels form. Checking a channel reveals its input
+    // field (Scenario 14); CONTINUE is gated on at least one channel checked and
+    // every checked channel's field passing its format check (Scenario 15).
+    const channelsForm = document.getElementById( 'aicoach-channels-form' );
+    const channelsHint = document.getElementById( 'aicoach-channels-hint' );
+    const channelsContinueBtn = document.getElementById( 'aicoach-channels-continue' );
+
+    let capturedChannels = null; // [{ channel, value }] once FR-08 completes; FR-09 reads this next
+
+    function getChannelParts( key ) {
+        const row = channelsForm?.querySelector( '.aicoach-channel[data-channel="' + key + '"]' );
+        return {
+            row: row,
+            checkbox: row?.querySelector( '.aicoach-channel-check' ),
+            field: row?.querySelector( '.aicoach-channel-field' ),
+            input: row?.querySelector( '.aicoach-channel-input' ),
+            error: row?.querySelector( '.aicoach-channel-error' ),
+        };
+    }
+
+    function checkedChannels() {
+        return CHANNELS.map( function ( ch ) {
+            return { ch: ch, parts: getChannelParts( ch.key ) };
+        } ).filter( function ( entry ) {
+            return Boolean( entry.parts.checkbox?.checked );
+        } );
+    }
+
+    function updateChannelsContinueState() {
+        const checked = checkedChannels();
+        const valid = checked.length > 0 && checked.every( function ( entry ) {
+            return entry.ch.validate( entry.parts.input.value.trim() );
+        } );
+        if ( channelsContinueBtn ) {
+            channelsContinueBtn.disabled = ! valid;
+        }
+        if ( channelsHint ) {
+            channelsHint.classList.toggle( 'is-error', checked.length === 0 );
+        }
+    }
+
+    if ( channelsForm ) {
+        CHANNELS.forEach( function ( ch ) {
+            const { checkbox, field, input, error } = getChannelParts( ch.key );
+            if ( ! checkbox || ! field || ! input ) {
+                return;
+            }
+
+            checkbox.addEventListener( 'change', function () {
+                field.hidden = ! checkbox.checked;
+                if ( ! checkbox.checked ) {
+                    input.value = '';
+                    input.classList.remove( 'is-invalid' );
+                    error.textContent = '';
+                }
+                updateChannelsContinueState();
+            } );
+
+            input.addEventListener( 'input', function () {
+                input.classList.remove( 'is-invalid' );
+                error.textContent = '';
+                updateChannelsContinueState();
+            } );
+
+            input.addEventListener( 'blur', function () {
+                const value = input.value.trim();
+                if ( checkbox.checked && value && ! ch.validate( value ) ) {
+                    input.classList.add( 'is-invalid' );
+                    error.textContent = cfg.i18n?.channelInvalid || 'Please check this value and try again.';
+                }
+            } );
+        } );
+
+        channelsForm.addEventListener( 'submit', function ( event ) {
+            event.preventDefault();
+            const checked = checkedChannels();
+            if ( checked.length === 0 ) {
+                channelsHint?.classList.add( 'is-error' );
+                return;
+            }
+
+            let allValid = true;
+            checked.forEach( function ( entry ) {
+                const value = entry.parts.input.value.trim();
+                if ( ! entry.ch.validate( value ) ) {
+                    allValid = false;
+                    entry.parts.input.classList.add( 'is-invalid' );
+                    entry.parts.error.textContent = cfg.i18n?.channelInvalid || 'Please check this value and try again.';
+                }
+            } );
+            if ( ! allValid ) {
+                return;
+            }
+
+            capturedChannels = checked.map( function ( entry ) {
+                return { channel: entry.ch.key, value: entry.parts.input.value.trim() };
+            } );
+            channelsContinueBtn.disabled = true;
+            channelsContinueBtn.textContent = cfg.i18n?.identitySaved || 'Saved';
+            // FR-09 (account creation) is the next story and isn't built yet —
+            // nothing further to navigate to, same as FR-07 before this story existed.
         } );
     }
 
