@@ -113,14 +113,22 @@ const COMM_CHANNELS_SCREEN = {
 // confirmed), so those four only require a non-empty value rather than an
 // invented strict pattern — Email/SMS/WhatsApp/Line have concrete formats given
 // in the ticket, so those get real validation.
+// E.164 format (e.g. +66812345678) — shared by every channel whose ticket-given
+// contact detail is explicitly a phone number, so the pattern isn't duplicated
+// per channel (review nit on PO-3099/#11). Telegram isn't included here even
+// though it can carry a phone number in practice — the ticket itself defines
+// its format as "numeric ID or @username (TBD)", not phone, so it keeps the
+// lenient non-empty check until that's confirmed one way or the other.
+const isValidPhoneNumber = ( v ) => /^\+[1-9]\d{7,14}$/.test( v );
+
 const CHANNELS = [
     { key: 'email', validate: ( v ) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test( v ) },
     { key: 'kakaotalk', validate: ( v ) => v.length > 0 }, // TBD format
     { key: 'line', validate: ( v ) => /^U[0-9a-fA-F]{32}$/.test( v ) },
-    { key: 'sms', validate: ( v ) => /^\+[1-9]\d{7,14}$/.test( v ) },
-    { key: 'telegram', validate: ( v ) => v.length > 0 }, // TBD format
+    { key: 'sms', validate: isValidPhoneNumber },
+    { key: 'telegram', validate: ( v ) => v.length > 0 }, // TBD format — see note above
     { key: 'wechat', validate: ( v ) => v.length > 0 },   // TBD format
-    { key: 'whatsapp', validate: ( v ) => /^\+[1-9]\d{7,14}$/.test( v ) },
+    { key: 'whatsapp', validate: isValidPhoneNumber },
     { key: 'zalo', validate: ( v ) => v.length > 0 },     // TBD format
 ];
 
