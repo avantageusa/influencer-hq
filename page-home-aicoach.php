@@ -382,6 +382,16 @@ $aicoach_channels = array(
                         </form>
                     </div>
 
+                    <div class="aicoach-panel" data-panel="final-continue" aria-hidden="true">
+                        <div class="aicoach-final">
+                            <p class="aicoach-caption" data-caption-for="final-continue" aria-live="polite"></p>
+                            <p class="aicoach-final-error" id="aicoach-final-error" role="alert"></p>
+                            <button type="button" class="aicoach-form-continue" id="aicoach-final-continue">
+                                <?php esc_html_e( "Let's Continue", 'influencer-hq' ); ?>
+                            </button>
+                        </div>
+                    </div>
+
                 </div>
 
             </section>
@@ -745,6 +755,20 @@ $aicoach_channels = array(
         margin-top: 6px;
         font-weight: 600;
         font-size: 0.8rem;
+        color: #eb0000;
+    }
+
+    .aicoach-final {
+        max-width: 440px;
+        margin: 0 auto;
+        text-align: center;
+    }
+
+    .aicoach-final-error {
+        min-height: 1.2em;
+        margin: 0 0 16px;
+        font-weight: 600;
+        font-size: 0.9rem;
         color: #eb0000;
     }
 

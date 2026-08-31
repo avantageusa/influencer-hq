@@ -124,6 +124,12 @@ const CHANNELS = [
     { key: 'zalo', validate: ( v ) => v.length > 0 },     // TBD format
 ];
 
+// FR-09 — final confirmation, queued once FR-08's comm-channels succeeds.
+const FINAL_SCREEN = {
+    panel: 'final-continue',
+    script: "Perfect. Thank you. I now know how you'd like us to stay connected. Everything is ready. From this point forward… I'll continue guiding you inside your personal Coaching Center. That's where we'll review your options… answer your questions… and take the next steps together. Remember… you don't have to learn everything today. We'll continue exactly where we leave off. When you're ready… Let's Continue.",
+};
+
 const cfg = window.AICOACH_SAMI || {};
 const SESSION_TOKEN_URL = cfg.restBase + '/session-token';
 const PERSONA_PREVIEW_URL = cfg.restBase + '/persona-preview';
@@ -645,10 +651,67 @@ if ( stage && avatarWrap ) {
             } );
             channelsContinueBtn.disabled = true;
             channelsContinueBtn.textContent = cfg.i18n?.identitySaved || 'Saved';
-            // FR-09 (account creation) is the next story and isn't built yet —
-            // nothing further to navigate to, same as FR-07 before this story existed.
+
+            // FR-09 — queue the final confirmation + account-creation screen, same
+            // resume pattern as FR-07 queuing FR-08. sequenceEndDestination stays
+            // null: nothing to navigate to on completing this screen's own
+            // narration — the actual "next step" is the portal redirect the
+            // final-continue button triggers, not another panel.
+            const loopAlreadyExited = sequenceFinished;
+            SCREENS.push( FINAL_SCREEN );
+            if ( loopAlreadyExited ) {
+                sequenceFinished = false;
+                if ( usingFallback ) {
+                    runFallback();
+                } else if ( activeClient ) {
+                    runSequence( activeClient );
+                }
+            }
         } );
     }
+
+    // FR-09 — account creation + portal transfer. BE owns account creation,
+    // session/login establishment, and Braze writes entirely (confirmed with
+    // Dejan, same agreement as FR-07's username check) — this just posts what
+    // FR-07/FR-08 captured and either redirects on success or shows an inline
+    // error and lets the visitor retry (Scenario 16). Unlike FR-07's
+    // uniqueness check, there's no safe "fail open" here — faking a redirect
+    // to a portal session that doesn't actually exist would just break, so a
+    // missing/failing endpoint surfaces as a real error, not a silent pass.
+    const finalContinueBtn = document.getElementById( 'aicoach-final-continue' );
+    const finalError = document.getElementById( 'aicoach-final-error' );
+
+    finalContinueBtn?.addEventListener( 'click', async function () {
+        if ( ! capturedIdentity || ! capturedChannels ) {
+            return; // shouldn't be reachable — both prior screens already gate on this
+        }
+
+        finalContinueBtn.disabled = true;
+        finalError.textContent = '';
+
+        try {
+            const res = await fetch( cfg.identityRestBase + '/create-account', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': cfg.nonce },
+                body: JSON.stringify( {
+                    firstName: capturedIdentity.firstName,
+                    lastName: capturedIdentity.lastName,
+                    username: capturedIdentity.username,
+                    channels: capturedChannels,
+                    language: 'en', // FR-12/13 (language detection/selector) aren't built yet
+                } ),
+            } );
+            const data = await res.json();
+            if ( ! res.ok || ! data.success ) {
+                throw new Error( data.error || 'create-account failed' );
+            }
+            window.location.href = data.redirectUrl;
+        } catch ( error ) {
+            console.warn( '[aicoach] account creation failed:', error );
+            finalError.textContent = cfg.i18n?.accountCreateErr || 'Something went wrong creating your account. Please try again.';
+            finalContinueBtn.disabled = false;
+        }
+    } );
 
     // Auto-start on arrival — no tap required (unlike page-portal-poc.php).
     ( async function start() {
