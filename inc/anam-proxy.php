@@ -271,12 +271,17 @@ function ihq_aicoach_enqueue_coach_flow() {
 			// FR-07 — username availability check. Namespace/route/response shape
 			// (GET ?username=, expects { available: bool }) is this FE's assumption;
 			// confirm with BE once they build the real endpoint (PO-3098 note).
+			// FR-09 — account creation reuses the same namespace: POST .../create-account
+			// with { firstName, lastName, username, channels: [{channel, value}], language },
+			// expects { success: true, redirectUrl } or { success: false, error }. Also this
+			// FE's assumption — BE owns account creation + Braze writes entirely (PO-3100 note).
 			'identityRestBase' => esc_url_raw( rest_url( 'ihq/v1' ) ),
 			'nonce'            => wp_create_nonce( 'wp_rest' ),
 			'i18n'             => array(
-				'usernameTaken'  => __( 'That username is already taken.', 'influencer-hq' ),
-				'identitySaved'  => __( 'Saved', 'influencer-hq' ),
-				'channelInvalid' => __( 'Please check this value and try again.', 'influencer-hq' ),
+				'usernameTaken'    => __( 'That username is already taken.', 'influencer-hq' ),
+				'identitySaved'    => __( 'Saved', 'influencer-hq' ),
+				'channelInvalid'   => __( 'Please check this value and try again.', 'influencer-hq' ),
+				'accountCreateErr' => __( 'Something went wrong creating your account. Please try again.', 'influencer-hq' ),
 			),
 		)
 	);
