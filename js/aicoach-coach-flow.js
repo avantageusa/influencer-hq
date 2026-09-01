@@ -24,6 +24,13 @@ const SCREEN_ADVANCE_DELAY_MS = 1200; // natural pause after a line finishes bef
 const FALLBACK_READ_MS = 9000;        // per-screen dwell for the static-text fallback (no speech to sync against)
 const AVATAR_VIDEO_ID = 'aicoach-avatar-video';
 
+// FR-17 — trigger the time-remaining check once this proportion of the
+// selected tier's total duration has elapsed. The ticket explicitly says the
+// real threshold "requires confirmation" — 0.8 (80%) is a placeholder pending
+// that, not an approved value. Adjust here once it's confirmed.
+const TIME_REMAINING_THRESHOLD_RATIO = 0.8;
+const TIER_DURATION_MS = { '2': 2 * 60 * 1000, '5': 5 * 60 * 1000, '10': 10 * 60 * 1000 };
+
 const SCREENS = [
     {
         panel: 'intro',
@@ -287,6 +294,7 @@ if ( stage && avatarWrap ) {
 
             elapsedStartedAt = Date.now();
             selectedTierMinutes = panelKey;
+            scheduleTimeRemainingCheck( panelKey );
             const loopAlreadyExited = sequenceFinished;
             SCREENS.push( ...getEquityScreensForTier( panelKey ), ...getCompetitionScreensForTier( panelKey ) );
 
@@ -719,6 +727,56 @@ if ( stage && avatarWrap ) {
             finalError.textContent = cfg.i18n?.accountCreateErr || 'Something went wrong creating your account. Please try again.';
             finalContinueBtn.disabled = false;
         }
+    } );
+
+    // FR-17 — time-remaining check (Scenario 29/30). Overlays whichever screen
+    // is currently showing (it isn't one of the SCREENS/aicoach-panel entries,
+    // since it can interrupt any of them) once the visitor has used up
+    // TIME_REMAINING_THRESHOLD_RATIO of their selected tier. Fires once per
+    // session (Scenario 30's "does not fire again"); if the visitor has
+    // already completed registration by then, the page has already navigated
+    // away to the portal (PO-3100's redirect) and this timer is moot — no
+    // extra guard needed for that case.
+    //
+    // "No" is meant to trigger FR-18's appointment scheduling (PO-3109, a
+    // separate story, not built yet) — for now it just dismisses; wire the
+    // real scheduling flow in here once that story exists.
+    const timeCheckOverlay = document.getElementById( 'aicoach-time-check' );
+    const timeCheckYesBtn = document.getElementById( 'aicoach-time-check-yes' );
+    const timeCheckNoBtn = document.getElementById( 'aicoach-time-check-no' );
+    let timeRemainingPromptShown = false;
+    let timeRemainingTimer = null;
+
+    function hideTimeRemainingCheck() {
+        timeCheckOverlay?.classList.remove( 'is-visible' );
+        timeCheckOverlay?.setAttribute( 'aria-hidden', 'true' );
+    }
+
+    function scheduleTimeRemainingCheck( tierMinutes ) {
+        const totalMs = TIER_DURATION_MS[ tierMinutes ];
+        if ( ! totalMs ) {
+            return;
+        }
+        window.clearTimeout( timeRemainingTimer );
+        timeRemainingTimer = window.setTimeout( function () {
+            if ( timeRemainingPromptShown ) {
+                return;
+            }
+            timeRemainingPromptShown = true;
+            timeCheckOverlay?.classList.add( 'is-visible' );
+            timeCheckOverlay?.setAttribute( 'aria-hidden', 'false' );
+        }, totalMs * TIME_REMAINING_THRESHOLD_RATIO );
+    }
+
+    timeCheckYesBtn?.addEventListener( 'click', function () {
+        // Scenario 30 — continue from the current screen with no loss; the
+        // overlay was layered on top of it, so there's nothing to resume.
+        hideTimeRemainingCheck();
+    } );
+
+    timeCheckNoBtn?.addEventListener( 'click', function () {
+        hideTimeRemainingCheck();
+        // FR-18 isn't built yet — nothing further happens until it exists.
     } );
 
     // Auto-start on arrival — no tap required (unlike page-portal-poc.php).

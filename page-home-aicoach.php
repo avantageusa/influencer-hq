@@ -394,6 +394,30 @@ $aicoach_channels = array(
 
                 </div>
 
+                <!--
+                FR-17 — time-remaining check. Overlays whichever screen is
+                currently active rather than being one of the aicoach-panel
+                screens, since it can interrupt any of them. Copy and the
+                trigger threshold are both explicitly marked as pending
+                approval/confirmation in the ticket — placeholder text below,
+                see js/aicoach-coach-flow.js for the threshold constant.
+                -->
+                <div class="aicoach-time-check" id="aicoach-time-check" aria-hidden="true" role="dialog" aria-modal="true">
+                    <div class="aicoach-time-check-box">
+                        <p class="aicoach-time-check-text">
+                            <?php esc_html_e( "Looks like your selected time is almost up. Do you have a few more minutes to finish?", 'influencer-hq' ); ?>
+                        </p>
+                        <div class="aicoach-time-check-actions">
+                            <button type="button" class="aicoach-time-check-btn aicoach-time-check-yes" id="aicoach-time-check-yes">
+                                <?php esc_html_e( 'Yes', 'influencer-hq' ); ?>
+                            </button>
+                            <button type="button" class="aicoach-time-check-btn aicoach-time-check-no" id="aicoach-time-check-no">
+                                <?php esc_html_e( 'No', 'influencer-hq' ); ?>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
             </section>
 
         </div>
@@ -770,6 +794,66 @@ $aicoach_channels = array(
         font-weight: 600;
         font-size: 0.9rem;
         color: #eb0000;
+    }
+
+    .aicoach-time-check {
+        display: none;
+        position: fixed;
+        inset: 0;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: rgba(11, 12, 16, .8);
+        backdrop-filter: blur(4px);
+        z-index: 10040;
+    }
+
+    .aicoach-time-check.is-visible {
+        display: flex;
+    }
+
+    .aicoach-time-check-box {
+        max-width: 380px;
+        width: 100%;
+        padding: 28px 24px;
+        border: 2px solid #fdd65b;
+        border-radius: 12px;
+        background: #1b1c24;
+        text-align: center;
+    }
+
+    .aicoach-time-check-text {
+        margin: 0 0 24px;
+        font-weight: 700;
+        font-size: 1.05rem;
+        line-height: 1.4;
+        color: #fff;
+    }
+
+    .aicoach-time-check-actions {
+        display: flex;
+        gap: 12px;
+    }
+
+    .aicoach-time-check-btn {
+        flex: 1;
+        padding: 12px;
+        border: none;
+        border-radius: 8px;
+        font-weight: 800;
+        font-size: 1rem;
+        cursor: pointer;
+    }
+
+    .aicoach-time-check-yes {
+        background: #fdd65b;
+        color: #12131a;
+    }
+
+    .aicoach-time-check-no {
+        background: transparent;
+        border: 2px solid #3a3b47;
+        color: #fff;
     }
 
     .aicoach-stage {
