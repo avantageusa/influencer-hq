@@ -12,9 +12,9 @@ get_template_part( 'template-parts/portal-styles' );
 $theme_uri = get_template_directory_uri();
 
 $aicoach_img = array(
-	'portrait'     => $theme_uri . '/images/aicoach/coach-portrait.png',
-	'bts'          => $theme_uri . '/images/aicoach/bts.jpg',
-	'magic'        => $theme_uri . '/images/aicoach/magic-johnson.png',
+	'portrait'     => $theme_uri . '/images/aicoach/coach-portrait.webp',
+	'bts'          => $theme_uri . '/images/aicoach/bts.webp',
+	'magic'        => $theme_uri . '/images/aicoach/magic-johnson.webp',
 	// Placeholder — no licensed Alix Earle photo exists in this repo yet; swap
 	// this src for the real asset once design/legal supplies one.
 	'alix'         => $theme_uri . '/images/aicoach/alix-earle-placeholder.svg',
@@ -142,6 +142,7 @@ $aicoach_channels = array(
                         alt="<?php esc_attr_e( 'AI Coach', 'influencer-hq' ); ?>"
                         width="452"
                         height="452"
+                        fetchpriority="high"
                     >
                     <video class="aicoach-avatar-video" id="aicoach-avatar-video" autoplay playsinline muted></video>
                     <div class="aicoach-avatar-loading" aria-hidden="true"><div class="aicoach-avatar-spinner"></div></div>
@@ -207,7 +208,7 @@ $aicoach_channels = array(
                             <div class="aicoach-magic">
                                 <img
                                     class="aicoach-magic-img"
-                                    src="<?php echo esc_url( $aicoach_img['magic'] ); ?>"
+                                    data-src="<?php echo esc_url( $aicoach_img['magic'] ); ?>"
                                     alt="<?php esc_attr_e( 'Magic Johnson', 'influencer-hq' ); ?>"
                                     width="596"
                                     height="844"
@@ -269,7 +270,7 @@ $aicoach_channels = array(
                             <div class="aicoach-story-media">
                                 <img
                                     class="aicoach-story-photo"
-                                    src="<?php echo esc_url( $aicoach_img['bts'] ); ?>"
+                                    data-src="<?php echo esc_url( $aicoach_img['bts'] ); ?>"
                                     alt="<?php esc_attr_e( 'BTS', 'influencer-hq' ); ?>"
                                     width="624"
                                     height="471"

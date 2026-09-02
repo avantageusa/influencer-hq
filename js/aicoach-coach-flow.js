@@ -176,11 +176,26 @@ if ( stage && avatarWrap ) {
 
     let pendingPanelKey = null; // a showPanel() call that arrived mid-transition; applied once the current one settles
 
+    // NFR-01 — panels are toggled via opacity/visibility, not display:none (that's
+    // what makes the fade transition possible), so the browser's native
+    // loading="lazy" never kicks in for images inside them (they're still laid out
+    // in the viewport). Heavier images (equity examples) use data-src instead and
+    // get hydrated into a real src here, the first time their panel is actually
+    // requested — not on initial page load.
+    function hydratePanelImages( panel ) {
+        panel.querySelectorAll( 'img[data-src]' ).forEach( function ( img ) {
+            img.src = img.getAttribute( 'data-src' );
+            img.removeAttribute( 'data-src' );
+        } );
+    }
+
     function showPanel( panelKey ) {
         const next = stage.querySelector( '.aicoach-panel[data-panel="' + panelKey + '"]' );
         if ( ! next ) {
             return;
         }
+
+        hydratePanelImages( next );
 
         if ( isAnimating ) {
             // Don't silently drop this — e.g. FR-08's screen gets queued right after
