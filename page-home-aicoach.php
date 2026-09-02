@@ -128,7 +128,7 @@ $aicoach_channels = array(
 
         <?php get_template_part( 'template-parts/portal-header' ); ?>
 
-        <div class="container py-2 aicoach-page" style="max-width: 1024px; padding-left: 20px; padding-right: 20px;">
+        <div class="container py-2 aicoach-page" id="portal-content" style="max-width: 1024px; padding-left: 20px; padding-right: 20px;">
 
             <section class="aicoach" aria-label="<?php esc_attr_e( 'AI Coach', 'influencer-hq' ); ?>">
 
@@ -429,7 +429,13 @@ $aicoach_channels = array(
     .aicoach {
         max-width: 720px;
         margin: 0 auto 56px;
-        padding: 185px 0 40px;
+        /* NFR-02 — no hardcoded top clearance here: #portal-content (see the
+        wrapping .aicoach-page container) gets its padding-top set dynamically
+        by adjustContentPadding() in portal-header.php, which measures the
+        sticky header's actual rendered height. A fixed value here (previously
+        185px) broke on mobile once the shared nav wraps onto multiple lines
+        and grows taller than that. */
+        padding: 0 0 40px;
         color: #fff;
         font-family: 'Be Vietnam Pro', sans-serif;
     }
