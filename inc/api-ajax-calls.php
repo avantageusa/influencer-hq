@@ -682,6 +682,81 @@ function get_referral_link_ajax() {
 }
 
 // ============================================================
+// KICK Broadcasting Schedule — nonce: kick_schedule_nonce
+// Actions: add_kick_schedule | delete_kick_schedule
+// Stored as user meta: _kick_broadcasting_schedule (array)
+// ============================================================
+
+add_action( 'wp_ajax_add_kick_schedule', 'add_kick_schedule_ajax' );
+
+function add_kick_schedule_ajax() {
+    if ( ! check_ajax_referer( 'kick_schedule_nonce', 'nonce', false ) ) {
+        wp_send_json_error( array( 'message' => 'Security check failed.' ), 403 );
+    }
+    $user_id = get_current_user_id();
+    if ( ! $user_id ) {
+        wp_send_json_error( array( 'message' => 'Not logged in.' ), 403 );
+    }
+
+    $day        = sanitize_text_field( wp_unslash( $_POST['ks_day']        ?? '' ) );
+    $start_time = sanitize_text_field( wp_unslash( $_POST['ks_start_time'] ?? '' ) );
+    $end_time   = sanitize_text_field( wp_unslash( $_POST['ks_end_time']   ?? '' ) );
+    $type       = sanitize_text_field( wp_unslash( $_POST['ks_type']       ?? '' ) );
+    if ( $type && ! in_array( $type, array( 'single', 'regular' ), true ) ) {
+        $type = '';
+    }
+
+    if ( ! $day || ! $start_time || ! $end_time ) {
+        wp_send_json_error( array( 'message' => 'Day, start time, and end time are required.' ) );
+    }
+
+    $schedule = get_user_meta( $user_id, '_kick_broadcasting_schedule', true );
+    if ( ! is_array( $schedule ) ) {
+        $schedule = array();
+    }
+
+    $max_kick_schedule_entries = 50;
+    if ( count( $schedule ) >= $max_kick_schedule_entries ) {
+        wp_send_json_error( array( 'message' => 'Schedule limit reached.' ) );
+    }
+
+    $schedule[] = array(
+        'day'        => $day,
+        'start_time' => $start_time,
+        'end_time'   => $end_time,
+        'type'       => $type,
+    );
+
+    update_user_meta( $user_id, '_kick_broadcasting_schedule', $schedule );
+
+    wp_send_json_success( array( 'schedule' => $schedule ) );
+}
+
+add_action( 'wp_ajax_delete_kick_schedule', 'delete_kick_schedule_ajax' );
+
+function delete_kick_schedule_ajax() {
+    if ( ! check_ajax_referer( 'kick_schedule_nonce', 'nonce', false ) ) {
+        wp_send_json_error( array( 'message' => 'Security check failed.' ), 403 );
+    }
+    $user_id = get_current_user_id();
+    if ( ! $user_id ) {
+        wp_send_json_error( array( 'message' => 'Not logged in.' ), 403 );
+    }
+
+    $index    = intval( $_POST['index'] ?? -1 );
+    $schedule = get_user_meta( $user_id, '_kick_broadcasting_schedule', true );
+
+    if ( ! is_array( $schedule ) || ! array_key_exists( $index, $schedule ) ) {
+        wp_send_json_error( array( 'message' => 'Item not found.' ) );
+    }
+
+    array_splice( $schedule, $index, 1 );
+    update_user_meta( $user_id, '_kick_broadcasting_schedule', $schedule );
+
+    wp_send_json_success( array( 'schedule' => $schedule ) );
+}
+
+// ============================================================
 // SETTINGS PAGE — nonce: settings_save_nonce
 // Actions: save_settings_field | save_settings_toggle | save_settings_avatar
 // ============================================================

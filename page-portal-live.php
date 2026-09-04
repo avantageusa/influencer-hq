@@ -156,9 +156,9 @@ if ( ! empty( $la_calendar_posts ) ) {
                 </div>
 
                 <section class="live-intro-text">
-                    <p>Live appearances take place on the World Broadcast Network.</p>
+                    <p>There are two types of live appearances: KICK Network and on the World Broadcast Network.</p>
                     <p>We believe live competition creates real connection and lasting influence.</p>
-                    <p>Influencers will automatically be eligible to appear in all 52 World Tour weekend events and the year-long $100 Million Influencer HQ World Championship competition.</p>
+                    <p>Influencers will automatically be eligible to appear in all 52 World Tour weekend events and the year-long $100 Million Avantage Baccarat World Championship competition.</p>
                 </section>
 
                     <div class="live-separator"></div>
@@ -171,24 +171,21 @@ if ( ! empty( $la_calendar_posts ) ) {
                         <p>This format is designed for rivalry, chemistry, and competitive storytelling.</p>
                         <p><strong>Eligibility</strong></p>
                         <ul>
-                            <li>Both participants must be verified Influencers</li>
                             <li>One of the two must create the challenge</li>
                             <li>Both must agree in advance to appear live</li>
                             <li>Engagement must meet approval standards</li>
-                            <li>Final approval required from Influencer HQ</li>
                         </ul>
                         <p><strong>Application</strong></p>
                         <ul>
                             <li>The challenge creator submits a Live Appearance request</li>
-                            <li>Influencer HQ reviews engagement and readiness</li>
                             <li>Approved challenges receive a scheduled broadcast slot</li>
                         </ul>
                         <p><strong>Live Format</strong></p>
                         <ul>
-                            <li>Up to 1 hour duration</li>
+                            <li>1 hour duration</li>
                             <li>Remote participation from each Influencer's location</li>
                             <li>Real-time competitive commentary</li>
-                            <li>Followers may join and play along</li>
+                            <li>The play of all followers that participate are automatically included in the scoring.</li>
                             <li>Performance metrics displayed live</li>
                         </ul>
                         <p><strong>Important</strong></p>
@@ -232,11 +229,15 @@ if ( ! empty( $la_calendar_posts ) ) {
                                 </div>
                             </div>
                             <?php endforeach; ?>
-                            <p class="live-label live-label--opponent">State your opponent</p>
                             <div class="live-input-row live-input-row-2">
                                 <div class="live-field">
-                                    <input type="text" name="la_opponent_handle" id="la_opponent_handle" class="live-input" placeholder="opponent handle">
+                                    <input type="text" name="la_opponent_handle" id="la_opponent_handle" class="live-input" placeholder="opponent name">
                                 </div>
+                                <div class="live-field">
+                                    <input type="text" name="la_backup_opponent_handle" id="la_backup_opponent_handle" class="live-input" placeholder="backup opponent name">
+                                </div>
+                            </div>
+                            <div class="live-input-row live-input-row-2">
                                 <div class="live-field">
                                     <select name="la_opponent_comm" id="la_opponent_comm" class="live-input live-select">
                                         <option value="" disabled selected>select comm method</option>
@@ -247,11 +248,6 @@ if ( ! empty( $la_calendar_posts ) ) {
                                         <option value="wechat">WeChat</option>
                                         <option value="telegram">Telegram</option>
                                     </select>
-                                </div>
-                            </div>
-                            <div class="live-input-row live-input-row-2">
-                                <div class="live-field">
-                                    <input type="text" name="la_backup_opponent_handle" id="la_backup_opponent_handle" class="live-input" placeholder="backup opponent handle">
                                 </div>
                                 <div class="live-field">
                                     <select name="la_backup_opponent_comm" id="la_backup_opponent_comm" class="live-input live-select">
@@ -284,7 +280,7 @@ if ( ! empty( $la_calendar_posts ) ) {
                         <p class="live-label">Status of Request</p>
                         <div class="live-status" id="live-request-status">—</div>
 
-                        <p class="live-label">Referral Link</p>
+                        <p class="live-label">Unique Live Appearance URL Address to Share</p>
                         <div id="live-url-wrap" style="display:flex;align-items:center;gap:8px;">
                             <div class="live-url live-url--display" id="live-url-display">URL will appear here...</div>
                             <button type="button" id="live-url-copy-btn" class="live-inline-btn" onclick="(function(){
@@ -442,6 +438,198 @@ if ( ! empty( $la_calendar_posts ) ) {
                         </div>
                     </div>
 
+                    <div class="live-separator"></div>
+                    <h2 class="live-section-heading">STREAMING ON KICK</h2>
+                    <div class="live-separator"></div>
+
+                    <div class="live-intro-item live-intro-item-wide">
+                        <div class="live-text-content">
+                        <p>Simply notify Influencer HQ of your scheduled KICK broadcasts so we can:</p>
+                        <ul>
+                            <li>Publish your stream schedule</li>
+                            <li>Promote your appearances</li>
+                            <li>Provide you with the proper tracked links</li>
+                        </ul>
+                        <p>Using official tracked links ensures you receive full credit for follower participation.</p>
+                        <p><strong>KICK Stream Equity Bonus</strong></p>
+                        <p>You earn a 1% equity bonus on all play generated by viewers participating.</p>
+                        </div>
+                    </div>
+
+                    <div class="live-separator"></div>
+                    <h2 class="live-section-heading" id="kick-schedule">KICK BROADCASTING SCHEDULE</h2>
+                    <div class="live-separator"></div>
+
+                    <p class="live-label">Current Schedule</p>
+
+                    <div id="kick-schedule-list">
+                        <?php
+                        $ks_schedule = get_user_meta( get_current_user_id(), '_kick_broadcasting_schedule', true );
+                        if ( is_array( $ks_schedule ) && ! empty( $ks_schedule ) ) :
+                            foreach ( $ks_schedule as $ks_i => $ks_item ) :
+                                $ks_day_fmt   = ! empty( $ks_item['day'] )        ? date_i18n( 'D, M j', strtotime( $ks_item['day'] ) )        : '';
+                                $ks_start_fmt = ! empty( $ks_item['start_time'] ) ? date_i18n( 'g:i A',   strtotime( $ks_item['start_time'] ) ) : '';
+                                $ks_end_fmt   = ! empty( $ks_item['end_time'] )   ? date_i18n( 'g:i A',   strtotime( $ks_item['end_time'] ) )   : '';
+                                $ks_type_fmt  = ! empty( $ks_item['type'] )       ? '[' . ucfirst( esc_html( $ks_item['type'] ) ) . '] '        : '';
+                                $ks_label     = trim( $ks_type_fmt . $ks_day_fmt . ( $ks_start_fmt ? ', ' . $ks_start_fmt : '' ) . ( $ks_end_fmt ? ' - ' . $ks_end_fmt : '' ) );
+                        ?>
+                        <div class="live-schedule-item" data-index="<?php echo esc_attr( $ks_i ); ?>">
+                            <span><?php echo esc_html( $ks_label ); ?></span>
+                            <button type="button" class="live-inline-btn kick-cancel-btn" data-index="<?php echo esc_attr( $ks_i ); ?>">cancel</button>
+                        </div>
+                        <?php endforeach; else : ?>
+                        <p class="live-copy-muted">No schedule entries yet.</p>
+                        <?php endif; ?>
+                    </div>
+
+                    <p class="live-label">Post Additional Schedule</p>
+                    <form id="kick-schedule-form" class="kick-schedule-form">
+                        <div class="live-input-row">
+                            <div class="live-field live-field--full">
+                                <input type="date" name="ks_day" id="ks_day" class="live-input live-input-md" aria-label="Date" placeholder="Date">
+                            </div>
+                        </div>
+                        <div class="live-input-row">
+                            <div class="live-field live-field--full">
+                                <input type="time" name="ks_start_time" id="ks_start_time" class="live-input live-input-md" aria-label="Start time" placeholder="start time">
+                            </div>
+                        </div>
+                        <div class="live-input-row">
+                            <div class="live-field live-field--full">
+                                <input type="time" name="ks_end_time" id="ks_end_time" class="live-input live-input-md" aria-label="End time" placeholder="end time">
+                            </div>
+                        </div>
+                        <div class="live-submit-row">
+                            <button type="submit" class="live-submit" id="kick-schedule-btn">SUBMIT</button>
+                            <button type="button" class="live-link-btn" id="kick-schedule-add-another">add another...</button>
+                        </div>
+                        <div id="kick-schedule-msg" class="live-request-msg" style="display:none;"></div>
+                    </form>
+
+                    <div class="accordion-gradient-container live-how-kick-wrap">
+                        <h2 class="live-section-heading live-section-heading--how">HOW TO STREAM ON KICK</h2>
+                        <div class="accordion custom-accordion" id="liveStreamAccordion">
+
+                            <div class="accordion-item mb-3">
+                                <h2 class="accordion-header" id="headingSetup">
+                                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSetup" aria-expanded="true" aria-controls="collapseSetup">
+                                        <span class="question-text">Set Up Your Stream</span>
+                                    </button>
+                                </h2>
+                                <div id="collapseSetup" class="accordion-collapse collapse show" aria-labelledby="headingSetup" data-bs-parent="#liveStreamAccordion">
+                                    <div class="accordion-body">
+                                        <p><strong>Purpose</strong></p>
+                                        <p>By the time you leave this tab you will have:</p>
+                                        <ul>
+                                            <li>Created your Kick channel.</li>
+                                            <li>Connected OBS Studio so your stream can go live.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item mb-3">
+                                <h2 class="accordion-header" id="headingWhyKick">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseWhyKick" aria-expanded="false" aria-controls="collapseWhyKick">
+                                        <span class="question-text">Why KICK?</span>
+                                    </button>
+                                </h2>
+                                <div id="collapseWhyKick" class="accordion-collapse collapse" aria-labelledby="headingWhyKick" data-bs-parent="#liveStreamAccordion">
+                                    <div class="accordion-body">
+                                        <p>Kick is the fastest-growing channel for streaming online gaming platform for live gaming and commentary — and it's where Avantage streams begin.</p>
+                                        <p><strong>Important:</strong> On Kick, your account is your channel. When you sign up, you automatically create both.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item mb-3">
+                                <h2 class="accordion-header" id="headingStep1">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStep1" aria-expanded="false" aria-controls="collapseStep1">
+                                        <span class="question-text">Step 1 – Create Your Kick Channel</span>
+                                    </button>
+                                </h2>
+                                <div id="collapseStep1" class="accordion-collapse collapse" aria-labelledby="headingStep1" data-bs-parent="#liveStreamAccordion">
+                                    <div class="accordion-body">
+                                        <p><strong>1. Go to Kick.com → Sign Up.</strong></p>
+                                        <ul>
+                                            <li>Use email, Google, or Apple.</li>
+                                            <li>Choose a username – this becomes your channel name.</li>
+                                            <li>Confirm your email (Kick sends a link).</li>
+                                        </ul>
+                                        <p><strong>2. After confirming, Sign In.</strong></p>
+                                        <ul>
+                                            <li>Click your profile picture (top right) → Creator Dashboard.</li>
+                                            <li>Upload a profile photo (headshot or "stage" shot).</li>
+                                            <li>Upload a banner (simple background with your name or Influencer HQ).</li>
+                                            <li>Free design tools: Canva.com or Fotor.com.</li>
+                                            <li>Write a short description (2–3 lines):
+                                                <ul>
+                                                    <li>"Live Influencer HQ commentary — join me as I call the action in real time."</li>
+                                                    <li>"Official Influencer HQ streamer. Watch, follow trends, and feel the energy with me."</li>
+                                                </ul>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item mb-3">
+                                <h2 class="accordion-header" id="headingStep2">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStep2" aria-expanded="false" aria-controls="collapseStep2">
+                                        <span class="question-text">Step 2 - Connect OBS Studio</span>
+                                    </button>
+                                </h2>
+                                <div id="collapseStep2" class="accordion-collapse collapse" aria-labelledby="headingStep2" data-bs-parent="#liveStreamAccordion">
+                                    <div class="accordion-body">
+                                        <p><strong>What is OBS?</strong></p>
+                                        <p>Open Broadcaster Software (OBS) is the free program that acts as the control room for your stream.</p>
+                                        <ul>
+                                            <li>It brings together your camera, microphone, and game screen.</li>
+                                            <li>It lets you arrange how everything looks.</li>
+                                            <li>It sends that feed to your Kick channel so your stream actually goes live.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item mb-3">
+                                <h2 class="accordion-header" id="headingHowToSetUp">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseHowToSetUp" aria-expanded="false" aria-controls="collapseHowToSetUp">
+                                        <span class="question-text">How to Set It Up</span>
+                                    </button>
+                                </h2>
+                                <div id="collapseHowToSetUp" class="accordion-collapse collapse" aria-labelledby="headingHowToSetUp" data-bs-parent="#liveStreamAccordion">
+                                    <div class="accordion-body">
+                                        <ol>
+                                            <li>In your Kick Creator Dashboard → Settings → Stream → copy your Stream URL and Stream Key.</li>
+                                            <li>Download OBS Studio from <a href="https://obsproject.com/" style="color: #b8972f;">obsproject.com</a>.</li>
+                                            <li>Open OBS → Settings → Stream → select Custom Service → paste in the URL and Key.</li>
+                                            <li>Select a suitable category such as Games or Entertainment.</li>
+                                            <li>In OBS, click Start Streaming.</li>
+                                            <li>You're live on your Kick channel.</li>
+                                        </ol>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item mb-3">
+                                <h2 class="accordion-header" id="headingReassurance">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseReassurance" aria-expanded="false" aria-controls="collapseReassurance">
+                                        <span class="question-text">Reassurance</span>
+                                    </button>
+                                </h2>
+                                <div id="collapseReassurance" class="accordion-collapse collapse" aria-labelledby="headingReassurance" data-bs-parent="#liveStreamAccordion">
+                                    <div class="accordion-body">
+                                        <p>You now have your channel, your gear, and your settings.</p>
+                                        <p>Take a deep breath, speak with confidence, and enjoy your first broadcast.</p>
+                                        <p>Every stream will get easier — and every voice you reach builds your community.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
                 </div>
             
             </div>
@@ -526,12 +714,14 @@ if ( ! empty( $la_calendar_posts ) ) {
     </main><!-- #main -->
 
 <?php
-$_live_nonce = wp_create_nonce( 'request_live_appearance_nonce' );
+$_live_nonce     = wp_create_nonce( 'request_live_appearance_nonce' );
+$_schedule_nonce = wp_create_nonce( 'kick_schedule_nonce' );
 ?>
 <script>
 (function () {
-    var _liveAjaxUrl = <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
-    var _liveNonce   = <?php echo wp_json_encode( $_live_nonce ); ?>;
+    var _liveAjaxUrl     = <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
+    var _liveNonce       = <?php echo wp_json_encode( $_live_nonce ); ?>;
+    var _scheduleNonce   = <?php echo wp_json_encode( $_schedule_nonce ); ?>;
 
     var calendarModal     = document.getElementById('live-calendar-modal');
     var calendarOpenBtn   = document.getElementById('live-calendar-open-btn');
@@ -832,6 +1022,116 @@ $_live_nonce = wp_create_nonce( 'request_live_appearance_nonce' );
                 }).catch(function () {
                     if (btn) { btn.disabled = false; btn.textContent = 'REQUEST'; }
                     showMsg('Network error. Please try again.', true);
+                });
+        });
+    }
+
+    function fmtKickTime(t) {
+        if (!t) return '';
+        var parts = String(t).split(':');
+        var h = parseInt(parts[0], 10);
+        var m = parts[1];
+        var ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12 || 12;
+        return h + (m && m !== '00' ? ':' + m : '') + ' ' + ampm;
+    }
+
+    function fmtKickDay(d) {
+        if (!d) return '';
+        var p = d.split('-');
+        var dt = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+        return dt.toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric'});
+    }
+
+    function renderKickSchedule(schedule) {
+        var list = document.getElementById('kick-schedule-list');
+        if (!list) return;
+        list.innerHTML = '';
+        if (!schedule || schedule.length === 0) {
+            list.innerHTML = '<p class="live-copy-muted">No schedule entries yet.</p>';
+            return;
+        }
+        schedule.forEach(function(item, i) {
+            var label = (item.type ? '[' + item.type.charAt(0).toUpperCase() + item.type.slice(1) + '] ' : '') + fmtKickDay(item.day);
+            if (item.start_time) label += ', ' + fmtKickTime(item.start_time);
+            if (item.end_time)   label += ' - ' + fmtKickTime(item.end_time);
+            var div = document.createElement('div');
+            div.className = 'live-schedule-item';
+            div.setAttribute('data-index', i);
+            div.innerHTML = '<span></span><button type="button" class="live-inline-btn kick-cancel-btn" data-index="' + i + '">cancel</button>';
+            div.querySelector('span').textContent = label;
+            list.appendChild(div);
+        });
+    }
+
+    function showKickScheduleMsg(text, isError) {
+        var el = document.getElementById('kick-schedule-msg');
+        if (!el) return;
+        el.textContent   = text;
+        el.className     = 'live-request-msg live-request-msg--' + (isError ? 'error' : 'success');
+        el.style.display = '';
+        setTimeout(function() { el.style.display = 'none'; }, 4000);
+    }
+
+    var ksForm = document.getElementById('kick-schedule-form');
+    if (ksForm) {
+        ksForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var btn = document.getElementById('kick-schedule-btn');
+            if (btn) { btn.disabled = true; btn.textContent = 'SAVING...'; }
+            var fd = new FormData(ksForm);
+            fd.append('action', 'add_kick_schedule');
+            fd.append('nonce', _scheduleNonce);
+            fetch(_liveAjaxUrl, {method: 'POST', body: fd})
+                .then(function(r) { return r.json(); })
+                .then(function(res) {
+                    if (btn) { btn.disabled = false; btn.textContent = 'SUBMIT'; }
+                    if (res.success) {
+                        renderKickSchedule(res.data.schedule);
+                        ksForm.reset();
+                        showKickScheduleMsg('Schedule added.', false);
+                    } else {
+                        showKickScheduleMsg((res.data && res.data.message) ? res.data.message : 'Error saving.', true);
+                    }
+                }).catch(function() {
+                    if (btn) { btn.disabled = false; btn.textContent = 'SUBMIT'; }
+                    showKickScheduleMsg('Network error. Please try again.', true);
+                });
+        });
+    }
+
+    var ksAddAnother = document.getElementById('kick-schedule-add-another');
+    if (ksAddAnother && ksForm) {
+        ksAddAnother.addEventListener('click', function() {
+            ksForm.reset();
+            var dayField = document.getElementById('ks_day');
+            if (dayField) dayField.focus();
+        });
+    }
+
+    var ksList = document.getElementById('kick-schedule-list');
+    if (ksList) {
+        ksList.addEventListener('click', function(e) {
+            var cancelBtn = e.target.closest('.kick-cancel-btn');
+            if (!cancelBtn) return;
+            var idx = parseInt(cancelBtn.getAttribute('data-index'), 10);
+            cancelBtn.disabled = true;
+            var fd = new FormData();
+            fd.append('action', 'delete_kick_schedule');
+            fd.append('nonce', _scheduleNonce);
+            fd.append('index', idx);
+            fetch(_liveAjaxUrl, {method: 'POST', body: fd})
+                .then(function(r) { return r.json(); })
+                .then(function(res) {
+                    if (res.success) {
+                        renderKickSchedule(res.data.schedule);
+                    } else {
+                        cancelBtn.disabled = false;
+                        showKickScheduleMsg((res.data && res.data.message) ? res.data.message : 'Error deleting.', true);
+                    }
+                }).catch(function() {
+                    cancelBtn.disabled = false;
+                    showKickScheduleMsg('Network error. Please try again.', true);
                 });
         });
     }

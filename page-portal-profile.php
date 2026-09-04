@@ -214,10 +214,10 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                 }
                 ?>
 
-                <!-- PROFILE Header -->
+                <!-- SETTINGS Header -->
                 <header class="sett-header">
                     <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/profile.png" alt="" class="sett-header-icon">
-                    <h1 class="sett-title">PROFILE</h1>
+                    <h1 class="sett-title">SETTINGS</h1>
                 </header>
 
                 <div class="sett-sep"></div>
@@ -234,7 +234,12 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                             <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/youtube.png" alt="YouTube" class="sett-soc-icon">
                             <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/x.png" alt="X" class="sett-soc-icon">
                             <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/tiktok.png" alt="TikTok" class="sett-soc-icon">
+                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/kick.png" alt="Kick" class="sett-soc-icon">
                         </div>
+                    </div>
+                    <div class="sett-identity-lang">
+                        <span class="sett-identity-lang-code">EN</span>
+                        <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/hamburger-icons/icon-globe.png" alt="" class="sett-identity-lang-icon" width="28" height="28">
                     </div>
                 </div>
 
@@ -246,10 +251,13 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                     </div>
                 </div>
 
-                <!-- GAMEPLAY VIDEO PROMOTION -->
+                <!-- PROFILE / GAMEPLAY VIDEO PROMOTION -->
+                <div class="sett-section-head">
+                    <span class="sett-section-title">PROFILE</span>
+                </div>
                 <div class="sett-gameplay-promo">
                     <p class="sett-gameplay-promo-text">
-                        <?php esc_html_e( 'Post a link of your favorite gameplay video stream to enable immediate worldwide promotion by Influencer Headquarters.', 'influencer-hq' ); ?>
+                        <?php esc_html_e( 'Post a link of your favorite gameplay video stream to enable immediate worldwide promotion', 'influencer-hq' ); ?>
                     </p>
                     <form method="post" action="" class="ihq-gameplay-video-form">
                         <?php wp_nonce_field( 'ihq_gameplay_video_save' ); ?>
@@ -304,7 +312,7 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                 <!-- ACCOUNT INFORMATION -->
                 <div class="sett-section-head">
                     <span class="sett-section-title">ACCOUNT &nbsp;INFORMATION</span>
-                    <span class="sett-hint"><span class="sett-hint-text">Click to enter / edit</span><span class="sett-info-icon">i<span class="sett-info-tooltip">Entered information is saved by pressing Enter key, or by clicking anywhere outside the input field.</span></span></span>
+                    <span class="sett-hint"><span class="sett-hint-text">Click to enter / edit</span><span class="sett-info-icon">i<span class="sett-info-tooltip">Entered information is saved by pressing Enter key, or by clicking anywhere outside the input field.</span></span><span class="sett-hint-text">Show on Profile</span></span>
                 </div>
 
                 <div class="sett-card">
@@ -375,6 +383,63 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                         </div>
                     </div>
                     <?php endforeach; ?>
+                </div>
+
+                <div class="sett-face-promo">
+                    <p>Send us your face. Let us put you everywhere.</p>
+                    <p>You built something real. Now help us put it in front of the world.</p>
+                    <p>To promote you the way we promised, we need two things from you:</p>
+                    <p>A short video — 30 seconds, headset on, behind your microphone. Speak in your own voice, in your own language, the way you always do. This becomes the foundation for how we introduce you to new audiences across every market we reach.</p>
+                    <p>A still photo — clear, bright, and unmistakably you. This is the face our campaigns put in front of millions of prospective followers. It belongs everywhere your name appears.</p>
+                    <p>Why this matters: every Influencer who shares their video and photo gets put into rotation across our promotion channels. Without them, we can’t promote you the way we want to. With them, you become impossible to overlook.</p>
+                    <p>This is the difference between a name on a list and a presence in the world.</p>
+                    <p>Send us yours. We’ll do the rest.</p>
+                </div>
+
+                <!-- Quote -->
+                <p class="sett-quote"><em>We believe visibility powers competition. The more visible you choose to be, the farther your leadership can travel.</em></p>
+
+                <!-- USERNAME OR CONTACT -->
+                <div class="sett-section-head sett-section-head--comm" id="contactHead" style="cursor:pointer;">
+                    <span class="sett-section-title">USERNAME OR CONTACT</span>
+                    <span class="sett-arrow" id="contactArrow">▼</span>
+                </div>
+
+                <div id="contactBody">
+                    <div class="sett-card contact-card">
+                        <?php
+                        foreach ( $contact_platforms as $cp ) :
+                            $ckey  = strtolower( $cp );
+                            $cval  = $social_handles[ $ckey ] ?? '';
+                            if ( $ckey === 'email' && $cval === '' ) {
+                                $cval = $user_email;
+                            }
+                            if ( $ckey === 'telegram' && $cval === '' ) {
+                                $tg_handle = get_user_meta( $user->ID, 'communication_username', true );
+                                if ( is_string( $tg_handle ) && $tg_handle !== '' ) {
+                                    $cval = $tg_handle;
+                                }
+                            }
+                            $ccomm = ! empty( $comm_prefs[ $ckey ] );
+                        ?>
+                        <div class="contact-row" data-key="<?php echo esc_attr( $ckey ); ?>">
+                            <div class="contact-row-main">
+                                <span class="contact-row-lbl"><?php echo esc_html( $cp ); ?></span>
+                                <span class="contact-row-addval<?php echo $cval ? ' contact-row-addval--filled' : ''; ?>"><?php echo $cval ? esc_html( $cval ) : 'add'; ?></span>
+                            </div>
+                            <div class="contact-row-expand" style="display:none;">
+                                <input type="text" class="contact-input" value="<?php echo esc_attr( $cval ); ?>" placeholder="click to enter / edit">
+                                <div class="contact-toggles">
+                                    <label class="contact-toggle<?php echo $ccomm ? ' contact-toggle--on' : ''; ?>">
+                                        <input type="checkbox" class="contact-toggle-cb" data-type="comm"<?php checked( $ccomm ); ?>>
+                                        <span class="contact-toggle-label">Communicate with Me</span>
+                                        <span class="contact-toggle-track"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
 
                 <!-- SOCIAL MEDIA (from registration platform_handle) -->
@@ -508,52 +573,6 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                                 </select>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Quote -->
-                <p class="sett-quote"><em>We believe visibility powers competition. The more visible you choose to be, the farther your leadership can travel.</em></p>
-
-                <!-- USERNAME OR CONTACT -->
-                <div class="sett-section-head sett-section-head--comm" id="contactHead" style="cursor:pointer;">
-                    <span class="sett-section-title">USERNAME OR CONTACT</span>
-                    <span class="sett-arrow" id="contactArrow">▼</span>
-                </div>
-
-                <div id="contactBody">
-                    <div class="sett-card contact-card">
-                        <?php
-                        foreach ( $contact_platforms as $cp ) :
-                            $ckey  = strtolower( $cp );
-                            $cval  = $social_handles[ $ckey ] ?? '';
-                            if ( $ckey === 'email' && $cval === '' ) {
-                                $cval = $user_email;
-                            }
-                            if ( $ckey === 'telegram' && $cval === '' ) {
-                                $tg_handle = get_user_meta( $user->ID, 'communication_username', true );
-                                if ( is_string( $tg_handle ) && $tg_handle !== '' ) {
-                                    $cval = $tg_handle;
-                                }
-                            }
-                            $ccomm = ! empty( $comm_prefs[ $ckey ] );
-                        ?>
-                        <div class="contact-row" data-key="<?php echo esc_attr( $ckey ); ?>">
-                            <div class="contact-row-main">
-                                <span class="contact-row-lbl"><?php echo esc_html( $cp ); ?></span>
-                                <span class="contact-row-addval<?php echo $cval ? ' contact-row-addval--filled' : ''; ?>"><?php echo $cval ? esc_html( $cval ) : 'add'; ?></span>
-                            </div>
-                            <div class="contact-row-expand" style="display:none;">
-                                <input type="text" class="contact-input" value="<?php echo esc_attr( $cval ); ?>" placeholder="click to enter / edit">
-                                <div class="contact-toggles">
-                                    <label class="contact-toggle<?php echo $ccomm ? ' contact-toggle--on' : ''; ?>">
-                                        <input type="checkbox" class="contact-toggle-cb" data-type="comm"<?php checked( $ccomm ); ?>>
-                                        <span class="contact-toggle-label">Communicate with Me</span>
-                                        <span class="contact-toggle-track"></span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                        <?php endforeach; ?>
                     </div>
                 </div>
 

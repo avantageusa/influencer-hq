@@ -3046,8 +3046,18 @@
     }
 
     body.page-template-page-portal-live-php .live-section-heading--how {
-        margin-top: 18px;
+        margin-top: 0;
         margin-bottom: 14px;
+    }
+
+    body.page-template-page-portal-live-php .kick-schedule-form {
+        max-width: 520px;
+    }
+
+    body.page-template-page-portal-live-php .live-how-kick-wrap {
+        border: 1px solid #b8972f;
+        margin-top: 28px;
+        margin-bottom: 24px;
     }
 
     body.page-template-page-portal-live-php .live-separator {
@@ -4376,7 +4386,7 @@
 .sett-header-icon { width:44px; height:44px; object-fit:contain; }
 .sett-title {
     font-family: 'Cinzel', serif;
-    font-size: 36px; font-weight:700; color:#fff;
+    font-size: 36px; font-weight:700; color:#b8972f;
     margin:0; letter-spacing:.05em;
 }
 
@@ -4391,7 +4401,37 @@
 .sett-display-name { font-size:16px; font-weight:700; color:#fff; }
 .sett-user-handle  { font-size:16px; color:#616161; }
 .sett-social-row   { display:flex; align-items:center; gap:7px; margin-top:4px; }
-.sett-soc-icon     { width:11px; height:11px; object-fit:contain; opacity:.9; }
+.sett-soc-icon     { width:22px; height:22px; object-fit:contain; opacity:.9; }
+.sett-identity-lang {
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-shrink:0;
+    margin-left:auto;
+}
+.sett-identity-lang-code {
+    font-size:18px;
+    font-weight:700;
+    color:#fff;
+}
+.sett-identity-lang-icon {
+    width:28px;
+    height:28px;
+    object-fit:contain;
+}
+
+.sett-face-promo {
+    margin: 18px 0 16px;
+    color: #fff;
+    font-size: 16px;
+    line-height: 1.55;
+}
+.sett-face-promo p {
+    margin: 0 0 14px;
+}
+.sett-face-promo p:last-child {
+    margin-bottom: 0;
+}
 
 /* Section headers */
 .sett-section-head {
