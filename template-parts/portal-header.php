@@ -172,30 +172,30 @@ $hm_ch = function ( $tab, $hash = '' ) {
                     <a href="<?php echo $hm_ch( 'intro', 'baccarat-intro' ); ?>" class="hm-link hm-icon-row hm-indent-1"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-baccarat-intro.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Baccarat Intro', 'influencer-hq' ); ?></a>
 
                     <a href="<?php echo $hm_ch( 'private' ); ?>" class="hm-link hm-icon-row hm-indent-1">
-                        <img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-private.png' ); ?>" width="16" height="16" alt="">
+                        <img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-private.svg' ); ?>" width="16" height="16" alt="">
                         <?php esc_html_e( 'Private', 'influencer-hq' ); ?>
                     </a>
                     <a href="<?php echo $hm_ch( 'private', 'cpc-create-btn' ); ?>" class="hm-link hm-icon-row hm-indent-2"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-create-private-challenge.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Create Private Challenge', 'influencer-hq' ); ?></a>
                     <a href="<?php echo $hm_ch( 'private', 'private-leaderboards' ); ?>" class="hm-link hm-icon-row hm-indent-2"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-leaderboard.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Results & Leaderboards', 'influencer-hq' ); ?></a>
 
                     <a href="<?php echo $hm_ch( 'community' ); ?>" class="hm-link hm-icon-row hm-indent-1">
-                        <img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-community.png' ); ?>" width="16" height="16" alt="">
+                        <img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-community.svg' ); ?>" width="16" height="16" alt="">
                         <?php esc_html_e( 'Community', 'influencer-hq' ); ?>
                     </a>
                     <a href="<?php echo $hm_ch( 'community', 'community-leaderboards' ); ?>" class="hm-link hm-icon-row hm-indent-2"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-leaderboard.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Results & Leaderboards', 'influencer-hq' ); ?></a>
 
                     <a href="<?php echo $hm_ch( 'world' ); ?>" class="hm-link hm-icon-row hm-indent-1">
-                        <img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-globe.png' ); ?>" width="16" height="16" alt="">
+                        <img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-globe.svg' ); ?>" width="16" height="16" alt="">
                         <?php esc_html_e( 'World', 'influencer-hq' ); ?>
                     </a>
                     <a href="<?php echo $hm_ch( 'world', 'world-leaderboards' ); ?>" class="hm-link hm-icon-row hm-indent-2"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-leaderboard.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Results & Leaderboards', 'influencer-hq' ); ?></a>
 
                     <a href="<?php echo $hm_ch( 'leagues' ); ?>" class="hm-link hm-icon-row hm-indent-1">
-                        <img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-leagues.png' ); ?>" width="16" height="16" alt="">
+                        <img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-leagues.svg' ); ?>" width="16" height="16" alt="">
                         <?php esc_html_e( 'Leagues', 'influencer-hq' ); ?>
                     </a>
                     <a href="<?php echo esc_url( home_url( '/portal/account' ) ); ?>" class="hm-link hm-icon-row hm-indent-2"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-select-teams.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Select or Change Your Teams', 'influencer-hq' ); ?></a>
-                    <a href="<?php echo $hm_ch( 'leagues', 'leagues-international' ); ?>" class="hm-link hm-icon-row hm-indent-2"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-globe-sm.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'International League', 'influencer-hq' ); ?></a>
+                    <a href="<?php echo $hm_ch( 'leagues', 'leagues-international' ); ?>" class="hm-link hm-icon-row hm-indent-2"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-globe.svg' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'International League', 'influencer-hq' ); ?></a>
                     <a href="<?php echo $hm_ch( 'leagues', 'leagues-celebrity' ); ?>" class="hm-link hm-icon-row hm-indent-2"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-celeb-leagues.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Celebrity Follower Leagues', 'influencer-hq' ); ?></a>
                     <a href="<?php echo $hm_ch( 'leagues', 'leagues-results' ); ?>" class="hm-link hm-icon-row hm-indent-2"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-leaderboard.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Standings & Scores', 'influencer-hq' ); ?></a>
                 </div>

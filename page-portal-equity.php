@@ -474,6 +474,9 @@ $equity_attribution_expanded = is_user_logged_in();
         if (!fab || !host || fab.parentNode === host) {
             return;
         }
+        if (fab.classList.contains('is-moved')) {
+            return;
+        }
         host.appendChild(fab);
     }
 

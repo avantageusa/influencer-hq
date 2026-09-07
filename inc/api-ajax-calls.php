@@ -320,6 +320,29 @@ function request_live_appearance_ajax() {
     if ( $la_type && ! in_array( $la_type, array( 'single', 'regular' ), true ) ) {
         $la_type = '';
     }
+    $allowed_contest_types = array( 'classic', 'world_tour', 'world_championship' );
+    $contest_type = sanitize_text_field( wp_unslash( $_POST['la_contest_type'] ?? '' ) );
+    if ( ! in_array( $contest_type, $allowed_contest_types, true ) ) {
+        $contest_type = '';
+    }
+    $stream_mode = sanitize_text_field( wp_unslash( $_POST['la_stream_mode'] ?? '' ) );
+    if ( ! in_array( $stream_mode, array( 'individual', 'joint' ), true ) ) {
+        $stream_mode = '';
+    }
+    $opponent_first = sanitize_text_field( wp_unslash( $_POST['la_opponent_first_name'] ?? '' ) );
+    $opponent_last  = sanitize_text_field( wp_unslash( $_POST['la_opponent_last_name'] ?? '' ) );
+    $opponent_email = sanitize_email( wp_unslash( $_POST['la_opponent_email'] ?? '' ) );
+    $end_time       = sanitize_text_field( wp_unslash( $_POST['la_choice_1_end_time'] ?? '' ) );
+    $make_appearance = ! empty( $_POST['la_make_appearance'] ) ? '1' : '';
+    $is_daily        = ! empty( $_POST['la_daily'] ) ? '1' : '';
+    if ( $is_daily ) {
+        $la_type = 'regular';
+    } elseif ( ! $la_type ) {
+        $la_type = 'single';
+    }
+    if ( $opponent_email && ! $opponent_comm ) {
+        $opponent_comm = 'email';
+    }
 
     if ( $url && ! filter_var( $url, FILTER_VALIDATE_URL ) ) {
         wp_send_json_error( array( 'message' => 'Invalid URL provided.' ) );
@@ -356,6 +379,14 @@ function request_live_appearance_ajax() {
     update_post_meta( $post_id, '_live_appearance_url',                    $url );
     update_post_meta( $post_id, '_live_appearance_type',                   $la_type );
     update_post_meta( $post_id, '_live_appearance_date_created',           current_time( 'mysql' ) );
+    update_post_meta( $post_id, '_live_appearance_contest_type',           $contest_type );
+    update_post_meta( $post_id, '_live_appearance_stream_mode',            $stream_mode );
+    update_post_meta( $post_id, '_live_appearance_opponent_first_name',    $opponent_first );
+    update_post_meta( $post_id, '_live_appearance_opponent_last_name',     $opponent_last );
+    update_post_meta( $post_id, '_live_appearance_opponent_email',         $opponent_email );
+    update_post_meta( $post_id, '_live_appearance_end_time',               $end_time );
+    update_post_meta( $post_id, '_live_appearance_make_appearance',        $make_appearance );
+    update_post_meta( $post_id, '_live_appearance_daily',                  $is_daily );
 
     wp_send_json_success( array(
         'post_id'      => $post_id,

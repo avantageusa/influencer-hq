@@ -50,19 +50,19 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                             <span>Intro</span>
                         </button>
                         <button class="competition-tab-btn" data-tab="private" type="button">
-                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-private.png" alt="" class="competition-tab-icon">
+                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-private.svg" alt="" class="competition-tab-icon">
                             <span>Private</span>
                         </button>
                         <button class="competition-tab-btn" data-tab="community" type="button">
-                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-community.png" alt="" class="competition-tab-icon">
+                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-community.svg" alt="" class="competition-tab-icon">
                             <span>Community</span>
                         </button>
                         <button class="competition-tab-btn" data-tab="world" type="button">
-                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-world.png" alt="" class="competition-tab-icon">
+                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-world.svg" alt="" class="competition-tab-icon">
                             <span>World</span>
                         </button>
                         <button class="competition-tab-btn" data-tab="leagues" type="button">
-                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-leagues.png" alt="" class="competition-tab-icon">
+                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-leagues.svg" alt="" class="competition-tab-icon">
                             <span>Leagues</span>
                         </button>
                     </div>
@@ -1676,6 +1676,9 @@ document.addEventListener('DOMContentLoaded', function() {
     function syncCompetitionCoachFab() {
         var fab = document.getElementById('ihq-concierge-fab');
         if (!fab) {
+            return;
+        }
+        if (fab.classList.contains('is-moved')) {
             return;
         }
         var tab = getActiveCompetitionTabName();

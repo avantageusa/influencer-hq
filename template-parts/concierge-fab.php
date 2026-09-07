@@ -27,6 +27,7 @@ $aria_label    = __( 'Talk to Executive Concierge', 'influencer-hq' );
 		alt=""
 		width="56"
 		height="56"
+		draggable="false"
 		decoding="async"
 		loading="lazy"
 	>

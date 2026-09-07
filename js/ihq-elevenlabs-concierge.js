@@ -253,10 +253,182 @@
     });
   }
 
+  var FAB_MOVED_CLASS = 'is-moved';
+  var FAB_DRAGGING_CLASS = 'is-dragging';
+  var FAB_POSITION_STORAGE_KEY = 'ihqConciergeFabPosition';
+  var FAB_DRAG_THRESHOLD_PX = 8;
+  var FAB_VIEWPORT_PADDING_PX = 8;
+  var FAB_DEFAULT_SIZE_PX = 64;
+  var FAB_DEFAULT_SIZE_MOBILE_PX = 56;
+  var FAB_MOBILE_MAX_WIDTH_PX = 575;
+
+  function getFabFallbackSize() {
+    if (window.matchMedia && window.matchMedia('(max-width: ' + FAB_MOBILE_MAX_WIDTH_PX + 'px)').matches) {
+      return FAB_DEFAULT_SIZE_MOBILE_PX;
+    }
+    return FAB_DEFAULT_SIZE_PX;
+  }
+
+  function readStoredFabPosition() {
+    try {
+      var raw = window.localStorage.getItem(FAB_POSITION_STORAGE_KEY);
+      if (!raw) {
+        return null;
+      }
+      var parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed.left !== 'number' || typeof parsed.top !== 'number') {
+        return null;
+      }
+      if (!isFinite(parsed.left) || !isFinite(parsed.top)) {
+        return null;
+      }
+      return { left: parsed.left, top: parsed.top };
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function writeStoredFabPosition(position) {
+    try {
+      window.localStorage.setItem(FAB_POSITION_STORAGE_KEY, JSON.stringify({
+        left: position.left,
+        top: position.top,
+      }));
+    } catch (err) {
+      // Private mode / quota — drag still works for this page load.
+    }
+  }
+
+  function clampFabPosition(left, top, fab) {
+    var fallback = getFabFallbackSize();
+    var width = fab.offsetWidth || fallback;
+    var height = fab.offsetHeight || fallback;
+    var maxLeft = Math.max(FAB_VIEWPORT_PADDING_PX, window.innerWidth - width - FAB_VIEWPORT_PADDING_PX);
+    var maxTop = Math.max(FAB_VIEWPORT_PADDING_PX, window.innerHeight - height - FAB_VIEWPORT_PADDING_PX);
+    var nextLeft = Math.min(maxLeft, Math.max(FAB_VIEWPORT_PADDING_PX, left));
+    var nextTop = Math.min(maxTop, Math.max(FAB_VIEWPORT_PADDING_PX, top));
+    return { left: nextLeft, top: nextTop };
+  }
+
+  function applyFabPosition(fab, left, top) {
+    var clamped = clampFabPosition(left, top, fab);
+    fab.classList.add(FAB_MOVED_CLASS);
+    fab.style.setProperty('--ihq-fab-left', clamped.left + 'px');
+    fab.style.setProperty('--ihq-fab-top', clamped.top + 'px');
+    if (fab.parentNode !== document.body) {
+      document.body.appendChild(fab);
+    }
+    return clamped;
+  }
+
+  function enableFabDrag(fab) {
+    if (!fab || fab.getAttribute('data-ihq-fab-drag') === '1') {
+      return;
+    }
+    fab.setAttribute('data-ihq-fab-drag', '1');
+
+    var dragState = {
+      pointerId: null,
+      startX: 0,
+      startY: 0,
+      originLeft: 0,
+      originTop: 0,
+      hasMoved: false,
+      suppressClick: false,
+    };
+
+    function resetDragState() {
+      dragState.pointerId = null;
+      dragState.hasMoved = false;
+      fab.classList.remove(FAB_DRAGGING_CLASS);
+    }
+
+    fab.addEventListener('click', function (event) {
+      if (!dragState.suppressClick) {
+        return;
+      }
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      dragState.suppressClick = false;
+    }, true);
+
+    fab.addEventListener('pointerdown', function (event) {
+      if (event.button !== 0) {
+        return;
+      }
+      var rect = fab.getBoundingClientRect();
+      dragState.pointerId = event.pointerId;
+      dragState.startX = event.clientX;
+      dragState.startY = event.clientY;
+      dragState.originLeft = rect.left;
+      dragState.originTop = rect.top;
+      dragState.hasMoved = false;
+      dragState.suppressClick = false;
+      fab.setPointerCapture(event.pointerId);
+    });
+
+    fab.addEventListener('pointermove', function (event) {
+      if (dragState.pointerId !== event.pointerId) {
+        return;
+      }
+      var deltaX = event.clientX - dragState.startX;
+      var deltaY = event.clientY - dragState.startY;
+      var distance = Math.sqrt((deltaX * deltaX) + (deltaY * deltaY));
+      if (!dragState.hasMoved && distance < FAB_DRAG_THRESHOLD_PX) {
+        return;
+      }
+      if (!dragState.hasMoved) {
+        dragState.hasMoved = true;
+        fab.classList.add(FAB_DRAGGING_CLASS);
+      }
+      if (event.cancelable) {
+        event.preventDefault();
+      }
+      applyFabPosition(fab, dragState.originLeft + deltaX, dragState.originTop + deltaY);
+    });
+
+    function finishPointer(event) {
+      if (dragState.pointerId !== event.pointerId) {
+        return;
+      }
+      if (dragState.hasMoved) {
+        var rect = fab.getBoundingClientRect();
+        var saved = applyFabPosition(fab, rect.left, rect.top);
+        writeStoredFabPosition(saved);
+        dragState.suppressClick = true;
+      }
+      if (fab.hasPointerCapture && fab.hasPointerCapture(event.pointerId)) {
+        fab.releasePointerCapture(event.pointerId);
+      }
+      resetDragState();
+    }
+
+    fab.addEventListener('pointerup', finishPointer);
+    fab.addEventListener('pointercancel', finishPointer);
+
+    window.addEventListener('resize', function () {
+      if (!fab.classList.contains(FAB_MOVED_CLASS)) {
+        return;
+      }
+      var rect = fab.getBoundingClientRect();
+      var saved = applyFabPosition(fab, rect.left, rect.top);
+      writeStoredFabPosition(saved);
+    });
+
+    var stored = readStoredFabPosition();
+    if (stored) {
+      applyFabPosition(fab, stored.left, stored.top);
+    }
+  }
+
   function initTriggers() {
     document.querySelectorAll('[data-ihq-concierge-trigger]').forEach(function (el) {
       bindTrigger(el, {});
     });
+    var fab = document.getElementById('ihq-concierge-fab');
+    if (fab) {
+      enableFabDrag(fab);
+    }
   }
 
   window.ihqConcierge = {

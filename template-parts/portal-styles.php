@@ -3045,21 +3045,6 @@
         line-height: 1.55;
     }
 
-    body.page-template-page-portal-live-php .live-section-heading--how {
-        margin-top: 0;
-        margin-bottom: 14px;
-    }
-
-    body.page-template-page-portal-live-php .kick-schedule-form {
-        max-width: 520px;
-    }
-
-    body.page-template-page-portal-live-php .live-how-kick-wrap {
-        border: 1px solid #b8972f;
-        margin-top: 28px;
-        margin-bottom: 24px;
-    }
-
     body.page-template-page-portal-live-php .live-separator {
         height: 2px;
         width: 100%;
@@ -3083,6 +3068,224 @@
         gap: 10px;
         text-align: center;
         margin-bottom: 20px;
+    }
+
+    body.page-template-page-portal-live-php .live-wn-logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        margin: 8px auto 28px;
+        max-width: 640px;
+    }
+
+    body.page-template-page-portal-live-php .live-wn-logo__camera {
+        width: 88px;
+        height: 64px;
+        object-fit: contain;
+        flex-shrink: 0;
+    }
+
+    body.page-template-page-portal-live-php .live-wn-logo__wordmark {
+        max-width: 420px;
+        width: 100%;
+        height: auto;
+        object-fit: contain;
+    }
+
+    body.page-template-page-portal-live-php .live-section-heading--banner {
+        font-family: "Cinzel", serif;
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-align: center;
+        line-height: 1.35;
+        margin: 16px 0;
+    }
+
+    body.page-template-page-portal-live-php .live-heading-gold {
+        margin: 28px 0 18px;
+        font-family: "Cinzel", serif;
+        font-size: 28px;
+        font-weight: 700;
+        line-height: 1.2;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #b8972f;
+    }
+
+    body.page-template-page-portal-live-php .live-contest-info {
+        margin: 8px 0 12px;
+    }
+
+    body.page-template-page-portal-live-php .live-contest-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px 28px;
+        margin-bottom: 18px;
+    }
+
+    body.page-template-page-portal-live-php .live-contest-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        border: 0;
+        background: transparent;
+        padding: 0;
+        color: #fff;
+        font-family: "Cinzel", serif;
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        cursor: pointer;
+        line-height: 1.1;
+    }
+
+    body.page-template-page-portal-live-php .live-contest-tab.is-open {
+        color: #fff;
+    }
+
+    body.page-template-page-portal-live-php .live-contest-chevron {
+        display: block;
+        width: 14px;
+        height: 28px;
+        flex-shrink: 0;
+        object-fit: contain;
+        transform-origin: center;
+        transition: transform 0.15s ease;
+    }
+
+    body.page-template-page-portal-live-php .live-contest-tab.is-open .live-contest-chevron {
+        transform: rotate(90deg);
+        filter: invert(22%) sepia(62%) saturate(700%) hue-rotate(6deg) brightness(90%);
+    }
+
+    body.page-template-page-portal-live-php .live-contest-panel ul {
+        margin: 0 0 8px;
+        padding-left: 1.2rem;
+    }
+
+    body.page-template-page-portal-live-php .live-contest-panel li {
+        color: #fff;
+        font-size: 18px;
+        line-height: 1.55;
+        margin-bottom: 8px;
+    }
+
+    body.page-template-page-portal-live-php .live-contest-panel li::marker {
+        color: #b8972f;
+    }
+
+    body.page-template-page-portal-live-php .live-check-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        margin: 0 0 22px;
+    }
+
+    body.page-template-page-portal-live-php .live-check-opt {
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    body.page-template-page-portal-live-php .live-check-opt--nested {
+        margin-left: 56px;
+    }
+
+    body.page-template-page-portal-live-php .live-check-label {
+        color: #fff;
+        font-size: 18px;
+        line-height: 1.35;
+        padding-top: 6px;
+    }
+
+    body.page-template-page-portal-live-php .live-referral-note {
+        margin: 8px 0 28px;
+        color: #fff;
+        font-size: 16px;
+        font-style: italic;
+        line-height: 1.5;
+    }
+
+    body.page-template-page-portal-live-php .live-label--opponent-info {
+        margin-top: 8px;
+        font-size: 18px;
+        font-weight: 500;
+        text-transform: none;
+        letter-spacing: 0;
+        color: #fff;
+    }
+
+    body.page-template-page-portal-live-php .live-datetime-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+        margin: 8px 0 28px;
+    }
+
+    body.page-template-page-portal-live-php .live-datetime-grid .live-field-label {
+        font-size: 16px;
+        font-weight: 600;
+        color: #fff;
+        text-transform: none;
+        letter-spacing: 0;
+    }
+
+    body.page-template-page-portal-live-php .live-url-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 18px;
+    }
+
+    body.page-template-page-portal-live-php .live-url-wrap .live-url {
+        flex: 1;
+        min-width: 0;
+    }
+
+    body.page-template-page-portal-live-php .live-submit-row--pair {
+        margin-top: 8px;
+        gap: 16px;
+    }
+
+    body.page-template-page-portal-live-php .live-submit--wide {
+        width: auto;
+        min-width: 180px;
+        padding: 14px 28px;
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        border-radius: 2px;
+    }
+
+    body.page-template-page-portal-live-php .live-add-another {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin: 28px 0 8px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: #fff;
+        font-size: 16px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    body.page-template-page-portal-live-php .live-add-another__icon {
+        width: 48px;
+        height: 48px;
+        object-fit: contain;
+        flex-shrink: 0;
     }
 
 
@@ -3252,6 +3455,7 @@
 
     body.page-template-page-portal-live-php input.live-input::placeholder {
         color: #888;
+        font-style: italic;
     }
 
     body.page-template-page-portal-live-php select.live-input option {
@@ -3327,15 +3531,18 @@
 
     body.page-template-page-portal-live-php .live-url {
         width: 100%;
-        max-width: 460px;
-        min-height: 30px;
+        max-width: none;
+        min-height: 44px;
         border: 1px solid #b8972f;
         border-radius: 2px;
         background: #b8972f;
         color: #000;
-        font-size: 11px;
-        line-height: 28px;
-        padding: 0 10px;
+        font-size: 16px;
+        line-height: 42px;
+        padding: 0 16px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     body.page-template-page-portal-live-php .live-copy-muted {
@@ -3377,10 +3584,10 @@
     body.page-template-page-portal-live-php .live-type-radio {
         -webkit-appearance: none;
         appearance: none;
-        width: 25px;
-        height: 25px;
+        width: 36px;
+        height: 36px;
         border: 2px solid #b8972f;
-        border-radius: 2px;
+        border-radius: 4px;
         background: transparent;
         cursor: pointer;
         flex-shrink: 0;
@@ -3458,11 +3665,24 @@
             max-width: 100%;
         }
 
-        body.page-template-page-portal-live-php .live-title {
-            font-size: 36px;
+        body.page-template-page-portal-live-php .live-datetime-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        body.page-template-page-portal-live-php .live-contest-tab {
+            font-size: 16px;
+        }
+
+        body.page-template-page-portal-live-php .live-heading-gold {
+            font-size: 22px;
+        }
+
+        body.page-template-page-portal-live-php .live-submit-row--pair {
+            flex-wrap: wrap;
         }
 
         body.page-template-page-portal-live-php .live-intro-list,
+        body.page-template-page-portal-live-php .live-contest-info,
         body.page-template-page-portal-live-php .live-form-block,
         body.page-template-page-portal-live-php .live-copy,
         body.page-template-page-portal-live-php .live-copy-muted,
@@ -3475,11 +3695,16 @@
     }
 
     @media (max-width: 480px) {
-        body.page-template-page-portal-live-php .live-title {
-            font-size: 34px;
+        body.page-template-page-portal-live-php .live-datetime-grid {
+            grid-template-columns: 1fr;
+        }
+
+        body.page-template-page-portal-live-php .live-check-opt--nested {
+            margin-left: 28px;
         }
 
         body.page-template-page-portal-live-php .live-intro-list,
+        body.page-template-page-portal-live-php .live-contest-info,
         body.page-template-page-portal-live-php .live-form-block,
         body.page-template-page-portal-live-php .live-copy,
         body.page-template-page-portal-live-php .live-copy-muted,
