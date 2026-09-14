@@ -31,6 +31,119 @@ const AVATAR_VIDEO_ID = 'aicoach-avatar-video';
 const TIME_REMAINING_THRESHOLD_RATIO = 0.8;
 const TIER_DURATION_MS = { '2': 2 * 60 * 1000, '5': 5 * 60 * 1000, '10': 10 * 60 * 1000 };
 
+// FR-13 — manual language selector (Scenario 24/25). Native labels are the ones
+// given verbatim in the ticket itself ("Proposed native-language labels, subject to
+// localisation review") — not invented here. Locale codes match Gary's
+// approved_languages exactly (confirmed via GET /coach/v1/health).
+const SUPPORTED_LOCALES = [
+    { code: 'en', nativeLabel: 'English' },
+    { code: 'zh', nativeLabel: '普通话' },
+    { code: 'yue', nativeLabel: '廣東話' },
+    { code: 'ja', nativeLabel: '日本語' },
+    { code: 'ko', nativeLabel: '한국어' },
+    { code: 'th', nativeLabel: 'ไทย' },
+    { code: 'vi', nativeLabel: 'Tiếng Việt' },
+];
+
+// English is the real, approved copy — source of truth for translation. The other
+// six languages are deliberately left EMPTY, not filled with invented/machine
+// translations: no approved copy exists for them yet. t() below falls back to
+// English for any missing key. Fill these in only once real, PO-approved
+// translations are supplied — same "never invent unapproved copy" rule this whole
+// epic has followed for every other TBD piece of content.
+const I18N_EN = {
+    belief: 'We believe conversations should be easy.',
+    unmuteLabel: "Turn on Sami's voice",
+    weBelieve: 'We Believe',
+    tierGroupLabel: 'Conversation length',
+    'tier-2-duration': '2 minutes',
+    'tier-2-item-0': 'Introduction to Competition',
+    'tier-2-item-1': 'Choose Communication Method',
+    'tier-5-duration': '5 minutes',
+    'tier-5-item-0': 'Introduction to Competition',
+    'tier-5-item-1': 'Choose Communication Method',
+    'tier-5-item-2': 'Full Competition Details',
+    'tier-10-duration': '10 minutes',
+    'tier-10-item-0': 'Introduction to Competition',
+    'tier-10-item-1': 'Choose Communication Method',
+    'tier-10-item-2': 'Full Competition Details',
+    'tier-10-item-3': 'Setup your First Competition to Earn Equity',
+    'tier-10-item-4': 'Help with Creating Posts for Your Followers',
+    magicAdidas: 'Adidas $100k cash',
+    magicNike: "Nike's 11 cent stock",
+    magicNikeWorth: 'Now worth 5.4 billion',
+    alixPoppi: 'Said yes to an ownership-based partnership with Poppi',
+    turnedDownCash: 'Turned down cash',
+    btsOwnership: 'Said yes to shared ownership, valued at 103.6 million',
+    worldCompetitionName: 'World Competition',
+    youFollowers: 'You + Followers',
+    versus: 'versus',
+    allInfluencersFollowers: 'All Influencers + Followers',
+    communityCompetitionName: 'Community Competition',
+    communityCompetitionFormat: 'Weekly competition for your followers only',
+    privateChallengeName: 'Private Challenge',
+    friendFollowers: 'An Influencer Friend + Followers',
+    identityTitle: "Let's Start The Conversation",
+    identitySubtitle: 'Let us know who you are',
+    firstName: 'First Name',
+    lastName: 'Last Name',
+    username: 'Username',
+    continue: 'Continue',
+    channelsHint: 'Please select at least one communication method.',
+    letsContinue: "Let's Continue",
+    timeCheckText: "Looks like your selected time is almost up. Do you have a few more minutes to finish?",
+    yes: 'Yes',
+    no: 'No',
+    // Mirrors $aicoach_channels in page-home-aicoach.php — kept in sync by hand,
+    // there's no single shared source between PHP and this file for it.
+    'channel-email-label': 'Email',
+    'channel-email-inputLabel': 'Email address',
+    'channel-email-placeholder': 'you@example.com',
+    'channel-kakaotalk-label': 'KakaoTalk',
+    'channel-kakaotalk-inputLabel': 'KakaoTalk ID or phone number',
+    'channel-kakaotalk-placeholder': '',
+    'channel-line-label': 'Line',
+    'channel-line-inputLabel': 'Line ID',
+    'channel-line-placeholder': 'U0123456789abcdef0123456789abcdef',
+    'channel-sms-label': 'SMS',
+    'channel-sms-inputLabel': 'Phone number',
+    'channel-sms-placeholder': '+66812345678',
+    'channel-telegram-label': 'Telegram',
+    'channel-telegram-inputLabel': 'Telegram username or chat ID',
+    'channel-telegram-placeholder': '@username',
+    'channel-wechat-label': 'WeChat',
+    'channel-wechat-inputLabel': 'WeChat ID',
+    'channel-wechat-placeholder': '',
+    'channel-whatsapp-label': 'WhatsApp',
+    'channel-whatsapp-inputLabel': 'Phone number',
+    'channel-whatsapp-placeholder': '+66812345678',
+    'channel-zalo-label': 'Zalo',
+    'channel-zalo-inputLabel': 'Phone number or Zalo ID',
+    'channel-zalo-placeholder': '',
+};
+
+const I18N_TRANSLATIONS = { en: I18N_EN, zh: {}, yue: {}, ja: {}, ko: {}, th: {}, vi: {} };
+
+function t( locale, key ) {
+    const table = I18N_TRANSLATIONS[ locale ] || {};
+    return table[ key ] || I18N_EN[ key ] || '';
+}
+
+// Walks every data-i18n / data-i18n-attr element and applies the given locale's
+// copy (falling back to English per t() above). Static text/attributes only —
+// spoken captions come from Sami's own responses, not this table.
+function applyLocale( locale ) {
+    document.querySelectorAll( '[data-i18n]' ).forEach( function ( el ) {
+        el.textContent = t( locale, el.getAttribute( 'data-i18n' ) );
+    } );
+    document.querySelectorAll( '[data-i18n-attr]' ).forEach( function ( el ) {
+        el.getAttribute( 'data-i18n-attr' ).split( ',' ).forEach( function ( pair ) {
+            const [ attr, key ] = pair.split( ':' );
+            el.setAttribute( attr, t( locale, key ) );
+        } );
+    } );
+}
+
 const SCREENS = [
     {
         panel: 'intro',
@@ -162,6 +275,103 @@ function getCaptionEl( panelKey ) {
 if ( stage && avatarWrap ) {
     const tiers = stage.querySelectorAll( '.aicoach-tier' );
     let isAnimating = false;
+
+    // FR-13 — language selector, injected into the shared header's own nav row
+    // rather than editing template-parts/portal-header.php directly. That file
+    // already has a .header-lang-wrap element, but it belongs to a different,
+    // unrelated feature (the site-wide ElevenLabs concierge widget — see its git
+    // history) with its own mismatched language list; reusing or editing it risks
+    // breaking that other feature. This script only ever runs on this one page
+    // (see ihq_aicoach_enqueue_coach_flow()'s is_page_template check), so injecting
+    // here is safe without any extra page check.
+    let currentLocale = 'en';
+
+    function selectLocale( locale ) {
+        if ( locale === currentLocale ) {
+            return;
+        }
+        currentLocale = locale;
+        applyLocale( locale );
+        document.querySelectorAll( '.aicoach-lang-option' ).forEach( function ( opt ) {
+            const isCurrent = opt.dataset.locale === locale;
+            opt.classList.toggle( 'is-current', isCurrent );
+            if ( isCurrent ) {
+                opt.setAttribute( 'aria-current', 'true' );
+            } else {
+                opt.removeAttribute( 'aria-current' );
+            }
+        } );
+        // NOTE — scope boundary for this story: this switches the selector state
+        // and every data-i18n/data-i18n-attr element's text. It does NOT yet
+        // reconnect the avatar/voice to a Gary session using this locale (Scenario
+        // 25's "avatar and voice switch" clause) — that needs the interim
+        // direct-Anam-SDK avatar driver replaced with inc/gary-proxy.php's
+        // session/message calls, a separate, larger piece of work tracked
+        // separately rather than folded in here silently.
+    }
+
+    ( function buildLanguageSelector() {
+        const headerRow = document.querySelector( '.desktop-header-left-items' );
+        if ( ! headerRow ) {
+            return;
+        }
+
+        const wrap = document.createElement( 'div' );
+        wrap.className = 'aicoach-lang-wrap';
+
+        const btn = document.createElement( 'button' );
+        btn.type = 'button';
+        btn.className = 'aicoach-lang-btn';
+        btn.id = 'aicoachLangBtn';
+        btn.setAttribute( 'aria-label', 'Select language' );
+        btn.setAttribute( 'aria-haspopup', 'true' );
+        btn.setAttribute( 'aria-expanded', 'false' );
+        btn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E6CFA0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>';
+
+        const dropdown = document.createElement( 'div' );
+        dropdown.className = 'aicoach-lang-dropdown';
+        dropdown.id = 'aicoachLangDropdown';
+
+        SUPPORTED_LOCALES.forEach( function ( loc ) {
+            const opt = document.createElement( 'button' );
+            opt.type = 'button';
+            opt.className = 'aicoach-lang-option';
+            opt.dataset.locale = loc.code;
+            opt.textContent = loc.nativeLabel;
+            opt.lang = loc.code;
+            if ( loc.code === currentLocale ) {
+                opt.classList.add( 'is-current' );
+                opt.setAttribute( 'aria-current', 'true' );
+            }
+            dropdown.appendChild( opt );
+        } );
+
+        wrap.appendChild( btn );
+        wrap.appendChild( dropdown );
+        headerRow.appendChild( wrap );
+
+        btn.addEventListener( 'click', function ( event ) {
+            event.stopPropagation();
+            const isOpen = wrap.classList.toggle( 'is-open' );
+            btn.setAttribute( 'aria-expanded', isOpen ? 'true' : 'false' );
+        } );
+
+        document.addEventListener( 'click', function () {
+            wrap.classList.remove( 'is-open' );
+            btn.setAttribute( 'aria-expanded', 'false' );
+        } );
+
+        dropdown.addEventListener( 'click', function ( event ) {
+            const option = event.target.closest( '.aicoach-lang-option' );
+            if ( ! option ) {
+                return;
+            }
+            event.stopPropagation();
+            selectLocale( option.dataset.locale );
+            wrap.classList.remove( 'is-open' );
+            btn.setAttribute( 'aria-expanded', 'false' );
+        } );
+    }() );
 
     function syncSelected() {
         tiers.forEach( function ( tier ) {
