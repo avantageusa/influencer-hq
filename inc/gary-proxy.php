@@ -178,7 +178,18 @@ function ihq_coach_handle_open_session( WP_REST_Request $request ) {
  */
 function ihq_coach_handle_message( WP_REST_Request $request ) {
 	$session_id = sanitize_text_field( (string) $request->get_param( 'session_id' ) );
-	$text       = sanitize_textarea_field( (string) $request->get_param( 'text' ) );
+
+	// Deliberately NOT sanitize_textarea_field() here — this text is never rendered
+	// as HTML on our side, it's forwarded verbatim as the conversation content in a
+	// JSON payload to Gary. sanitize_textarea_field() rewrites "<"/">" to HTML
+	// entities and strips tag-shaped content, which would corrupt a visitor's actual
+	// question (e.g. "is 2 < 5 minutes enough?") before the coach ever sees it.
+	// wp_check_invalid_utf8() only guards against malformed byte sequences; a length
+	// cap protects the per-character TTS budget on a paid third-party API.
+	$text = trim( wp_check_invalid_utf8( (string) $request->get_param( 'text' ), true ) );
+	if ( strlen( $text ) > 2000 ) {
+		$text = substr( $text, 0, 2000 );
+	}
 
 	if ( '' === $session_id || '' === $text ) {
 		return new WP_REST_Response( array( 'error' => 'session_id and text are required.' ), 400 );
