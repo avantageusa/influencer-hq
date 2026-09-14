@@ -132,7 +132,7 @@ $aicoach_channels = array(
 
             <section class="aicoach" aria-label="<?php esc_attr_e( 'AI Coach', 'influencer-hq' ); ?>">
 
-                <p class="aicoach-belief"><?php esc_html_e( 'We believe conversations should be easy.', 'influencer-hq' ); ?></p>
+                <p class="aicoach-belief" data-i18n="belief"><?php esc_html_e( 'We believe conversations should be easy.', 'influencer-hq' ); ?></p>
 
                 <div class="aicoach-avatar-wrap" id="aicoach-avatar-wrap" data-status="idle">
                     <img
@@ -146,7 +146,7 @@ $aicoach_channels = array(
                     >
                     <video class="aicoach-avatar-video" id="aicoach-avatar-video" autoplay playsinline muted></video>
                     <div class="aicoach-avatar-loading" aria-hidden="true"><div class="aicoach-avatar-spinner"></div></div>
-                    <button type="button" class="aicoach-unmute" id="aicoach-unmute" aria-pressed="false" aria-label="<?php esc_attr_e( 'Turn on Sami\'s voice', 'influencer-hq' ); ?>">&#128264;</button>
+                    <button type="button" class="aicoach-unmute" id="aicoach-unmute" aria-pressed="false" data-i18n-attr="aria-label:unmuteLabel" aria-label="<?php esc_attr_e( 'Turn on Sami\'s voice', 'influencer-hq' ); ?>">&#128264;</button>
                 </div>
 
                 <div class="aicoach-stage" id="aicoach-stage">
@@ -158,7 +158,7 @@ $aicoach_channels = array(
                     <div class="aicoach-panel" data-panel="believe-1" aria-hidden="true">
                         <div class="aicoach-believe">
                             <img class="aicoach-believe-icon" src="<?php echo esc_url( $aicoach_img['belief-coin'] ); ?>" alt="" width="72" height="72" aria-hidden="true">
-                            <span class="aicoach-believe-kicker"><?php esc_html_e( 'We Believe', 'influencer-hq' ); ?></span>
+                            <span class="aicoach-believe-kicker" data-i18n="weBelieve"><?php esc_html_e( 'We Believe', 'influencer-hq' ); ?></span>
                             <p class="aicoach-caption" data-caption-for="believe-1" aria-live="polite"></p>
                         </div>
                     </div>
@@ -166,14 +166,14 @@ $aicoach_channels = array(
                     <div class="aicoach-panel" data-panel="believe-2" aria-hidden="true">
                         <div class="aicoach-believe">
                             <img class="aicoach-believe-icon" src="<?php echo esc_url( $aicoach_img['belief-chart'] ); ?>" alt="" width="72" height="72" aria-hidden="true">
-                            <span class="aicoach-believe-kicker"><?php esc_html_e( 'We Believe', 'influencer-hq' ); ?></span>
+                            <span class="aicoach-believe-kicker" data-i18n="weBelieve"><?php esc_html_e( 'We Believe', 'influencer-hq' ); ?></span>
                             <p class="aicoach-caption" data-caption-for="believe-2" aria-live="polite"></p>
                         </div>
                     </div>
 
                     <div class="aicoach-panel" data-panel="home" aria-hidden="true">
                         <p class="aicoach-caption" data-caption-for="home" aria-live="polite"></p>
-                        <div class="aicoach-tiers" role="radiogroup" aria-label="<?php esc_attr_e( 'Conversation length', 'influencer-hq' ); ?>">
+                        <div class="aicoach-tiers" role="radiogroup" data-i18n-attr="aria-label:tierGroupLabel" aria-label="<?php esc_attr_e( 'Conversation length', 'influencer-hq' ); ?>">
                             <?php foreach ( $aicoach_tiers as $index => $tier ) : ?>
                             <?php
                             $tier_id = 'aicoach-tier-' . ( $index + 1 );
@@ -191,11 +191,11 @@ $aicoach_channels = array(
                                         <?php checked( $is_on ); ?>
                                     >
                                     <span class="aicoach-tier-box" aria-hidden="true"></span>
-                                    <span class="aicoach-tier-duration"><?php echo esc_html( $tier['duration'] ); ?></span>
+                                    <span class="aicoach-tier-duration" data-i18n="tier-<?php echo esc_attr( $tier['key'] ); ?>-duration"><?php echo esc_html( $tier['duration'] ); ?></span>
                                 </label>
                                 <ul class="aicoach-tier-list">
-                                    <?php foreach ( $tier['items'] as $item ) : ?>
-                                    <li><?php echo esc_html( $item ); ?></li>
+                                    <?php foreach ( $tier['items'] as $item_index => $item ) : ?>
+                                    <li data-i18n="tier-<?php echo esc_attr( $tier['key'] ); ?>-item-<?php echo esc_attr( $item_index ); ?>"><?php echo esc_html( $item ); ?></li>
                                     <?php endforeach; ?>
                                 </ul>
                             </div>
@@ -221,13 +221,13 @@ $aicoach_channels = array(
                             <ul class="aicoach-story-points">
                                 <li class="aicoach-story-point">
                                     <img class="aicoach-story-icon" src="<?php echo esc_url( $aicoach_img['check'] ); ?>" alt="" width="48" height="45" aria-hidden="true">
-                                    <span><?php esc_html_e( 'Adidas $100k cash', 'influencer-hq' ); ?></span>
+                                    <span data-i18n="magicAdidas"><?php esc_html_e( 'Adidas $100k cash', 'influencer-hq' ); ?></span>
                                 </li>
                                 <li class="aicoach-story-point aicoach-story-point--stacked">
                                     <img class="aicoach-story-icon" src="<?php echo esc_url( $aicoach_img['x'] ); ?>" alt="" width="48" height="48" aria-hidden="true">
                                     <span>
-                                        <?php esc_html_e( "Nike's 11 cent stock", 'influencer-hq' ); ?>
-                                        <span class="aicoach-story-sub"><?php esc_html_e( 'Now worth 5.4 billion', 'influencer-hq' ); ?></span>
+                                        <span data-i18n="magicNike"><?php esc_html_e( "Nike's 11 cent stock", 'influencer-hq' ); ?></span>
+                                        <span class="aicoach-story-sub" data-i18n="magicNikeWorth"><?php esc_html_e( 'Now worth 5.4 billion', 'influencer-hq' ); ?></span>
                                     </span>
                                 </li>
                             </ul>
@@ -253,11 +253,11 @@ $aicoach_channels = array(
                             <ul class="aicoach-story-points">
                                 <li class="aicoach-story-point aicoach-story-point--stacked">
                                     <img class="aicoach-story-icon" src="<?php echo esc_url( $aicoach_img['check'] ); ?>" alt="" width="48" height="45" aria-hidden="true">
-                                    <span><?php esc_html_e( 'Said yes to an ownership-based partnership with Poppi', 'influencer-hq' ); ?></span>
+                                    <span data-i18n="alixPoppi"><?php esc_html_e( 'Said yes to an ownership-based partnership with Poppi', 'influencer-hq' ); ?></span>
                                 </li>
                                 <li class="aicoach-story-point">
                                     <img class="aicoach-story-icon" src="<?php echo esc_url( $aicoach_img['x'] ); ?>" alt="" width="48" height="48" aria-hidden="true">
-                                    <span><?php esc_html_e( 'Turned down cash', 'influencer-hq' ); ?></span>
+                                    <span data-i18n="turnedDownCash"><?php esc_html_e( 'Turned down cash', 'influencer-hq' ); ?></span>
                                 </li>
                             </ul>
                             <p class="aicoach-caption" data-caption-for="equity-alix" aria-live="polite"></p>
@@ -279,11 +279,11 @@ $aicoach_channels = array(
                             <ul class="aicoach-story-points">
                                 <li class="aicoach-story-point">
                                     <img class="aicoach-story-icon" src="<?php echo esc_url( $aicoach_img['check'] ); ?>" alt="" width="48" height="45" aria-hidden="true">
-                                    <span><?php esc_html_e( 'Said yes to shared ownership, valued at 103.6 million', 'influencer-hq' ); ?></span>
+                                    <span data-i18n="btsOwnership"><?php esc_html_e( 'Said yes to shared ownership, valued at 103.6 million', 'influencer-hq' ); ?></span>
                                 </li>
                                 <li class="aicoach-story-point">
                                     <img class="aicoach-story-icon" src="<?php echo esc_url( $aicoach_img['x'] ); ?>" alt="" width="48" height="48" aria-hidden="true">
-                                    <span><?php esc_html_e( 'Turned down cash', 'influencer-hq' ); ?></span>
+                                    <span data-i18n="turnedDownCash"><?php esc_html_e( 'Turned down cash', 'influencer-hq' ); ?></span>
                                 </li>
                             </ul>
                             <p class="aicoach-caption" data-caption-for="equity-bts" aria-live="polite"></p>
@@ -293,11 +293,11 @@ $aicoach_channels = array(
                     <div class="aicoach-panel" data-panel="competition-world" aria-hidden="true">
                         <div class="aicoach-competition">
                             <img class="aicoach-competition-icon" src="<?php echo esc_url( $aicoach_img['trophy'] ); ?>" alt="" width="72" height="72" aria-hidden="true">
-                            <h2 class="aicoach-competition-name"><?php esc_html_e( 'World Competition', 'influencer-hq' ); ?></h2>
+                            <h2 class="aicoach-competition-name" data-i18n="worldCompetitionName"><?php esc_html_e( 'World Competition', 'influencer-hq' ); ?></h2>
                             <p class="aicoach-competition-format">
-                                <?php esc_html_e( 'You + Followers', 'influencer-hq' ); ?>
-                                <span class="aicoach-competition-vs"><?php esc_html_e( 'versus', 'influencer-hq' ); ?></span>
-                                <?php esc_html_e( 'All Influencers + Followers', 'influencer-hq' ); ?>
+                                <span data-i18n="youFollowers"><?php esc_html_e( 'You + Followers', 'influencer-hq' ); ?></span>
+                                <span class="aicoach-competition-vs" data-i18n="versus"><?php esc_html_e( 'versus', 'influencer-hq' ); ?></span>
+                                <span data-i18n="allInfluencersFollowers"><?php esc_html_e( 'All Influencers + Followers', 'influencer-hq' ); ?></span>
                             </p>
                             <p class="aicoach-caption" data-caption-for="competition-world" aria-live="polite"></p>
                         </div>
@@ -306,8 +306,8 @@ $aicoach_channels = array(
                     <div class="aicoach-panel" data-panel="competition-community" aria-hidden="true">
                         <div class="aicoach-competition">
                             <img class="aicoach-competition-icon" src="<?php echo esc_url( $aicoach_img['trophy'] ); ?>" alt="" width="72" height="72" aria-hidden="true">
-                            <h2 class="aicoach-competition-name"><?php esc_html_e( 'Community Competition', 'influencer-hq' ); ?></h2>
-                            <p class="aicoach-competition-format"><?php esc_html_e( 'Weekly competition for your followers only', 'influencer-hq' ); ?></p>
+                            <h2 class="aicoach-competition-name" data-i18n="communityCompetitionName"><?php esc_html_e( 'Community Competition', 'influencer-hq' ); ?></h2>
+                            <p class="aicoach-competition-format" data-i18n="communityCompetitionFormat"><?php esc_html_e( 'Weekly competition for your followers only', 'influencer-hq' ); ?></p>
                             <p class="aicoach-caption" data-caption-for="competition-community" aria-live="polite"></p>
                         </div>
                     </div>
@@ -315,11 +315,11 @@ $aicoach_channels = array(
                     <div class="aicoach-panel" data-panel="competition-private" aria-hidden="true">
                         <div class="aicoach-competition">
                             <img class="aicoach-competition-icon" src="<?php echo esc_url( $aicoach_img['trophy'] ); ?>" alt="" width="72" height="72" aria-hidden="true">
-                            <h2 class="aicoach-competition-name"><?php esc_html_e( 'Private Challenge', 'influencer-hq' ); ?></h2>
+                            <h2 class="aicoach-competition-name" data-i18n="privateChallengeName"><?php esc_html_e( 'Private Challenge', 'influencer-hq' ); ?></h2>
                             <p class="aicoach-competition-format">
-                                <?php esc_html_e( 'You + Followers', 'influencer-hq' ); ?>
-                                <span class="aicoach-competition-vs"><?php esc_html_e( 'versus', 'influencer-hq' ); ?></span>
-                                <?php esc_html_e( 'An Influencer Friend + Followers', 'influencer-hq' ); ?>
+                                <span data-i18n="youFollowers"><?php esc_html_e( 'You + Followers', 'influencer-hq' ); ?></span>
+                                <span class="aicoach-competition-vs" data-i18n="versus"><?php esc_html_e( 'versus', 'influencer-hq' ); ?></span>
+                                <span data-i18n="friendFollowers"><?php esc_html_e( 'An Influencer Friend + Followers', 'influencer-hq' ); ?></span>
                             </p>
                             <p class="aicoach-caption" data-caption-for="competition-private" aria-live="polite"></p>
                         </div>
@@ -327,23 +327,23 @@ $aicoach_channels = array(
 
                     <div class="aicoach-panel" data-panel="identity" aria-hidden="true">
                         <div class="aicoach-identity">
-                            <h2 class="aicoach-identity-title"><?php esc_html_e( "Let's Start The Conversation", 'influencer-hq' ); ?></h2>
-                            <p class="aicoach-identity-subtitle"><?php esc_html_e( 'Let us know who you are', 'influencer-hq' ); ?></p>
+                            <h2 class="aicoach-identity-title" data-i18n="identityTitle"><?php esc_html_e( "Let's Start The Conversation", 'influencer-hq' ); ?></h2>
+                            <p class="aicoach-identity-subtitle" data-i18n="identitySubtitle"><?php esc_html_e( 'Let us know who you are', 'influencer-hq' ); ?></p>
                             <form class="aicoach-identity-form" id="aicoach-identity-form" novalidate>
                                 <label class="aicoach-identity-field">
-                                    <span class="aicoach-identity-label"><?php esc_html_e( 'First Name', 'influencer-hq' ); ?></span>
+                                    <span class="aicoach-identity-label" data-i18n="firstName"><?php esc_html_e( 'First Name', 'influencer-hq' ); ?></span>
                                     <input type="text" class="aicoach-identity-input" id="aicoach-first-name" autocomplete="given-name" required>
                                 </label>
                                 <label class="aicoach-identity-field">
-                                    <span class="aicoach-identity-label"><?php esc_html_e( 'Last Name', 'influencer-hq' ); ?></span>
+                                    <span class="aicoach-identity-label" data-i18n="lastName"><?php esc_html_e( 'Last Name', 'influencer-hq' ); ?></span>
                                     <input type="text" class="aicoach-identity-input" id="aicoach-last-name" autocomplete="family-name" required>
                                 </label>
                                 <label class="aicoach-identity-field">
-                                    <span class="aicoach-identity-label"><?php esc_html_e( 'Username', 'influencer-hq' ); ?></span>
+                                    <span class="aicoach-identity-label" data-i18n="username"><?php esc_html_e( 'Username', 'influencer-hq' ); ?></span>
                                     <input type="text" class="aicoach-identity-input" id="aicoach-username" autocomplete="username" required>
                                     <span class="aicoach-identity-error" id="aicoach-username-error" role="alert"></span>
                                 </label>
-                                <button type="submit" class="aicoach-form-continue" id="aicoach-form-continue" disabled>
+                                <button type="submit" class="aicoach-form-continue" id="aicoach-form-continue" disabled data-i18n="continue">
                                     <?php esc_html_e( 'Continue', 'influencer-hq' ); ?>
                                 </button>
                             </form>
@@ -353,7 +353,7 @@ $aicoach_channels = array(
                     <div class="aicoach-panel" data-panel="comm-channels" aria-hidden="true">
                         <p class="aicoach-caption" data-caption-for="comm-channels" aria-live="polite"></p>
                         <form class="aicoach-channels" id="aicoach-channels-form" novalidate>
-                            <p class="aicoach-channels-hint" id="aicoach-channels-hint">
+                            <p class="aicoach-channels-hint" id="aicoach-channels-hint" data-i18n="channelsHint">
                                 <?php esc_html_e( 'Please select at least one communication method.', 'influencer-hq' ); ?>
                             </p>
                             <div class="aicoach-channel-list">
@@ -362,14 +362,15 @@ $aicoach_channels = array(
                                     <label class="aicoach-channel-toggle">
                                         <input type="checkbox" class="aicoach-channel-check" data-channel="<?php echo esc_attr( $channel['key'] ); ?>">
                                         <span class="aicoach-channel-box" aria-hidden="true"></span>
-                                        <span class="aicoach-channel-label"><?php echo esc_html( $channel['label'] ); ?></span>
+                                        <span class="aicoach-channel-label" data-i18n="channel-<?php echo esc_attr( $channel['key'] ); ?>-label"><?php echo esc_html( $channel['label'] ); ?></span>
                                     </label>
                                     <div class="aicoach-channel-field" hidden>
-                                        <label class="aicoach-channel-field-label"><?php echo esc_html( $channel['input_label'] ); ?></label>
+                                        <label class="aicoach-channel-field-label" data-i18n="channel-<?php echo esc_attr( $channel['key'] ); ?>-inputLabel"><?php echo esc_html( $channel['input_label'] ); ?></label>
                                         <input
                                             type="<?php echo esc_attr( $channel['input_type'] ); ?>"
                                             class="aicoach-channel-input"
                                             data-channel="<?php echo esc_attr( $channel['key'] ); ?>"
+                                            data-i18n-attr="placeholder:channel-<?php echo esc_attr( $channel['key'] ); ?>-placeholder"
                                             placeholder="<?php echo esc_attr( $channel['placeholder'] ); ?>"
                                         >
                                         <span class="aicoach-channel-error" role="alert"></span>
@@ -377,7 +378,7 @@ $aicoach_channels = array(
                                 </div>
                                 <?php endforeach; ?>
                             </div>
-                            <button type="submit" class="aicoach-form-continue" id="aicoach-channels-continue" disabled>
+                            <button type="submit" class="aicoach-form-continue" id="aicoach-channels-continue" disabled data-i18n="continue">
                                 <?php esc_html_e( 'Continue', 'influencer-hq' ); ?>
                             </button>
                         </form>
@@ -387,7 +388,7 @@ $aicoach_channels = array(
                         <div class="aicoach-final">
                             <p class="aicoach-caption" data-caption-for="final-continue" aria-live="polite"></p>
                             <p class="aicoach-final-error" id="aicoach-final-error" role="alert"></p>
-                            <button type="button" class="aicoach-form-continue" id="aicoach-final-continue">
+                            <button type="button" class="aicoach-form-continue" id="aicoach-final-continue" data-i18n="letsContinue">
                                 <?php esc_html_e( "Let's Continue", 'influencer-hq' ); ?>
                             </button>
                         </div>
@@ -405,14 +406,14 @@ $aicoach_channels = array(
                 -->
                 <div class="aicoach-time-check" id="aicoach-time-check" aria-hidden="true" role="dialog" aria-modal="true">
                     <div class="aicoach-time-check-box">
-                        <p class="aicoach-time-check-text">
+                        <p class="aicoach-time-check-text" data-i18n="timeCheckText">
                             <?php esc_html_e( "Looks like your selected time is almost up. Do you have a few more minutes to finish?", 'influencer-hq' ); ?>
                         </p>
                         <div class="aicoach-time-check-actions">
-                            <button type="button" class="aicoach-time-check-btn aicoach-time-check-yes" id="aicoach-time-check-yes">
+                            <button type="button" class="aicoach-time-check-btn aicoach-time-check-yes" id="aicoach-time-check-yes" data-i18n="yes">
                                 <?php esc_html_e( 'Yes', 'influencer-hq' ); ?>
                             </button>
-                            <button type="button" class="aicoach-time-check-btn aicoach-time-check-no" id="aicoach-time-check-no">
+                            <button type="button" class="aicoach-time-check-btn aicoach-time-check-no" id="aicoach-time-check-no" data-i18n="no">
                                 <?php esc_html_e( 'No', 'influencer-hq' ); ?>
                             </button>
                         </div>
@@ -1065,6 +1066,73 @@ $aicoach_channels = array(
 
     .aicoach-story-point--stacked .aicoach-story-sub {
         text-transform: none;
+    }
+
+    /* FR-13 — language selector, injected by js/aicoach-coach-flow.js into the
+    shared header's .desktop-header-left-items row (this page only, see the JS
+    comment for why it's a separate element from the header's own dormant
+    .header-lang-wrap, which belongs to an unrelated feature). */
+    .aicoach-lang-wrap {
+        position: relative;
+        display: inline-flex;
+    }
+
+    .aicoach-lang-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        background: transparent;
+        cursor: pointer;
+    }
+
+    .aicoach-lang-btn:hover,
+    .aicoach-lang-btn[aria-expanded="true"] {
+        background: rgba(253, 214, 91, .12);
+    }
+
+    .aicoach-lang-dropdown {
+        display: none;
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        min-width: 160px;
+        padding: 6px;
+        border: 1px solid #3a3b47;
+        border-radius: 10px;
+        background: #1b1c24;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, .4);
+        z-index: 10050;
+    }
+
+    .aicoach-lang-wrap.is-open .aicoach-lang-dropdown {
+        display: block;
+    }
+
+    .aicoach-lang-option {
+        display: block;
+        width: 100%;
+        padding: 8px 12px;
+        border: none;
+        border-radius: 6px;
+        background: transparent;
+        color: #fff;
+        font-size: .95rem;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .aicoach-lang-option:hover {
+        background: rgba(253, 214, 91, .1);
+    }
+
+    .aicoach-lang-option.is-current {
+        color: #fdd65b;
+        font-weight: 700;
     }
 
     @media (max-width: 520px) {
