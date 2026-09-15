@@ -19,7 +19,7 @@ todos:
     content: Replace the three duplicate API-base literals (inc/api-ajax-calls.php:81, functions.php:1020, page-portal-testapi.php:127) and the start-session URL (inc/email-verification-handler.php:1079) with lookups; INFLUENCER_API_BASE becomes derived from config
     status: pending
   - id: replace-portal-base
-    content: Replace the five QC portal literals (functions.php:317, page-portal-profile.php:619, template-parts/portal-header.php:61, page-portal-challenges.php:28, test-form.php:14) with ihq_env_get('IHQ_GAME_PORTAL_BASE_URL'); portal-header uses ihq_get_hq_game_portal_base_url()
+    content: "Replace the QC portal literals (functions.php:317, template-parts/portal-header.php:61, test-form.php:14) with the config lookup; portal-header uses ihq_get_hq_game_portal_base_url(). page-portal-challenges.php:28 is already replaced by PR #24 (PO-2901) — do not touch, rebase after it merges. page-portal-profile.php:619 waits for PR #21 (PO-3061, 1260-line rewrite of that file) — edit after it merges" 
     status: pending
   - id: remove-secret-literals
     content: Delete the define() fallbacks for IHQ_INFLUENCER_API_KEY, CF_TURNSTILE_SITE_KEY, CF_TURNSTILE_SECRET_KEY and the inline ElevenLabs key; read all four via the env module
@@ -172,6 +172,16 @@ Values per instance, all verified live 2026-09-14/15:
   the instance value for the users that have them. Known, accepted until PO-3073 part 2.
 
 ## Notes
+
+- **In-flight PR check (2026-09-15):** nobody else has started PO-3066/3067 — no branch, no
+  commits, tickets To Do with no dev links. Overlaps: PR #24 (PO-2901) replaces the
+  `page-portal-challenges.php:28` literal with `ihq_build_hq_game_portal_external_url()`, which
+  routes through `ihq_get_hq_game_portal_base_url()` — so this plan's functions.php change covers
+  it and the challenges.php edit is dropped. PR #21 (PO-3061) rewrites `page-portal-profile.php`
+  wholesale — do the :619 edit after it merges. PRs #22/#25 (`inc/gary-proxy.php`) and #26
+  (`inc/harness-auth-bridge.php`, own `IHQ_HARNESS_*` wp-config constants) each add one
+  `require_once` line next to ours in functions.php (trivial) and already use the
+  constant→getenv pattern; both could switch to `ihq_env_get()` afterwards.
 
 - **Follow-up (not this PR):** `ihq_api_proxy` is reachable unauthenticated and relays the API
   key. Raise a ticket to require `manage_options` or delete it, alongside removing
