@@ -265,6 +265,12 @@ function avantage_save_hq_game_url() {
 add_action( 'wp_ajax_save_hq_game_url', 'avantage_save_hq_game_url' );
 
 /**
+ * Per-instance environment configuration (wp-config constants). Must load
+ * before any inc/ file that reads API bases or credentials.
+ */
+require_once get_template_directory() . '/inc/ihq-env.php';
+
+/**
  * Implement the Custom Header feature.
  */
 require get_template_directory() . '/inc/custom-header.php';
@@ -308,13 +314,13 @@ require_once get_template_directory() . '/inc/comm-methods-marketing-map.php';
 require_once get_template_directory() . '/inc/email-verification-handler.php';
 
 /**
- * Game portal base URL (profile meta or QC default).
+ * Game portal base URL (profile meta override, else this instance's configured portal).
  *
  * @param int $user_id WordPress user ID; 0 uses current user.
  * @return string Untrailingslashit URL.
  */
 function ihq_get_hq_game_portal_base_url( $user_id = 0 ) {
-	$default = 'https://qc-game-portal-client-tf-b2c.dev.ae.games/av-baccarat';
+	$default = ihq_env_require_url( 'IHQ_GAME_PORTAL_BASE_URL' );
 	$user_id = $user_id > 0 ? (int) $user_id : (int) get_current_user_id();
 	$base    = '';
 
@@ -1023,8 +1029,7 @@ function ihq_api_proxy() {
         return;
     }
 
-    $api_base = 'https://02nvfvonol.execute-api.eu-west-2.amazonaws.com/qc';
-    $url      = $api_base . $endpoint;
+    $url = INFLUENCER_API_BASE . $endpoint;
 
     $headers = function_exists( 'ihq_oauth_start_session_request_headers' )
         ? ihq_oauth_start_session_request_headers()
@@ -1093,13 +1098,17 @@ function ihq_elevenlabs_resolve_agent_id() {
 
 /**
  * ElevenLabs Conversational AI — get a signed conversation URL.
- * Requires ELEVENLABS_AGENT_ID and ELEVENLABS_API_KEY defined in wp-config.php.
+ * Requires IHQ_ELEVENLABS_API_KEY defined in wp-config.php; without it the
+ * endpoint reports a configuration error instead of minting a URL.
  */
 function ihq_elevenlabs_signed_url() {
 	check_ajax_referer( 'ihq_elevenlabs_nonce', 'nonce' );
 
 	$agent_id = ihq_elevenlabs_resolve_agent_id();
-	$api_key  = 'sk_99f22f038088cf701582493e92891178398568d33c60770d';
+	$api_key  = ihq_env_get( 'IHQ_ELEVENLABS_API_KEY' );
+	if ( $api_key === null ) {
+		wp_send_json_error( [ 'message' => 'ElevenLabs is not configured on this instance (IHQ_ELEVENLABS_API_KEY).' ] );
+	}
 
 	$response = wp_remote_get(
 		'https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=' . rawurlencode( $agent_id ),

@@ -1050,33 +1050,30 @@ function handle_email_verification_and_user_creation() {
 // Clean up expired registration tokens daily
 add_action('wp_scheduled_delete', 'cleanup_expired_registrations');
 
-if ( ! defined( 'IHQ_INFLUENCER_API_KEY' ) ) {
-	define( 'IHQ_INFLUENCER_API_KEY', 'Z9sSPTV0lV95EcnFlajWua9G9mQGBYns7lyZZL59' );
-}
-
 /**
  * Headers for POST /account/oauth/start-session (server-side only).
+ *
+ * The x-api-key is this instance's account-api key (wp-config
+ * IHQ_INFLUENCER_API_KEY); account-api enforces it at the gateway, so the
+ * request is refused without it.
  *
  * @return array<string, string>
  */
 function ihq_oauth_start_session_request_headers() {
-	$headers = array(
+	return array(
 		'Authorization' => 'milos_testing',
 		'Content-Type'  => 'application/json',
+		'x-api-key'     => ihq_env_require( 'IHQ_INFLUENCER_API_KEY' ),
 	);
-	if ( defined( 'IHQ_INFLUENCER_API_KEY' ) && IHQ_INFLUENCER_API_KEY !== '' ) {
-		$headers['x-api-key'] = IHQ_INFLUENCER_API_KEY;
-	}
-	return $headers;
 }
 
 /**
- * Default OAuth start-session endpoint (QC).
+ * Default OAuth start-session endpoint for this instance.
  *
  * @return string
  */
 function ihq_oauth_start_session_default_url() {
-	return 'https://02nvfvonol.execute-api.eu-west-2.amazonaws.com/qc/account/oauth/start-session';
+	return INFLUENCER_API_BASE . '/account/oauth/start-session';
 }
 
 /**
@@ -1090,6 +1087,11 @@ function ihq_oauth_start_session_url_meta_key() {
 
 /**
  * Resolved start-session URL for a user (meta override or default).
+ *
+ * The request built from this URL carries the instance API key, so a
+ * user-stored override is honoured only when it stays on the configured
+ * API origin. Anything else falls back to the default and is logged; the
+ * override UI itself is retired in PO-3073.
  *
  * @param int $user_id WordPress user ID.
  * @return string
@@ -1109,6 +1111,14 @@ function ihq_get_oauth_start_session_url_for_user( $user_id ) {
 
 	$url = esc_url_raw( $stored );
 	if ( $url === '' ) {
+		return $default;
+	}
+
+	if ( ! ihq_env_url_matches_api_origin( $url, INFLUENCER_API_BASE ) ) {
+		error_log( sprintf(
+			'[ihq-env] ignoring start-session URL override for user %d: not on the configured API origin',
+			$user_id
+		) );
 		return $default;
 	}
 

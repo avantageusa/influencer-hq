@@ -3,9 +3,8 @@
  * API AJAX Calls
  * Registers WordPress AJAX actions that proxy requests to the external equity API.
  *
- * API base: https://02nvfvonol.execute-api.eu-west-2.amazonaws.com/qc
- * Override in wp-config.php if the endpoint changes:
- *   define( 'INFLUENCER_API_BASE', 'https://...' );
+ * API base: INFLUENCER_API_BASE, derived from the wp-config constant
+ * IHQ_API_BASE_URL by inc/ihq-env.php. Set that constant per instance.
  *
  * User IDs in API paths use the format  influencerhq-wpu-{wp_user_id}  (e.g. "influencerhq-wpu-42").
  *
@@ -22,7 +21,7 @@
  *
  * Example:
  *   curl --location \
- *     'https://02nvfvonol.execute-api.eu-west-2.amazonaws.com/qc/referral/user/30fc57c5-e259-48a3-9d54-3b82ed577c7f/equity/totals?referralLevel=L1%2CKICK%2CL2&period=week'
+ *     '<INFLUENCER_API_BASE>/referral/user/30fc57c5-e259-48a3-9d54-3b82ed577c7f/equity/totals?referralLevel=L1%2CKICK%2CL2&period=week'
  *
  * Query parameters:
  *   referralLevel  string  Comma-separated level codes: L1 | L2 | L3 | KICK | LIVE
@@ -77,9 +76,7 @@
  * ============================================================
  */
 
-if ( ! defined( 'INFLUENCER_API_BASE' ) ) {
-    define( 'INFLUENCER_API_BASE', 'https://02nvfvonol.execute-api.eu-west-2.amazonaws.com/qc' );
-}
+// INFLUENCER_API_BASE is defined in inc/ihq-env.php from wp-config IHQ_API_BASE_URL.
 
 // ---------------------------------------------------------------------------
 // Challenge API handlers — shared nonce: challenge_api_nonce
