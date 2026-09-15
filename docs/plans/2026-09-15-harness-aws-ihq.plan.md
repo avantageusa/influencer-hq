@@ -10,7 +10,7 @@ todos:
     status: completed
   - id: publish
     content: Publish a separate PR linked to the companion integration PRs
-    status: pending
+    status: completed
 ---
 
 # AWS and IHQ harness modes
@@ -36,3 +36,12 @@ No new runtime dependencies are planned; reuse existing SDKs and build tools.
 ## Verification
 
 PHP bridge boundary tests and theme/bridge syntax checks passed in PHP 8.3 Docker. All 8 targeted boundary mutants were detected. Harness tests exercise rejected popup messages and one-use request state. Full WordPress sign-in and live two-account QC acceptance remain pending release configuration.
+
+## Published PRs
+
+- [Harness and notification ownership #34](https://github.com/avantageusa/notifications-service-api/pull/34)
+- [Cognito account claim #150](https://github.com/avantageusa/cognito-triggers/pull/150)
+- [IHQ portal bridge #26](https://github.com/avantageusa/influencer-hq/pull/26)
+- [IHQ gateway contract #53](https://github.com/avantageusa/influencerhq-api/pull/53)
+
+All target main. App PR #32 merged during implementation; TF PR #15 remains separate.
