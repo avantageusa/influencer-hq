@@ -20,7 +20,10 @@ define('IHQ_HARNESS_GATEWAY_URL', '<exact QC influencerhq-api base URL ending /q
 
 Missing/invalid configuration returns 404 for the bridge. The theme must have a
 published page using `page-portal-login.php`. PHP 7.3+ is needed for cookie options;
-checks here use PHP 8.3. Reuse the existing portal server-side start-session API
+Composer, WordPress theme metadata and PHPCompatibility validation now declare
+the same PHP 7.3 minimum. Before deployment, run `composer check-platform-reqs`
+on the target host; use a maintained PHP release for QC. Reuse the existing portal
+server-side start-session API
 key (`ihq_oauth_start_session_request_headers`). Do not enable request/response
 body logging for the bridge or the account OAuth endpoints. The bridge ignores
 per-user API URL overrides and does not save the token response in user metadata.
@@ -33,6 +36,9 @@ Do not configure COOP headers that sever the popup's opener relationship.
 ## Verification
 
 ```sh
+composer check-platform-reqs
+composer lint:wpcs
+docker run --rm -v "$PWD:/app:ro" -w /app php:7.3-cli php tests/harness-auth-bridge.test.php
 docker run --rm -v "$PWD:/app:ro" -w /app php:8.3-cli php tests/harness-auth-bridge.test.php
 python3 scripts/test-harness-mutations.py
 ```
@@ -48,5 +54,8 @@ Deploy the trusted Cognito claim and notification ownership/contract changes,
 then the IHQ gateway and this portal bridge. Configure dedicated provider profiles
 and exact origins. Complete the two-account QC acceptance recorded in the harness
 release instructions before setting its `qcAccepted` flag. No deployment or merge
-is part of these PRs. Existing notification app PR #32 and infrastructure PR #15
-remain separate.
+is part of these PRs. All four integration PRs target `main`. The separate notification app PR
+[`avantageusa/notifications-service-api#32`](https://github.com/avantageusa/notifications-service-api/pull/32)
+merged during implementation. Infrastructure PR
+[`avantageusa/notifications-service-tf#15`](https://github.com/avantageusa/notifications-service-tf/pull/15)
+remains separate from this work.
