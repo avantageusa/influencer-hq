@@ -429,6 +429,12 @@ require_once get_template_directory() . '/inc/api-ajax-calls.php';
 require_once get_template_directory() . '/inc/anam-proxy.php';
 require_once get_template_directory() . '/inc/luna-users-rest.php';
 
+/**
+ * Gary Coach API proxy (PO-3062) — server-to-server bridge, not wired into the FE
+ * flow yet. See inc/gary-proxy.php for details.
+ */
+require_once get_template_directory() . '/inc/gary-proxy.php';
+
 
 /**
  * Render the IHQ challenge calendar component.
