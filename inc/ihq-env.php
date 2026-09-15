@@ -221,6 +221,10 @@ if ( $ihq_env_missing !== array() ) {
 }
 unset( $ihq_env_missing );
 
+// URL-shaped values are validated here for the same reason: an http:// portal
+// base must fail the request even on pages that never build a portal link.
+ihq_env_require_url( 'IHQ_GAME_PORTAL_BASE_URL' );
+
 /**
  * The influencerhq-api gateway base for this instance. Defined here, first in
  * load order, so every inc/ file and template can rely on it regardless of

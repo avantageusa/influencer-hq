@@ -66,6 +66,15 @@ catch ( RuntimeException $e ) { check( 'require_url refuses http on front end, n
 $GLOBALS['is_admin'] = true;
 putenv( 'IHQ_API_BASE_URL' );
 
+// Case 5b: load-time contract for the portal base — same validator the module calls at load.
+putenv( 'IHQ_GAME_PORTAL_BASE_URL=http://portal.example.com/av-baccarat' );
+$GLOBALS['is_admin'] = false; $GLOBALS['died'] = null;
+try { ihq_env_require_url( 'IHQ_GAME_PORTAL_BASE_URL' ); check( 'http portal base refused', false ); }
+catch ( RuntimeException $e ) { check( 'http portal base refused on front end, names the key', died_with( 'IHQ_GAME_PORTAL_BASE_URL' ) ); }
+$GLOBALS['is_admin'] = true;
+putenv( 'IHQ_GAME_PORTAL_BASE_URL' );
+check( 'module load calls the portal validator', strpos( file_get_contents( __DIR__ . '/../inc/ihq-env.php' ), "ihq_env_require_url( 'IHQ_GAME_PORTAL_BASE_URL' );" ) !== false );
+
 // Case 6: URL helper strips trailing slash.
 define( 'IHQ_GAME_PORTAL_BASE_URL', 'https://play.bet5games.com/av-baccarat/' );
 check( 'require_url strips trailing slash', ihq_env_require_url( 'IHQ_GAME_PORTAL_BASE_URL' ) === 'https://play.bet5games.com/av-baccarat' );
