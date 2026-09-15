@@ -159,7 +159,10 @@ function ihq_coach_handle_open_session( WP_REST_Request $request ) {
 			'ref'    => wp_generate_uuid4(),
 			'locale' => $locale,
 		),
-		'want'   => array( 'text', 'audio' ),
+		// "video" is optional per Gary's docs — must be requested explicitly or
+		// say.video (the Anam session_token the FE needs to stream the avatar) is
+		// omitted from the response entirely.
+		'want'   => array( 'text', 'audio', 'video' ),
 	);
 
 	$result = ihq_coach_request( 'POST', '/coach/v1/session', $payload );
