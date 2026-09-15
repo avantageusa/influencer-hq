@@ -73,7 +73,13 @@ try { ihq_env_require_url( 'IHQ_GAME_PORTAL_BASE_URL' ); check( 'http portal bas
 catch ( RuntimeException $e ) { check( 'http portal base refused on front end, names the key', died_with( 'IHQ_GAME_PORTAL_BASE_URL' ) ); }
 $GLOBALS['is_admin'] = true;
 putenv( 'IHQ_GAME_PORTAL_BASE_URL' );
-check( 'module load calls the portal validator', strpos( file_get_contents( __DIR__ . '/../inc/ihq-env.php' ), "ihq_env_require_url( 'IHQ_GAME_PORTAL_BASE_URL' );" ) !== false );
+putenv( 'IHQ_GAME_PORTAL_BASE_URL=http://portal.example.com/av-baccarat' );
+$problems = ihq_env_problems();
+check( 'problems(): lists missing keys first, then the invalid URL', count( $problems ) === 3 && strpos( $problems[0], 'IHQ_API_BASE_URL' ) !== false && strpos( end( $problems ), 'IHQ_GAME_PORTAL_BASE_URL must be an absolute https://' ) !== false );
+ob_start(); ihq_env_admin_notice(); $notice = ob_get_clean();
+check( 'admin notice also names the invalid URL', strpos( $notice, 'IHQ_GAME_PORTAL_BASE_URL must be an absolute https://' ) !== false );
+putenv( 'IHQ_GAME_PORTAL_BASE_URL' );
+check( 'module load fails on problems(), not only missing keys', strpos( file_get_contents( __DIR__ . '/../inc/ihq-env.php' ), '$ihq_env_problems = ihq_env_problems();' ) !== false );
 
 // Case 6: URL helper strips trailing slash.
 define( 'IHQ_GAME_PORTAL_BASE_URL', 'https://play.bet5games.com/av-baccarat/' );
@@ -93,6 +99,7 @@ define( 'IHQ_API_BASE_URL', 'https://x.execute-api.eu-west-2.amazonaws.com/qc' )
 define( 'IHQ_INFLUENCER_API_KEY', 'k' );
 ob_start(); ihq_env_admin_notice(); $notice = ob_get_clean();
 check( 'configured: no admin notice', $notice === '' );
+check( 'configured: no problems', ihq_env_problems() === array() );
 check( 'ihq_env_name', ihq_env_name() === 'from-const' );
 
 echo $fail ? "\n$fail FAILED\n" : "\nALL PASS\n"; exit( $fail ? 1 : 0 );
