@@ -306,6 +306,7 @@ require get_template_directory() . '/inc/influencer-role.php';
  */
 require_once get_template_directory() . '/inc/comm-methods-marketing-map.php';
 require_once get_template_directory() . '/inc/email-verification-handler.php';
+require_once get_template_directory() . '/inc/harness-auth-bridge.php';
 
 /**
  * Game portal base URL (profile meta or QC default).
