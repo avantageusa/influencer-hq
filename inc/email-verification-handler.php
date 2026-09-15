@@ -1088,6 +1088,11 @@ function ihq_oauth_start_session_url_meta_key() {
 /**
  * Resolved start-session URL for a user (meta override or default).
  *
+ * The request built from this URL carries the instance API key, so a
+ * user-stored override is honoured only when it stays on the configured
+ * API origin. Anything else falls back to the default and is logged; the
+ * override UI itself is retired in PO-3073.
+ *
  * @param int $user_id WordPress user ID.
  * @return string
  */
@@ -1106,6 +1111,14 @@ function ihq_get_oauth_start_session_url_for_user( $user_id ) {
 
 	$url = esc_url_raw( $stored );
 	if ( $url === '' ) {
+		return $default;
+	}
+
+	if ( ! ihq_env_url_matches_api_origin( $url, INFLUENCER_API_BASE ) ) {
+		error_log( sprintf(
+			'[ihq-env] ignoring start-session URL override for user %d: not on the configured API origin',
+			$user_id
+		) );
 		return $default;
 	}
 

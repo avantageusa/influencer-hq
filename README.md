@@ -28,7 +28,7 @@ variables work as a fallback) by `inc/ihq-env.php`. Nothing environment-specific
 lives in the theme tree, and the site refuses to render a front-end request
 until the required constants are set — the error names the missing one.
 
-Add this block to `wp-config.php` on each instance, above `/* That's all, stop editing! */`:
+Add this block to `wp-config.php` on each instance:
 
 ```php
 // Influencer HQ — per-instance configuration (inc/ihq-env.php)
@@ -41,7 +41,12 @@ define( 'IHQ_INFLUENCER_API_KEY',   '<value of SSM /<stage>/account-api-tf-api/I
 define( 'CF_TURNSTILE_SITE_KEY',    '' );
 define( 'CF_TURNSTILE_SECRET_KEY',  '' );
 define( 'IHQ_ELEVENLABS_API_KEY',   '' );
+define( 'IHQ_GENIUS_REFERRALS_API_TOKEN', '' );   // test-form.php only
 ```
+
+`IHQ_API_BASE_URL` and `IHQ_GAME_PORTAL_BASE_URL` must be absolute `https://` URLs; anything else
+is refused at load. WP Engine's `wp-config.php` has no "stop editing" marker — put the block after
+the existing `ANAM_API_KEY` block, before the `ABSPATH` define.
 
 | Instance | `IHQ_ENVIRONMENT` | `IHQ_API_BASE_URL` | `IHQ_GAME_PORTAL_BASE_URL` | API key (SSM, per AWS account) |
 |---|---|---|---|---|

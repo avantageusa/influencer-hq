@@ -19,6 +19,7 @@
  *     define( 'CF_TURNSTILE_SITE_KEY',    '...' );
  *     define( 'CF_TURNSTILE_SECRET_KEY',  '...' );
  *     define( 'IHQ_ELEVENLABS_API_KEY',   '...' );
+ *     define( 'IHQ_GENIUS_REFERRALS_API_TOKEN', '...' );   // test-form.php only
  *
  * Resolution order is constant → getenv() → default, the same as
  * inc/anam-proxy.php. Do not add a second mechanism.
@@ -79,14 +80,63 @@ function ihq_env_require( $name ) {
 }
 
 /**
- * URL-shaped config value with any trailing slash removed, so callers can
- * always append "/path" safely.
+ * Whether a URL is an absolute https:// URL with a host. Credentials travel
+ * to these URLs, so plain http:// is a configuration error, not a choice.
+ *
+ * @param string $url URL to check.
+ * @return bool
+ */
+function ihq_env_is_https_url( $url ) {
+	if ( ! is_string( $url ) || $url === '' ) {
+		return false;
+	}
+	$parts = wp_parse_url( $url );
+	if ( ! is_array( $parts ) || empty( $parts['host'] ) ) {
+		return false;
+	}
+	return isset( $parts['scheme'] ) && strtolower( $parts['scheme'] ) === 'https';
+}
+
+/**
+ * URL-shaped config value: must be https:// with a host, trailing slash
+ * removed so callers can always append "/path" safely.
  *
  * @param string $name Constant / environment variable name.
  * @return string
  */
 function ihq_env_require_url( $name ) {
-	return untrailingslashit( ihq_env_require( $name ) );
+	$url = ihq_env_require( $name );
+	if ( $url === '' ) {
+		return '';
+	}
+	if ( ! ihq_env_is_https_url( $url ) ) {
+		ihq_env_fail( sprintf( '%s must be an absolute https:// URL.', $name ) );
+		return '';
+	}
+	return untrailingslashit( $url );
+}
+
+/**
+ * Whether a URL points at the same origin (scheme + host + port) as this
+ * instance's configured API base. Used to refuse per-user URL overrides that
+ * would carry the API key somewhere else.
+ *
+ * @param string $url          Candidate URL.
+ * @param string $api_base_url Configured API base to compare against.
+ * @return bool
+ */
+function ihq_env_url_matches_api_origin( $url, $api_base_url ) {
+	if ( ! ihq_env_is_https_url( $url ) || ! ihq_env_is_https_url( $api_base_url ) ) {
+		return false;
+	}
+	$candidate = wp_parse_url( $url );
+	$base      = wp_parse_url( $api_base_url );
+
+	$candidate_port = isset( $candidate['port'] ) ? (int) $candidate['port'] : 443;
+	$base_port      = isset( $base['port'] ) ? (int) $base['port'] : 443;
+
+	return strtolower( $candidate['host'] ) === strtolower( $base['host'] )
+		&& $candidate_port === $base_port;
 }
 
 /**
@@ -105,29 +155,40 @@ function ihq_env_missing_required_keys() {
 }
 
 /**
- * Stop the request because a required constant is missing.
+ * Stop the request because the instance is misconfigured.
  *
- * In wp-admin the site stays usable and an admin notice names the missing
- * constants, so an operator can see what to fix. Everywhere else — front end,
- * AJAX, REST, cron — the request dies with the constant name. Serving pages
- * that silently point at the wrong environment is worse than an error page.
+ * On wp-admin *pages* the site stays usable and an admin notice names the
+ * problem, so an operator can see what to fix. Everywhere else — front end,
+ * admin-ajax (where is_admin() is also true), REST, cron — the request dies
+ * with the message. Serving pages that silently point at the wrong
+ * environment is worse than an error page.
+ *
+ * @param string $message Human-readable reason.
+ * @return void
+ */
+function ihq_env_fail( $message ) {
+	error_log( '[ihq-env] ' . $message );
+
+	$is_admin_page = function_exists( 'is_admin' ) && is_admin()
+		&& ! ( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() );
+	if ( $is_admin_page ) {
+		return;
+	}
+
+	wp_die( esc_html( $message ), 'Influencer HQ configuration error', array( 'response' => 500 ) );
+}
+
+/**
+ * Stop the request because a required constant is missing.
  *
  * @param string $name The missing constant.
  * @return void
  */
 function ihq_env_fail_missing( $name ) {
-	$message = sprintf(
+	ihq_env_fail( sprintf(
 		'Influencer HQ is not configured for this instance: define %s in wp-config.php.',
 		$name
-	);
-
-	error_log( '[ihq-env] ' . $message );
-
-	if ( function_exists( 'is_admin' ) && is_admin() ) {
-		return;
-	}
-
-	wp_die( esc_html( $message ), 'Influencer HQ configuration error', array( 'response' => 500 ) );
+	) );
 }
 
 /**
@@ -149,6 +210,16 @@ function ihq_env_admin_notice() {
 	);
 }
 add_action( 'admin_notices', 'ihq_env_admin_notice' );
+
+/**
+ * Fail at load time, not on first use: a page that never touches an accessor
+ * must not render on a half-configured instance.
+ */
+$ihq_env_missing = ihq_env_missing_required_keys();
+if ( $ihq_env_missing !== array() ) {
+	ihq_env_fail_missing( $ihq_env_missing[0] );
+}
+unset( $ihq_env_missing );
 
 /**
  * The influencerhq-api gateway base for this instance. Defined here, first in
