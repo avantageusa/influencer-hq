@@ -39,6 +39,12 @@ const IHQ_ENV_REQUIRED_KEYS = array(
 	'IHQ_INFLUENCER_API_KEY',
 );
 
+/** Required constants that must hold an absolute https:// URL. */
+const IHQ_ENV_URL_KEYS = array(
+	'IHQ_API_BASE_URL',
+	'IHQ_GAME_PORTAL_BASE_URL',
+);
+
 /**
  * Read one configuration value: wp-config constant first, environment variable
  * second, caller-supplied default last. Empty strings count as unset.
@@ -155,6 +161,32 @@ function ihq_env_missing_required_keys() {
 }
 
 /**
+ * Every configuration problem on this instance, as human-readable messages:
+ * required constants that are unset, then URL constants that are set but not
+ * absolute https:// URLs. Empty array means the instance is fully configured.
+ * Both the load-time check and the admin notice read from this, so an
+ * operator sees exactly what the front end would die on.
+ *
+ * @return string[]
+ */
+function ihq_env_problems() {
+	$problems = array();
+	foreach ( ihq_env_missing_required_keys() as $name ) {
+		$problems[] = sprintf(
+			'Influencer HQ is not configured for this instance: define %s in wp-config.php.',
+			$name
+		);
+	}
+	foreach ( IHQ_ENV_URL_KEYS as $name ) {
+		$value = ihq_env_get( $name );
+		if ( $value !== null && ! ihq_env_is_https_url( $value ) ) {
+			$problems[] = sprintf( '%s must be an absolute https:// URL.', $name );
+		}
+	}
+	return $problems;
+}
+
+/**
  * Stop the request because the instance is misconfigured.
  *
  * On wp-admin *pages* the site stays usable and an admin notice names the
@@ -192,7 +224,8 @@ function ihq_env_fail_missing( $name ) {
 }
 
 /**
- * Admin notice listing every missing required constant.
+ * Admin notice listing every configuration problem (missing constants and
+ * invalid URLs alike).
  *
  * @return void
  */
@@ -200,26 +233,29 @@ function ihq_env_admin_notice() {
 	if ( ! current_user_can( 'manage_options' ) ) {
 		return;
 	}
-	$missing = ihq_env_missing_required_keys();
-	if ( $missing === array() ) {
+	$problems = ihq_env_problems();
+	if ( $problems === array() ) {
 		return;
 	}
-	printf(
-		'<div class="notice notice-error"><p><strong>Influencer HQ is not configured for this instance.</strong> Define in wp-config.php: <code>%s</code></p></div>',
-		esc_html( implode( ', ', $missing ) )
-	);
+	echo '<div class="notice notice-error"><p><strong>Influencer HQ is not configured for this instance.</strong></p><ul>';
+	foreach ( $problems as $problem ) {
+		printf( '<li><code>%s</code></li>', esc_html( $problem ) );
+	}
+	echo '</ul></div>';
 }
 add_action( 'admin_notices', 'ihq_env_admin_notice' );
 
 /**
  * Fail at load time, not on first use: a page that never touches an accessor
- * must not render on a half-configured instance.
+ * must not render on a half-configured instance. Covers missing constants and
+ * URL constants that are not https://. On wp-admin pages this logs and shows
+ * the admin notice instead (see ihq_env_fail()).
  */
-$ihq_env_missing = ihq_env_missing_required_keys();
-if ( $ihq_env_missing !== array() ) {
-	ihq_env_fail_missing( $ihq_env_missing[0] );
+$ihq_env_problems = ihq_env_problems();
+if ( $ihq_env_problems !== array() ) {
+	ihq_env_fail( $ihq_env_problems[0] );
 }
-unset( $ihq_env_missing );
+unset( $ihq_env_problems );
 
 /**
  * The influencerhq-api gateway base for this instance. Defined here, first in
