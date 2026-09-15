@@ -594,6 +594,27 @@ if ( stage && avatarWrap ) {
     // this twice and advance two screens per tap instead of one.
     let fallbackRunning = false;
 
+    // FR-02 — narration timing OR visitor tap/click; the stage click handler
+    // below calls skipCurrent() to advance early. Shared by runFallback()'s own
+    // loop and by the VIDEO_PLAY_STARTED handler, which needs the exact same
+    // dwell-or-skip behavior for Gary's opening line before handing off to
+    // runFallback() for the rest of the screens.
+    function waitForReadOrSkip() {
+        return new Promise( ( resolve ) => {
+            let settled = false;
+            const finish = () => {
+                if ( settled ) {
+                    return;
+                }
+                settled = true;
+                skipCurrent = null;
+                resolve();
+            };
+            skipCurrent = finish;
+            window.setTimeout( finish, FALLBACK_READ_MS );
+        } );
+    }
+
     async function runFallback( keepAvatarLive ) {
         if ( fallbackRunning ) {
             return;
@@ -609,21 +630,7 @@ if ( stage && avatarWrap ) {
             if ( captionEl ) {
                 captionEl.textContent = screen.script;
             }
-            // FR-02 — narration timing OR visitor tap/click; the stage click
-            // handler below calls skipCurrent() to advance early.
-            await new Promise( ( resolve ) => {
-                let settled = false;
-                const finish = () => {
-                    if ( settled ) {
-                        return;
-                    }
-                    settled = true;
-                    skipCurrent = null;
-                    resolve();
-                };
-                skipCurrent = finish;
-                window.setTimeout( finish, FALLBACK_READ_MS );
-            } );
+            await waitForReadOrSkip();
             if ( sequenceFinished ) {
                 fallbackRunning = false;
                 return; // a fresh runFallback() call elsewhere already took over
@@ -1028,19 +1035,32 @@ if ( stage && avatarWrap ) {
             const client = createClient( gary.say.video.session_token );
             activeClient = client;
             let handledClose = false;
+            let videoStarted = false; // VIDEO_PLAY_STARTED has been observed firing more than
+                                       // once per session (a WebRTC renegotiation, not a real
+                                       // second connection) — guard so a repeat event can't
+                                       // reset sequenceIndex/the panel out from under an
+                                       // already-in-progress runFallback() loop.
 
-            client.addListener( AnamEvent.VIDEO_PLAY_STARTED, function () {
+            client.addListener( AnamEvent.VIDEO_PLAY_STARTED, async function () {
+                if ( videoStarted ) {
+                    return;
+                }
+                videoStarted = true;
+
                 avatarWrap.dataset.status = 'live';
                 avatarIsLive = true;
 
                 // Gary's own opening line is real, live content — show it as the
-                // intro caption. Everything after this falls back to the static
-                // SCREENS display (see the top-of-file note on why).
+                // intro caption, and give it the same read-or-skip dwell as every
+                // other screen before moving on (there's no endOfSpeech event to
+                // sync against here — see the top-of-file note on why). Everything
+                // after this falls back to the static SCREENS display.
                 showPanel( 'intro' );
                 const introCaptionEl = getCaptionEl( 'intro' );
                 if ( introCaptionEl ) {
                     introCaptionEl.textContent = gary.say.text || SCREENS[ 0 ].script;
                 }
+                await waitForReadOrSkip();
                 sequenceIndex = 1;
                 runFallback( true );
             } );
@@ -1057,6 +1077,15 @@ if ( stage && avatarWrap ) {
             await client.streamToVideoElement( AVATAR_VIDEO_ID );
         } catch ( error ) {
             console.warn( '[aicoach] falling back to static intro text:', error );
+            // openGarySession() may have succeeded (garySessionId set) even though
+            // a later step here failed — best-effort close so that session doesn't
+            // stay open on Gary's side for no reason. Token-validation failures
+            // never reach this with an id set, since openGarySession() throws
+            // before returning one.
+            if ( garySessionId ) {
+                fetch( garyCloseUrl( garySessionId ), { method: 'POST', headers: { 'X-WP-Nonce': cfg.nonce } } )
+                    .catch( function () {} );
+            }
             runFallback();
         }
     }() );
