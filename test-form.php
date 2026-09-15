@@ -11,7 +11,7 @@
 
 get_header();
 
-$portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.games/av-baccarat/external/leaderboards';
+$portal_leaderboards_iframe_url = ihq_get_hq_game_portal_base_url() . '/external/leaderboards';
 ?>
 
     <main id="primary" class="site-main" style="padding: 50px;">

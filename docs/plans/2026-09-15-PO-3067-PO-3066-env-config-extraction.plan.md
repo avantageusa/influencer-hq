@@ -14,22 +14,22 @@ overview: >
 todos:
   - id: env-module
     content: Add inc/ihq-env.php — ihq_env_get()/ihq_env_require() readers (constant → getenv → error), constants list, admin notice + wp_die on missing required keys, require it first in functions.php
-    status: pending
+    status: completed
   - id: replace-api-base
     content: Replace the three duplicate API-base literals (inc/api-ajax-calls.php:81, functions.php:1020, page-portal-testapi.php:127) and the start-session URL (inc/email-verification-handler.php:1079) with lookups; INFLUENCER_API_BASE becomes derived from config
-    status: pending
+    status: completed
   - id: replace-portal-base
     content: "Replace the QC portal literals (functions.php:317, template-parts/portal-header.php:61, test-form.php:14) with the config lookup; portal-header uses ihq_get_hq_game_portal_base_url(). page-portal-challenges.php:28 is already replaced by PR #24 (PO-2901) — do not touch, rebase after it merges. page-portal-profile.php:619 waits for PR #21 (PO-3061, 1260-line rewrite of that file) — edit after it merges" 
-    status: pending
+    status: in-progress
   - id: remove-secret-literals
     content: Delete the define() fallbacks for IHQ_INFLUENCER_API_KEY, CF_TURNSTILE_SITE_KEY, CF_TURNSTILE_SECRET_KEY and the inline ElevenLabs key; read all four via the env module
-    status: pending
+    status: completed
   - id: docs
     content: Document the wp-config block per instance (README + docs/knowledge/GOTCHAS.md) with the three real value sets; add wp-config.example.php snippet
-    status: pending
+    status: completed
   - id: verify
-    content: php -l on every touched file, wp-env smoke with and without the constants (must fail loudly), lint:js unaffected
-    status: pending
+    content: "php -l on every touched file (php:8.2-cli in docker) and tests/ihq-env.test.php (13 checks: die-when-unconfigured, resolution order, admin notice, URL helper) — all green 2026-09-15. No wp-env available locally; live smoke happens on the dev WPE instance after the wp-config block is in"
+    status: completed
   - id: wp-config-all-envs
     content: "Ops: write the wp-config block on dev, QA and PROD WPE envs BEFORE the theme deploys (values table in Approach); add both wpenginepowered hostnames to the Turnstile widget"
     status: blocked

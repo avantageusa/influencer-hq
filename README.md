@@ -19,6 +19,40 @@ Note: `.no-sidebar` styles are automatically loaded.
 * Full support for `WooCommerce plugin` integration with hooks in `inc/woocommerce.php`, styling override woocommerce.css with product gallery features (zoom, swipe, lightbox) enabled.
 * Licensed under GPLv2 or later. :) Use it to make something cool.
 
+Per-instance configuration
+---------------
+
+The theme is deployed unchanged to every WP Engine environment. Everything that
+differs between instances is read from `wp-config.php` constants (environment
+variables work as a fallback) by `inc/ihq-env.php`. Nothing environment-specific
+lives in the theme tree, and the site refuses to render a front-end request
+until the required constants are set — the error names the missing one.
+
+Add this block to `wp-config.php` on each instance, above `/* That's all, stop editing! */`:
+
+```php
+// Influencer HQ — per-instance configuration (inc/ihq-env.php)
+define( 'IHQ_ENVIRONMENT',          'dev' );   // dev | qa | prod — diagnostics only
+define( 'IHQ_API_BASE_URL',         'https://<id>.execute-api.<region>.amazonaws.com/<stage>' );
+define( 'IHQ_GAME_PORTAL_BASE_URL', 'https://<portal-host>/av-baccarat' );
+define( 'IHQ_INFLUENCER_API_KEY',   '<value of SSM /<stage>/account-api-tf-api/INFLUENCER_HQ_SSO_API_KEY>' );
+
+// Optional — feature is off when absent
+define( 'CF_TURNSTILE_SITE_KEY',    '' );
+define( 'CF_TURNSTILE_SECRET_KEY',  '' );
+define( 'IHQ_ELEVENLABS_API_KEY',   '' );
+```
+
+| Instance | `IHQ_ENVIRONMENT` | `IHQ_API_BASE_URL` | `IHQ_GAME_PORTAL_BASE_URL` | API key (SSM, per AWS account) |
+|---|---|---|---|---|
+| influenchqdev.wpenginepowered.com | `dev` | `https://02nvfvonol.execute-api.eu-west-2.amazonaws.com/qc` | `https://qc-game-portal-client-tf-b2c.dev.ae.games/av-baccarat` | `/qc/account-api-tf-api/INFLUENCER_HQ_SSO_API_KEY` — dev account, eu-west-2 |
+| influencerhqqa.wpenginepowered.com | `qa` | `https://nxyd4exz24.execute-api.eu-west-2.amazonaws.com/main` | `https://main-game-portal-client-tf-b2c.qa.ae.games/av-baccarat` | `/main/account-api-tf-api/INFLUENCER_HQ_SSO_API_KEY` — QA account, eu-west-2 |
+| influencerhq.co | `prod` | `https://0cn4xq456d.execute-api.ap-southeast-1.amazonaws.com/main` | `https://play.bet5games.com/av-baccarat` | `/main/account-api-tf-api/INFLUENCER_HQ_SSO_API_KEY` — bet5 account, ap-southeast-1 |
+
+`IHQ_API_BASE_URL` is the **influencerhq-api** gateway (the proxy), never account-api
+directly. The Turnstile keys are shared across instances; each instance's hostname
+must be on the widget's allowed-domain list or the challenge fails.
+
 Installation
 ---------------
 

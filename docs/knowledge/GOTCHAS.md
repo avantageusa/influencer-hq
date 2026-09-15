@@ -1,5 +1,12 @@
 # Gotchas
 
+### Front end dies on purpose when wp-config is missing IHQ_* constants
+`inc/ihq-env.php` reads every environment-specific value (API base, portal base, API key) from `wp-config.php` constants and calls `wp_die` on any front-end/AJAX/REST request when a required one is unset. wp-admin stays up and shows an admin notice naming the missing constants. See README "Per-instance configuration" for the block and the per-instance values.
+**Why this exists:** The theme used to hardcode QC, so three WP Engine instances were three QC-facing sites. An instance silently pointed at the wrong environment is worse than an error page, so the wp-config block must be in place *before* the theme is deployed to a new instance (PO-3067).
+
+### Turnstile keys absent = Turnstile off, deliberately
+`CF_TURNSTILE_SITE_KEY` / `CF_TURNSTILE_SECRET_KEY` come from wp-config; when either is missing `ihq_turnstile_is_configured()` is false and the widget and server check are both skipped. Not a fail-open bug — it is how an instance without a widget runs. Each instance hostname must also be on the Cloudflare widget's allowed domains.
+
 ### Hardcoded test OAuth authorization header in source
 `inc/influencer-auth-handler.php:282` sends `Authorization: milos_testing` to the OAuth endpoint. This is a literal test token baked into the codebase, not a constant pulled from `wp-config.php` or an env var.
 **Why this exists:** Appears to be a development shortcut never cleaned up before shipping.

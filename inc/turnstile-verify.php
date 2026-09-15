@@ -2,8 +2,9 @@
 /**
  * Cloudflare Turnstile server-side verification.
  *
- * Keys default below when not set in wp-config.php (allows overriding per environment).
- * For production, prefer wp-config.php defines so secrets stay out of the theme tree if possible.
+ * Keys come from wp-config.php (CF_TURNSTILE_SITE_KEY / CF_TURNSTILE_SECRET_KEY)
+ * or the environment — see inc/ihq-env.php. When either is absent Turnstile is
+ * off for the instance; that is deliberate, not a fail-open bug.
  *
  * @package influencer-hq
  */
@@ -13,11 +14,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'CF_TURNSTILE_SITE_KEY' ) ) {
-	define( 'CF_TURNSTILE_SITE_KEY', '0x4AAAAAADKv2W3zynFOUECr' );
+	define( 'CF_TURNSTILE_SITE_KEY', (string) ihq_env_get( 'CF_TURNSTILE_SITE_KEY', '' ) );
 }
 
 if ( ! defined( 'CF_TURNSTILE_SECRET_KEY' ) ) {
-	define( 'CF_TURNSTILE_SECRET_KEY', '0x4AAAAAADKv2ZBP9ERy90sZW2gbanCYB3E' );
+	define( 'CF_TURNSTILE_SECRET_KEY', (string) ihq_env_get( 'CF_TURNSTILE_SECRET_KEY', '' ) );
 }
 
 /** HTTPS POST timeout for siteverify (seconds). */

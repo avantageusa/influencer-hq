@@ -58,9 +58,7 @@ if ( ! defined( 'ABSPATH' ) ) {
             $last_name  = get_user_meta( $uid, 'last_name',  true );
             $email      = wp_get_current_user()->user_email;
             $avatar_url = get_avatar_url( $uid, array( 'size' => 200 ) );
-            $default_game_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.games/av-baccarat';
-            $meta_game_url   = get_user_meta( $uid, 'hq_game_url', true );
-            $base_game_url   = ( $meta_game_url !== '' ) ? $meta_game_url : $default_game_url;
+            $base_game_url   = ihq_get_hq_game_portal_base_url( $uid );
             $game_url_args     = array(
                 'influencerHqAuth' => 'true',
                 'hqId'             => 'wpu-' . $uid,
