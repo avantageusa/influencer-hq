@@ -124,7 +124,7 @@ html{margin-top:0!important;}#wpadminbar{display:none!important;}
 
 <script>
 (function(){
-const BASE='https://02nvfvonol.execute-api.eu-west-2.amazonaws.com/qc';
+const BASE=<?php echo wp_json_encode( INFLUENCER_API_BASE ); ?>;
 const NOW=new Date().toISOString();
 const DATE=NOW.slice(0,10);
 

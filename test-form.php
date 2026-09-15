@@ -11,7 +11,7 @@
 
 get_header();
 
-$portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.games/av-baccarat/external/leaderboards';
+$portal_leaderboards_iframe_url = ihq_get_hq_game_portal_base_url() . '/external/leaderboards';
 ?>
 
     <main id="primary" class="site-main" style="padding: 50px;">
@@ -78,7 +78,7 @@ $referral_link = '';
                             $url = 'https://api.geniusreferrals.com/accounts';
                             $args = array(
                                 'headers' => array(
-                                    'X-Auth-Token' => '1a5b59cf8307b1b1f0f922aa12d4807c05ebaa10',
+                                    'X-Auth-Token' => (string) ihq_env_get( 'IHQ_GENIUS_REFERRALS_API_TOKEN', '' ),
                                     'Content-Type' => 'application/json',
                                     'Accept' => 'application/json'
                                 )
@@ -106,7 +106,7 @@ $referral_link = '';
                             $url = 'https://api.geniusreferrals.com/accounts/dev_qc/advocates?limit=10&sort=-created';
                             $args = array(
                                 'headers' => array(
-                                    'X-Auth-Token' => '1a5b59cf8307b1b1f0f922aa12d4807c05ebaa10',
+                                    'X-Auth-Token' => (string) ihq_env_get( 'IHQ_GENIUS_REFERRALS_API_TOKEN', '' ),
                                     'Content-Type' => 'application/json',
                                     'Accept' => 'application/json'
                                 )
@@ -146,7 +146,7 @@ $referral_link = '';
                             $args = array(
                                 'method' => 'POST',
                                 'headers' => array(
-                                    'X-Auth-Token' => '1a5b59cf8307b1b1f0f922aa12d4807c05ebaa10',
+                                    'X-Auth-Token' => (string) ihq_env_get( 'IHQ_GENIUS_REFERRALS_API_TOKEN', '' ),
                                     'Content-Type' => 'application/json',
                                     'Accept' => 'application/json'
                                 ),
