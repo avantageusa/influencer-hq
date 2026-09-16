@@ -186,7 +186,7 @@ function detectInitialLocale() {
         if ( primary === 'yue' ) {
             return 'yue';
         }
-        if ( primary === 'zh' && ( tag === 'zh-hk' || tag === 'zh-mo' ) ) {
+        if ( primary === 'zh' && /^zh(?:-[a-z]{4})*-(?:hk|mo)(?:-|$)/.test( tag ) ) {
             return 'yue';
         }
         if ( supportedCodes.indexOf( primary ) !== -1 ) {
