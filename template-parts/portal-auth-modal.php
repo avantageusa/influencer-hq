@@ -25,7 +25,93 @@ $ihq_portal_telegram_client_id = 0;
 if ( defined( 'IHQ_TELEGRAM_LOGIN_CLIENT_ID' ) && preg_match( '/^\d+$/', (string) IHQ_TELEGRAM_LOGIN_CLIENT_ID ) ) {
 	$ihq_portal_telegram_client_id = (int) IHQ_TELEGRAM_LOGIN_CLIENT_ID;
 }
+
+/**
+ * Channels the sign-in code can be delivered on (PO-3192). Only email is wired
+ * up to ihq_send_login_code today; the rest are listed so the choice is visible
+ * and become selectable as each channel is implemented. Mirrors the method list
+ * the register pane offers.
+ */
+$ihq_portal_auth_login_default_method = 'email';
+$ihq_portal_auth_login_methods        = array(
+	array(
+		'id'        => 'email',
+		'label'     => __( 'Email', 'influencer-hq' ),
+		'available' => true,
+	),
+	array(
+		'id'        => 'line',
+		'label'     => __( 'LINE', 'influencer-hq' ),
+		'available' => false,
+	),
+	array(
+		'id'        => 'telegram',
+		'label'     => __( 'Telegram', 'influencer-hq' ),
+		'available' => false,
+	),
+	array(
+		'id'        => 'whatsapp',
+		'label'     => __( 'WhatsApp', 'influencer-hq' ),
+		'available' => false,
+	),
+	array(
+		'id'        => 'wechat',
+		'label'     => __( 'WeChat', 'influencer-hq' ),
+		'available' => false,
+	),
+);
 ?>
+<style>
+/* Sign-in code delivery choice (PO-3192). Scoped to this part: deliberately not
+   reusing .auth-field's label rules, which would uppercase the option labels. */
+.auth-login-methods {
+	margin-bottom: 20px;
+}
+.auth-login-methods-title {
+	font-family: 'Be Vietnam Pro', sans-serif;
+	font-size: 0.75rem;
+	letter-spacing: 0.2em;
+	text-transform: uppercase;
+	color: var(--warm);
+	font-weight: 600;
+	margin: 0 0 10px;
+}
+.auth-login-method-group {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+.auth-login-method {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+.auth-login-method input[type='radio'] {
+	width: 18px;
+	height: 18px;
+	flex-shrink: 0;
+	accent-color: var(--gl);
+	cursor: pointer;
+}
+.auth-login-method label {
+	font-family: 'Be Vietnam Pro', sans-serif;
+	font-size: 0.95rem;
+	color: var(--warm);
+	cursor: pointer;
+}
+.auth-login-method.is-unavailable input[type='radio'],
+.auth-login-method.is-unavailable label {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+.auth-login-method-note {
+	font-size: 0.7rem;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	margin-left: 8px;
+	color: rgba(234, 217, 176, 0.65);
+}
+</style>
 <?php if ( $ihq_portal_auth_turnstile !== '' ) : ?>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <?php endif; ?>
@@ -58,6 +144,30 @@ if ( defined( 'IHQ_TELEGRAM_LOGIN_CLIENT_ID' ) && preg_match( '/^\d+$/', (string
 							<label for="auth-login-email"><?php esc_html_e( 'Email', 'influencer-hq' ); ?></label>
 							<input type="email" id="auth-login-email" name="email" required placeholder="your@email.com" autocomplete="email">
 						</div>
+						<div class="auth-login-methods">
+							<p class="auth-login-methods-title" id="auth-login-method-label"><?php esc_html_e( 'Preferred method of communication', 'influencer-hq' ); ?></p>
+							<div class="auth-login-method-group" role="radiogroup" aria-labelledby="auth-login-method-label">
+								<?php foreach ( $ihq_portal_auth_login_methods as $ihq_login_method ) : ?>
+									<?php $ihq_login_method_input_id = 'auth-login-method-' . $ihq_login_method['id']; ?>
+								<div class="auth-login-method<?php echo $ihq_login_method['available'] ? '' : ' is-unavailable'; ?>">
+									<input
+										type="radio"
+										name="ihq_auth_login_method"
+										id="<?php echo esc_attr( $ihq_login_method_input_id ); ?>"
+										value="<?php echo esc_attr( $ihq_login_method['id'] ); ?>"
+										<?php checked( $ihq_portal_auth_login_default_method, $ihq_login_method['id'] ); ?>
+										<?php disabled( ! $ihq_login_method['available'] ); ?>
+									>
+									<label for="<?php echo esc_attr( $ihq_login_method_input_id ); ?>">
+										<?php echo esc_html( $ihq_login_method['label'] ); ?>
+										<?php if ( ! $ihq_login_method['available'] ) : ?>
+										<span class="auth-login-method-note"><?php esc_html_e( 'Coming soon', 'influencer-hq' ); ?></span>
+										<?php endif; ?>
+									</label>
+								</div>
+								<?php endforeach; ?>
+							</div>
+						</div>
 						<?php if ( $ihq_portal_auth_turnstile !== '' ) : ?>
 						<div id="auth-login-turnstile" data-sitekey="<?php echo esc_attr( $ihq_portal_auth_turnstile ); ?>" style="display:flex;justify-content:center;margin:16px 0"></div>
 						<?php endif; ?>
@@ -75,14 +185,14 @@ if ( defined( 'IHQ_TELEGRAM_LOGIN_CLIENT_ID' ) && preg_match( '/^\d+$/', (string
 						<?php endif; ?>
 					</div>
 					<div id="auth-login-step-code" style="display:none;max-width:480px;margin:0 auto">
-						<p class="auth-section-sub" style="margin-bottom:16px"><?php esc_html_e( 'Enter the code from your email.', 'influencer-hq' ); ?></p>
+						<p class="auth-section-sub" style="margin-bottom:16px"><?php esc_html_e( 'Please check your preferred method of communication and enter the 6-digit code we sent you.', 'influencer-hq' ); ?></p>
 						<div class="auth-field">
 							<label for="auth-login-code"><?php esc_html_e( '6-digit code', 'influencer-hq' ); ?></label>
 							<input type="text" id="auth-login-code" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="000000" style="text-align:center;letter-spacing:0.35em;font-size:1.2rem">
 						</div>
 						<p class="auth-section-sub" id="auth-login-code-expires" style="margin-top:8px"></p>
 						<div class="auth-err" id="auth-login-code-err"></div>
-						<button type="button" class="auth-submit-btn" id="auth-login-verify-btn" onclick="ihqAuthLoginVerify()"><?php esc_html_e( 'Verify & sign in', 'influencer-hq' ); ?></button>
+						<button type="button" class="auth-submit-btn" id="auth-login-verify-btn" onclick="ihqAuthLoginVerify()"><?php esc_html_e( 'Continue', 'influencer-hq' ); ?></button>
 						<button type="button" class="auth-submit-btn" style="margin-top:12px;background:transparent;border:1px solid rgba(240,201,58,.45);color:var(--warm)" id="auth-login-back-btn" onclick="ihqAuthLoginBackToEmail()"><?php esc_html_e( 'Back', 'influencer-hq' ); ?></button>
 					</div>
 				</div>
@@ -214,7 +324,8 @@ var IHQ_AUTH_LOGIN = {
 	redirectUrl: <?php echo wp_json_encode( $ihq_portal_auth_redirect ); ?>,
 	codeExpiresMinutes: 15,
 	telegramClientId: <?php echo (int) $ihq_portal_telegram_client_id; ?>,
-	telegramNonce: <?php echo wp_json_encode( $ihq_portal_auth_telegram_nonce ); ?>
+	telegramNonce: <?php echo wp_json_encode( $ihq_portal_auth_telegram_nonce ); ?>,
+	defaultMethod: <?php echo wp_json_encode( $ihq_portal_auth_login_default_method ); ?>
 };
 var ihqAuthLoginSignupToken = '';
 var ihqAuthLoginTurnstileWidgetId = null;
@@ -285,6 +396,8 @@ function ihqAuthLoginResetPanels() {
 	if (cer) cer.textContent = '';
 	var exp = document.getElementById('auth-login-code-expires');
 	if (exp) exp.textContent = '';
+	var defaultMethod = document.getElementById('auth-login-method-' + IHQ_AUTH_LOGIN.defaultMethod);
+	if (defaultMethod) defaultMethod.checked = true;
 	var tgErr = document.getElementById('auth-login-telegram-err');
 	if (tgErr) { tgErr.textContent = ''; tgErr.style.display = 'none'; }
 	ihqAuthLoginTelegramBusy = false;
