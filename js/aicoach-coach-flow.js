@@ -162,6 +162,40 @@ function applyLocale( locale ) {
     } );
 }
 
+// FR-12 — language auto-detected from browser locale, with English fallback
+// (Scenario 22/23). The ticket's priority order is: saved Luna preference →
+// browser locale → English. Only the last two are implemented here — Luna
+// session persistence (PO-3102) doesn't exist yet, so there's no saved
+// preference to read. Revisit this once PO-3102 ships.
+function detectInitialLocale() {
+    const supportedCodes = SUPPORTED_LOCALES.map( function ( loc ) { return loc.code; } );
+    const browserTags = ( navigator.languages && navigator.languages.length )
+        ? navigator.languages
+        : [ navigator.language || '' ];
+
+    for ( let i = 0; i < browserTags.length; i++ ) {
+        const tag = ( browserTags[ i ] || '' ).toLowerCase();
+        if ( ! tag ) {
+            continue;
+        }
+        const primary = tag.split( '-' )[ 0 ];
+        // Cantonese has no primary subtag browsers actually report — "yue" is
+        // valid BCP 47 but essentially never seen in the wild. Hong Kong/Macau
+        // region on "zh" is the closest practical signal; any other "zh" region
+        // (or bare "zh") is treated as Mandarin, matching SUPPORTED_LOCALES.
+        if ( primary === 'yue' ) {
+            return 'yue';
+        }
+        if ( primary === 'zh' && ( tag === 'zh-hk' || tag === 'zh-mo' ) ) {
+            return 'yue';
+        }
+        if ( supportedCodes.indexOf( primary ) !== -1 ) {
+            return primary;
+        }
+    }
+    return 'en';
+}
+
 const SCREENS = [
     {
         panel: 'intro',
@@ -305,7 +339,7 @@ if ( stage && avatarWrap ) {
     // breaking that other feature. This script only ever runs on this one page
     // (see ihq_aicoach_enqueue_coach_flow()'s is_page_template check), so injecting
     // here is safe without any extra page check.
-    let currentLocale = 'en';
+    let currentLocale = detectInitialLocale();
 
     function selectLocale( locale ) {
         if ( locale === currentLocale ) {
@@ -395,6 +429,12 @@ if ( stage && avatarWrap ) {
             btn.setAttribute( 'aria-expanded', 'false' );
         } );
     }() );
+
+    // Apply the detected locale to the DOM now that the selector (and its
+    // is-current marking, set from currentLocale above) exists. A no-op for
+    // English/untranslated locales today (t() falls back to I18N_EN either
+    // way) but keeps behavior correct once real translations land.
+    applyLocale( currentLocale );
 
     function syncSelected() {
         tiers.forEach( function ( tier ) {
