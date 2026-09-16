@@ -1,25 +1,28 @@
 ---
-name: Portal header login uses the 6-digit code flow
+name: Portal Log in button delivers its 6-digit code
 overview: >
- The portal header's Login button already opens the auth modal, and that modal
- already runs the passwordless 6-digit flow from page-portal-login.php. What it
- did not do is match PO-3192's wording or show which channel the code is sent
- on. This adds a preferred-method-of-communication choice to the login step
- (email enabled, other channels listed but disabled) and brings the code-step
- copy and button label in line with the acceptance criteria. Backend handlers,
- registration, and the standalone login template are out of scope.
+ Clicking Log in on the portal header produced no code email. The button is
+ intercepted by the header_login registry gate, whose 6-digit code is delivered
+ through Braze — and no IHQ_BRAZE_* constants are defined on the live instance,
+ so the send failed server-side and the visitor saw nothing. The code is now
+ emailed with wp_mail(), the same way the sign-in code on page-portal-login.php
+ already works, with the Braze call kept commented and ready. Also aligns the
+ auth modal's copy with the ticket. Braze configuration is out of scope.
 todos:
- - id: methods
- content: Add the preferred-method group to the login step, email selected, other channels disabled
+ - id: deliver
+ content: Email visitor verification codes with wp_mail, mirroring the sign-in code mail
  status: completed
- - id: copy
- content: Use the AC message on the code step and rename the confirm button to Continue
+ - id: swap
+ content: Comment out the Braze POST in ihq_issue_visitor_verification_code, ready to restore
  status: completed
- - id: reset
- content: Reset the method selection whenever the modal panels reset
+ - id: errors
+ content: Return a real error when there is no email on file or the send fails
+ status: completed
+ - id: modal
+ content: Match the auth modal copy to the acceptance criteria and show the preferred method
  status: completed
  - id: verify
- content: Run lint and exercise send-code plus verify-code paths before merge
+ content: Click Log in on a portal page as a logged-out user and confirm the code arrives
  status: pending
 ---
 
@@ -29,52 +32,74 @@ todos:
 **Drafted by:** Claude (Opus 4.5), Cursor
 
 ## Problem
-A user who is logged out — manually or by session expiry — needs to get back
-into the portal with a 6-digit code. The ticket notes the flow "is already
-implemented, we just need to make sure it works". It does work mechanically,
-but the login step never tells the user which channel the code goes to, and the
-code step's copy and button label do not match the acceptance criteria.
+A logged-out user clicking Log in on the portal header never receives a 6-digit
+code, so there is no way back into the portal. The same code requested from
+`page-portal-login.php` arrives normally.
+
+## Reproduction
+Log out, open any portal page, click Log in in the header, complete the gate's
+communication step. The code entry box appears; no email is ever delivered.
 
 ## Approach
-Front-end only, confined to `template-parts/portal-auth-modal.php`, which the
-header's `portalHeaderOpenLogin` button already opens.
+Two separate findings, one root cause.
 
-- A `Preferred method of communication` radio group sits under the email field.
-  The channel list mirrors the register pane (Email, LINE, Telegram, WhatsApp,
-  WeChat). Only Email is selectable; the rest render disabled with a "Coming
-  soon" note, so the choice is visible without implying it works.
-- The code step now reads "Please check your preferred method of communication
-  and enter the 6-digit code we sent you.", and its confirm button reads
-  "Continue", both taken verbatim from the acceptance criteria.
-- `ihqAuthLoginResetPanels()` restores the default channel, so reopening the
-  modal never leaves a stale selection.
-- Styles are scoped to this template part. They deliberately avoid `.auth-field
-  label`, whose uppercase treatment is meant for field labels, not option text.
+The Log in button never opens the auth modal. `js/ihq-registry-gates.js` binds
+`header_login` through `bindGate()`, which listens on `document` in the capture
+phase; `triggerGate()` then calls `preventDefault()`, `stopPropagation()` and
+`stopImmediatePropagation()`, killing the modal's own bubble-phase handler. The
+gate's own notice takes over — and it is already the PO-3192 UI, since
+`inc/registry-gates.php` localizes the acceptance criteria's exact message and
+its "Continue" label.
 
-The request to `ihq_send_login_code` is unchanged: email is the only selectable
-channel, so there is no new value to send and no backend change to make.
+That gate delivers its code via Braze: `ihq_issue_visitor_verification_code()`
+built a payload and POSTed it to `ihq_braze_rest_endpoint() . '/users/track'`.
+Braze needs `IHQ_BRAZE_REST_ENDPOINT` and `IHQ_BRAZE_TRACK_API_KEY`, neither of
+which is defined on the live instance, so the POST failed, the failure was only
+`error_log`ged, and the function still returned `ok`. The gate then showed a
+code box for a code that was never sent.
+
+So delivery moves to `wp_mail()`:
+
+- `ihq_send_visitor_verification_code_email()` sends the code with the same
+  markup and From address as the sign-in code mail in
+  `inc/email-verification-handler.php`, so both look identical to the user.
+- `ihq_deliver_visitor_verification_code()` wraps recipient lookup and send, and
+  returns a failure that now propagates — no email on file, or a rejected send,
+  surfaces a message in the gate instead of a code box that will never fill.
+- The Braze POST is commented in place with a note on how to restore it, and
+  `ihq_post_braze_track_payload()` plus the payload builder are untouched, so
+  re-enabling is uncommenting two lines once the constants exist.
+- The reuse branch now resends too. A code issued while delivery was broken
+  would otherwise lock the visitor out for its full 15-minute lifetime.
+
+Separately, `template-parts/portal-auth-modal.php` gained the preferred-method
+row and the acceptance criteria's copy, so the modal matches the ticket wherever
+it is reached from.
 
 ## Alternatives considered
-- Dropping the email field and identifying the user from the expired session —
-  rejected; a logged-out visitor has no reliable identity to read.
-- Sending the chosen channel to the backend now — rejected as speculative while
-  email is the only option; the handler would only validate it back to email.
-- Hiding the unavailable channels entirely — rejected; the AC asks the user to
-  check their preferred method, so the list needs to be visible.
+- Point the gate at `ihq_send_login_code` — rejected: that handler runs
+  `ihq_verify_turnstile_or_error_for_ajax()`, and with Turnstile configured on
+  live the gate's notice has no widget to produce a token, so every request
+  would fail human verification.
+- Remove the `header_login` gate so the button opens the auth modal — rejected:
+  the gate is deliberate, captures visitor intent, and already carries the
+  ticket's copy.
+- Define the `IHQ_BRAZE_*` constants on live and change nothing — rejected for
+  now; email should work regardless of whether Braze is configured.
 
 ## Blast radius
-`template-parts/portal-auth-modal.php` renders on every portal page via
-`template-parts/portal-header.php`, but only for logged-out visitors — the part
-returns early when `is_user_logged_in()`. Register pane, Telegram login,
-Turnstile, and both AJAX handlers are untouched. New CSS class names are unique
-to this part, so no existing selector changes meaning.
+`ihq_issue_visitor_verification_code()` is shared by every registry gate, not
+just `header_login`, so all gate codes now arrive by email. Both callers already
+guard `braze_response` with `! empty()`, so dropping that key while Braze is off
+breaks neither the AJAX response nor the debug panel. Visitors who chose only
+LINE / WhatsApp / WeChat now get an explicit "we need an email address" message
+where they previously got silence — different, but not a regression, since no
+code reached them before either.
 
 ## Notes
-- Telegram appears as "Coming soon" in the channel list while the "Login with
-  Telegram" button below it does work. They are different mechanisms — the list
-  is about where a 6-digit code is delivered — but the wording may want a second
-  look with design.
-- Not exercised against a running site: the local environment was not up. The
-  send-code and verify-code paths should be walked manually before merge.
-- Backend delivery to LINE / WhatsApp / WeChat is the follow-up that makes the
-  disabled options selectable.
+- Braze remains the intended channel for non-email methods; this is a stopgap
+  until the constants are configured per instance, and the call site is ready.
+- Not verified against a running site: the local environment is down, and live
+  runs unmerged branch code. Needs a logged-out click-through before merge.
+- Telegram shows as "Coming soon" in the modal's method list while the Login
+  with Telegram button works — different mechanisms, but worth a design check.
