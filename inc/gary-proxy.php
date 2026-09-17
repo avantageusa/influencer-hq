@@ -252,6 +252,22 @@ function ihq_coach_handle_health() {
 }
 
 /**
+ * GET /ihq/v1/coach/scripts — passthrough for GET /coach/v1/registration/scripts.
+ * Lets us check a script's approval status (script_status/review_required per
+ * version/stage) directly, without opening a real session each time.
+ *
+ * @return WP_REST_Response
+ */
+function ihq_coach_handle_scripts() {
+	$result = ihq_coach_request( 'GET', '/coach/v1/registration/scripts', null );
+	if ( is_wp_error( $result ) ) {
+		return new WP_REST_Response( array( 'error' => $result->get_error_message() ), 502 );
+	}
+
+	return new WP_REST_Response( $result['body'], $result['status'] );
+}
+
+/**
  * Register the Coach REST routes.
  */
 function ihq_coach_register_routes() {
@@ -291,6 +307,16 @@ function ihq_coach_register_routes() {
 		array(
 			'methods'             => WP_REST_Server::READABLE,
 			'callback'            => 'ihq_coach_handle_health',
+			'permission_callback' => 'ihq_coach_permission_check',
+		)
+	);
+
+	register_rest_route(
+		'ihq/v1',
+		'/coach/scripts',
+		array(
+			'methods'             => WP_REST_Server::READABLE,
+			'callback'            => 'ihq_coach_handle_scripts',
 			'permission_callback' => 'ihq_coach_permission_check',
 		)
 	);
