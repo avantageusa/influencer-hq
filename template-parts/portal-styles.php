@@ -1949,7 +1949,12 @@
         border-radius: 8px;
     }
 
-    /* Shown only when a game-portal embed fails to load (PO-2901 AC#5). */
+    /* Shown only when a game-portal embed fails to load (PO-2901 AC#5).
+       .portal-*-iframe-wrap iframe { display:block } beats the UA [hidden]
+       rule, so the failed frame would stay visible beside the fallback. */
+    [data-ihq-external-embed] iframe[hidden] {
+        display: none !important;
+    }
     body.page-template-page-portal-equity-php .portal-embed-fallback,
     body.page-template-page-portal-challenges-php .portal-embed-fallback {
         margin: 0;

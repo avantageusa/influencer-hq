@@ -7,6 +7,10 @@
  * a timer started at parse time would fire against a frame that was never asked
  * to load. A frame refused by X-Frame-Options still fires `load`, so that case
  * is not detectable here; it is covered by the allowlist on the game-portal side.
+ *
+ * Frames ship with data-src (not src). This script binds load/error first, then
+ * assigns src, so a footer-enqueued listener cannot miss an early load event and
+ * falsely trip the timeout fallback.
  */
 (function () {
 	'use strict';
@@ -40,6 +44,7 @@
 
 		var timer = null;
 		var loaded = false;
+		var pendingSrc = frame.getAttribute('data-src') || '';
 
 		frame.addEventListener('load', function () {
 			loaded = true;
@@ -50,6 +55,11 @@
 			window.clearTimeout(timer);
 			showFallback(wrap);
 		});
+
+		if (pendingSrc !== '' && !frame.getAttribute('src')) {
+			frame.setAttribute('src', pendingSrc);
+			frame.removeAttribute('data-src');
+		}
 
 		function startWatchdog() {
 			if (loaded || timer !== null) {

@@ -5,6 +5,11 @@
  * The URL must already be built with ihq_build_hq_game_portal_external_url(),
  * which appends the influencerHqAuth flag and the per-session hqSsoCode.
  *
+ * The frame uses data-src (not src) so portal-external-embed.js can bind load
+ * and error handlers before navigation starts. Assigning src in PHP can race
+ * a footer-enqueued script and miss the load event, which falsely trips the
+ * 15s fallback.
+ *
  * @package influencer-hq
  *
  * @param array $args {
@@ -38,7 +43,7 @@ $embed_wrap_class = isset( $args['wrap_class'] ) && $args['wrap_class'] !== ''
 	: 'portal-leaderboards-iframe-wrap';
 
 $embed_wrap_id = isset( $args['wrap_id'] )
-	? preg_replace( '/[^a-zA-Z0-9_-]/', '', (string) $args['wrap_id'] )
+	? sanitize_html_class( (string) $args['wrap_id'] )
 	: '';
 
 $embed_script_path = get_template_directory() . '/js/portal-external-embed.js';
@@ -59,7 +64,7 @@ wp_enqueue_script(
 >
 	<iframe
 		title="<?php echo esc_attr( $embed_title ); ?>"
-		src="<?php echo esc_url( $embed_url ); ?>"
+		data-src="<?php echo esc_url( $embed_url ); ?>"
 		loading="lazy"
 		referrerpolicy="strict-origin-when-cross-origin"
 		allowfullscreen

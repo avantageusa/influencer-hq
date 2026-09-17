@@ -94,6 +94,14 @@ reveals that paragraph when a frame fails to load.
  local host.
 - A frame refused by `X-Frame-Options` still fires `load` in Chrome, so the watchdog
  cannot catch that case; it catches network failure and a frame that never loads.
+ Recorded for PR #24 review — do not expect the AC#5 fallback on an X-Frame-Options
+ refusal.
+- PR #24 review follow-ups: frames use `data-src` until JS binds load/error (avoids
+ missing an early load); `[data-ihq-external-embed] iframe[hidden]` overrides
+ `display:block` so the failed frame actually hides; wrap ids use
+ `sanitize_html_class()`. Leaving `hqSsoCode` in the iframe URL is intentional for
+ this ticket — a POST/bootstrap cookie handoff needs game-portal support and is a
+ follow-up, not a theme-only fix.
 - Open question for the team: the World tab's menu entry "Results & Leaderboards" still
  scrolls to the mock `#world-leaderboards` dropdown rather than the new live embed.
  Repointing it is a UX decision beyond PO-2897's ACs.
