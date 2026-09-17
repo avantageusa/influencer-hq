@@ -85,6 +85,17 @@ function ihq_coach_secret() {
  * @return array{status:int,body:array}|WP_Error
  */
 function ihq_coach_request( $method, $path, $body_array = null ) {
+	// IHQ_COACH_HOST is a trusted admin-defined constant, not user input — but
+	// it's still worth refusing to sign/send anything to it unless it's an
+	// absolute https:// origin, same "never trust a bare constant" discipline
+	// as inc/ihq-env.php's URL constants.
+	if ( 0 !== strpos( IHQ_COACH_HOST, 'https://' ) ) {
+		return new WP_Error(
+			'coach_host_untrusted',
+			'IHQ_COACH_HOST must be an absolute https:// URL.'
+		);
+	}
+
 	$key    = ihq_coach_key();
 	$secret = ihq_coach_secret();
 	if ( ! $key || ! $secret ) {
@@ -100,9 +111,15 @@ function ihq_coach_request( $method, $path, $body_array = null ) {
 	$signature = 'sha256=' . hash_hmac( 'sha256', $base, $secret );
 
 	$args = array(
-		'method'  => $method,
-		'timeout' => 15,
-		'headers' => array(
+		'method'      => $method,
+		'timeout'     => 15,
+		// wp_remote_request() follows redirects by default and resends the
+		// same $args — including these signed Coach headers — to wherever the
+		// redirect points. We know Gary's exact host; never follow elsewhere
+		// with a live API key attached (CWE-200, flagged by CodeRabbit on
+		// PR #34).
+		'redirection' => 0,
+		'headers'     => array(
 			'Content-Type'      => 'application/json',
 			'X-Coach-Key'       => $key,
 			'X-Coach-Timestamp' => $timestamp,
