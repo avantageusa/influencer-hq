@@ -4,12 +4,13 @@
  * First event: register. Luna (or the Let's Continue button) calls
  * window.ihqCoachEvents.register(detail) once the coach flow is done.
  * Missing fields are filled from the identity + communication forms on
- * page-home-aicoach.php. The server creates the influencer and signs them in
- * with no code screen.
+ * page-home-aicoach.php. New emails create + sign in with no code screen;
+ * existing emails get a passwordless login code and a login redirect.
  *
  *   window.ihqCoachEvents.register()
  *   window.ihqCoachEvents.register({ firstName: 'Ada', redirect: false })
  *   window.dispatchEvent(new CustomEvent('ihq:coach-register'))
+ *   document.dispatchEvent(new CustomEvent('ihq:coach-register'))
  */
 (function (window, document) {
 	'use strict';
@@ -218,6 +219,33 @@
 		registerInFlight = true;
 		return postRegister(payload).then(function (data) {
 			registerInFlight = false;
+			if (data.success && data.signupToken) {
+				try {
+					window.sessionStorage.setItem('ihq_pending_login_token', String(data.signupToken));
+					var emailForResume = '';
+					if (Array.isArray(payload.channels)) {
+						payload.channels.some(function (entry) {
+							if (!entry || typeof entry !== 'object') {
+								return false;
+							}
+							var value = trimString(String(entry.value == null ? '' : entry.value));
+							if (value.indexOf('@') !== -1) {
+								emailForResume = value;
+								return true;
+							}
+							return false;
+						});
+					}
+					if (emailForResume) {
+						window.sessionStorage.setItem('ihq_pending_login_email', emailForResume);
+					}
+					if (data.message) {
+						window.sessionStorage.setItem('ihq_pending_login_message', String(data.message));
+					}
+				} catch (storageError) {
+					// sessionStorage may be unavailable; login page still works without resume.
+				}
+			}
 			if (data.success && shouldRedirect && data.redirectUrl) {
 				window.location.href = data.redirectUrl;
 			}
@@ -231,9 +259,13 @@
 		});
 	}
 
-	document.addEventListener(EVENT_REGISTER, function (event) {
-		register(event.detail || {});
-	});
+	function onRegisterEvent(event) {
+		register(event && event.detail ? event.detail : {});
+	}
+
+	// Luna may dispatch on window or document; listen on both.
+	window.addEventListener(EVENT_REGISTER, onRegisterEvent);
+	document.addEventListener(EVENT_REGISTER, onRegisterEvent);
 
 	window.ihqCoachEvents = {
 		REGISTER: EVENT_REGISTER,

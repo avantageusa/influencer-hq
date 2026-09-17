@@ -2,10 +2,9 @@
 /**
  * AI Coach uninterrupted registration (PO-3257).
  *
- * The coach page already captures identity and communication channels. This
- * endpoint creates the influencer and signs them in immediately — no 6-digit
- * code, no login screen — so finishing the coach flow lands in the portal the
- * same way a later passwordless login would.
+ * New emails: create the influencer and sign them in immediately — no 6-digit
+ * code, no login screen. Existing emails: send the normal passwordless login
+ * code and redirect to portal login (never set a session from email alone).
  *
  * POST /wp-json/ihq/v1/create-account
  *
@@ -189,10 +188,11 @@ function ihq_aicoach_register_permission_check( WP_REST_Request $request ) {
 }
 
 /**
- * POST /ihq/v1/create-account — create or sign in, then return a portal URL.
+ * POST /ihq/v1/create-account — create + sign in (new email) or passwordless login (existing).
  *
  * Turnstile is intentionally not required here: PO-3257's acceptance criteria
- * forbid a verification screen on this path. The REST nonce is the CSRF check.
+ * forbid a verification screen on the *new-user* path. The REST nonce is the
+ * CSRF check. Existing emails never receive a session from this route alone.
  *
  * @param WP_REST_Request $request Request.
  * @return WP_REST_Response
@@ -218,35 +218,16 @@ function ihq_aicoach_handle_create_account( WP_REST_Request $request ) {
 	}
 
 	$payload = $parsed['value'];
-	$redirect = function_exists( 'ihq_portal_redirect_url_for_context' )
+	$portal_redirect = function_exists( 'ihq_portal_redirect_url_for_context' )
 		? ihq_portal_redirect_url_for_context( 'portal_home' )
 		: trailingslashit( home_url( '/portal/portal-home' ) );
+	$login_redirect = trailingslashit( home_url( '/portal/login' ) );
 
 	if ( is_user_logged_in() ) {
 		return new WP_REST_Response(
 			array(
 				'success'     => true,
-				'redirectUrl' => $redirect,
-				'existing'    => true,
-			),
-			200
-		);
-	}
-
-	$country_iso = function_exists( 'ihq_get_cloudflare_country_iso_alpha2' )
-		? ihq_get_cloudflare_country_iso_alpha2()
-		: '';
-
-	$existing = get_user_by( 'email', $payload['email'] );
-	if ( $existing ) {
-		ihq_aicoach_sign_in_user( (int) $existing->ID, $country_iso );
-		ihq_aicoach_apply_portal_username( (int) $existing->ID, $payload['username'] );
-
-		return new WP_REST_Response(
-			array(
-				'success'     => true,
-				'redirectUrl' => $redirect,
-				'existing'    => true,
+				'redirectUrl' => $portal_redirect,
 			),
 			200
 		);
@@ -263,7 +244,57 @@ function ihq_aicoach_handle_create_account( WP_REST_Request $request ) {
 			429
 		);
 	}
-	set_transient( $throttle_key, 1, IHQ_AICOACH_REGISTER_THROTTLE_SECONDS );
+
+	$country_iso = function_exists( 'ihq_get_cloudflare_country_iso_alpha2' )
+		? ihq_get_cloudflare_country_iso_alpha2()
+		: '';
+
+	$existing = get_user_by( 'email', $payload['email'] );
+	if ( $existing ) {
+		// Prove inbox ownership — never wp_set_auth_cookie / overwrite username here.
+		$login_message = __( 'If that email matches an Influencer HQ account, you will receive a sign-in code shortly.', 'influencer-hq' );
+		$signup_token  = '';
+
+		$is_influencer = function_exists( 'ihq_user_has_influencer_role' )
+			&& ihq_user_has_influencer_role( $existing );
+
+		if ( $is_influencer && function_exists( 'ihq_issue_and_send_login_code_for_influencer' ) ) {
+			$result = ihq_issue_and_send_login_code_for_influencer( $existing );
+			if ( empty( $result['ok'] ) ) {
+				$status = ! empty( $result['throttled'] ) ? 429 : 400;
+				return new WP_REST_Response(
+					array(
+						'success' => false,
+						'error'   => isset( $result['error'] )
+							? $result['error']
+							: __( 'Unable to send a sign-in code. Please try again.', 'influencer-hq' ),
+					),
+					$status
+				);
+			}
+			if ( isset( $result['message'] ) && is_string( $result['message'] ) && $result['message'] !== '' ) {
+				$login_message = $result['message'];
+			}
+			if ( isset( $result['signup_token'] ) && is_string( $result['signup_token'] ) ) {
+				$signup_token = $result['signup_token'];
+			}
+		}
+
+		set_transient( $throttle_key, 1, IHQ_AICOACH_REGISTER_THROTTLE_SECONDS );
+
+		// Same success shape as a new-user create (no existing:true) so the
+		// response alone cannot be used to probe which emails are registered.
+		$response = array(
+			'success'     => true,
+			'redirectUrl' => $login_redirect,
+			'message'     => $login_message,
+		);
+		if ( $signup_token !== '' ) {
+			$response['signupToken'] = $signup_token;
+		}
+
+		return new WP_REST_Response( $response, 200 );
+	}
 
 	if ( $payload['username'] !== '' && function_exists( 'ihq_validate_portal_username_for_save' ) ) {
 		$username_ok = ihq_validate_portal_username_for_save( $payload['username'], 0 );
@@ -279,12 +310,12 @@ function ihq_aicoach_handle_create_account( WP_REST_Request $request ) {
 	}
 
 	$registration = array(
-		'email'         => $payload['email'],
-		'first_name'    => $payload['first_name'],
-		'last_name'     => $payload['last_name'],
-		'comm_methods'  => $payload['comm_methods'],
-		'challenge_type'=> 'maybe_later',
-		'country_iso'   => $country_iso,
+		'email'          => $payload['email'],
+		'first_name'     => $payload['first_name'],
+		'last_name'      => $payload['last_name'],
+		'comm_methods'   => $payload['comm_methods'],
+		'challenge_type' => 'maybe_later',
+		'country_iso'    => $country_iso,
 	);
 
 	$user_id = ihq_create_influencer_user_from_registration_data( $registration );
@@ -308,12 +339,12 @@ function ihq_aicoach_handle_create_account( WP_REST_Request $request ) {
 	}
 
 	ihq_aicoach_sign_in_user( (int) $user_id, $country_iso );
+	set_transient( $throttle_key, 1, IHQ_AICOACH_REGISTER_THROTTLE_SECONDS );
 
 	return new WP_REST_Response(
 		array(
 			'success'     => true,
-			'redirectUrl' => $redirect,
-			'existing'    => false,
+			'redirectUrl' => $portal_redirect,
 		),
 		200
 	);

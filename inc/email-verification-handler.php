@@ -769,6 +769,123 @@ function ihq_refresh_influencer_oauth_tokens( $user_id, $country_iso = '' ) {
 }
 
 /**
+ * Issue and email a passwordless 6-digit login code for an influencer.
+ *
+ * Shared by the login AJAX handler and the AI Coach register path (PO-3257):
+ * existing emails must prove inbox ownership instead of receiving a session.
+ *
+ * @param WP_User $user Influencer user.
+ * @param array   $args {
+ *     @type bool $respect_throttle Whether to enforce the per-email resend throttle. Default true.
+ * }
+ * @return array{ok:bool,signup_token?:string,expires_minutes?:int,message?:string,error?:string,throttled?:bool}
+ */
+function ihq_issue_and_send_login_code_for_influencer( $user, $args = array() ) {
+	$respect_throttle = ! isset( $args['respect_throttle'] ) || (bool) $args['respect_throttle'];
+
+	if ( ! ( $user instanceof WP_User ) || ! function_exists( 'ihq_user_has_influencer_role' ) || ! ihq_user_has_influencer_role( $user ) ) {
+		return array(
+			'ok'      => false,
+			'error'   => __( 'Invalid account.', 'influencer-hq' ),
+		);
+	}
+
+	$email = sanitize_email( (string) $user->user_email );
+	if ( ! is_email( $email ) ) {
+		return array(
+			'ok'    => false,
+			'error' => __( 'Invalid email address', 'influencer-hq' ),
+		);
+	}
+
+	$throttle_key = 'ihq_login_send_' . md5( strtolower( $email ) );
+	if ( $respect_throttle && get_transient( $throttle_key ) ) {
+		return array(
+			'ok'        => false,
+			'throttled' => true,
+			'error'     => __( 'Please wait a moment before requesting another code', 'influencer-hq' ),
+		);
+	}
+
+	$email_map_key = 'ihq_pending_login_email_' . md5( strtolower( $email ) );
+	$old_token     = get_option( $email_map_key, '' );
+	if ( is_string( $old_token ) && $old_token !== '' ) {
+		delete_option( 'pending_login_code_' . $old_token );
+	}
+
+	$signup_token = wp_generate_password( 32, false, false );
+	$code         = sprintf( '%06d', wp_rand( 0, 999999 ) );
+	$code_hash    = hash_hmac( 'sha256', $code, wp_salt( 'ihq_login_code' ) . $signup_token );
+	$expires      = time() + IHQ_LOGIN_CODE_EXPIRY_SECONDS;
+	$minutes_left = (int) ceil( IHQ_LOGIN_CODE_EXPIRY_SECONDS / 60 );
+
+	$record = array(
+		'email'     => $email,
+		'user_id'   => (int) $user->ID,
+		'code_hash' => $code_hash,
+		'expires'   => $expires,
+		'timestamp' => time(),
+	);
+
+	update_option( 'pending_login_code_' . $signup_token, $record, false );
+	update_option( $email_map_key, $signup_token, false );
+
+	$subject = __( 'Your Influencer HQ sign-in code', 'influencer-hq' );
+	$message = '
+    <!DOCTYPE html>
+    <html><head><meta charset="UTF-8"></head>
+    <body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background:#0a0a0a;color:#f0f0f0;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 20px;">
+        <tr><td align="center">
+          <table width="560" cellpadding="0" cellspacing="0" style="background:#161612;border:1px solid rgba(240,201,58,.35);border-radius:12px;">
+            <tr><td style="padding:40px 32px;text-align:center;">
+              <h1 style="color:#F0C93A;font-size:26px;margin:0 0 16px;">Influencer HQ</h1>
+              <p style="color:#EAD9B0;font-size:16px;line-height:1.6;margin:0 0 24px;">Your sign-in code is:</p>
+              <div style="font-size:36px;font-weight:700;letter-spacing:12px;color:#fff;margin:16px 0 24px;">' . esc_html( $code ) . '</div>
+              <p style="color:#888;font-size:14px;line-height:1.6;margin:0;">This code expires in ' . (int) $minutes_left . ' minutes.</p>
+            </td></tr>
+          </table>
+        </td></tr>
+      </table>
+    </body></html>';
+
+	$headers = array(
+		'Content-Type: text/html; charset=UTF-8',
+		'From: Influencer HQ <verify@influencerhq.co>',
+	);
+
+	$mail_error  = null;
+	$failed_hook = function ( $wp_error ) use ( &$mail_error ) {
+		$mail_error = $wp_error->get_error_message();
+	};
+	add_action( 'wp_mail_failed', $failed_hook );
+	$sent = wp_mail( $email, $subject, $message, $headers );
+	remove_action( 'wp_mail_failed', $failed_hook );
+
+	if ( ! $sent ) {
+		delete_option( 'pending_login_code_' . $signup_token );
+		delete_option( $email_map_key );
+		$err = $mail_error ? $mail_error : __( 'Failed to send email', 'influencer-hq' );
+		error_log( 'IHQ send_login_code failed for ' . $email . ': ' . $err );
+		return array(
+			'ok'    => false,
+			'error' => $err,
+		);
+	}
+
+	if ( $respect_throttle ) {
+		set_transient( $throttle_key, 1, 45 );
+	}
+
+	return array(
+		'ok'              => true,
+		'signup_token'    => $signup_token,
+		'expires_minutes' => $minutes_left,
+		'message'         => __( 'If that email matches an Influencer HQ account, you will receive a sign-in code shortly.', 'influencer-hq' ),
+	);
+}
+
+/**
  * Passwordless influencer login: send 6-digit email code.
  */
 function ihq_handle_send_login_code_ajax() {
@@ -809,85 +926,17 @@ function ihq_handle_send_login_code_ajax() {
         return;
     }
 
-    $throttle_key = 'ihq_login_send_' . md5( strtolower( $email ) );
-    if ( get_transient( $throttle_key ) ) {
-        wp_send_json_error( array( 'message' => __( 'Please wait a moment before requesting another code', 'influencer-hq' ) ) );
-        return;
-    }
-    set_transient( $throttle_key, 1, 45 );
-
-    $email_map_key = 'ihq_pending_login_email_' . md5( strtolower( $email ) );
-    $old_token     = get_option( $email_map_key, '' );
-    if ( is_string( $old_token ) && $old_token !== '' ) {
-        delete_option( 'pending_login_code_' . $old_token );
-    }
-
-    $signup_token = wp_generate_password( 32, false, false );
-    $code         = sprintf( '%06d', wp_rand( 0, 999999 ) );
-    $code_hash    = hash_hmac( 'sha256', $code, wp_salt( 'ihq_login_code' ) . $signup_token );
-
-    $expires = time() + IHQ_LOGIN_CODE_EXPIRY_SECONDS;
-
-    $record = array(
-        'email'       => $email,
-        'user_id'     => (int) $user->ID,
-        'code_hash'   => $code_hash,
-        'expires'     => $expires,
-        'timestamp'   => time(),
-    );
-
-    update_option( 'pending_login_code_' . $signup_token, $record, false );
-    update_option( $email_map_key, $signup_token, false );
-
-    $minutes_left = (int) ceil( IHQ_LOGIN_CODE_EXPIRY_SECONDS / 60 );
-
-    $subject = __( 'Your Influencer HQ sign-in code', 'influencer-hq' );
-    $message = '
-    <!DOCTYPE html>
-    <html><head><meta charset="UTF-8"></head>
-    <body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background:#0a0a0a;color:#f0f0f0;">
-      <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 20px;">
-        <tr><td align="center">
-          <table width="560" cellpadding="0" cellspacing="0" style="background:#161612;border:1px solid rgba(240,201,58,.35);border-radius:12px;">
-            <tr><td style="padding:40px 32px;text-align:center;">
-              <h1 style="color:#F0C93A;font-size:26px;margin:0 0 16px;">Influencer HQ</h1>
-              <p style="color:#EAD9B0;font-size:16px;line-height:1.6;margin:0 0 24px;">Your sign-in code is:</p>
-              <div style="font-size:36px;font-weight:700;letter-spacing:12px;color:#fff;margin:16px 0 24px;">' . esc_html( $code ) . '</div>
-              <p style="color:#888;font-size:14px;line-height:1.6;margin:0;">This code expires in ' . (int) $minutes_left . ' minutes.</p>
-            </td></tr>
-          </table>
-        </td></tr>
-      </table>
-    </body></html>';
-
-    $headers = array(
-        'Content-Type: text/html; charset=UTF-8',
-        'From: Influencer HQ <verify@influencerhq.co>',
-    );
-
-    $mail_error = null;
-    $failed_hook = function ( $wp_error ) use ( &$mail_error ) {
-        $mail_error = $wp_error->get_error_message();
-    };
-    add_action( 'wp_mail_failed', $failed_hook );
-
-    $sent = wp_mail( $email, $subject, $message, $headers );
-    remove_action( 'wp_mail_failed', $failed_hook );
-
-    if ( ! $sent ) {
-        delete_option( 'pending_login_code_' . $signup_token );
-        delete_option( $email_map_key );
-        $err = $mail_error ? $mail_error : __( 'Failed to send email', 'influencer-hq' );
-        error_log( 'IHQ send_login_code failed for ' . $email . ': ' . $err );
-        wp_send_json_error( array( 'message' => $err ) );
+    $result = ihq_issue_and_send_login_code_for_influencer( $user );
+    if ( empty( $result['ok'] ) ) {
+        wp_send_json_error( array( 'message' => $result['error'] ?? __( 'Failed to send email', 'influencer-hq' ) ) );
         return;
     }
 
     wp_send_json_success(
         array(
-            'signup_token'    => $signup_token,
-            'expires_minutes' => $minutes_left,
-            'message'         => $generic_success,
+            'signup_token'    => $result['signup_token'],
+            'expires_minutes' => $result['expires_minutes'],
+            'message'         => $result['message'] ?? $generic_success,
         )
     );
 }
