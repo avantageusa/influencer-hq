@@ -85,6 +85,19 @@ function ihq_coach_secret() {
  * @return array{status:int,body:array}|WP_Error
  */
 function ihq_coach_request( $method, $path, $body_array = null ) {
+	// IHQ_COACH_HOST is a trusted admin-defined constant, not user input — but
+	// it's still worth refusing to sign/send anything to it unless it's an
+	// absolute https:// origin, same "never trust a bare constant" discipline
+	// as inc/ihq-env.php's URL constants. Reuses that file's validator (loaded
+	// first in functions.php) instead of a bare prefix check, which would
+	// wrongly accept something like "https://" with no host.
+	if ( ! ihq_env_is_https_url( IHQ_COACH_HOST ) ) {
+		return new WP_Error(
+			'coach_host_untrusted',
+			'IHQ_COACH_HOST must be an absolute https:// URL.'
+		);
+	}
+
 	$key    = ihq_coach_key();
 	$secret = ihq_coach_secret();
 	if ( ! $key || ! $secret ) {
@@ -100,9 +113,15 @@ function ihq_coach_request( $method, $path, $body_array = null ) {
 	$signature = 'sha256=' . hash_hmac( 'sha256', $base, $secret );
 
 	$args = array(
-		'method'  => $method,
-		'timeout' => 15,
-		'headers' => array(
+		'method'      => $method,
+		'timeout'     => 15,
+		// wp_remote_request() follows redirects by default and resends the
+		// same $args — including these signed Coach headers — to wherever the
+		// redirect points. We know Gary's exact host; never follow elsewhere
+		// with a live API key attached (CWE-200, flagged by CodeRabbit on
+		// PR #34).
+		'redirection' => 0,
+		'headers'     => array(
 			'Content-Type'      => 'application/json',
 			'X-Coach-Key'       => $key,
 			'X-Coach-Timestamp' => $timestamp,
@@ -252,6 +271,22 @@ function ihq_coach_handle_health() {
 }
 
 /**
+ * GET /ihq/v1/coach/scripts — passthrough for GET /coach/v1/registration/scripts.
+ * Lets us check a script's approval status (script_status/review_required per
+ * version/stage) directly, without opening a real session each time.
+ *
+ * @return WP_REST_Response
+ */
+function ihq_coach_handle_scripts() {
+	$result = ihq_coach_request( 'GET', '/coach/v1/registration/scripts', null );
+	if ( is_wp_error( $result ) ) {
+		return new WP_REST_Response( array( 'error' => $result->get_error_message() ), 502 );
+	}
+
+	return new WP_REST_Response( $result['body'], $result['status'] );
+}
+
+/**
  * Register the Coach REST routes.
  */
 function ihq_coach_register_routes() {
@@ -291,6 +326,16 @@ function ihq_coach_register_routes() {
 		array(
 			'methods'             => WP_REST_Server::READABLE,
 			'callback'            => 'ihq_coach_handle_health',
+			'permission_callback' => 'ihq_coach_permission_check',
+		)
+	);
+
+	register_rest_route(
+		'ihq/v1',
+		'/coach/scripts',
+		array(
+			'methods'             => WP_REST_Server::READABLE,
+			'callback'            => 'ihq_coach_handle_scripts',
 			'permission_callback' => 'ihq_coach_permission_check',
 		)
 	);
