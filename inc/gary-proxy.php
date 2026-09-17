@@ -88,8 +88,10 @@ function ihq_coach_request( $method, $path, $body_array = null ) {
 	// IHQ_COACH_HOST is a trusted admin-defined constant, not user input — but
 	// it's still worth refusing to sign/send anything to it unless it's an
 	// absolute https:// origin, same "never trust a bare constant" discipline
-	// as inc/ihq-env.php's URL constants.
-	if ( 0 !== strpos( IHQ_COACH_HOST, 'https://' ) ) {
+	// as inc/ihq-env.php's URL constants. Reuses that file's validator (loaded
+	// first in functions.php) instead of a bare prefix check, which would
+	// wrongly accept something like "https://" with no host.
+	if ( ! ihq_env_is_https_url( IHQ_COACH_HOST ) ) {
 		return new WP_Error(
 			'coach_host_untrusted',
 			'IHQ_COACH_HOST must be an absolute https:// URL.'
