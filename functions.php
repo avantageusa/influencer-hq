@@ -435,6 +435,11 @@ require_once get_template_directory() . '/inc/luna-users-rest.php';
  */
 require_once get_template_directory() . '/inc/gary-proxy.php';
 
+/**
+ * AI Coach uninterrupted registration event (PO-3257).
+ */
+require_once get_template_directory() . '/inc/aicoach-register.php';
+
 
 /**
  * Render the IHQ challenge calendar component.

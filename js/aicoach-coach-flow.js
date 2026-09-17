@@ -948,40 +948,38 @@ if ( stage && avatarWrap ) {
         } );
     }
 
-    // FR-09 — account creation + portal transfer. BE owns account creation,
-    // session/login establishment, and Braze writes entirely (confirmed with
-    // Dejan, same agreement as FR-07's username check) — this just posts what
-    // FR-07/FR-08 captured and either redirects on success or shows an inline
-    // error and lets the visitor retry (Scenario 16). Unlike FR-07's
-    // uniqueness check, there's no safe "fail open" here — faking a redirect
-    // to a portal session that doesn't actually exist would just break, so a
-    // missing/failing endpoint surfaces as a real error, not a silent pass.
+    // FR-09 / PO-3257 — account creation + portal transfer. Luna and this
+    // button share window.ihqCoachEvents.register(); redirect:false so we can
+    // close the Gary session before navigating. No fail-open: a missing
+    // event module or a failed create must surface, not fake a portal session.
     const finalContinueBtn = document.getElementById( 'aicoach-final-continue' );
     const finalError = document.getElementById( 'aicoach-final-error' );
 
     finalContinueBtn?.addEventListener( 'click', async function () {
-        if ( ! capturedIdentity || ! capturedChannels ) {
-            return; // shouldn't be reachable — both prior screens already gate on this
+        if ( typeof window.ihqCoachEvents?.register !== 'function' ) {
+            if ( finalError ) {
+                finalError.textContent = cfg.i18n?.accountCreateErr || 'Something went wrong creating your account. Please try again.';
+            }
+            return;
         }
 
         finalContinueBtn.disabled = true;
-        finalError.textContent = '';
+        if ( finalError ) {
+            finalError.textContent = '';
+        }
 
         try {
-            const res = await fetch( cfg.identityRestBase + '/create-account', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': cfg.nonce },
-                body: JSON.stringify( {
-                    firstName: capturedIdentity.firstName,
-                    lastName: capturedIdentity.lastName,
-                    username: capturedIdentity.username,
-                    channels: capturedChannels,
-                    language: currentLocale,
-                } ),
+            const captured = capturedIdentity || {};
+            const data = await window.ihqCoachEvents.register( {
+                firstName: captured.firstName,
+                lastName: captured.lastName,
+                username: captured.username,
+                channels: capturedChannels || undefined,
+                language: currentLocale,
+                redirect: false,
             } );
-            const data = await res.json();
-            if ( ! res.ok || ! data.success ) {
-                throw new Error( data.error || 'create-account failed' );
+            if ( ! data || ! data.success || ! data.redirectUrl ) {
+                throw new Error( ( data && data.error ) || 'create-account failed' );
             }
 
             // Best-effort cleanup, matches Gary's documented session lifecycle —
@@ -994,7 +992,9 @@ if ( stage && avatarWrap ) {
             window.location.href = data.redirectUrl;
         } catch ( error ) {
             console.warn( '[aicoach] account creation failed:', error );
-            finalError.textContent = cfg.i18n?.accountCreateErr || 'Something went wrong creating your account. Please try again.';
+            if ( finalError ) {
+                finalError.textContent = cfg.i18n?.accountCreateErr || 'Something went wrong creating your account. Please try again.';
+            }
             finalContinueBtn.disabled = false;
         }
     } );
