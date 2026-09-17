@@ -149,8 +149,15 @@ function ihq_coach_permission_check( WP_REST_Request $request ) {
  * @return WP_REST_Response
  */
 function ihq_coach_handle_open_session( WP_REST_Request $request ) {
-	$locale = sanitize_text_field( (string) $request->get_param( 'locale' ) );
-	if ( '' === $locale ) {
+	$locale = strtolower( sanitize_text_field( (string) $request->get_param( 'locale' ) ) );
+
+	// Gary's registration surface accepts only reviewed English locale variants
+	// and returns a 422 for anything else (confirmed 2026-09-16) — the visitor
+	// can still see the UI in any of the 7 supported locales (PO-3103/PO-3104),
+	// this only controls what we tell Gary until other translations are
+	// approved and released on their side.
+	$gary_registration_locales = array( 'en', 'en-us', 'en-gb' );
+	if ( ! in_array( $locale, $gary_registration_locales, true ) ) {
 		$locale = 'en';
 	}
 
