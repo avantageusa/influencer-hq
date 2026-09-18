@@ -61,6 +61,19 @@ function wp_remote_request( $url, $args ) {
 			'body'     => json_encode( array( 'version' => 'test-v1', 'segments' => array( 'intro' => array( 'status' => 'approved' ) ) ) ),
 		);
 	}
+	if ( false !== strpos( $url, '/coach/v1/health' ) ) {
+		return array(
+			'response' => array( 'code' => 200 ),
+			'body'     => json_encode( array( 'ok' => true, 'registration' => array( 'key_id' => 'ck_test_key_id' ) ) ),
+		);
+	}
+	if ( false !== strpos( $url, '/attest' ) ) {
+		$sent = json_decode( $args['body'], true );
+		return array(
+			'response' => array( 'code' => 200 ),
+			'body'     => json_encode( array( 'released' => true, 'stage' => $sent['stage'] ) ),
+		);
+	}
 	return array(
 		'response' => array( 'code' => 201 ),
 		'body'     => json_encode( array( 'session' => array( 'id' => 'cs_test' ) ) ),
@@ -71,6 +84,8 @@ function wp_remote_retrieve_body( $response ) { return $response['body']; }
 
 define( 'GARY_COACH_KEY', 'test-key' );
 define( 'GARY_COACH_SECRET', 'test-secret' );
+// Fake, test-only value — never the real COACH_REGISTRATION_SECRET.
+define( 'COACH_REGISTRATION_SECRET', 'test-registration-secret-at-least-32-chars-long' );
 
 require __DIR__ . '/../inc/gary-proxy.php';
 
@@ -118,6 +133,33 @@ $scripts_error_response = ihq_coach_handle_scripts();
 check( 'scripts: transport error returns 502', 502 === $scripts_error_response->status );
 check( 'scripts: transport error body carries the message', 'Could not resolve host' === $scripts_error_response->data['error'] );
 $GLOBALS['remote_request_error'] = false;
+
+// ihq_coach_sign_stage_release() — token shape and claims, matching
+// sami-portal-proof.mjs's createSamiStageRelease exactly.
+function base64url_decode( $s ) { return base64_decode( strtr( $s, '-_', '+/' ) ); }
+$token = ihq_coach_sign_stage_release( 'identity', 'ck_test_key_id', 'player-abc', 'cs_123', array( 'narration_not_required' => true ) );
+check( 'sign_stage_release: returns a two-part token', is_string( $token ) && 1 === substr_count( $token, '.' ) );
+list( $encoded_claims, $sig ) = explode( '.', $token );
+$claims = json_decode( base64url_decode( $encoded_claims ), true );
+check( 'sign_stage_release: aud is sami:registration_stage', 'sami:registration_stage' === $claims['aud'] );
+check( 'sign_stage_release: carries stage/key_id/player_ref/session_id', 'identity' === $claims['stage'] && 'ck_test_key_id' === $claims['key_id'] && 'player-abc' === $claims['player_ref'] && 'cs_123' === $claims['session_id'] );
+check( 'sign_stage_release: carries the verified fact', true === $claims['narration_not_required'] );
+check( 'sign_stage_release: exp is 60s after iat', 60 === ( $claims['exp'] - $claims['iat'] ) );
+$expected_sig = rtrim( strtr( base64_encode( hash_hmac( 'sha256', $encoded_claims, 'test-registration-secret-at-least-32-chars-long', true ) ), '+/', '-_' ), '=' );
+check( 'sign_stage_release: signature matches HMAC-SHA256(secret, encoded_claims)', $sig === $expected_sig );
+
+// ihq_coach_handle_attest_identity() — the full route handler.
+$GLOBALS['last_remote_request'] = null;
+$attest_request  = new WP_REST_Request( array( 'session_id' => 'cs_123', 'player_ref' => 'player-abc' ) );
+$attest_response = ihq_coach_handle_attest_identity( $attest_request );
+check( 'attest_identity: posts to the right session\'s attest endpoint', false !== strpos( $GLOBALS['last_remote_request']['url'], '/coach/v1/session/cs_123/attest' ) );
+$attest_sent_body = json_decode( $GLOBALS['last_remote_request']['args']['body'], true );
+check( 'attest_identity: stage is always identity', 'identity' === $attest_sent_body['stage'] );
+check( 'attest_identity: response forwarded to the caller', true === $attest_response->data['released'] );
+
+$attest_bad_request  = new WP_REST_Request( array( 'session_id' => '', 'player_ref' => '' ) );
+$attest_bad_response = ihq_coach_handle_attest_identity( $attest_bad_request );
+check( 'attest_identity: missing session_id/player_ref returns 400', 400 === $attest_bad_response->status );
 
 echo $fail ? "\n$fail FAILED\n" : "\nALL PASS\n";
 exit( $fail ? 1 : 0 );
