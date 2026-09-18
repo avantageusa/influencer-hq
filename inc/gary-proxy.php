@@ -376,11 +376,26 @@ function ihq_coach_handle_scripts() {
  * that truth should ever sign for. Attesting a fact you haven't verified is
  * exactly what this mechanism exists to prevent.
  *
+ * KNOWN GAP, acceptable for identity only: ihq_coach_permission_check() only
+ * confirms the request came from a page we rendered (a WP REST nonce), not
+ * that the caller "owns" the supplied session_id/player_ref — this WP layer
+ * has no session-ownership storage at all today. Low real risk here because
+ * narration_not_required is a constant, universally-true, valueless fact
+ * (attesting it for a foreign session_id/player_ref — both unguessable
+ * UUIDs — does nothing harmful). This gap MUST be closed with a real
+ * session-ownership check before attest is ever extended to channels'/
+ * complete's facts, which do carry real consequences if forgeable.
+ *
  * @param WP_REST_Request $request Request.
  * @return WP_REST_Response
  */
 function ihq_coach_handle_attest_identity( WP_REST_Request $request ) {
-	$session_id = sanitize_text_field( (string) $request->get_param( 'session_id' ) );
+	// get_url_params(), not get_param() — for a POST request, get_param()
+	// checks JSON/POST body before URL params, so a body-supplied session_id
+	// would silently win over the one in the route and let a caller attest a
+	// different session than the URL names (CodeRabbit finding on PR #35).
+	$url_params = $request->get_url_params();
+	$session_id = sanitize_text_field( (string) ( $url_params['session_id'] ?? '' ) );
 	$player_ref = sanitize_text_field( (string) $request->get_param( 'player_ref' ) );
 	if ( '' === $session_id || '' === $player_ref ) {
 		return new WP_REST_Response( array( 'error' => 'session_id and player_ref are required.' ), 400 );

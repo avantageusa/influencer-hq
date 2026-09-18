@@ -14,8 +14,10 @@ define( 'ABSPATH', '/' );
 
 class WP_REST_Request {
 	private $params;
-	public function __construct( $params = array() ) { $this->params = $params; }
+	private $url_params;
+	public function __construct( $params = array(), $url_params = array() ) { $this->params = $params; $this->url_params = $url_params; }
 	public function get_param( $key ) { return isset( $this->params[ $key ] ) ? $this->params[ $key ] : null; }
+	public function get_url_params() { return $this->url_params; }
 	public function get_header( $key ) { return null; }
 }
 class WP_REST_Response {
@@ -148,18 +150,32 @@ check( 'sign_stage_release: exp is 60s after iat', 60 === ( $claims['exp'] - $cl
 $expected_sig = rtrim( strtr( base64_encode( hash_hmac( 'sha256', $encoded_claims, 'test-registration-secret-at-least-32-chars-long', true ) ), '+/', '-_' ), '=' );
 check( 'sign_stage_release: signature matches HMAC-SHA256(secret, encoded_claims)', $sig === $expected_sig );
 
-// ihq_coach_handle_attest_identity() — the full route handler.
+// ihq_coach_handle_attest_identity() — the full route handler. session_id
+// comes from get_url_params() (second constructor arg here), matching the
+// real route's regex capture, not the request body.
 $GLOBALS['last_remote_request'] = null;
-$attest_request  = new WP_REST_Request( array( 'session_id' => 'cs_123', 'player_ref' => 'player-abc' ) );
+$attest_request  = new WP_REST_Request( array( 'player_ref' => 'player-abc' ), array( 'session_id' => 'cs_123' ) );
 $attest_response = ihq_coach_handle_attest_identity( $attest_request );
 check( 'attest_identity: posts to the right session\'s attest endpoint', false !== strpos( $GLOBALS['last_remote_request']['url'], '/coach/v1/session/cs_123/attest' ) );
 $attest_sent_body = json_decode( $GLOBALS['last_remote_request']['args']['body'], true );
 check( 'attest_identity: stage is always identity', 'identity' === $attest_sent_body['stage'] );
 check( 'attest_identity: response forwarded to the caller', true === $attest_response->data['released'] );
 
-$attest_bad_request  = new WP_REST_Request( array( 'session_id' => '', 'player_ref' => '' ) );
+$attest_bad_request  = new WP_REST_Request( array( 'player_ref' => '' ), array( 'session_id' => '' ) );
 $attest_bad_response = ihq_coach_handle_attest_identity( $attest_bad_request );
 check( 'attest_identity: missing session_id/player_ref returns 400', 400 === $attest_bad_response->status );
+
+// Regression for the CodeRabbit finding on PR #35: a conflicting body
+// session_id must NOT beat the URL's — get_param() would have let it win.
+$GLOBALS['last_remote_request'] = null;
+$conflict_request  = new WP_REST_Request(
+	array( 'player_ref' => 'player-abc', 'session_id' => 'cs_attacker_supplied' ),
+	array( 'session_id' => 'cs_123' )
+);
+$conflict_response = ihq_coach_handle_attest_identity( $conflict_request );
+check( 'attest_identity: URL session_id wins over a conflicting body session_id', false !== strpos( $GLOBALS['last_remote_request']['url'], '/coach/v1/session/cs_123/attest' ) );
+check( 'attest_identity: the conflicting body session_id is never used', false === strpos( $GLOBALS['last_remote_request']['url'], 'cs_attacker_supplied' ) );
+check( 'attest_identity: conflicting request still succeeds using the URL session_id', true === $conflict_response->data['released'] );
 
 echo $fail ? "\n$fail FAILED\n" : "\nALL PASS\n";
 exit( $fail ? 1 : 0 );
