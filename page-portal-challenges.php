@@ -25,7 +25,14 @@ $celeb_lists = [
 $celeb_labels = ['movie_stars' => 'Movie Stars', 'music_artists' => 'Music Artists', 'sports_icons' => 'Sports Icons'];
 $intl_league_regions = ['South Korea','Europe','Malaysia','Thailand','Africa','Singapore','Asia','India','China','Hong Kong','Philippines','Taiwan','United States','Canada','Macao','Pakistan','South America','Japan','Australia','South Africa'];
 
-$portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.games/av-baccarat/external/leaderboards';
+// Each tab embeds its own game-portal route so the iframe hides the competition
+// filters that don't belong to that tab (PO-2901 AC#6, handled game-portal side).
+$portal_embed_urls = [
+    'world'     => ihq_build_hq_game_portal_external_url( '/external/leaderboards' ),
+    'community' => ihq_build_hq_game_portal_external_url( '/external/leaderboards/community' ),
+    'private'   => ihq_build_hq_game_portal_external_url( '/external/leaderboards/private' ),
+    'leagues'   => ihq_build_hq_game_portal_external_url( '/external/leagues-slider' ),
+];
 ?>
 
     <main id="primary" class="site-main">
@@ -508,6 +515,19 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                             </div>
                         </div>
                     </div>
+
+                    <?php
+                    get_template_part(
+                        'template-parts/portal-external-embed',
+                        null,
+                        array(
+                            'url'      => $portal_embed_urls['world'],
+                            'title'    => __( 'World competition leaderboards', 'influencer-hq' ),
+                            'fallback' => __( 'World competition content is temporarily unavailable. Please try again later.', 'influencer-hq' ),
+                            'wrap_id'  => 'world-leaderboards-embed',
+                        )
+                    );
+                    ?>
 
                     <div class="competition-dropdown" id="world-leaderboards">
                         <div class="competition-dropdown-header">See My Results</div>
@@ -997,15 +1017,18 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                     <span id="private-influencer" class="hm-scroll-anchor" aria-hidden="true"></span>
                     <span id="private-follower" class="hm-scroll-anchor" aria-hidden="true"></span>
 
-                    <div class="portal-leaderboards-iframe-wrap" id="private-leaderboards">
-                        <iframe
-                            title="<?php echo esc_attr__( 'Influencer HQ leaderboards', 'influencer-hq' ); ?>"
-                            src="<?php echo esc_url( $portal_leaderboards_iframe_url ); ?>"
-                            loading="lazy"
-                            referrerpolicy="strict-origin-when-cross-origin"
-                            allowfullscreen
-                        ></iframe>
-                    </div>
+                    <?php
+                    get_template_part(
+                        'template-parts/portal-external-embed',
+                        null,
+                        array(
+                            'url'      => $portal_embed_urls['private'],
+                            'title'    => __( 'Private challenges leaderboards', 'influencer-hq' ),
+                            'fallback' => __( 'Private challenges content is temporarily unavailable. Please try again later.', 'influencer-hq' ),
+                            'wrap_id'  => 'private-leaderboards',
+                        )
+                    );
+                    ?>
                 </div>
 
                 <!-- Community Tab -->
@@ -1126,15 +1149,18 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                         </div>
                     </div>
 
-                    <div class="portal-leaderboards-iframe-wrap" id="community-leaderboards">
-                        <iframe
-                            title="<?php echo esc_attr__( 'Influencer / Follower Competition Results', 'influencer-hq' ); ?>"
-                            src="<?php echo esc_url( $portal_leaderboards_iframe_url ); ?>"
-                            loading="lazy"
-                            referrerpolicy="strict-origin-when-cross-origin"
-                            allowfullscreen
-                        ></iframe>
-                    </div>
+                    <?php
+                    get_template_part(
+                        'template-parts/portal-external-embed',
+                        null,
+                        array(
+                            'url'      => $portal_embed_urls['community'],
+                            'title'    => __( 'Influencer / Follower Competition Results', 'influencer-hq' ),
+                            'fallback' => __( 'Community competition content is temporarily unavailable. Please try again later.', 'influencer-hq' ),
+                            'wrap_id'  => 'community-leaderboards',
+                        )
+                    );
+                    ?>
                 </div>
 
                 <!-- Leagues Tab -->
@@ -1158,6 +1184,19 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                     ?>
 
                     <h2 class="competition-section-title" id="leagues-results">Leagues</h2>
+
+                    <?php
+                    get_template_part(
+                        'template-parts/portal-external-embed',
+                        null,
+                        array(
+                            'url'      => $portal_embed_urls['leagues'],
+                            'title'    => __( 'Leagues standings', 'influencer-hq' ),
+                            'fallback' => __( 'Leagues content is temporarily unavailable. Please try again later.', 'influencer-hq' ),
+                            'wrap_id'  => 'leagues-leaderboards',
+                        )
+                    );
+                    ?>
 
                     <div class="competition-panel-card">
                         <div class="competition-panel-title" id="leagues-celebrity">Celebrity Follower Leagues</div>

@@ -1949,6 +1949,25 @@
         border-radius: 8px;
     }
 
+    /* Shown only when a game-portal embed fails to load (PO-2901 AC#5).
+       .portal-*-iframe-wrap iframe { display:block } beats the UA [hidden]
+       rule, so the failed frame would stay visible beside the fallback. */
+    [data-ihq-external-embed] iframe[hidden] {
+        display: none !important;
+    }
+    body.page-template-page-portal-equity-php .portal-embed-fallback,
+    body.page-template-page-portal-challenges-php .portal-embed-fallback {
+        margin: 0;
+        padding: 20px 18px;
+        border: 1px solid rgba(184, 151, 47, 0.55);
+        border-radius: 8px;
+        background: #111;
+        font-family: 'Be Vietnam Pro', sans-serif;
+        font-size: 15px;
+        color: rgba(255, 255, 255, 0.75);
+        text-align: center;
+    }
+
     /* Go To Game button — shown in portal header across all portal pages */
     .go-to-game-btn {
         display: inline-flex;

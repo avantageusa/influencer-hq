@@ -127,17 +127,23 @@ $equity_attribution_expanded = is_user_logged_in();
                             <span class="equity-card-toggle" aria-hidden="true"><?php echo $equity_attribution_expanded ? '▴' : '▾'; ?></span>
                         </div>
                         <div class="equity-card-body" id="equityAttributionBody"<?php echo $equity_attribution_expanded ? '' : ' hidden'; ?>>
-                            <div class="portal-equity-iframe-wrap" id="equity-external-embed">
-                                <?php if ( $equity_attribution_expanded ) : ?>
-                                <iframe
-                                    title="<?php echo esc_attr__( 'Influencer HQ equity', 'influencer-hq' ); ?>"
-                                    src="<?php echo esc_url( $portal_equity_iframe_url ); ?>"
-                                    loading="lazy"
-                                    referrerpolicy="strict-origin-when-cross-origin"
-                                    allowfullscreen
-                                ></iframe>
-                                <?php endif; ?>
-                            </div>
+                            <?php if ( $equity_attribution_expanded ) : ?>
+                                <?php
+                                get_template_part(
+                                    'template-parts/portal-external-embed',
+                                    null,
+                                    array(
+                                        'url'        => $portal_equity_iframe_url,
+                                        'title'      => __( 'Influencer HQ equity', 'influencer-hq' ),
+                                        'fallback'   => __( 'Equity content is temporarily unavailable. Please try again later.', 'influencer-hq' ),
+                                        'wrap_class' => 'portal-equity-iframe-wrap',
+                                        'wrap_id'    => 'equity-external-embed',
+                                    )
+                                );
+                                ?>
+                            <?php else : ?>
+                                <div class="portal-equity-iframe-wrap" id="equity-external-embed"></div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
