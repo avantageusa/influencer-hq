@@ -485,7 +485,7 @@
 
     bindGate(
       'profile_youtube_video',
-      '#ihq_gameplay_video_url, button[name="ihq_gameplay_video_submit"]',
+      '#ihq_video_url_new, #ihq_video_subject_new, .ihq-video-submissions button, .ihq-video-submissions input',
       ['mousedown', 'focusin', 'click']
     );
     bindGate(

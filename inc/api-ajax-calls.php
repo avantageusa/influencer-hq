@@ -536,19 +536,66 @@ function ihq_referral_api_user_id_candidates( $wp_user_id ) {
  * @return string
  */
 function ihq_extract_referral_url_from_api_body( $body ) {
+	$urls = ihq_extract_referral_urls_from_api_body( $body );
+	return $urls['url'];
+}
+
+/**
+ * @param array<string, mixed> $body Decoded API JSON.
+ * @return array{url: string, follower_url: string, influencer_url: string}
+ */
+function ihq_extract_referral_urls_from_api_body( $body ) {
+	$empty = array(
+		'url'             => '',
+		'follower_url'    => '',
+		'influencer_url'  => '',
+	);
 	if ( ! is_array( $body ) ) {
-		return '';
+		return $empty;
 	}
+
 	$url_keys = array( 'url', 'link', 'shareUrl', 'referralUrl' );
-	foreach ( $url_keys as $key ) {
-		if ( ! empty( $body[ $key ] ) && is_string( $body[ $key ] ) ) {
-			return esc_url_raw( $body[ $key ] );
+	$follower_keys = array( 'followerUrl', 'follower_url', 'followerLink', 'follower_link' );
+	$influencer_keys = array( 'influencerUrl', 'influencer_url', 'influencerLink', 'influencer_link' );
+
+	$pick = static function ( $source, $keys ) {
+		foreach ( $keys as $key ) {
+			if ( ! empty( $source[ $key ] ) && is_string( $source[ $key ] ) ) {
+				return esc_url_raw( $source[ $key ] );
+			}
+		}
+		return '';
+	};
+
+	$url         = $pick( $body, $url_keys );
+	$follower    = $pick( $body, $follower_keys );
+	$influencer  = $pick( $body, $influencer_keys );
+
+	if ( ! empty( $body['data'] ) && is_array( $body['data'] ) ) {
+		$nested = ihq_extract_referral_urls_from_api_body( $body['data'] );
+		if ( $url === '' ) {
+			$url = $nested['url'];
+		}
+		if ( $follower === '' ) {
+			$follower = $nested['follower_url'];
+		}
+		if ( $influencer === '' ) {
+			$influencer = $nested['influencer_url'];
 		}
 	}
-	if ( ! empty( $body['data'] ) && is_array( $body['data'] ) ) {
-		return ihq_extract_referral_url_from_api_body( $body['data'] );
+
+	if ( $follower === '' ) {
+		$follower = $url;
 	}
-	return '';
+	if ( $influencer === '' ) {
+		$influencer = $url;
+	}
+
+	return array(
+		'url'            => $url,
+		'follower_url'   => $follower,
+		'influencer_url' => $influencer,
+	);
 }
 
 /**
@@ -675,7 +722,18 @@ function get_referral_link_ajax() {
 		wp_send_json_error( array( 'message' => 'Referral link not available yet.' ) );
 	}
 
-	wp_send_json_success( array( 'url' => $url ) );
+	$body = isset( $result['body'] ) && is_array( $result['body'] ) ? $result['body'] : array();
+	$urls = ihq_extract_referral_urls_from_api_body( $body );
+	$follower_url = $urls['follower_url'] !== '' ? $urls['follower_url'] : $url;
+	$influencer_url = $urls['influencer_url'] !== '' ? $urls['influencer_url'] : $url;
+
+	wp_send_json_success(
+		array(
+			'url'             => $url,
+			'follower_url'    => $follower_url,
+			'influencer_url'  => $influencer_url,
+		)
+	);
 }
 
 // ============================================================
@@ -686,7 +744,20 @@ function get_referral_link_ajax() {
 add_action( 'wp_ajax_save_settings_field',  'save_settings_field_ajax' );
 
 function ihq_allowed_contact_keys() {
-    return [ 'email', 'telegram' ];
+    return array(
+        'email',
+        'facebook',
+        'instagram',
+        'kakaotalk',
+        'kick',
+        'line',
+        'telegram',
+        'tiktok',
+        'twitch',
+        'wechat',
+        'whatsapp',
+        'x',
+    );
 }
 
 function save_settings_field_ajax() {
@@ -722,6 +793,13 @@ function save_settings_field_ajax() {
                 wp_update_user( [ 'ID' => $user_id, $map[ $field ] => $value ] );
             } else {
                 update_user_meta( $user_id, $map[ $field ], $value );
+            }
+            if ( $field === 'name' ) {
+                $parts = preg_split( '/\s+/', trim( $value ), 2 );
+                $given = isset( $parts[0] ) ? $parts[0] : '';
+                $family = isset( $parts[1] ) ? $parts[1] : '';
+                update_user_meta( $user_id, 'first_name', $given );
+                update_user_meta( $user_id, 'last_name', $family );
             }
         }
     } elseif ( $group === 'social' ) {
