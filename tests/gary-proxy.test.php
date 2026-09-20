@@ -239,10 +239,12 @@ ihq_coach_handle_advance( $advance_no_tier_request );
 $advance_no_tier_sent = json_decode( $GLOBALS['last_remote_request']['args']['body'], true );
 check( 'advance: tier omitted when not applicable', ! array_key_exists( 'tier', $advance_no_tier_sent ) );
 
+// An out-of-enum tier is REJECTED (400), not silently dropped — dropping it
+// used to mean Gary saw the request as missing a tier entirely at
+// time_selection (time_tier_required), hiding that the caller actually sent
+// one, just an invalid value (review feedback from Dejan Arsic on PR #36).
 $advance_invalid_tier_request = new WP_REST_Request( array( 'expected_stage' => 'time_selection', 'expected_revision' => 2, 'tier' => 7 ), array( 'session_id' => 'cs_123' ) );
-ihq_coach_handle_advance( $advance_invalid_tier_request );
-$advance_invalid_tier_sent = json_decode( $GLOBALS['last_remote_request']['args']['body'], true );
-check( 'advance: an invalid tier (not 2/5/10) is dropped, not forwarded', ! array_key_exists( 'tier', $advance_invalid_tier_sent ) );
+check( 'advance: an out-of-enum tier (7) returns 400, not silently dropped', 400 === ihq_coach_handle_advance( $advance_invalid_tier_request )->status );
 
 $advance_bad_request  = new WP_REST_Request( array( 'expected_stage' => '' ), array( 'session_id' => 'cs_123' ) );
 $advance_bad_response = ihq_coach_handle_advance( $advance_bad_request );
@@ -260,11 +262,8 @@ check( 'advance: fractional expected_revision as a JSON float returns 400', 400 
 $advance_negative_revision = new WP_REST_Request( array( 'expected_stage' => 'intro', 'expected_revision' => -1 ), array( 'session_id' => 'cs_123' ) );
 check( 'advance: negative expected_revision returns 400', 400 === ihq_coach_handle_advance( $advance_negative_revision )->status );
 
-$GLOBALS['last_remote_request'] = null;
 $advance_fractional_tier = new WP_REST_Request( array( 'expected_stage' => 'time_selection', 'expected_revision' => 3, 'tier' => '5.9' ), array( 'session_id' => 'cs_123' ) );
-ihq_coach_handle_advance( $advance_fractional_tier );
-$advance_fractional_tier_sent = json_decode( $GLOBALS['last_remote_request']['args']['body'], true );
-check( 'advance: fractional tier ("5.9") is dropped, never silently truncated to 5', ! array_key_exists( 'tier', $advance_fractional_tier_sent ) );
+check( 'advance: fractional tier ("5.9") returns 400, never silently truncated to 5', 400 === ihq_coach_handle_advance( $advance_fractional_tier )->status );
 
 // A well-formed, still-valid request keeps working after tightening validation.
 $GLOBALS['last_remote_request'] = null;

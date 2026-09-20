@@ -508,15 +508,24 @@ function ihq_coach_handle_advance( WP_REST_Request $request ) {
 	$tier_is_valid = ( is_int( $tier ) && in_array( $tier, array( 2, 5, 10 ), true ) )
 		|| ( is_string( $tier ) && in_array( $tier, array( '2', '5', '10' ), true ) );
 
-	if ( '' === $session_id || '' === $expected_stage || ! $revision_is_valid ) {
-		return new WP_REST_Response( array( 'error' => 'session_id, expected_stage and a non-negative integer expected_revision are required.' ), 400 );
+	// tier is OPTIONAL (most advance calls don't carry one) — but if the
+	// caller sent one, it must be a real 2/5/10, not silently dropped. Dropping
+	// an out-of-enum tier used to mean Gary saw a request that reached
+	// time_selection with no tier at all and returned time_tier_required,
+	// hiding that the caller actually sent something, just an invalid value
+	// (review feedback from Dejan Arsic on PR #36).
+	if ( '' === $session_id || '' === $expected_stage || ! $revision_is_valid || ( null !== $tier && ! $tier_is_valid ) ) {
+		return new WP_REST_Response(
+			array( 'error' => 'session_id, expected_stage and a non-negative integer expected_revision are required; tier, if present, must be 2, 5 or 10.' ),
+			400
+		);
 	}
 
 	$payload = array(
 		'expected_stage'    => $expected_stage,
 		'expected_revision' => (int) $expected_revision,
 	);
-	if ( null !== $tier && $tier_is_valid ) {
+	if ( null !== $tier ) {
 		$payload['tier'] = (int) $tier;
 	}
 
