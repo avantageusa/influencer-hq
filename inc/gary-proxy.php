@@ -280,7 +280,12 @@ function ihq_coach_handle_open_session( WP_REST_Request $request ) {
  * @return WP_REST_Response
  */
 function ihq_coach_handle_message( WP_REST_Request $request ) {
-	$session_id = sanitize_text_field( (string) $request->get_param( 'session_id' ) );
+	// get_url_params(), not get_param() — see the note on
+	// ihq_coach_handle_attest_identity(): for a POST request, get_param()
+	// checks JSON/POST body before URL params, so a body-supplied session_id
+	// would silently win over the one in the route.
+	$url_params = $request->get_url_params();
+	$session_id = sanitize_text_field( (string) ( $url_params['session_id'] ?? '' ) );
 
 	// Deliberately NOT sanitize_textarea_field() here — this text is never rendered
 	// as HTML on our side, it's forwarded verbatim as the conversation content in a
@@ -317,7 +322,8 @@ function ihq_coach_handle_message( WP_REST_Request $request ) {
  * @return WP_REST_Response
  */
 function ihq_coach_handle_close( WP_REST_Request $request ) {
-	$session_id = sanitize_text_field( (string) $request->get_param( 'session_id' ) );
+	$url_params = $request->get_url_params();
+	$session_id = sanitize_text_field( (string) ( $url_params['session_id'] ?? '' ) );
 	if ( '' === $session_id ) {
 		return new WP_REST_Response( array( 'error' => 'session_id is required.' ), 400 );
 	}
@@ -431,6 +437,91 @@ function ihq_coach_handle_attest_identity( WP_REST_Request $request ) {
 }
 
 /**
+ * POST /ihq/v1/coach/{session_id}/narrate — speak the current stage's
+ * approved passage verbatim.
+ *
+ * Gary rejects this unless script_id is the session's CURRENT stage —
+ * caller-supplied text is never accepted, this only reads back the
+ * pre-approved passage. A held current stage returns a neutral
+ * script_review_required response rather than the held copy. Narrating does
+ * not advance state; call /advance separately to move stages.
+ *
+ * @param WP_REST_Request $request Request.
+ * @return WP_REST_Response
+ */
+function ihq_coach_handle_narrate( WP_REST_Request $request ) {
+	$url_params = $request->get_url_params();
+	$session_id = sanitize_text_field( (string) ( $url_params['session_id'] ?? '' ) );
+	$script_id  = sanitize_text_field( (string) $request->get_param( 'script_id' ) );
+	$version    = sanitize_text_field( (string) $request->get_param( 'version' ) );
+
+	if ( '' === $session_id || '' === $script_id ) {
+		return new WP_REST_Response( array( 'error' => 'session_id and script_id are required.' ), 400 );
+	}
+
+	$payload = array( 'script_id' => $script_id );
+	if ( '' !== $version ) {
+		$payload['version'] = $version;
+	}
+
+	$result = ihq_coach_request(
+		'POST',
+		'/coach/v1/session/' . rawurlencode( $session_id ) . '/narrate',
+		$payload
+	);
+	if ( is_wp_error( $result ) ) {
+		return new WP_REST_Response( array( 'error' => $result->get_error_message() ), 502 );
+	}
+
+	return new WP_REST_Response( $result['body'], $result['status'] );
+}
+
+/**
+ * POST /ihq/v1/coach/{session_id}/advance — move the guided registration
+ * flow to its next stage.
+ *
+ * Optimistic concurrency: expected_stage/expected_revision must be the
+ * values the caller actually read back (from session-open, the last
+ * advance, or GET /coach/v1/session/{id}) — never a remembered value. A
+ * stale, skipped, or duplicate advance returns 409; per Gary's own docs, do
+ * not blindly retry an uncertain advance — re-read the session first. tier
+ * (2, 5, or 10) is required only on the call that reaches time_selection.
+ *
+ * @param WP_REST_Request $request Request.
+ * @return WP_REST_Response
+ */
+function ihq_coach_handle_advance( WP_REST_Request $request ) {
+	$url_params        = $request->get_url_params();
+	$session_id        = sanitize_text_field( (string) ( $url_params['session_id'] ?? '' ) );
+	$expected_stage    = sanitize_text_field( (string) $request->get_param( 'expected_stage' ) );
+	$expected_revision = $request->get_param( 'expected_revision' );
+	$tier              = $request->get_param( 'tier' );
+
+	if ( '' === $session_id || '' === $expected_stage || null === $expected_revision || ! is_numeric( $expected_revision ) ) {
+		return new WP_REST_Response( array( 'error' => 'session_id, expected_stage and a numeric expected_revision are required.' ), 400 );
+	}
+
+	$payload = array(
+		'expected_stage'    => $expected_stage,
+		'expected_revision' => (int) $expected_revision,
+	);
+	if ( null !== $tier && in_array( (int) $tier, array( 2, 5, 10 ), true ) ) {
+		$payload['tier'] = (int) $tier;
+	}
+
+	$result = ihq_coach_request(
+		'POST',
+		'/coach/v1/session/' . rawurlencode( $session_id ) . '/advance',
+		$payload
+	);
+	if ( is_wp_error( $result ) ) {
+		return new WP_REST_Response( array( 'error' => $result->get_error_message() ), 502 );
+	}
+
+	return new WP_REST_Response( $result['body'], $result['status'] );
+}
+
+/**
  * Register the Coach REST routes.
  */
 function ihq_coach_register_routes() {
@@ -490,6 +581,26 @@ function ihq_coach_register_routes() {
 		array(
 			'methods'             => WP_REST_Server::CREATABLE,
 			'callback'            => 'ihq_coach_handle_attest_identity',
+			'permission_callback' => 'ihq_coach_permission_check',
+		)
+	);
+
+	register_rest_route(
+		'ihq/v1',
+		'/coach/(?P<session_id>[a-zA-Z0-9_\-]+)/narrate',
+		array(
+			'methods'             => WP_REST_Server::CREATABLE,
+			'callback'            => 'ihq_coach_handle_narrate',
+			'permission_callback' => 'ihq_coach_permission_check',
+		)
+	);
+
+	register_rest_route(
+		'ihq/v1',
+		'/coach/(?P<session_id>[a-zA-Z0-9_\-]+)/advance',
+		array(
+			'methods'             => WP_REST_Server::CREATABLE,
+			'callback'            => 'ihq_coach_handle_advance',
 			'permission_callback' => 'ihq_coach_permission_check',
 		)
 	);
