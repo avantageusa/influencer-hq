@@ -248,6 +248,32 @@ $advance_bad_request  = new WP_REST_Request( array( 'expected_stage' => '' ), ar
 $advance_bad_response = ihq_coach_handle_advance( $advance_bad_request );
 check( 'advance: missing expected_stage/expected_revision returns 400', 400 === $advance_bad_response->status );
 
+// Regression for the CodeRabbit finding on PR #36: a fractional
+// expected_revision/tier must be REJECTED (400), never silently truncated
+// and forwarded as if it were the integer 0/5/etc.
+$advance_fractional_revision_string = new WP_REST_Request( array( 'expected_stage' => 'intro', 'expected_revision' => '0.9' ), array( 'session_id' => 'cs_123' ) );
+check( 'advance: fractional expected_revision string (e.g. "0.9") returns 400, not truncated to 0', 400 === ihq_coach_handle_advance( $advance_fractional_revision_string )->status );
+
+$advance_fractional_revision_float = new WP_REST_Request( array( 'expected_stage' => 'intro', 'expected_revision' => 0.9 ), array( 'session_id' => 'cs_123' ) );
+check( 'advance: fractional expected_revision as a JSON float returns 400', 400 === ihq_coach_handle_advance( $advance_fractional_revision_float )->status );
+
+$advance_negative_revision = new WP_REST_Request( array( 'expected_stage' => 'intro', 'expected_revision' => -1 ), array( 'session_id' => 'cs_123' ) );
+check( 'advance: negative expected_revision returns 400', 400 === ihq_coach_handle_advance( $advance_negative_revision )->status );
+
+$GLOBALS['last_remote_request'] = null;
+$advance_fractional_tier = new WP_REST_Request( array( 'expected_stage' => 'time_selection', 'expected_revision' => 3, 'tier' => '5.9' ), array( 'session_id' => 'cs_123' ) );
+ihq_coach_handle_advance( $advance_fractional_tier );
+$advance_fractional_tier_sent = json_decode( $GLOBALS['last_remote_request']['args']['body'], true );
+check( 'advance: fractional tier ("5.9") is dropped, never silently truncated to 5', ! array_key_exists( 'tier', $advance_fractional_tier_sent ) );
+
+// A well-formed, still-valid request keeps working after tightening validation.
+$GLOBALS['last_remote_request'] = null;
+$advance_valid_revision_string = new WP_REST_Request( array( 'expected_stage' => 'intro', 'expected_revision' => '0', 'tier' => '10' ), array( 'session_id' => 'cs_123' ) );
+$advance_valid_revision_response = ihq_coach_handle_advance( $advance_valid_revision_string );
+check( 'advance: a plain-digit-string revision ("0") and tier ("10") are still accepted', 200 === $advance_valid_revision_response->status );
+$advance_valid_revision_sent = json_decode( $GLOBALS['last_remote_request']['args']['body'], true );
+check( 'advance: string revision/tier still forwarded as real integers', 0 === $advance_valid_revision_sent['expected_revision'] && 10 === $advance_valid_revision_sent['tier'] );
+
 // advance's 409 (stale/skipped/duplicate) passes through unchanged, not
 // swallowed or retried — the caller is expected to re-read the session.
 $GLOBALS['remote_request_conflict'] = true;

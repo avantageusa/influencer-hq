@@ -497,15 +497,26 @@ function ihq_coach_handle_advance( WP_REST_Request $request ) {
 	$expected_revision = $request->get_param( 'expected_revision' );
 	$tier              = $request->get_param( 'tier' );
 
-	if ( '' === $session_id || '' === $expected_stage || null === $expected_revision || ! is_numeric( $expected_revision ) ) {
-		return new WP_REST_Response( array( 'error' => 'session_id, expected_stage and a numeric expected_revision are required.' ), 400 );
+	// is_numeric()+(int) cast would silently truncate a fractional value like
+	// "0.9" to 0 and forward it as a real revision/tier instead of rejecting
+	// malformed input with a clear 400 (CodeRabbit finding on PR #36) — Gary's
+	// own schema requires a whole, non-negative revision and an exact tier
+	// enum, so accept only an actual int or a plain-digit string, never a
+	// float or a numeric string with a decimal point.
+	$revision_is_valid = ( is_int( $expected_revision ) && $expected_revision >= 0 )
+		|| ( is_string( $expected_revision ) && preg_match( '/^(?:0|[1-9][0-9]*)$/D', $expected_revision ) );
+	$tier_is_valid = ( is_int( $tier ) && in_array( $tier, array( 2, 5, 10 ), true ) )
+		|| ( is_string( $tier ) && in_array( $tier, array( '2', '5', '10' ), true ) );
+
+	if ( '' === $session_id || '' === $expected_stage || ! $revision_is_valid ) {
+		return new WP_REST_Response( array( 'error' => 'session_id, expected_stage and a non-negative integer expected_revision are required.' ), 400 );
 	}
 
 	$payload = array(
 		'expected_stage'    => $expected_stage,
 		'expected_revision' => (int) $expected_revision,
 	);
-	if ( null !== $tier && in_array( (int) $tier, array( 2, 5, 10 ), true ) ) {
+	if ( null !== $tier && $tier_is_valid ) {
 		$payload['tier'] = (int) $tier;
 	}
 
