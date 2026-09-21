@@ -483,10 +483,27 @@ if ( stage && avatarWrap ) {
         } );
     }
 
+    // Callers that need to know the requested panel is actually visible
+    // (not just "requested") — currently just playPrerenderedClip() below —
+    // await showPanel()'s returned promise instead of guessing a fixed delay.
+    // Every other call site still just fires it and moves on, which is fine:
+    // a Promise nobody awaits behaves exactly like the old `undefined` return.
+    let panelActivationWaiters = []; // [{ key, resolve }]
+
+    function resolvePanelWaiters( key ) {
+        panelActivationWaiters = panelActivationWaiters.filter( ( waiter ) => {
+            if ( waiter.key !== key ) {
+                return true;
+            }
+            waiter.resolve();
+            return false;
+        } );
+    }
+
     function showPanel( panelKey ) {
         const next = stage.querySelector( '.aicoach-panel[data-panel="' + panelKey + '"]' );
         if ( ! next ) {
-            return;
+            return Promise.resolve();
         }
 
         hydratePanelImages( next );
@@ -496,13 +513,22 @@ if ( stage && avatarWrap ) {
             // FR-07's own showPanel('identity') call, well within the 800ms fade
             // window on a fast/automated submit. Remember the latest request and
             // apply it once the in-flight transition finishes.
+            if ( pendingPanelKey && pendingPanelKey !== panelKey ) {
+                // The previously queued key is about to be overwritten and will
+                // never show — resolve its waiters now so an awaiting caller
+                // doesn't hang forever, same "latest wins" trade-off the
+                // fire-and-forget callers already silently accept.
+                resolvePanelWaiters( pendingPanelKey );
+            }
             pendingPanelKey = panelKey;
-            return;
+            return new Promise( ( resolve ) => {
+                panelActivationWaiters.push( { key: panelKey, resolve } );
+            } );
         }
 
         const current = getActivePanel();
         if ( ! current || next === current ) {
-            return;
+            return Promise.resolve();
         }
 
         isAnimating = true;
@@ -511,24 +537,28 @@ if ( stage && avatarWrap ) {
         current.classList.remove( 'is-active' );
         current.setAttribute( 'aria-hidden', 'true' );
 
-        window.setTimeout( function () {
-            next.classList.add( 'is-active' );
-            next.setAttribute( 'aria-hidden', 'false' );
-            stage.style.minHeight = next.offsetHeight + 'px';
-
+        return new Promise( ( resolve ) => {
             window.setTimeout( function () {
-                stage.style.minHeight = '';
-                isAnimating = false;
+                next.classList.add( 'is-active' );
+                next.setAttribute( 'aria-hidden', 'false' );
+                stage.style.minHeight = next.offsetHeight + 'px';
+                resolvePanelWaiters( panelKey );
+                resolve();
 
-                if ( pendingPanelKey && pendingPanelKey !== panelKey ) {
-                    const queued = pendingPanelKey;
-                    pendingPanelKey = null;
-                    showPanel( queued );
-                } else {
-                    pendingPanelKey = null;
-                }
+                window.setTimeout( function () {
+                    stage.style.minHeight = '';
+                    isAnimating = false;
+
+                    if ( pendingPanelKey && pendingPanelKey !== panelKey ) {
+                        const queued = pendingPanelKey;
+                        pendingPanelKey = null;
+                        showPanel( queued );
+                    } else {
+                        pendingPanelKey = null;
+                    }
+                }, FADE_MS );
             }, FADE_MS );
-        }, FADE_MS );
+        } );
     }
 
     let sequenceIndex = 0;
@@ -756,7 +786,7 @@ if ( stage && avatarWrap ) {
         }
         for ( ; sequenceIndex < SCREENS.length; sequenceIndex++ ) {
             const screen = SCREENS[ sequenceIndex ];
-            showPanel( screen.panel );
+            const panelReady = showPanel( screen.panel );
             const captionEl = getCaptionEl( screen.panel );
             if ( captionEl ) {
                 captionEl.textContent = screen.script;
@@ -766,10 +796,11 @@ if ( stage && avatarWrap ) {
             // other screen keeps the original caption-only fixed dwell.
             const clipUrl = getPrerenderedUrl( screen.panel );
             if ( clipUrl ) {
-                // showPanel()'s fade-in only completes FADE_MS after it's
-                // called — starting the clip immediately would let its first
-                // ~400ms play while the previous panel is still visible.
-                await new Promise( ( resolve ) => window.setTimeout( resolve, FADE_MS ) );
+                // Wait for this exact panel to actually be the active one —
+                // not just a fixed FADE_MS guess, which breaks if showPanel()
+                // had to queue behind another in-flight transition (it can
+                // take longer than one FADE_MS in that case; see showPanel()).
+                await panelReady;
                 const played = await playPrerenderedClip( clipUrl );
                 if ( ! played ) {
                     await waitForReadOrSkip();

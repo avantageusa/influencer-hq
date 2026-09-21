@@ -316,6 +316,19 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $log = nul
 			'error'  => "download failed: HTTP {$download_status} from content.url",
 		);
 	}
+	// A 2xx with an empty body (204 No Content, or any response that streams
+	// zero bytes) passes the status check above but leaves a 0-byte file —
+	// that still satisfies the cache check's file_exists() on every future
+	// run, so a genuinely broken render would silently keep "succeeding".
+	if ( ! file_exists( $dest_file ) || 0 === filesize( $dest_file ) ) {
+		if ( file_exists( $dest_file ) ) {
+			wp_delete_file( $dest_file );
+		}
+		return array(
+			'status' => 'error',
+			'error'  => "download failed: HTTP {$download_status} but the saved file is empty",
+		);
+	}
 
 	$manifest[ $segment_key ] = array(
 		'fingerprint' => $fingerprint,
