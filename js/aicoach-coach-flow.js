@@ -706,6 +706,25 @@ if ( stage && avatarWrap ) {
         avatarWrap.dataset.muted = String( video.muted );
     } );
 
+    // Browsers block autoplaying audio until the visitor has interacted with
+    // the page at least once — there's no way around that for a page that
+    // starts talking on arrival with no required tap. Rather than making
+    // visitors hunt for the small unmute button on the avatar, the first
+    // click/tap/keypress anywhere unmutes it, same as the "tap to unmute"
+    // pattern used elsewhere for autoplaying video with sound.
+    function unmuteOnFirstInteraction() {
+        document.removeEventListener( 'click', unmuteOnFirstInteraction );
+        document.removeEventListener( 'keydown', unmuteOnFirstInteraction );
+        if ( ! video.muted ) {
+            return;
+        }
+        video.muted = false;
+        unmuteBtn?.setAttribute( 'aria-pressed', 'true' );
+        avatarWrap.dataset.muted = 'false';
+    }
+    document.addEventListener( 'click', unmuteOnFirstInteraction );
+    document.addEventListener( 'keydown', unmuteOnFirstInteraction );
+
     // FR-07 — identity capture form (First Name, Last Name, Username). No coach
     // narration exists for this screen (no approved script, unlike every prior
     // one), so it's plain form logic: CONTINUE is gated only on all three
@@ -1053,13 +1072,35 @@ if ( stage && avatarWrap ) {
     // envelope — { session: { id }, say: { text, video: { session_token } }, ... }.
     // Throws on any failure; the caller decides what to do (fall back).
     async function openGarySession( locale ) {
-        const res = await fetch( GARY_SESSION_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': cfg.nonce },
-            body: JSON.stringify( { locale: locale } ),
-        } );
-        const data = await res.json();
+        console.log( '[aicoach] POST', GARY_SESSION_URL, { locale: locale } );
+        let res;
+        try {
+            res = await fetch( GARY_SESSION_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': cfg.nonce },
+                body: JSON.stringify( { locale: locale } ),
+            } );
+        } catch ( networkError ) {
+            console.error( '[aicoach] /coach/session network failure (no response reached the browser):', networkError );
+            throw networkError;
+        }
+        console.log( '[aicoach] /coach/session HTTP', res.status, res.statusText );
+
+        // A 502 from Cloudflare/PHP-FPM returns an HTML error page, not JSON —
+        // res.json() would throw a generic, unhelpful SyntaxError. Read as text
+        // first so a non-JSON response is logged with its real status/body
+        // instead of masking it behind "Unexpected token '<'...".
+        const rawBody = await res.text();
+        let data;
+        try {
+            data = JSON.parse( rawBody );
+        } catch ( parseError ) {
+            console.error( '[aicoach] /coach/session returned non-JSON body (HTTP ' + res.status + '):', rawBody.slice( 0, 500 ) );
+            throw new Error( 'Gary session request returned a non-JSON response (HTTP ' + res.status + ').' );
+        }
+
         if ( ! res.ok || ! data.session?.id || ! data.say?.video?.session_token ) {
+            console.error( '[aicoach] /coach/session did not return a usable session:', { status: res.status, data: data } );
             throw new Error( data.error || 'Failed to open Gary session.' );
         }
         return data;
@@ -1072,7 +1113,13 @@ if ( stage && avatarWrap ) {
             const gary = await openGarySession( currentLocale );
             garySessionId = gary.session.id;
 
-            const client = createClient( gary.say.video.session_token );
+            // disableInputAudio — this page never uses the visitor's microphone
+            // (no voice input UI), and omitting it made Anam request mic
+            // permission anyway (seen live as a browser permission prompt / a
+            // console "Failed to get microphone permission" error). Denying or
+            // dismissing that prompt left the stream connected but silent
+            // forever, since data-status never reached "live".
+            const client = createClient( gary.say.video.session_token, { disableInputAudio: true } );
             activeClient = client;
             let handledClose = false;
             let videoStarted = false; // VIDEO_PLAY_STARTED has been observed firing more than
@@ -1100,6 +1147,19 @@ if ( stage && avatarWrap ) {
                 if ( introCaptionEl ) {
                     introCaptionEl.textContent = gary.say.text || SCREENS[ 0 ].script;
                 }
+
+                // VIDEO_PLAY_STARTED is the confirmation that the peer connection
+                // is actually open — calling client.talk() any earlier (e.g. right
+                // after streamToVideoElement() resolves) hits the SDK before the
+                // command channel is ready ("sendTalkCommand: peer connection is
+                // null"). The session_token alone starts a connected-but-silent
+                // stream; talk() is what makes the avatar speak/lip-sync say.text.
+                try {
+                    await client.talk( gary.say.text );
+                } catch ( talkError ) {
+                    console.warn( '[aicoach] client.talk() failed, avatar stays silent:', talkError );
+                }
+
                 await waitForReadOrSkip();
                 sequenceIndex = 1;
                 runFallback( true );

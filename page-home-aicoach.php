@@ -1137,6 +1137,29 @@ $aicoach_channels = array(
     }
 
     @media (max-width: 520px) {
+        /* Ivan/Filip mobile feedback (2026-09-21): the shared portal header's
+        nav wraps onto 3 lines on narrow screens, which already pushes
+        #portal-content's dynamic top padding down a lot (see NFR-02 above —
+        that padding is correctly tracking the real header height, not a bug
+        to fix here). Shrinking the avatar and tightening the spacing below
+        it is what this page can safely do on its own to get the intro
+        caption back within view without a scroll; the header/nav height
+        itself is a shared component used on every portal page and isn't
+        touched by this page-scoped change. */
+        .aicoach-belief {
+            margin-bottom: 16px;
+        }
+
+        .aicoach-avatar-wrap {
+            width: min(160px, 42vw);
+            margin: 0 auto 20px;
+        }
+
+        .aicoach-caption {
+            margin-bottom: 20px;
+            min-height: 0;
+        }
+
         .aicoach-tier-head {
             gap: 14px;
         }
