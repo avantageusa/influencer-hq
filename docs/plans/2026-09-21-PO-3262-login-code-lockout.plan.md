@@ -22,6 +22,12 @@ todos:
   - id: global-cleanup
     content: Sweep expired fail/fail_timeout options from the scheduled cleanup job
     status: completed
+  - id: cleanup-mutex
+    content: Cleanup deletes only while holding a non-blocking per-IP mutex after re-read
+    status: completed
+  - id: release-mutex-before-oauth
+    content: Release verify mutex before ihq_refresh_influencer_oauth_tokens on success
+    status: completed
   - id: verify
     content: Submit three wrong codes on portal login, confirm lockout message and blocked fourth try
     status: pending

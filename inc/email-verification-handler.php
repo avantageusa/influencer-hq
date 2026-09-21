@@ -376,25 +376,51 @@ function ihq_login_verify_ip_mutex_name() {
 }
 
 /**
+ * Acquire a named MySQL advisory lock.
+ *
+ * @param string $lock_name        Lock name.
+ * @param int    $timeout_seconds  Seconds to wait; 0 means do not wait.
+ * @return bool
+ */
+function ihq_login_verify_acquire_named_mutex( $lock_name, $timeout_seconds = 5 ) {
+    global $wpdb;
+
+    if ( ! is_string( $lock_name ) || $lock_name === '' ) {
+        return false;
+    }
+
+    $got = (int) $wpdb->get_var(
+        $wpdb->prepare(
+            'SELECT GET_LOCK(%s, %d)',
+            $lock_name,
+            (int) $timeout_seconds
+        )
+    );
+
+    return ( 1 === $got );
+}
+
+/**
+ * Advisory-lock name for a fail-option key (same mapping as live verify).
+ *
+ * @param string $fail_name Fail option name.
+ * @return string
+ */
+function ihq_login_verify_mutex_name_for_fail_key( $fail_name ) {
+    return 'ihq_lv_' . md5( (string) $fail_name );
+}
+
+/**
  * Acquire a per-IP mutex for login-code verify (lock check + compare + failure).
  *
  * @param int $timeout_seconds Seconds to wait for the lock.
  * @return array{acquired:bool,name:string}
  */
 function ihq_login_verify_acquire_ip_mutex( $timeout_seconds = 5 ) {
-    global $wpdb;
-
     $name = ihq_login_verify_ip_mutex_name();
-    $got  = (int) $wpdb->get_var(
-        $wpdb->prepare(
-            'SELECT GET_LOCK(%s, %d)',
-            $name,
-            (int) $timeout_seconds
-        )
-    );
 
     return array(
-        'acquired' => ( 1 === $got ),
+        'acquired' => ihq_login_verify_acquire_named_mutex( $name, $timeout_seconds ),
         'name'     => $name,
     );
 }
@@ -430,18 +456,6 @@ function ihq_login_verify_release_ip_mutex( $lock_name ) {
 function ihq_login_verify_json_error_releasing_mutex( $lock_name, array $payload ) {
     ihq_login_verify_release_ip_mutex( $lock_name );
     wp_send_json_error( $payload );
-}
-
-/**
- * Release the IP mutex then send a JSON success (wp_send_json_success exits).
- *
- * @param string               $lock_name Mutex name.
- * @param array<string,mixed>  $payload   Success payload.
- * @return void
- */
-function ihq_login_verify_json_success_releasing_mutex( $lock_name, array $payload ) {
-    ihq_login_verify_release_ip_mutex( $lock_name );
-    wp_send_json_success( $payload );
 }
 
 /**
@@ -573,7 +587,8 @@ function ihq_login_verify_clear_failures() {
  * Delete expired login-code fail counters globally (PO-3262).
  *
  * Per-IP purge only runs when that IP fails again; this sweep prevents unbounded
- * wp_options growth from one-off IPs that never retry.
+ * wp_options growth from one-off IPs that never retry. Each delete takes the
+ * matching verify mutex with no wait so a live increment cannot be wiped.
  *
  * @return void
  */
@@ -603,8 +618,7 @@ function ihq_cleanup_expired_login_verify_failures() {
                 'ihq_login_verify_fail_',
                 $timeout_name
             );
-            delete_option( $timeout_name );
-            delete_option( $fail_name );
+            ihq_login_verify_delete_expired_fail_pair( $fail_name, $timeout_name );
         }
     }
 
@@ -630,10 +644,50 @@ function ihq_cleanup_expired_login_verify_failures() {
             continue;
         }
         $timeout_name = 'ihq_login_verify_fail_timeout_' . $hash;
-        if ( false === get_option( $timeout_name, false ) ) {
-            delete_option( $fail_name );
-        }
+        ihq_login_verify_delete_orphan_fail_counter( $fail_name, $timeout_name );
     }
+}
+
+/**
+ * Delete an expired fail/timeout pair only after a non-blocking mutex + re-read.
+ *
+ * @param string $fail_name    Fail option name.
+ * @param string $timeout_name Timeout option name.
+ * @return void
+ */
+function ihq_login_verify_delete_expired_fail_pair( $fail_name, $timeout_name ) {
+    $lock_name = ihq_login_verify_mutex_name_for_fail_key( $fail_name );
+    if ( ! ihq_login_verify_acquire_named_mutex( $lock_name, 0 ) ) {
+        return;
+    }
+
+    $fresh_timeout = get_option( $timeout_name, false );
+    if ( false !== $fresh_timeout && (int) $fresh_timeout < time() ) {
+        delete_option( $timeout_name );
+        delete_option( $fail_name );
+    }
+
+    ihq_login_verify_release_ip_mutex( $lock_name );
+}
+
+/**
+ * Delete a fail counter with no timeout row, only if it is still orphaned.
+ *
+ * @param string $fail_name    Fail option name.
+ * @param string $timeout_name Timeout option name.
+ * @return void
+ */
+function ihq_login_verify_delete_orphan_fail_counter( $fail_name, $timeout_name ) {
+    $lock_name = ihq_login_verify_mutex_name_for_fail_key( $fail_name );
+    if ( ! ihq_login_verify_acquire_named_mutex( $lock_name, 0 ) ) {
+        return;
+    }
+
+    if ( false === get_option( $timeout_name, false ) ) {
+        delete_option( $fail_name );
+    }
+
+    ihq_login_verify_release_ip_mutex( $lock_name );
 }
 
 /**
@@ -1328,6 +1382,7 @@ function ihq_handle_verify_login_code_ajax() {
     delete_option( $emap );
 
     ihq_login_verify_clear_failures();
+    ihq_login_verify_release_ip_mutex( $lock_name );
 
     wp_set_current_user( $user_id );
     wp_set_auth_cookie( $user_id, false );
@@ -1339,8 +1394,7 @@ function ihq_handle_verify_login_code_ajax() {
         ? ihq_portal_redirect_url_for_context( 'portal_home' )
         : trailingslashit( home_url( '/portal/portal-home' ) );
 
-    ihq_login_verify_json_success_releasing_mutex(
-        $lock_name,
+    wp_send_json_success(
         array(
             'redirect_url' => $redirect,
         )
