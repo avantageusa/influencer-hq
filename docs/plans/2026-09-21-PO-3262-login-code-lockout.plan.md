@@ -16,6 +16,12 @@ todos:
   - id: atomic-counter
     content: Replace transient RMW with MySQL atomic increment so concurrent guesses cannot skip lockout
     status: completed
+  - id: per-ip-mutex
+    content: Serialize lock check + compare + failure transition with MySQL GET_LOCK per IP
+    status: completed
+  - id: global-cleanup
+    content: Sweep expired fail/fail_timeout options from the scheduled cleanup job
+    status: completed
   - id: verify
     content: Submit three wrong codes on portal login, confirm lockout message and blocked fourth try
     status: pending
@@ -67,3 +73,6 @@ after three wrong guesses from that network.
   15-minute send lockout.
 - CodeRabbit: transient read-modify-write was racy under concurrency; counter is
   now a MySQL atomic increment on `wp_options`.
+- CodeRabbit follow-up: verify path holds a per-IP `GET_LOCK` across lock check,
+  hash compare, and failure/lockout transition; expired fail counters are swept
+  in `cleanup_expired_registrations()` via `ihq_cleanup_expired_login_verify_failures()`.

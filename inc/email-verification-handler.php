@@ -366,6 +366,85 @@ function ihq_login_verify_rate_limit_keys() {
 }
 
 /**
+ * MySQL advisory-lock name for serializing verify attempts from one IP.
+ *
+ * @return string
+ */
+function ihq_login_verify_ip_mutex_name() {
+    $keys = ihq_login_verify_rate_limit_keys();
+    return 'ihq_lv_' . md5( $keys['fail'] );
+}
+
+/**
+ * Acquire a per-IP mutex for login-code verify (lock check + compare + failure).
+ *
+ * @param int $timeout_seconds Seconds to wait for the lock.
+ * @return array{acquired:bool,name:string}
+ */
+function ihq_login_verify_acquire_ip_mutex( $timeout_seconds = 5 ) {
+    global $wpdb;
+
+    $name = ihq_login_verify_ip_mutex_name();
+    $got  = (int) $wpdb->get_var(
+        $wpdb->prepare(
+            'SELECT GET_LOCK(%s, %d)',
+            $name,
+            (int) $timeout_seconds
+        )
+    );
+
+    return array(
+        'acquired' => ( 1 === $got ),
+        'name'     => $name,
+    );
+}
+
+/**
+ * Release the per-IP login-code verify mutex.
+ *
+ * @param string $lock_name Lock name from ihq_login_verify_acquire_ip_mutex().
+ * @return void
+ */
+function ihq_login_verify_release_ip_mutex( $lock_name ) {
+    global $wpdb;
+
+    if ( ! is_string( $lock_name ) || $lock_name === '' ) {
+        return;
+    }
+
+    $wpdb->query(
+        $wpdb->prepare(
+            'SELECT RELEASE_LOCK(%s)',
+            $lock_name
+        )
+    );
+}
+
+/**
+ * Release the IP mutex then send a JSON error (wp_send_json_error exits).
+ *
+ * @param string               $lock_name Mutex name.
+ * @param array<string,mixed>  $payload   Error payload.
+ * @return void
+ */
+function ihq_login_verify_json_error_releasing_mutex( $lock_name, array $payload ) {
+    ihq_login_verify_release_ip_mutex( $lock_name );
+    wp_send_json_error( $payload );
+}
+
+/**
+ * Release the IP mutex then send a JSON success (wp_send_json_success exits).
+ *
+ * @param string               $lock_name Mutex name.
+ * @param array<string,mixed>  $payload   Success payload.
+ * @return void
+ */
+function ihq_login_verify_json_success_releasing_mutex( $lock_name, array $payload ) {
+    ihq_login_verify_release_ip_mutex( $lock_name );
+    wp_send_json_success( $payload );
+}
+
+/**
  * Uniform lockout copy — must not reveal whether an account exists (PO-3262).
  *
  * @return string
@@ -488,6 +567,73 @@ function ihq_login_verify_clear_failures() {
     delete_transient( $keys['lock'] );
     // Legacy transient counter from the first PO-3262 revision.
     delete_transient( $keys['fail'] );
+}
+
+/**
+ * Delete expired login-code fail counters globally (PO-3262).
+ *
+ * Per-IP purge only runs when that IP fails again; this sweep prevents unbounded
+ * wp_options growth from one-off IPs that never retry.
+ *
+ * @return void
+ */
+function ihq_cleanup_expired_login_verify_failures() {
+    global $wpdb;
+
+    $now      = time();
+    $timeouts = $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT option_name, option_value FROM {$wpdb->options} WHERE option_name LIKE %s",
+            $wpdb->esc_like( 'ihq_login_verify_fail_timeout_' ) . '%'
+        ),
+        ARRAY_A
+    );
+
+    if ( is_array( $timeouts ) ) {
+        foreach ( $timeouts as $row ) {
+            if ( ! isset( $row['option_name'], $row['option_value'] ) ) {
+                continue;
+            }
+            if ( (int) $row['option_value'] >= $now ) {
+                continue;
+            }
+            $timeout_name = (string) $row['option_name'];
+            $fail_name    = str_replace(
+                'ihq_login_verify_fail_timeout_',
+                'ihq_login_verify_fail_',
+                $timeout_name
+            );
+            delete_option( $timeout_name );
+            delete_option( $fail_name );
+        }
+    }
+
+    // Orphan counters with no timeout row (interrupted writes / legacy).
+    $fail_rows = $wpdb->get_col(
+        $wpdb->prepare(
+            "SELECT option_name FROM {$wpdb->options}
+             WHERE option_name LIKE %s
+             AND option_name NOT LIKE %s",
+            $wpdb->esc_like( 'ihq_login_verify_fail_' ) . '%',
+            $wpdb->esc_like( 'ihq_login_verify_fail_timeout_' ) . '%'
+        )
+    );
+
+    if ( ! is_array( $fail_rows ) ) {
+        return;
+    }
+
+    foreach ( $fail_rows as $fail_name ) {
+        $fail_name = (string) $fail_name;
+        $hash      = substr( $fail_name, strlen( 'ihq_login_verify_fail_' ) );
+        if ( $hash === '' || $hash === $fail_name ) {
+            continue;
+        }
+        $timeout_name = 'ihq_login_verify_fail_timeout_' . $hash;
+        if ( false === get_option( $timeout_name, false ) ) {
+            delete_option( $fail_name );
+        }
+    }
 }
 
 /**
@@ -1099,11 +1245,6 @@ function ihq_handle_verify_login_code_ajax() {
         return;
     }
 
-    if ( ihq_login_verify_is_locked_out() ) {
-        wp_send_json_error( array( 'message' => ihq_login_verify_lockout_message() ) );
-        return;
-    }
-
     $signup_token = isset( $_POST['signup_token'] ) ? sanitize_text_field( wp_unslash( $_POST['signup_token'] ) ) : '';
     $code_raw     = isset( $_POST['code'] ) ? preg_replace( '/\D/', '', (string) wp_unslash( $_POST['code'] ) ) : '';
 
@@ -1112,10 +1253,29 @@ function ihq_handle_verify_login_code_ajax() {
         return;
     }
 
+    // Serialize lock check + hash compare + failure transition per IP (PO-3262).
+    $mutex = ihq_login_verify_acquire_ip_mutex();
+    if ( empty( $mutex['acquired'] ) ) {
+        wp_send_json_error( array( 'message' => __( 'Please wait a moment and try again.', 'influencer-hq' ) ) );
+        return;
+    }
+    $lock_name = $mutex['name'];
+
+    if ( ihq_login_verify_is_locked_out() ) {
+        ihq_login_verify_json_error_releasing_mutex(
+            $lock_name,
+            array( 'message' => ihq_login_verify_lockout_message() )
+        );
+        return;
+    }
+
     $opt_key = 'pending_login_code_' . $signup_token;
     $pending = get_option( $opt_key );
     if ( ! is_array( $pending ) || empty( $pending['email'] ) ) {
-        wp_send_json_error( array( 'message' => __( 'Invalid or expired code. Request a new one', 'influencer-hq' ) ) );
+        ihq_login_verify_json_error_releasing_mutex(
+            $lock_name,
+            array( 'message' => __( 'Invalid or expired code. Request a new one', 'influencer-hq' ) )
+        );
         return;
     }
 
@@ -1123,7 +1283,10 @@ function ihq_handle_verify_login_code_ajax() {
         delete_option( $opt_key );
         $emap = 'ihq_pending_login_email_' . md5( strtolower( $pending['email'] ) );
         delete_option( $emap );
-        wp_send_json_error( array( 'message' => __( 'This code has expired. Request a new one', 'influencer-hq' ) ) );
+        ihq_login_verify_json_error_releasing_mutex(
+            $lock_name,
+            array( 'message' => __( 'This code has expired. Request a new one', 'influencer-hq' ) )
+        );
         return;
     }
 
@@ -1135,7 +1298,10 @@ function ihq_handle_verify_login_code_ajax() {
         $message = ! empty( $failure['locked'] )
             ? ihq_login_verify_lockout_message()
             : __( 'That code does not match. Check your email and try again', 'influencer-hq' );
-        wp_send_json_error( array( 'message' => $message ) );
+        ihq_login_verify_json_error_releasing_mutex(
+            $lock_name,
+            array( 'message' => $message )
+        );
         return;
     }
 
@@ -1148,7 +1314,10 @@ function ihq_handle_verify_login_code_ajax() {
             delete_option( $opt_key );
             $emap = 'ihq_pending_login_email_' . md5( strtolower( $pending['email'] ) );
             delete_option( $emap );
-            wp_send_json_error( array( 'message' => __( 'Invalid or expired code. Request a new one', 'influencer-hq' ) ) );
+            ihq_login_verify_json_error_releasing_mutex(
+                $lock_name,
+                array( 'message' => __( 'Invalid or expired code. Request a new one', 'influencer-hq' ) )
+            );
             return;
         }
         $user_id = (int) $user->ID;
@@ -1170,7 +1339,8 @@ function ihq_handle_verify_login_code_ajax() {
         ? ihq_portal_redirect_url_for_context( 'portal_home' )
         : trailingslashit( home_url( '/portal/portal-home' ) );
 
-    wp_send_json_success(
+    ihq_login_verify_json_success_releasing_mutex(
+        $lock_name,
         array(
             'redirect_url' => $redirect,
         )
@@ -1563,4 +1733,6 @@ function cleanup_expired_registrations() {
             }
         }
     }
+
+    ihq_cleanup_expired_login_verify_failures();
 }
