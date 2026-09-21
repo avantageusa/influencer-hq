@@ -13,6 +13,9 @@ todos:
   - id: wire-verify
     content: Gate ihq_handle_verify_login_code_ajax on lockout; count hash mismatches; clear on success
     status: completed
+  - id: atomic-counter
+    content: Replace transient RMW with MySQL atomic increment so concurrent guesses cannot skip lockout
+    status: completed
   - id: verify
     content: Submit three wrong codes on portal login, confirm lockout message and blocked fourth try
     status: pending
@@ -33,13 +36,14 @@ identifier used.
 Extend `inc/email-verification-handler.php` only:
 
 - Constants `IHQ_LOGIN_CODE_MAX_FAILURES` (3) and `IHQ_LOGIN_CODE_LOCKOUT_SECONDS` (900).
-- Per-IP WordPress transients for failure count and lockout flag, keyed off
-  `ihq_get_client_ip_for_rate_limit()`.
+- Per-IP fail counter stored in `wp_options` and incremented with a MySQL
+  `INSERT ... ON DUPLICATE KEY UPDATE` + `LAST_INSERT_ID()` so concurrent wrong
+  guesses cannot skip the threshold via a transient read-modify-write race.
+- Lockout flag remains a 15-minute transient (`set_transient` is idempotent).
 - At the start of `ihq_handle_verify_login_code_ajax()`, reject locked IPs with
   `You are temporarily locked out, try again in 15 minutes`.
-- On a wrong code hash, increment the fail counter; at 3, set the 15-minute
-  lockout and return that same message.
-- On successful verify, clear fail and lockout transients for that IP.
+- On a wrong code hash, atomically increment; at 3, set the lockout and clear
+  the counter. On successful verify, clear counter + lockout.
 
 All existing login UIs (portal login, auth modal, home) already surface the
 AJAX `message` field, so no front-end change is required.
@@ -61,3 +65,5 @@ after three wrong guesses from that network.
 - Ticket AC also mentions repeated *requests* of codes; existing send throttle
   covers a narrow case — widen that in a follow-up if product wants a matching
   15-minute send lockout.
+- CodeRabbit: transient read-modify-write was racy under concurrency; counter is
+  now a MySQL atomic increment on `wp_options`.

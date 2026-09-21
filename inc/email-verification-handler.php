@@ -350,17 +350,18 @@ function ihq_get_client_ip_for_rate_limit() {
 }
 
 /**
- * Transient keys for login-code verify failure counting / lockout (per IP).
+ * Transient / option keys for login-code verify failure counting / lockout (per IP).
  *
- * @return array{fail:string,lock:string}
+ * @return array{fail:string,lock:string,fail_timeout:string}
  */
 function ihq_login_verify_rate_limit_keys() {
     $ip   = ihq_get_client_ip_for_rate_limit();
     $hash = md5( $ip !== '' ? $ip : 'unknown' );
 
     return array(
-        'fail' => 'ihq_login_verify_fail_' . $hash,
-        'lock' => 'ihq_login_verify_lock_' . $hash,
+        'fail'         => 'ihq_login_verify_fail_' . $hash,
+        'fail_timeout' => 'ihq_login_verify_fail_timeout_' . $hash,
+        'lock'         => 'ihq_login_verify_lock_' . $hash,
     );
 }
 
@@ -384,6 +385,65 @@ function ihq_login_verify_is_locked_out() {
 }
 
 /**
+ * Drop an expired per-IP fail counter (best-effort; race-safe with atomic incr).
+ *
+ * @param array{fail:string,fail_timeout:string} $keys Rate-limit keys.
+ * @return void
+ */
+function ihq_login_verify_purge_expired_failures( array $keys ) {
+    $timeout = get_option( $keys['fail_timeout'], false );
+    if ( false === $timeout ) {
+        return;
+    }
+    if ( (int) $timeout >= time() ) {
+        return;
+    }
+    delete_option( $keys['fail'] );
+    delete_option( $keys['fail_timeout'] );
+}
+
+/**
+ * Atomically increment the per-IP wrong-code counter and return the new value.
+ *
+ * Uses MySQL INSERT ... ON DUPLICATE KEY UPDATE with LAST_INSERT_ID() so concurrent
+ * requests cannot read-modify-write the same count and skip the lockout threshold.
+ *
+ * @param array{fail:string,fail_timeout:string} $keys Rate-limit keys.
+ * @return int New failure count (>= 1).
+ */
+function ihq_login_verify_increment_failures( array $keys ) {
+    global $wpdb;
+
+    ihq_login_verify_purge_expired_failures( $keys );
+
+    // LAST_INSERT_ID(1) on insert and LAST_INSERT_ID(n+1) on update make insert_id
+    // the new counter value (not the options.option_id auto-increment).
+    $wpdb->query(
+        $wpdb->prepare(
+            "INSERT INTO {$wpdb->options} (option_name, option_value, autoload)
+             VALUES (%s, LAST_INSERT_ID(1), 'no')
+             ON DUPLICATE KEY UPDATE option_value = LAST_INSERT_ID(CAST(option_value AS UNSIGNED) + 1)",
+            $keys['fail']
+        )
+    );
+
+    $failures = (int) $wpdb->insert_id;
+    if ( $failures < 1 ) {
+        $failures = (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT CAST(option_value AS UNSIGNED) FROM {$wpdb->options} WHERE option_name = %s",
+                $keys['fail']
+            )
+        );
+    }
+
+    wp_cache_delete( $keys['fail'], 'options' );
+    update_option( $keys['fail_timeout'], (string) ( time() + IHQ_LOGIN_CODE_LOCKOUT_SECONDS ), false );
+
+    return max( 1, $failures );
+}
+
+/**
  * Record a wrong login-code guess for this IP. Locks out after the max failures.
  *
  * @return array{locked:bool,failures:int}
@@ -398,19 +458,17 @@ function ihq_login_verify_record_failure() {
         );
     }
 
-    $failures = (int) get_transient( $keys['fail'] );
-    $failures++;
+    $failures = ihq_login_verify_increment_failures( $keys );
 
     if ( $failures >= IHQ_LOGIN_CODE_MAX_FAILURES ) {
         set_transient( $keys['lock'], 1, IHQ_LOGIN_CODE_LOCKOUT_SECONDS );
-        delete_transient( $keys['fail'] );
+        delete_option( $keys['fail'] );
+        delete_option( $keys['fail_timeout'] );
         return array(
             'locked'   => true,
             'failures' => $failures,
         );
     }
-
-    set_transient( $keys['fail'], $failures, IHQ_LOGIN_CODE_LOCKOUT_SECONDS );
 
     return array(
         'locked'   => false,
@@ -425,8 +483,11 @@ function ihq_login_verify_record_failure() {
  */
 function ihq_login_verify_clear_failures() {
     $keys = ihq_login_verify_rate_limit_keys();
-    delete_transient( $keys['fail'] );
+    delete_option( $keys['fail'] );
+    delete_option( $keys['fail_timeout'] );
     delete_transient( $keys['lock'] );
+    // Legacy transient counter from the first PO-3262 revision.
+    delete_transient( $keys['fail'] );
 }
 
 /**
