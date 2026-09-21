@@ -157,6 +157,12 @@ const IHQ_REG_IP_ATTEMPT_WINDOW_SECONDS = 300;
 /** Login-only email code uses the same TTL as registration. */
 const IHQ_LOGIN_CODE_EXPIRY_SECONDS = 900;
 
+/** Wrong login-code guesses allowed per IP before lockout (PO-3262). */
+const IHQ_LOGIN_CODE_MAX_FAILURES = 3;
+
+/** Seconds an IP stays locked out of login-code verify after too many wrong guesses. */
+const IHQ_LOGIN_CODE_LOCKOUT_SECONDS = 900;
+
 /**
  * Normalize comma-separated competition preference slug(s) from portal home (s7).
  *
@@ -341,6 +347,86 @@ function ihq_get_client_ip_for_rate_limit() {
     }
 
     return '';
+}
+
+/**
+ * Transient keys for login-code verify failure counting / lockout (per IP).
+ *
+ * @return array{fail:string,lock:string}
+ */
+function ihq_login_verify_rate_limit_keys() {
+    $ip   = ihq_get_client_ip_for_rate_limit();
+    $hash = md5( $ip !== '' ? $ip : 'unknown' );
+
+    return array(
+        'fail' => 'ihq_login_verify_fail_' . $hash,
+        'lock' => 'ihq_login_verify_lock_' . $hash,
+    );
+}
+
+/**
+ * Uniform lockout copy — must not reveal whether an account exists (PO-3262).
+ *
+ * @return string
+ */
+function ihq_login_verify_lockout_message() {
+    return __( 'You are temporarily locked out, try again in 15 minutes', 'influencer-hq' );
+}
+
+/**
+ * Whether this IP is currently blocked from submitting login codes.
+ *
+ * @return bool
+ */
+function ihq_login_verify_is_locked_out() {
+    $keys = ihq_login_verify_rate_limit_keys();
+    return (bool) get_transient( $keys['lock'] );
+}
+
+/**
+ * Record a wrong login-code guess for this IP. Locks out after the max failures.
+ *
+ * @return array{locked:bool,failures:int}
+ */
+function ihq_login_verify_record_failure() {
+    $keys = ihq_login_verify_rate_limit_keys();
+
+    if ( get_transient( $keys['lock'] ) ) {
+        return array(
+            'locked'   => true,
+            'failures' => IHQ_LOGIN_CODE_MAX_FAILURES,
+        );
+    }
+
+    $failures = (int) get_transient( $keys['fail'] );
+    $failures++;
+
+    if ( $failures >= IHQ_LOGIN_CODE_MAX_FAILURES ) {
+        set_transient( $keys['lock'], 1, IHQ_LOGIN_CODE_LOCKOUT_SECONDS );
+        delete_transient( $keys['fail'] );
+        return array(
+            'locked'   => true,
+            'failures' => $failures,
+        );
+    }
+
+    set_transient( $keys['fail'], $failures, IHQ_LOGIN_CODE_LOCKOUT_SECONDS );
+
+    return array(
+        'locked'   => false,
+        'failures' => $failures,
+    );
+}
+
+/**
+ * Clear login-code failure / lockout state for this IP (after a successful verify).
+ *
+ * @return void
+ */
+function ihq_login_verify_clear_failures() {
+    $keys = ihq_login_verify_rate_limit_keys();
+    delete_transient( $keys['fail'] );
+    delete_transient( $keys['lock'] );
 }
 
 /**
@@ -952,6 +1038,11 @@ function ihq_handle_verify_login_code_ajax() {
         return;
     }
 
+    if ( ihq_login_verify_is_locked_out() ) {
+        wp_send_json_error( array( 'message' => ihq_login_verify_lockout_message() ) );
+        return;
+    }
+
     $signup_token = isset( $_POST['signup_token'] ) ? sanitize_text_field( wp_unslash( $_POST['signup_token'] ) ) : '';
     $code_raw     = isset( $_POST['code'] ) ? preg_replace( '/\D/', '', (string) wp_unslash( $_POST['code'] ) ) : '';
 
@@ -979,7 +1070,11 @@ function ihq_handle_verify_login_code_ajax() {
     $try_hash      = hash_hmac( 'sha256', $code_raw, wp_salt( 'ihq_login_code' ) . $signup_token );
 
     if ( ! hash_equals( $expected_hash, $try_hash ) ) {
-        wp_send_json_error( array( 'message' => __( 'That code does not match. Check your email and try again', 'influencer-hq' ) ) );
+        $failure = ihq_login_verify_record_failure();
+        $message = ! empty( $failure['locked'] )
+            ? ihq_login_verify_lockout_message()
+            : __( 'That code does not match. Check your email and try again', 'influencer-hq' );
+        wp_send_json_error( array( 'message' => $message ) );
         return;
     }
 
@@ -1001,6 +1096,8 @@ function ihq_handle_verify_login_code_ajax() {
     $emap = 'ihq_pending_login_email_' . md5( strtolower( $pending['email'] ) );
     delete_option( $opt_key );
     delete_option( $emap );
+
+    ihq_login_verify_clear_failures();
 
     wp_set_current_user( $user_id );
     wp_set_auth_cookie( $user_id, false );
