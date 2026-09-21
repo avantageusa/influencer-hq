@@ -304,7 +304,10 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $log = nul
 	// otherwise get saved as a "valid" .mp4 and marked rendered, and every
 	// future run would see the file+fingerprint match and keep serving it.
 	$download_status = (int) wp_remote_retrieve_response_code( $download );
-	if ( $download_status >= 400 ) {
+	// Same 2xx-only discipline as the two Anam API calls above — a terminal
+	// 3xx (redirects exhausted, a 304, etc.) would otherwise pass this check
+	// and get saved as a "valid" cached clip.
+	if ( $download_status < 200 || $download_status >= 300 ) {
 		if ( file_exists( $dest_file ) ) {
 			wp_delete_file( $dest_file );
 		}
