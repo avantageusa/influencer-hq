@@ -317,6 +317,27 @@ const GARY_SESSION_URL = cfg.identityRestBase + '/coach/session';
 const garyCloseUrl = ( sessionId ) => cfg.identityRestBase + '/coach/' + encodeURIComponent( sessionId ) + '/close';
 const PERSONA_PREVIEW_URL = cfg.restBase + '/persona-preview';
 
+// PO-3062 pre-rendered clips — SCREENS panel name -> Gary's own segment key
+// (see inc/aicoach-prerender.php's ihq_aicoach_prerender_panel_map(), kept
+// in sync with this by hand; the two naming schemes predate each other).
+// "competition-world"/"competition-community"/"competition-private" are
+// deliberately not mapped — Gary's script has one combined "competitions"
+// segment where this page shows three separate panels, and there's no
+// single clip that fits all three yet.
+const PRERENDERED_PANEL_MAP = {
+    'believe-1': 'we_believe_1',
+    'believe-2': 'we_believe_2',
+    home: 'time_selection',
+    'equity-magic': 'magic_johnson',
+    'equity-alix': 'alix_earle',
+    'equity-bts': 'bts',
+};
+
+function getPrerenderedUrl( panelKey ) {
+    const segmentKey = PRERENDERED_PANEL_MAP[ panelKey ];
+    return segmentKey ? ( cfg.prerenderedVideos || {} )[ segmentKey ] || null : null;
+}
+
 const stage = document.getElementById('aicoach-stage');
 const avatarWrap = document.getElementById('aicoach-avatar-wrap');
 const video = document.getElementById('aicoach-avatar-video');
@@ -684,6 +705,44 @@ if ( stage && avatarWrap ) {
         } );
     }
 
+    // Plays a pre-rendered clip (inc/aicoach-prerender.php) in the same
+    // <video> element the live avatar uses, resolving on the clip's natural
+    // 'ended' event (or a manual skip) instead of a fixed dwell — the clip's
+    // own length already matches its audio exactly, nothing to estimate.
+    // Falls back to the ordinary caption dwell on any playback error, so a
+    // missing/broken file never strands a visitor.
+    function playPrerenderedClip( url ) {
+        return new Promise( ( resolve ) => {
+            let settled = false;
+            const finish = () => {
+                if ( settled ) {
+                    return;
+                }
+                settled = true;
+                skipCurrent = null;
+                video.removeEventListener( 'ended', onEnded );
+                video.removeEventListener( 'error', onError );
+                resolve();
+            };
+            const onEnded = () => finish();
+            const onError = () => {
+                console.warn( '[aicoach] prerendered clip failed to play, falling back to caption dwell:', url );
+                finish();
+            };
+            // srcObject (the live WebRTC stream, if any) takes priority over
+            // src in the video element — clear it first or a plain MP4 src
+            // silently never plays.
+            video.srcObject = null;
+            video.src = url;
+            video.addEventListener( 'ended', onEnded );
+            video.addEventListener( 'error', onError );
+            avatarWrap.dataset.status = 'live'; // same CSS state that reveals .aicoach-avatar-video over the static portrait
+            video.play().catch( onError );
+            skipCurrent = finish;
+            window.setTimeout( finish, 60000 ); // safety cap — 'ended' should always fire first
+        } );
+    }
+
     async function runFallback( keepAvatarLive ) {
         if ( fallbackRunning ) {
             return;
@@ -699,7 +758,15 @@ if ( stage && avatarWrap ) {
             if ( captionEl ) {
                 captionEl.textContent = screen.script;
             }
-            await waitForReadOrSkip();
+            // PO-3062 — an approved segment with a pre-rendered clip plays it
+            // (real voice + lip-sync, dwell = the clip's own length); every
+            // other screen keeps the original caption-only fixed dwell.
+            const clipUrl = getPrerenderedUrl( screen.panel );
+            if ( clipUrl ) {
+                await playPrerenderedClip( clipUrl );
+            } else {
+                await waitForReadOrSkip();
+            }
             if ( sequenceFinished ) {
                 fallbackRunning = false;
                 return; // a fresh runFallback() call elsewhere already took over
