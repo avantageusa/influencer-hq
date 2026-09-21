@@ -141,8 +141,12 @@ function ihq_aicoach_anam_create_video( $script, $idempotency_key ) {
 	$response = wp_remote_post(
 		ANAM_HQ_BASE_URL . '/avatar-videos',
 		array(
-			'timeout' => 30,
-			'headers' => array(
+			'timeout'     => 30,
+			// A redirect would resend the Authorization header (with the live
+			// Anam API key) to wherever it points — same CWE-200 discipline
+			// already applied to Gary's requests in inc/gary-proxy.php.
+			'redirection' => 0,
+			'headers'     => array(
 				'Authorization'    => 'Bearer ' . $api_key,
 				'Content-Type'     => 'application/json',
 				'Idempotency-Key'  => $idempotency_key,
@@ -185,8 +189,9 @@ function ihq_aicoach_anam_get_video( $job_id ) {
 	$response = wp_remote_get(
 		ANAM_HQ_BASE_URL . '/avatar-videos/' . rawurlencode( $job_id ),
 		array(
-			'timeout' => 30,
-			'headers' => array( 'Authorization' => 'Bearer ' . $api_key ),
+			'timeout'     => 30,
+			'redirection' => 0, // see ihq_aicoach_anam_create_video()'s comment — same CWE-200 concern.
+			'headers'     => array( 'Authorization' => 'Bearer ' . $api_key ),
 		)
 	);
 	if ( is_wp_error( $response ) ) {
@@ -220,15 +225,22 @@ function ihq_aicoach_anam_get_video( $job_id ) {
 function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $log = null ) {
 	$log = $log ?: function ( $line ) {};
 
+	// Cache key on sha256 alone would keep serving a clip rendered with a
+	// now-stale persona (voice/avatar) after anam_hq_persona_id() changes,
+	// since the script text — and therefore its sha256 — never moved. Fold
+	// the persona into the identity used for both the cache check and the
+	// Anam Idempotency-Key so a persona change forces a fresh render.
+	$fingerprint = hash( 'sha256', $sha256 . '|' . anam_hq_persona_id() );
+
 	$manifest = ihq_aicoach_prerender_load_manifest();
 	$existing = $manifest[ $segment_key ] ?? null;
-	if ( $existing && ( $existing['sha256'] ?? '' ) === $sha256 && file_exists( ihq_aicoach_prerender_dir() . '/' . $existing['file'] ) ) {
-		$log( "  {$segment_key}: already rendered for this sha256, skipping" );
+	if ( $existing && ( $existing['fingerprint'] ?? '' ) === $fingerprint && file_exists( ihq_aicoach_prerender_dir() . '/' . $existing['file'] ) ) {
+		$log( "  {$segment_key}: already rendered for this script+persona, skipping" );
 		return array( 'status' => 'cached' );
 	}
 
 	$log( "  {$segment_key}: creating render job..." );
-	$job = ihq_aicoach_anam_create_video( $text, $sha256 );
+	$job = ihq_aicoach_anam_create_video( $text, $fingerprint );
 	if ( is_wp_error( $job ) ) {
 		return array(
 			'status' => 'error',
@@ -274,16 +286,31 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $log = nul
 	}
 
 	$log( "  {$segment_key}: downloading..." );
-	$download = wp_remote_get( $video_url, array( 'timeout' => 60, 'stream' => true, 'filename' => ihq_aicoach_prerender_dir() . "/{$segment_key}.mp4" ) );
+	$dest_file = ihq_aicoach_prerender_dir() . "/{$segment_key}.mp4";
+	$download  = wp_remote_get( $video_url, array( 'timeout' => 60, 'stream' => true, 'filename' => $dest_file ) );
 	if ( is_wp_error( $download ) ) {
 		return array(
 			'status' => 'error',
 			'error'  => 'download failed: ' . $download->get_error_message(),
 		);
 	}
+	// wp_remote_get() with 'filename' streams the response body straight to
+	// disk regardless of HTTP status — an expired/forbidden content.url would
+	// otherwise get saved as a "valid" .mp4 and marked rendered, and every
+	// future run would see the file+fingerprint match and keep serving it.
+	$download_status = (int) wp_remote_retrieve_response_code( $download );
+	if ( $download_status >= 400 ) {
+		if ( file_exists( $dest_file ) ) {
+			wp_delete_file( $dest_file );
+		}
+		return array(
+			'status' => 'error',
+			'error'  => "download failed: HTTP {$download_status} from content.url",
+		);
+	}
 
 	$manifest[ $segment_key ] = array(
-		'sha256'      => $sha256,
+		'fingerprint' => $fingerprint,
 		'file'        => "{$segment_key}.mp4",
 		'rendered_at' => gmdate( 'c' ),
 	);
@@ -300,8 +327,11 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $log = nul
  * ihq_aicoach_prerender_panel_map()). Called by the WP-CLI command below.
  *
  * @param callable|null $log Optional fn(string $line) for progress output.
- * @return array<string,array> segment_key => result, same shape as
- *                              ihq_aicoach_prerender_segment()'s return.
+ * @return array<string,array>|WP_Error segment_key => result (same shape as
+ *                              ihq_aicoach_prerender_segment()'s return), or
+ *                              a WP_Error if the scripts fetch itself failed
+ *                              — distinct from an empty array, which means
+ *                              the fetch succeeded and nothing needed doing.
  */
 function ihq_aicoach_prerender_all( $log = null ) {
 	$log = $log ?: function ( $line ) {};
@@ -309,7 +339,7 @@ function ihq_aicoach_prerender_all( $log = null ) {
 	$scripts_result = ihq_coach_request( 'GET', '/coach/v1/registration/scripts', null );
 	if ( is_wp_error( $scripts_result ) ) {
 		$log( 'Failed to fetch registration scripts: ' . $scripts_result->get_error_message() );
-		return array();
+		return $scripts_result;
 	}
 
 	$segments = $scripts_result['body']['segments'] ?? array();
@@ -355,6 +385,16 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 				}
 			);
 
+			// A deploy step checking this command's exit code must be able to
+			// tell "nothing to render" apart from "the whole run failed" —
+			// WP_CLI::success() always exits 0, so either the top-level fetch
+			// failing or any per-segment error has to reach WP_CLI::error()
+			// instead, or a broken render would silently report as green.
+			if ( is_wp_error( $results ) ) {
+				WP_CLI::error( 'Failed to fetch registration scripts: ' . $results->get_error_message() );
+				return;
+			}
+
 			$rendered = 0;
 			$cached   = 0;
 			$errors   = 0;
@@ -369,7 +409,12 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 				}
 			}
 
-			WP_CLI::success( "Done. Rendered: {$rendered}, already cached: {$cached}, errors: {$errors}." );
+			$summary = "Rendered: {$rendered}, already cached: {$cached}, errors: {$errors}.";
+			if ( $errors > 0 ) {
+				WP_CLI::error( "Done with errors. {$summary}" );
+				return;
+			}
+			WP_CLI::success( "Done. {$summary}" );
 		}
 	}
 

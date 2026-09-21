@@ -706,15 +706,17 @@ if ( stage && avatarWrap ) {
     }
 
     // Plays a pre-rendered clip (inc/aicoach-prerender.php) in the same
-    // <video> element the live avatar uses, resolving on the clip's natural
-    // 'ended' event (or a manual skip) instead of a fixed dwell — the clip's
-    // own length already matches its audio exactly, nothing to estimate.
-    // Falls back to the ordinary caption dwell on any playback error, so a
-    // missing/broken file never strands a visitor.
+    // <video> element the live avatar uses, resolving true on the clip's
+    // natural 'ended' event (or a manual skip) instead of a fixed dwell —
+    // the clip's own length already matches its audio exactly, nothing to
+    // estimate. Resolves false on a playback error; the caller is
+    // responsible for falling back to the ordinary caption dwell in that
+    // case (this function only plays video, it doesn't own the caption's
+    // timing on failure).
     function playPrerenderedClip( url ) {
         return new Promise( ( resolve ) => {
             let settled = false;
-            const finish = () => {
+            const finish = ( ok ) => {
                 if ( settled ) {
                     return;
                 }
@@ -722,12 +724,13 @@ if ( stage && avatarWrap ) {
                 skipCurrent = null;
                 video.removeEventListener( 'ended', onEnded );
                 video.removeEventListener( 'error', onError );
-                resolve();
+                video.pause(); // a manual skip or the safety cap would otherwise leave it playing into the next screen
+                resolve( ok );
             };
-            const onEnded = () => finish();
+            const onEnded = () => finish( true );
             const onError = () => {
                 console.warn( '[aicoach] prerendered clip failed to play, falling back to caption dwell:', url );
-                finish();
+                finish( false );
             };
             // srcObject (the live WebRTC stream, if any) takes priority over
             // src in the video element — clear it first or a plain MP4 src
@@ -738,8 +741,8 @@ if ( stage && avatarWrap ) {
             video.addEventListener( 'error', onError );
             avatarWrap.dataset.status = 'live'; // same CSS state that reveals .aicoach-avatar-video over the static portrait
             video.play().catch( onError );
-            skipCurrent = finish;
-            window.setTimeout( finish, 60000 ); // safety cap — 'ended' should always fire first
+            skipCurrent = () => finish( true ); // a visitor tap is a normal advance, not a failure
+            window.setTimeout( () => finish( true ), 60000 ); // safety cap — 'ended' should always fire first
         } );
     }
 
@@ -763,7 +766,14 @@ if ( stage && avatarWrap ) {
             // other screen keeps the original caption-only fixed dwell.
             const clipUrl = getPrerenderedUrl( screen.panel );
             if ( clipUrl ) {
-                await playPrerenderedClip( clipUrl );
+                // showPanel()'s fade-in only completes FADE_MS after it's
+                // called — starting the clip immediately would let its first
+                // ~400ms play while the previous panel is still visible.
+                await new Promise( ( resolve ) => window.setTimeout( resolve, FADE_MS ) );
+                const played = await playPrerenderedClip( clipUrl );
+                if ( ! played ) {
+                    await waitForReadOrSkip();
+                }
             } else {
                 await waitForReadOrSkip();
             }
