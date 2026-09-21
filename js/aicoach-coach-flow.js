@@ -655,6 +655,35 @@ if ( stage && avatarWrap ) {
         } );
     }
 
+    // Live-speech-only counterpart to waitForReadOrSkip(): a fixed dwell has
+    // nothing to sync against for the static fallback screens (no audio at
+    // all), but Gary's real spoken intro line does — MESSAGE_HISTORY_UPDATED
+    // fires once the avatar's full utterance is complete. Measured live:
+    // talk() itself resolves almost instantly (it just queues the request),
+    // then MESSAGE_HISTORY_UPDATED can take anywhere from ~9s to ~19s
+    // depending on reply length — a fixed FALLBACK_READ_MS (9000ms) either
+    // cuts her off mid-sentence or leaves the caption sitting long after
+    // she's actually finished, which is exactly the "out of sync" feedback
+    // this replaces. capMs is a safety net only, in case the event never
+    // arrives for some reason (dropped connection, SDK quirk).
+    function waitForSpeechOrSkip( client, capMs ) {
+        return new Promise( ( resolve ) => {
+            let settled = false;
+            const finish = () => {
+                if ( settled ) {
+                    return;
+                }
+                settled = true;
+                skipCurrent = null;
+                client.removeListener( AnamEvent.MESSAGE_HISTORY_UPDATED, finish );
+                resolve();
+            };
+            client.addListener( AnamEvent.MESSAGE_HISTORY_UPDATED, finish );
+            skipCurrent = finish;
+            window.setTimeout( finish, capMs );
+        } );
+    }
+
     async function runFallback( keepAvatarLive ) {
         if ( fallbackRunning ) {
             return;
@@ -1154,13 +1183,25 @@ if ( stage && avatarWrap ) {
                 // command channel is ready ("sendTalkCommand: peer connection is
                 // null"). The session_token alone starts a connected-but-silent
                 // stream; talk() is what makes the avatar speak/lip-sync say.text.
+                let talkSucceeded = true;
                 try {
                     await client.talk( gary.say.text );
                 } catch ( talkError ) {
+                    talkSucceeded = false;
                     console.warn( '[aicoach] client.talk() failed, avatar stays silent:', talkError );
                 }
 
-                await waitForReadOrSkip();
+                if ( talkSucceeded ) {
+                    // 25s cap — observed real completion around 9-19s for a
+                    // short reply; generous enough to never cut her off, short
+                    // enough to never strand a visitor if the event doesn't
+                    // arrive. If talk() itself failed there's no speech to
+                    // wait for — fall back to the same fixed dwell every
+                    // other (non-speaking) screen uses.
+                    await waitForSpeechOrSkip( client, 25000 );
+                } else {
+                    await waitForReadOrSkip();
+                }
                 sequenceIndex = 1;
                 runFallback( true );
             } );
