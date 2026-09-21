@@ -504,8 +504,9 @@ $aicoach_channels = array(
 
     .aicoach-unmute {
         position: absolute;
-        bottom: 10px;
-        right: 10px;
+        bottom: 12px;
+        left: 50%;
+        transform: translateX(-50%);
         width: 34px;
         height: 34px;
         display: none;

@@ -50,6 +50,7 @@ $portal_embed_urls = [
                     </div>
                 </div>
 
+                <div class="competition-types-sentinel" aria-hidden="true"></div>
                 <div class="competition-types">
                     <div class="competition-tabs">
                         <button class="competition-tab-btn active" data-tab="intro" type="button">
@@ -57,19 +58,19 @@ $portal_embed_urls = [
                             <span>Intro</span>
                         </button>
                         <button class="competition-tab-btn" data-tab="private" type="button">
-                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-private.png" alt="" class="competition-tab-icon">
+                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-private.svg" alt="" class="competition-tab-icon">
                             <span>Private</span>
                         </button>
                         <button class="competition-tab-btn" data-tab="community" type="button">
-                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-community.png" alt="" class="competition-tab-icon">
+                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-community.svg" alt="" class="competition-tab-icon">
                             <span>Community</span>
                         </button>
                         <button class="competition-tab-btn" data-tab="world" type="button">
-                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-world.png" alt="" class="competition-tab-icon">
+                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-world.svg" alt="" class="competition-tab-icon">
                             <span>World</span>
                         </button>
                         <button class="competition-tab-btn" data-tab="leagues" type="button">
-                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-leagues.png" alt="" class="competition-tab-icon">
+                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-leagues.svg" alt="" class="competition-tab-icon">
                             <span>Leagues</span>
                         </button>
                     </div>
@@ -241,13 +242,15 @@ $portal_embed_urls = [
 
                 <!-- World Tab -->
                 <div class="competition-panel" id="world-tab">
-                    <div class="competition-card">
-                        <p>We believe competition reveals character.</p>
-                        <p>For three days, the world is watching. Not in silence - but in real time.</p>
-                        <p>Every hand played moves you forward - or leaves you behind.</p>
-                        <p>There is no single opponent to defeat. There is only the standard you set.</p>
-                        <p>This is global visibility. Global comparison. Global recognition.</p>
-                        <p>When the clock closes, the standings speak for themselves.</p>
+                    <div class="world-intro-row">
+                        <div class="world-intro-card">
+                            <p><?php esc_html_e( 'A Sunday to Saturday global competition where all Influencers and Followers compete with each other.', 'influencer-hq' ); ?></p>
+                            <p><?php esc_html_e( 'We believe every influencer and every follower deserve a chance for greatness.', 'influencer-hq' ); ?></p>
+                            <p><?php esc_html_e( 'No gatekeeper.', 'influencer-hq' ); ?></p>
+                            <p><?php esc_html_e( 'No invitation required.', 'influencer-hq' ); ?></p>
+                            <p><?php esc_html_e( 'Glory is the only goal.', 'influencer-hq' ); ?></p>
+                        </div>
+                        <div class="world-coach-fab-host" id="world-coach-fab-host" aria-hidden="true"></div>
                     </div>
 
                     <?php
@@ -261,316 +264,243 @@ $portal_embed_urls = [
                     );
                     ?>
 
-                    <h2 class="competition-section-title">World</h2>
+                    <h2 class="competition-section-title" id="world-results"><?php esc_html_e( 'World', 'influencer-hq' ); ?></h2>
+
+                    <span id="world-influencer" class="hm-scroll-anchor" aria-hidden="true"></span>
+                    <span id="world-follower" class="hm-scroll-anchor" aria-hidden="true"></span>
 
                     <div class="competition-block">
-                        <div class="competition-block-title">World Influencer Challenge</div>
+                        <div class="competition-block-title"><?php esc_html_e( 'World Influencer Competition', 'influencer-hq' ); ?></div>
                         <div class="accordion custom-accordion" id="worldAccordion">
                             <div class="accordion-item mb-3">
                                 <h2 class="accordion-header" id="headingWorldWhat">
                                     <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseWorldWhat" aria-expanded="true" aria-controls="collapseWorldWhat">
-                                        <span class="question-text">What is the World Influencer Challenge?</span>
+                                        <span class="question-text"><?php esc_html_e( 'What is the World Influencer Competition?', 'influencer-hq' ); ?></span>
                                     </button>
                                 </h2>
                                 <div id="collapseWorldWhat" class="accordion-collapse collapse show" aria-labelledby="headingWorldWhat" data-bs-parent="#worldAccordion">
                                     <div class="accordion-body">
-                                        <p>A three-day global competition where all Influencers and Followers compete during the same contest window.</p>
-                                        <p>This is placement-based. Not head-to-head.</p>
+                                        <p><?php esc_html_e( 'A weekly global competition where all Influencers and Followers compete during the same contest window.', 'influencer-hq' ); ?></p>
                                     </div>
                                 </div>
                             </div>
                             <div class="accordion-item mb-3">
                                 <h2 class="accordion-header" id="headingWorldPerformance">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseWorldPerformance" aria-expanded="false" aria-controls="collapseWorldPerformance">
-                                        <span class="question-text">How is performance calculated?</span>
+                                        <span class="question-text"><?php esc_html_e( 'How is performance calculated?', 'influencer-hq' ); ?></span>
                                     </button>
                                 </h2>
                                 <div id="collapseWorldPerformance" class="accordion-collapse collapse" aria-labelledby="headingWorldPerformance" data-bs-parent="#worldAccordion">
                                     <div class="accordion-body">
-                                        <p>Performance is calculated as:</p>
-                                        <p>Net Gain / Total Amount Played = Performance Percent</p>
-                                        <p>Scores range from 0 percent upward. Scores can never be negative.</p>
+                                        <p><?php esc_html_e( 'Performance is calculated as:', 'influencer-hq' ); ?></p>
+                                        <p><?php esc_html_e( 'Net Gain / Total Amount Played = Performance Percent', 'influencer-hq' ); ?></p>
+                                        <p><?php esc_html_e( 'Scores range from 0 percent upward. Scores can never be negative.', 'influencer-hq' ); ?></p>
                                     </div>
                                 </div>
                             </div>
                             <div class="accordion-item mb-3">
                                 <h2 class="accordion-header" id="headingWorldPoints">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseWorldPoints" aria-expanded="false" aria-controls="collapseWorldPoints">
-                                        <span class="question-text">How does Win percent convert to points?</span>
+                                        <span class="question-text"><?php esc_html_e( 'How does Win % convert to points?', 'influencer-hq' ); ?></span>
                                     </button>
                                 </h2>
                                 <div id="collapseWorldPoints" class="accordion-collapse collapse" aria-labelledby="headingWorldPoints" data-bs-parent="#worldAccordion">
                                     <div class="accordion-body">
-                                        <p>After each contest, participants are ranked by Performance Percent.</p>
-                                        <p>Points are awarded based on percentile placement:</p>
+                                        <p><?php esc_html_e( 'After each contest, participants are ranked by Performance Percent.', 'influencer-hq' ); ?></p>
+                                        <p><?php esc_html_e( 'Points are awarded based on percentile placement:', 'influencer-hq' ); ?></p>
                                         <ul>
-                                            <li>Top 10 percent - 5 points</li>
-                                            <li>11-20 percent - 4 points</li>
-                                            <li>21-30 percent - 3 points</li>
-                                            <li>31-40 percent - 2 points</li>
-                                            <li>41-50 percent - 1 point</li>
-                                            <li>Below 50 percent - 0 points</li>
+                                            <li><?php esc_html_e( 'Top 10 percent - 5 points', 'influencer-hq' ); ?></li>
+                                            <li><?php esc_html_e( '11-20 percent - 4 points', 'influencer-hq' ); ?></li>
+                                            <li><?php esc_html_e( '21-30 percent - 3 points', 'influencer-hq' ); ?></li>
+                                            <li><?php esc_html_e( '31-40 percent - 2 points', 'influencer-hq' ); ?></li>
+                                            <li><?php esc_html_e( '41-50 percent - 1 point', 'influencer-hq' ); ?></li>
+                                            <li><?php esc_html_e( 'Below 50 percent - 0 points', 'influencer-hq' ); ?></li>
                                         </ul>
-                                        <p>Every contest earns points.</p>
+                                        <p><?php esc_html_e( 'Every contest earns points.', 'influencer-hq' ); ?></p>
                                     </div>
                                 </div>
                             </div>
                             <div class="accordion-item mb-3">
                                 <h2 class="accordion-header" id="headingWorldMedals">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseWorldMedals" aria-expanded="false" aria-controls="collapseWorldMedals">
-                                        <span class="question-text">How do points convert to medals?</span>
+                                        <span class="question-text"><?php esc_html_e( 'How do points convert to medals?', 'influencer-hq' ); ?></span>
                                     </button>
                                 </h2>
                                 <div id="collapseWorldMedals" class="accordion-collapse collapse" aria-labelledby="headingWorldMedals" data-bs-parent="#worldAccordion">
                                     <div class="accordion-body">
-                                        <p>Points accumulate across the entire quarter.</p>
-                                        <p>At the end of each quarter, Teams are ranked by total cumulative points.</p>
-                                        <p>Medals are awarded based on overall percentile placement:</p>
+                                        <p><?php esc_html_e( 'Points accumulate across the entire quarter.', 'influencer-hq' ); ?></p>
+                                        <p><?php esc_html_e( 'At the end of each quarter, Teams are ranked by total cumulative points.', 'influencer-hq' ); ?></p>
+                                        <p><?php esc_html_e( 'Medals are awarded based on overall percentile placement:', 'influencer-hq' ); ?></p>
                                         <ul>
-                                            <li>Top 10 percent - Diamond Medal</li>
-                                            <li>11-20 percent - Gold Medal</li>
-                                            <li>21-30 percent - Silver Medal</li>
-                                            <li>31-40 percent - Bronze Medal</li>
+                                            <li><?php esc_html_e( 'Top 10 percent - Diamond Medal', 'influencer-hq' ); ?></li>
+                                            <li><?php esc_html_e( '11-20 percent - Platinum Medal', 'influencer-hq' ); ?></li>
+                                            <li><?php esc_html_e( '21-30 percent - Gold Medal', 'influencer-hq' ); ?></li>
+                                            <li><?php esc_html_e( '31-40 percent - Silver Medal', 'influencer-hq' ); ?></li>
+                                            <li><?php esc_html_e( '41-50 percent - Bronze Medal', 'influencer-hq' ); ?></li>
                                         </ul>
-                                        <p>Teams below the top 40 percent do not receive a medal.</p>
+                                        <p><?php esc_html_e( 'Teams below the top 50 percent do not receive a medal.', 'influencer-hq' ); ?></p>
                                     </div>
                                 </div>
                             </div>
                             <div class="accordion-item mb-3">
                                 <h2 class="accordion-header" id="headingWorldRepresent">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseWorldRepresent" aria-expanded="false" aria-controls="collapseWorldRepresent">
-                                        <span class="question-text">What do medals represent?</span>
+                                        <span class="question-text"><?php esc_html_e( 'What do medals represent?', 'influencer-hq' ); ?></span>
                                     </button>
                                 </h2>
                                 <div id="collapseWorldRepresent" class="accordion-collapse collapse" aria-labelledby="headingWorldRepresent" data-bs-parent="#worldAccordion">
                                     <div class="accordion-body">
-                                        <p>Medals recognize sustained team performance over an entire quarter.</p>
-                                        <p>They are not based on one contest - but on consistent participation and results.</p>
+                                        <p><?php esc_html_e( 'Medals recognize sustained team performance over an entire quarter.', 'influencer-hq' ); ?></p>
+                                        <p><?php esc_html_e( 'They are not based on one contest - but on consistent participation and results.', 'influencer-hq' ); ?></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="accordion-item mb-3">
+                                <h2 class="accordion-header" id="headingWorldEarnMedals">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseWorldEarnMedals" aria-expanded="false" aria-controls="collapseWorldEarnMedals">
+                                        <span class="question-text"><?php esc_html_e( 'How do Influencers Earn Medals?', 'influencer-hq' ); ?></span>
+                                    </button>
+                                </h2>
+                                <div id="collapseWorldEarnMedals" class="accordion-collapse collapse" aria-labelledby="headingWorldEarnMedals" data-bs-parent="#worldAccordion">
+                                    <div class="accordion-body">
+                                        <p><?php esc_html_e( 'Influencers earn medals by competing in weekly World competitions and accumulating points throughout the quarter.', 'influencer-hq' ); ?></p>
+                                        <p><?php esc_html_e( 'Each week\'s performance contributes points based on percentile placement. At quarter end, total points determine your medal tier.', 'influencer-hq' ); ?></p>
+                                        <p><?php esc_html_e( 'Consistent participation across multiple weeks strengthens your standing and increases your chance of earning a medal.', 'influencer-hq' ); ?></p>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Influencer Competition Results -->
-                    <style>                    .icr-wrap{background:#111;border-radius:10px;padding:18px 16px 14px;margin-bottom:20px;color:#fff}
-                    .icr-title{font-size:1.15rem;font-weight:700;margin-bottom:14px;color:#fff}
-                    .icr-type-tabs{display:flex;gap:22px;border-bottom:1px solid #2a2a2a;padding-bottom:8px;margin-bottom:10px}
-                    .icr-type-btn{background:none;border:none;cursor:pointer;color:#bbb;font-size:.95rem;font-weight:500;padding:0 0 4px}
-                    .icr-type-btn.active{color:#e53e3e;border-bottom:2px solid #e53e3e;font-weight:700}
-                    .icr-time-tabs{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px}
-                    .icr-time-btn{background:none;border:none;cursor:pointer;color:#bbb;font-size:.85rem;font-weight:500;padding:2px 0}
-                    .icr-time-btn.active{color:#e53e3e;text-decoration:underline;font-weight:700}
-                    .icr-col-label{color:#e53e3e;font-weight:700;font-size:.85rem;text-decoration:underline;margin-bottom:6px}
-                    .icr-table{margin-bottom:0}
-                    .icr-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #222}
-                    .icr-rank{font-weight:700;font-size:.95rem;width:20px;text-align:center;flex-shrink:0}
-                    .icr-flag{font-size:1.3rem;flex-shrink:0;line-height:1}
-                    .icr-avatar{width:38px;height:38px;border-radius:50%;background:#3a3a3a;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.1rem}
-                    .icr-handle{flex:1;font-size:.95rem;font-weight:500}
-                    .icr-score{font-weight:600;font-size:.95rem;margin-left:auto;padding-right:4px}
-                    .icr-expand-btn{background:none;border:none;color:#aaa;font-size:1.1rem;cursor:pointer;width:26px;text-align:center;flex-shrink:0;padding:0}
-                    .icr-breakdown{padding:8px 2px 10px 36px;border-bottom:1px solid #222;font-size:.78rem}
-                    .icr-bd-grid{display:grid;grid-template-columns:60px repeat(5,1fr);gap:2px;text-align:center}
-                    .icr-bd-grid span:first-child{text-align:left;color:#ccc;font-weight:600}
-                    .icr-bd-header{margin-bottom:4px}
-                    .icr-bd-points span{font-weight:600;color:#fff}
-                    .icr-pct--1{color:#f5c518;font-weight:700}
-                    .icr-pct--2{color:#f0a020;font-weight:700}
-                    .icr-pct--3{color:#e88020;font-weight:700}
-                    .icr-pct--4{color:#e06020;font-weight:700}
-                    .icr-pct--5{color:#d84020;font-weight:700}
-                    .icr-user-row{display:flex;align-items:center;gap:10px;padding:12px 0 4px;border-top:1px solid #333;margin-top:6px}
-                    .icr-user-label{font-size:.72rem;font-weight:700;line-height:1.2;text-align:center;width:44px;flex-shrink:0;color:#fff}
-                    .icr-points{font-weight:700;font-size:1rem}
-                    </style>
-                    <div class="icr-wrap" id="world-results">
-                        <div class="icr-title" id="world-influencer">Influencer Competition Results</div>
-
-                        <div class="icr-type-tabs">
-                            <button class="icr-type-btn active" data-icr-type="world">World</button>
-                            <button class="icr-type-btn" data-icr-type="community">Community</button>
-                            <button class="icr-type-btn" data-icr-type="private">Private</button>
+                    <div class="portal-leaderboards-section">
+                        <div class="portal-leaderboards-section-title">
+                            <?php esc_html_e( 'Influencer/FolLOwer Competition Results', 'influencer-hq' ); ?>
                         </div>
-
-                        <div class="icr-time-tabs">
-                            <button class="icr-time-btn active">Last Week</button>
-                            <button class="icr-time-btn">This Week</button>
-                            <button class="icr-time-btn">Last Quarter</button>
-                            <button class="icr-time-btn">This Quarter</button>
-                            <button class="icr-time-btn">All</button>
-                        </div>
-
-                        <div class="icr-col-label">Win %</div>
-
-                        <div class="icr-table">
-                            <!-- Row 1 -->
-                            <div class="icr-row">
-                                <span class="icr-rank">1</span>
-                                <span class="icr-flag">🇭🇰</span>
-                                <div class="icr-avatar">👤</div>
-                                <span class="icr-handle">@DragonStream</span>
-                                <span class="icr-score">162%</span>
-                                <button class="icr-expand-btn">+</button>
-                            </div>
-                            <div class="icr-breakdown" style="display:none;">
-                                <div class="icr-bd-grid icr-bd-header">
-                                    <span>WIN %</span><span class="icr-pct--1">1-10%</span><span class="icr-pct--2">11-20%</span><span class="icr-pct--3">21-30%</span><span class="icr-pct--4">31-40%</span><span class="icr-pct--5">41-50%</span>
-                                </div>
-                                <div class="icr-bd-grid icr-bd-points">
-                                    <span>POINTS</span><span>2</span><span>3</span><span>4</span><span>5</span><span>0</span>
-                                </div>
-                            </div>
-
-                            <!-- Row 2 -->
-                            <div class="icr-row">
-                                <span class="icr-rank">2</span>
-                                <span class="icr-flag">🇵🇭</span>
-                                <div class="icr-avatar">👤</div>
-                                <span class="icr-handle">@ManilaMaster</span>
-                                <span class="icr-score">142%</span>
-                                <button class="icr-expand-btn">+</button>
-                            </div>
-                            <div class="icr-breakdown" style="display:none;">
-                                <div class="icr-bd-grid icr-bd-header">
-                                    <span>WIN %</span><span class="icr-pct--1">1-10%</span><span class="icr-pct--2">11-20%</span><span class="icr-pct--3">21-30%</span><span class="icr-pct--4">31-40%</span><span class="icr-pct--5">41-50%</span>
-                                </div>
-                                <div class="icr-bd-grid icr-bd-points">
-                                    <span>POINTS</span><span>1</span><span>2</span><span>5</span><span>3</span><span>0</span>
-                                </div>
-                            </div>
-
-                            <!-- Row 3 -->
-                            <div class="icr-row">
-                                <span class="icr-rank">3</span>
-                                <span class="icr-flag">🇯🇵</span>
-                                <div class="icr-avatar">👤</div>
-                                <span class="icr-handle">@TokyoAce</span>
-                                <span class="icr-score">132%</span>
-                                <button class="icr-expand-btn">+</button>
-                            </div>
-                            <div class="icr-breakdown" style="display:none;">
-                                <div class="icr-bd-grid icr-bd-header">
-                                    <span>WIN %</span><span class="icr-pct--1">1-10%</span><span class="icr-pct--2">11-20%</span><span class="icr-pct--3">21-30%</span><span class="icr-pct--4">31-40%</span><span class="icr-pct--5">41-50%</span>
-                                </div>
-                                <div class="icr-bd-grid icr-bd-points">
-                                    <span>POINTS</span><span>4</span><span>0</span><span>2</span><span>3</span><span>1</span>
-                                </div>
-                            </div>
-
-                            <!-- Row 4 — pre-expanded to match screenshot -->
-                            <div class="icr-row">
-                                <span class="icr-rank">4</span>
-                                <span class="icr-flag">🇰🇷</span>
-                                <div class="icr-avatar">👤</div>
-                                <span class="icr-handle">@SeoulChamp</span>
-                                <span class="icr-score">122%</span>
-                                <button class="icr-expand-btn">&times;</button>
-                            </div>
-                            <div class="icr-breakdown">
-                                <div class="icr-bd-grid icr-bd-header">
-                                    <span>WIN %</span><span class="icr-pct--1">1-10%</span><span class="icr-pct--2">11-20%</span><span class="icr-pct--3">21-30%</span><span class="icr-pct--4">31-40%</span><span class="icr-pct--5">41-50%</span>
-                                </div>
-                                <div class="icr-bd-grid icr-bd-points">
-                                    <span>POINTS</span><span>0</span><span>1</span><span>3</span><span>2</span><span>4</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Current user pinned row -->
-                        <div class="icr-user-row" id="world-follower">
-                            <span class="icr-user-label">Top<br>20%</span>
-                            <span class="icr-flag">🇺🇸</span>
-                            <div class="icr-avatar">👤</div>
-                            <span class="icr-handle">Inf. User</span>
-                            <span class="icr-score">42%</span>
-                            <span class="icr-points">5</span>
+                        <div class="portal-leaderboards-iframe-wrap" id="world-leaderboard-iframe">
+                            <iframe
+                                title="<?php echo esc_attr__( 'Influencer / Follower Competition Results', 'influencer-hq' ); ?>"
+                                src="<?php echo esc_url( $portal_leaderboards_iframe_url ); ?>"
+                                loading="lazy"
+                                referrerpolicy="strict-origin-when-cross-origin"
+                                allowfullscreen
+                            ></iframe>
                         </div>
                     </div>
 
-                    <div class="competition-rule-block">
-                        <div class="competition-rule-header">How World Medals Are Awarded</div>
-                        <div class="competition-medals">
-                            <img src="<?php echo get_template_directory_uri(); ?>/images/diamond-medal.png" alt="Diamond" class="competition-medals__img">
-                            <img src="<?php echo get_template_directory_uri(); ?>/images/gold-medal.png" alt="Gold" class="competition-medals__img">
-                            <img src="<?php echo get_template_directory_uri(); ?>/images/silver-medal.png" alt="Silver" class="competition-medals__img">
-                            <img src="<?php echo get_template_directory_uri(); ?>/images/bronze-medal.png" alt="Bronze" class="competition-medals__img">
-                        </div>
-                        <div class="competition-rule-grid">
-                            <div>
-                                <div class="competition-rule-title">Finish</div>
-                                <div class="competition-rule-list">Top 10%<br>11%-20%<br>21%-30%<br>31%-40%<br>41%-50%</div>
-                            </div>
-                            <div>
-                                <div class="competition-rule-title">Points</div>
-                                <div class="competition-rule-list">5<br>4<br>3<br>2<br>1</div>
-                            </div>
-                            <div>
-                                <div class="competition-rule-title">Total Points</div>
-                                <div class="competition-rule-list">Top 10%<br>11%-20%<br>21%-30%<br>31%-40%</div>
-                            </div>
-                            <div>
-                                <div class="competition-rule-title">Medals</div>
-                                <div class="competition-rule-list">Diamond<br>Gold<br>Silver<br>Bronze</div>
+                    <div class="accordion custom-accordion competition-scoring-accordion competition-accordion--figma" id="worldMedalsAccordion">
+                        <div class="accordion-item mb-3">
+                            <h2 class="accordion-header" id="headingWorldMedalsAwarded">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseWorldMedalsAwarded" aria-expanded="true" aria-controls="collapseWorldMedalsAwarded">
+                                    <span class="question-text"><?php esc_html_e( 'HOW WORLD MEDALS ARE AWARDED', 'influencer-hq' ); ?></span>
+                                </button>
+                            </h2>
+                            <div id="collapseWorldMedalsAwarded" class="accordion-collapse collapse show" aria-labelledby="headingWorldMedalsAwarded" data-bs-parent="#worldMedalsAccordion">
+                                <div class="accordion-body">
+                                    <div class="competition-medals competition-medals--world">
+                                        <img src="<?php echo get_template_directory_uri(); ?>/images/diamond-medal.png" alt="<?php esc_attr_e( 'Diamond', 'influencer-hq' ); ?>" class="competition-medals__img">
+                                        <img src="<?php echo get_template_directory_uri(); ?>/images/platinum-medal.png" alt="<?php esc_attr_e( 'Platinum', 'influencer-hq' ); ?>" class="competition-medals__img">
+                                        <img src="<?php echo get_template_directory_uri(); ?>/images/gold-medal.png" alt="<?php esc_attr_e( 'Gold', 'influencer-hq' ); ?>" class="competition-medals__img">
+                                        <img src="<?php echo get_template_directory_uri(); ?>/images/silver-medal.png" alt="<?php esc_attr_e( 'Silver', 'influencer-hq' ); ?>" class="competition-medals__img">
+                                        <img src="<?php echo get_template_directory_uri(); ?>/images/bronze-medal.png" alt="<?php esc_attr_e( 'Bronze', 'influencer-hq' ); ?>" class="competition-medals__img">
+                                    </div>
+                                    <div class="competition-rule-grid competition-rule-grid--rows competition-rule-grid--world">
+                                        <div class="competition-rule-row competition-rule-row--header">
+                                            <span class="competition-rule-title"><?php esc_html_e( 'Contest Finish', 'influencer-hq' ); ?></span>
+                                            <span class="competition-rule-title"><?php esc_html_e( 'Points', 'influencer-hq' ); ?></span>
+                                            <span class="competition-rule-title"><?php esc_html_e( 'Total Points', 'influencer-hq' ); ?></span>
+                                            <span class="competition-rule-title"><?php esc_html_e( 'Medals', 'influencer-hq' ); ?></span>
+                                        </div>
+                                        <div class="competition-rule-row">
+                                            <span><?php esc_html_e( 'Top 10%', 'influencer-hq' ); ?></span>
+                                            <span>5</span>
+                                            <span><?php esc_html_e( 'Top 10%', 'influencer-hq' ); ?></span>
+                                            <span><?php esc_html_e( 'Diamond', 'influencer-hq' ); ?></span>
+                                        </div>
+                                        <div class="competition-rule-row">
+                                            <span><?php esc_html_e( '11%-20%', 'influencer-hq' ); ?></span>
+                                            <span>4</span>
+                                            <span><?php esc_html_e( '11%-20%', 'influencer-hq' ); ?></span>
+                                            <span><?php esc_html_e( 'Platinum', 'influencer-hq' ); ?></span>
+                                        </div>
+                                        <div class="competition-rule-row">
+                                            <span><?php esc_html_e( '21%-30%', 'influencer-hq' ); ?></span>
+                                            <span>3</span>
+                                            <span><?php esc_html_e( '21%-30%', 'influencer-hq' ); ?></span>
+                                            <span><?php esc_html_e( 'Gold', 'influencer-hq' ); ?></span>
+                                        </div>
+                                        <div class="competition-rule-row">
+                                            <span><?php esc_html_e( '31%-40%', 'influencer-hq' ); ?></span>
+                                            <span>2</span>
+                                            <span><?php esc_html_e( '31%-40%', 'influencer-hq' ); ?></span>
+                                            <span><?php esc_html_e( 'Silver', 'influencer-hq' ); ?></span>
+                                        </div>
+                                        <div class="competition-rule-row">
+                                            <span><?php esc_html_e( '41%-50%', 'influencer-hq' ); ?></span>
+                                            <span>1</span>
+                                            <span><?php esc_html_e( '41%-50%', 'influencer-hq' ); ?></span>
+                                            <span><?php esc_html_e( 'Bronze', 'influencer-hq' ); ?></span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <?php
-                    get_template_part(
-                        'template-parts/portal-external-embed',
-                        null,
-                        array(
-                            'url'      => $portal_embed_urls['world'],
-                            'title'    => __( 'World competition leaderboards', 'influencer-hq' ),
-                            'fallback' => __( 'World competition content is temporarily unavailable. Please try again later.', 'influencer-hq' ),
-                            'wrap_id'  => 'world-leaderboards-embed',
-                        )
-                    );
-                    ?>
-
-                    <div class="competition-dropdown" id="world-leaderboards">
-                        <div class="competition-dropdown-header">See My Results</div>
+                    <div class="competition-dropdown competition-dropdown--figma is-open" id="world-leaderboards">
+                        <div class="competition-dropdown-header">
+                            <div class="competition-figma-header-row">
+                                <span class="competition-figma-header-text"><?php esc_html_e( 'See My Results', 'influencer-hq' ); ?></span>
+                                <span class="competition-figma-chevron" aria-hidden="true"></span>
+                            </div>
+                        </div>
                         <div class="competition-dropdown-body">
                             <div class="competition-pill-center">
-                                <button class="competition-pill active">Quarter to Date</button>
+                                <button class="competition-pill active"><?php esc_html_e( 'Quarter to Date', 'influencer-hq' ); ?></button>
                             </div>
-                            <div class="competition-dropdown-section">
-                                <div class="competition-dropdown-label">This Year's Previous Quarters</div>
-                                <div class="competition-dropdown-select-wrap">
-                                    <select class="competition-dropdown-select">
-                                        <option>1st Quarter 2026</option>
-                                        <option>2nd Quarter 2026</option>
-                                        <option>3rd Quarter 2026</option>
-                                        <option>4th Quarter 2026</option>
-                                    </select>
-                                    <span class="competition-dropdown-arrow">▼</span>
+                            <div class="competition-dropdown-columns">
+                                <div class="competition-dropdown-section">
+                                    <div class="competition-dropdown-label"><?php esc_html_e( 'This Year\'s', 'influencer-hq' ); ?></div>
+                                    <div class="competition-dropdown-select-wrap">
+                                        <select class="competition-dropdown-select">
+                                            <option><?php esc_html_e( '1st Quarter 2026', 'influencer-hq' ); ?></option>
+                                            <option><?php esc_html_e( '2nd Quarter 2026', 'influencer-hq' ); ?></option>
+                                            <option><?php esc_html_e( '3rd Quarter 2026', 'influencer-hq' ); ?></option>
+                                            <option><?php esc_html_e( '4th Quarter 2026', 'influencer-hq' ); ?></option>
+                                        </select>
+                                        <span class="competition-dropdown-arrow">▼</span>
+                                    </div>
+                                </div>
+                                <div class="competition-dropdown-section">
+                                    <div class="competition-dropdown-label"><?php esc_html_e( 'Previous Year\'s', 'influencer-hq' ); ?></div>
+                                    <div class="competition-dropdown-select-wrap">
+                                        <select class="competition-dropdown-select">
+                                            <option><?php esc_html_e( '1st Quarter 2024', 'influencer-hq' ); ?></option>
+                                            <option><?php esc_html_e( '1st Quarter 2025', 'influencer-hq' ); ?></option>
+                                            <option><?php esc_html_e( '2nd Quarter 2025', 'influencer-hq' ); ?></option>
+                                            <option><?php esc_html_e( '3rd Quarter 2025', 'influencer-hq' ); ?></option>
+                                            <option><?php esc_html_e( '4th Quarter 2025', 'influencer-hq' ); ?></option>
+                                        </select>
+                                        <span class="competition-dropdown-arrow">▼</span>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="competition-dropdown-section--lg">
-                                <div class="competition-dropdown-label">Previous Years</div>
-                                <div class="competition-dropdown-select-wrap">
-                                    <select class="competition-dropdown-select">
-                                        <option>1st Quarter 2025</option>
-                                        <option>2nd Quarter 2025</option>
-                                        <option>3rd Quarter 2025</option>
-                                        <option>4th Quarter 2025</option>
-                                    </select>
-                                    <span class="competition-dropdown-arrow">▼</span>
-                                </div>
-                            </div>
-                            <div class="competition-mini-table">
+                            <div class="competition-mini-table competition-mini-table--figma">
                                 <div class="competition-mini-row competition-mini-row--header">
-                                    <span>Levels</span>
-                                    <span>Points</span>
+                                    <span><?php esc_html_e( 'Levels', 'influencer-hq' ); ?></span>
+                                    <span><?php esc_html_e( 'Points', 'influencer-hq' ); ?></span>
                                 </div>
-                                <div class="competition-mini-row"><span>Top 10%</span><span>3</span></div>
-                                <div class="competition-mini-row"><span>11%-20%</span><span>8</span></div>
-                                <div class="competition-mini-row"><span>21%-30%</span><span>25</span></div>
-                                <div class="competition-mini-row"><span>31%-40%</span><span>45</span></div>
+                                <div class="competition-mini-row"><span><?php esc_html_e( 'Top 10%', 'influencer-hq' ); ?></span><span>3</span></div>
+                                <div class="competition-mini-row"><span><?php esc_html_e( '11%-20%', 'influencer-hq' ); ?></span><span>8</span></div>
+                                <div class="competition-mini-row"><span><?php esc_html_e( '21%-30%', 'influencer-hq' ); ?></span><span>25</span></div>
+                                <div class="competition-mini-row"><span><?php esc_html_e( '31%-40%', 'influencer-hq' ); ?></span><span>45</span></div>
+                                <div class="competition-mini-row"><span><?php esc_html_e( '40% - 50%', 'influencer-hq' ); ?></span><span></span></div>
                                 <div class="competition-mini-row competition-mini-row--total">
-                                    <span>TOTAL:</span><span>81</span>
+                                    <span></span>
+                                    <span><?php esc_html_e( 'TOTAL: 81', 'influencer-hq' ); ?></span>
                                 </div>
+                            </div>
+
+                            <div class="competition-mini-table competition-mini-table--api">
                                 <div class="competition-mini-row competition-mini-row--api-points competition-mini-row--api-header">
                                     <span>Points from API</span>
                                     <span>resolvedPoints</span>
@@ -606,55 +536,68 @@ $portal_embed_urls = [
                         </div>
                     </div>
 
-                    <div class="competition-dropdown">
-                        <div class="competition-dropdown-header">See My Medals</div>
+                    <div class="competition-dropdown competition-dropdown--figma is-open">
+                        <div class="competition-dropdown-header">
+                            <div class="competition-figma-header-row">
+                                <span class="competition-figma-header-text"><?php esc_html_e( 'See My Medals', 'influencer-hq' ); ?></span>
+                                <span class="competition-figma-chevron" aria-hidden="true"></span>
+                            </div>
+                        </div>
                         <div class="competition-dropdown-body">
                             <div class="competition-pill-center">
-                                <button class="competition-pill active">Quarter to Date</button>
+                                <button class="competition-pill active"><?php esc_html_e( 'Quarter to Date', 'influencer-hq' ); ?></button>
                             </div>
-                            <div class="competition-dropdown-section">
-                                <div class="competition-dropdown-label">This Year's Previous Quarters</div>
-                                <div class="competition-dropdown-select-wrap">
-                                    <select class="competition-dropdown-select">
-                                        <option>1st Quarter 2026</option>
-                                        <option>2nd Quarter 2026</option>
-                                        <option>3rd Quarter 2026</option>
-                                        <option>4th Quarter 2026</option>
-                                        <option>1st Quarter 2025</option>
-                                        <option>2nd Quarter 2025</option>
-                                        <option>3rd Quarter 2025</option>
-                                        <option>4th Quarter 2025</option>
-                                    </select>
-                                    <span class="competition-dropdown-arrow">▼</span>
+                            <div class="competition-dropdown-columns">
+                                <div class="competition-dropdown-section">
+                                    <div class="competition-dropdown-label"><?php esc_html_e( 'This Year\'s', 'influencer-hq' ); ?></div>
+                                    <div class="competition-dropdown-select-wrap">
+                                        <select class="competition-dropdown-select competition-dropdown-select--tall">
+                                            <option><?php esc_html_e( '1st Quarter 2026', 'influencer-hq' ); ?></option>
+                                            <option><?php esc_html_e( '2nd Quarter 2026', 'influencer-hq' ); ?></option>
+                                            <option><?php esc_html_e( '3rd Quarter 2026', 'influencer-hq' ); ?></option>
+                                            <option><?php esc_html_e( '4th Quarter 2026', 'influencer-hq' ); ?></option>
+                                        </select>
+                                        <span class="competition-dropdown-arrow">▼</span>
+                                    </div>
+                                </div>
+                                <div class="competition-dropdown-section">
+                                    <div class="competition-dropdown-label"><?php esc_html_e( 'Previous Years', 'influencer-hq' ); ?></div>
+                                    <div class="competition-dropdown-select-wrap">
+                                        <select class="competition-dropdown-select">
+                                            <option><?php esc_html_e( '1st Quarter 2024', 'influencer-hq' ); ?></option>
+                                            <option><?php esc_html_e( '1st Quarter 2025', 'influencer-hq' ); ?></option>
+                                            <option><?php esc_html_e( '2nd Quarter 2025', 'influencer-hq' ); ?></option>
+                                            <option><?php esc_html_e( '3rd Quarter 2025', 'influencer-hq' ); ?></option>
+                                            <option><?php esc_html_e( '4th Quarter 2025', 'influencer-hq' ); ?></option>
+                                        </select>
+                                        <span class="competition-dropdown-arrow">▼</span>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="competition-dropdown-section--lg">
-                                <div class="competition-dropdown-label">Previous Years</div>
-                                <div class="competition-dropdown-select-wrap">
-                                    <select class="competition-dropdown-select">
-                                        <option>1st Quarter 2025</option>
-                                        <option>2nd Quarter 2025</option>
-                                        <option>3rd Quarter 2025</option>
-                                        <option>4th Quarter 2025</option>
-                                    </select>
-                                    <span class="competition-dropdown-arrow">▼</span>
-                                </div>
-                            </div>
-                            <div class="competition-medal-display">
+                            <div class="competition-medal-display competition-medal-display--labeled">
                                 <div class="competition-medal-item">
-                                    <img src="<?php echo get_template_directory_uri(); ?>/images/diamond-medal.png" alt="Diamond">
+                                    <div class="competition-medal-name"><?php esc_html_e( 'Diamond', 'influencer-hq' ); ?></div>
+                                    <img src="<?php echo get_template_directory_uri(); ?>/images/diamond-medal.png" alt="<?php esc_attr_e( 'Diamond', 'influencer-hq' ); ?>">
+                                    <div class="competition-medal-count">1</div>
+                                </div>
+                                <div class="competition-medal-item">
+                                    <div class="competition-medal-name"><?php esc_html_e( 'Platinum', 'influencer-hq' ); ?></div>
+                                    <img src="<?php echo get_template_directory_uri(); ?>/images/platinum-medal.png" alt="<?php esc_attr_e( 'Platinum', 'influencer-hq' ); ?>">
                                     <div class="competition-medal-count">2</div>
                                 </div>
                                 <div class="competition-medal-item">
-                                    <img src="<?php echo get_template_directory_uri(); ?>/images/gold-medal.png" alt="Gold">
+                                    <div class="competition-medal-name"><?php esc_html_e( 'Gold', 'influencer-hq' ); ?></div>
+                                    <img src="<?php echo get_template_directory_uri(); ?>/images/gold-medal.png" alt="<?php esc_attr_e( 'Gold', 'influencer-hq' ); ?>">
                                     <div class="competition-medal-count">7</div>
                                 </div>
                                 <div class="competition-medal-item">
-                                    <img src="<?php echo get_template_directory_uri(); ?>/images/silver-medal.png" alt="Silver">
+                                    <div class="competition-medal-name"><?php esc_html_e( 'Silver', 'influencer-hq' ); ?></div>
+                                    <img src="<?php echo get_template_directory_uri(); ?>/images/silver-medal.png" alt="<?php esc_attr_e( 'Silver', 'influencer-hq' ); ?>">
                                     <div class="competition-medal-count">12</div>
                                 </div>
                                 <div class="competition-medal-item">
-                                    <img src="<?php echo get_template_directory_uri(); ?>/images/bronze-medal.png" alt="Bronze">
+                                    <div class="competition-medal-name"><?php esc_html_e( 'Bronze', 'influencer-hq' ); ?></div>
+                                    <img src="<?php echo get_template_directory_uri(); ?>/images/bronze-medal.png" alt="<?php esc_attr_e( 'Bronze', 'influencer-hq' ); ?>">
                                     <div class="competition-medal-count">23</div>
                                 </div>
                             </div>
@@ -1165,11 +1108,37 @@ $portal_embed_urls = [
 
                 <!-- Leagues Tab -->
                 <div class="competition-panel" id="leagues-tab">
-                    <div class="competition-card">
-                        <p>We believe competition creates identity.</p>
-                        <p>A flag. A name. A team you carry into every contest.</p>
-                        <p>Leagues turn influence into legacy. Where your stream represents something bigger than yourself - and everyone knows what you stand for.</p>
-                        <p>That is why we built Leagues. To give your followers a team. And give your team a reason to rise.</p>
+                    <?php
+                    $leagues_account_url = function_exists( 'ihq_portal_account_url' )
+                        ? ihq_portal_account_url()
+                        : trailingslashit( home_url( '/portal/account' ) );
+                    ?>
+                    <div class="world-intro-row">
+                        <div class="world-intro-card leagues-intro-card">
+                            <p><?php esc_html_e( 'There are two types of Leagues and four separate seasons of competition - Spring, Summer, Fall, and Winter.', 'influencer-hq' ); ?></p>
+                            <p><?php esc_html_e( 'International Leagues.', 'influencer-hq' ); ?></p>
+                            <p><?php esc_html_e( 'You’re not just joining global competition — you’re planting your flag on the world stage.', 'influencer-hq' ); ?></p>
+                            <p><?php esc_html_e( 'Celebrity Followers Leagues.', 'influencer-hq' ); ?></p>
+                            <p><?php esc_html_e( 'Compete under banners inspired by Movie Stars, Sports Icons, and Music Artists.', 'influencer-hq' ); ?></p>
+                            <p>
+                                <?php esc_html_e( 'We believe competition creates identity.', 'influencer-hq' ); ?><br>
+                                <?php esc_html_e( 'A flag. A name. A team you carry into every contest.', 'influencer-hq' ); ?>
+                            </p>
+                            <p>
+                                <?php esc_html_e( 'Leagues turn influence into legacy.', 'influencer-hq' ); ?><br>
+                                <?php esc_html_e( 'Where your stream represents something bigger than yourself — and everyone knows what you stand for.', 'influencer-hq' ); ?>
+                            </p>
+                            <p>
+                                <?php esc_html_e( 'That’s why we built Leagues.', 'influencer-hq' ); ?><br>
+                                <?php esc_html_e( 'To give your followers a team. And give your team a reason to rise.', 'influencer-hq' ); ?>
+                            </p>
+                            <p>
+                                <a class="leagues-click-here" href="<?php echo esc_url( $leagues_account_url . '#celebLeaguesHead' ); ?>">
+                                    <?php esc_html_e( 'CLICK HERE to choose or change your team affiliations in any of our 4 leagues.', 'influencer-hq' ); ?>
+                                </a>
+                            </p>
+                        </div>
+                        <div class="world-coach-fab-host" id="leagues-coach-fab-host" aria-hidden="true"></div>
                     </div>
 
                     <?php
@@ -1183,189 +1152,115 @@ $portal_embed_urls = [
                     );
                     ?>
 
-                    <h2 class="competition-section-title" id="leagues-results">Leagues</h2>
+                    <h2 class="competition-section-title" id="leagues-results"><?php esc_html_e( 'Leagues', 'influencer-hq' ); ?></h2>
 
-                    <?php
-                    get_template_part(
-                        'template-parts/portal-external-embed',
-                        null,
-                        array(
-                            'url'      => $portal_embed_urls['leagues'],
-                            'title'    => __( 'Leagues standings', 'influencer-hq' ),
-                            'fallback' => __( 'Leagues content is temporarily unavailable. Please try again later.', 'influencer-hq' ),
-                            'wrap_id'  => 'leagues-leaderboards',
-                        )
-                    );
-                    ?>
-
-                    <div class="competition-panel-card">
-                        <div class="competition-panel-title" id="leagues-celebrity">Celebrity Follower Leagues</div>
-                        <p class="competition-panel-subtitle">Belong to something bigger. Lead a team. Structured, weekly competitions are organized around celebrity teams, where Influencers step in as team leaders and rally their followers to compete under banners inspired by Movie Stars, Sports Icons, and Music Artists.</p>
-                        <p class="competition-panel-link">View Profile to Choose Your Celebrity &gt;&gt;</p>
-                        <div class="competition-panel-title" id="leagues-international">International League</div>
-                        <p class="competition-panel-subtitle">When you select an International League Team, you are not just joining global competition - you are planting your flag on the world stage.</p>
-                        <p class="competition-panel-link">View Profile to Choose Your International Team &gt;&gt;</p>
+                    <div class="leagues-info-card">
+                        <div class="leagues-info-heading" id="leagues-celebrity"><?php esc_html_e( 'Celebrity Follower Leagues', 'influencer-hq' ); ?></div>
+                        <p class="leagues-info-copy"><?php esc_html_e( 'Belong to something bigger. Lead a team.', 'influencer-hq' ); ?></p>
+                        <p class="leagues-info-copy"><?php esc_html_e( 'Structured, weekly competitions are organized around celebrity teams, where Influencers step in as team leaders and rally their followers to compete under banners inspired by Movie Stars, Sports Icons, and Music Artists.', 'influencer-hq' ); ?></p>
+                        <div class="leagues-info-heading" id="leagues-international"><?php esc_html_e( 'International League', 'influencer-hq' ); ?></div>
+                        <p class="leagues-info-copy"><?php esc_html_e( 'When you select an International League Team, you’re not just joining global competition — you’re planting your flag on the world stage.', 'influencer-hq' ); ?></p>
+                        <p>
+                            <a class="leagues-click-here" href="<?php echo esc_url( $leagues_account_url . '#intlLeagueHead' ); ?>">
+                                <?php esc_html_e( 'CLICK HERE to Choose or Change team affiliations in any of our 4 leagues.', 'influencer-hq' ); ?>
+                            </a>
+                        </p>
                     </div>
 
-                    <div class="competition-panel-card">
-                        <div class="competition-panel-title">Choose a Flag. Captain a Team.</div>
-                        <p class="competition-panel-subtitle">Choose one of 60 Celebrity Follower Groups (20 Sports, 20 Music, 20 Movies). That flag becomes your team - your tribe - your identity. You can also captain one of 20 International League Teams, representing countries and regions in Olympic-style matchups.</p>
+                    <div class="leagues-flag-card">
+                        <div class="leagues-flag-heading"><?php esc_html_e( 'Choose a Flag. Captain a Team.', 'influencer-hq' ); ?></div>
+                        <p class="leagues-flag-copy"><?php esc_html_e( 'Choose one of 60 Celebrity Follower Groups', 'influencer-hq' ); ?></p>
+                        <p class="leagues-flag-copy"><?php esc_html_e( '(20 Sports, 20 Music, 20 Movies).', 'influencer-hq' ); ?></p>
+                        <p class="leagues-flag-copy"><?php esc_html_e( 'That flag becomes your team — your tribe — your identity.', 'influencer-hq' ); ?></p>
+                        <p class="leagues-flag-copy"><?php esc_html_e( 'You can also captain one of 20 International League Teams, representing countries and regions in Olympic-style matchups.', 'influencer-hq' ); ?></p>
                         <div class="accordion custom-accordion" id="leagueAccordion">
                             <div class="accordion-item mb-3">
                                 <h2 class="accordion-header" id="headingLeaguePride">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLeaguePride" aria-expanded="false" aria-controls="collapseLeaguePride">
-                                        <span class="question-text">Global Competition. Local Pride.</span>
+                                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLeaguePride" aria-expanded="true" aria-controls="collapseLeaguePride">
+                                        <span class="question-text"><?php esc_html_e( 'Global Competition. Local Pride.', 'influencer-hq' ); ?></span>
                                     </button>
                                 </h2>
-                                <div id="collapseLeaguePride" class="accordion-collapse collapse" aria-labelledby="headingLeaguePride" data-bs-parent="#leagueAccordion">
+                                <div id="collapseLeaguePride" class="accordion-collapse collapse show" aria-labelledby="headingLeaguePride" data-bs-parent="#leagueAccordion">
                                     <div class="accordion-body">
-                                        <p>We have seen it in sports. We have seen it in the Olympics.</p>
-                                        <p>Now - for the first time - streaming brings that same pride and unity to Baccarat, the Game of Kings for more than 400 years.</p>
+                                        <p><?php esc_html_e( 'We’ve seen it in sports.', 'influencer-hq' ); ?></p>
+                                        <p><?php esc_html_e( 'We’ve seen it in the Olympics.', 'influencer-hq' ); ?></p>
+                                        <p><?php esc_html_e( 'Now — for the first time — streaming brings that same pride and unity to Baccarat, the Game of Kings for more than 400 years.', 'influencer-hq' ); ?></p>
                                     </div>
                                 </div>
                             </div>
                             <div class="accordion-item mb-3">
                                 <h2 class="accordion-header" id="headingLeagueScale">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLeagueScale" aria-expanded="false" aria-controls="collapseLeagueScale">
-                                        <span class="question-text">The Scale of the Leagues</span>
+                                        <span class="question-text"><?php esc_html_e( 'The Scale of the Leagues', 'influencer-hq' ); ?></span>
                                     </button>
                                 </h2>
                                 <div id="collapseLeagueScale" class="accordion-collapse collapse" aria-labelledby="headingLeagueScale" data-bs-parent="#leagueAccordion">
                                     <div class="accordion-body">
-                                        <p>60 Celebrity Groups = more than 2 billion fans worldwide.</p>
-                                        <p>The International League covers nearly every region on the planet.</p>
-                                        <p>Avantage promotes directly into these communities - amplifying you and your stream, building visibility, and driving pride.</p>
+                                        <p><?php esc_html_e( '60 Celebrity Groups = more than 2 billion fans worldwide.', 'influencer-hq' ); ?></p>
+                                        <p><?php esc_html_e( 'The International League covers nearly every region on the planet.', 'influencer-hq' ); ?></p>
+                                        <p><?php esc_html_e( 'Avantage promotes directly into these communities - amplifying you and your stream, building visibility, and driving pride.', 'influencer-hq' ); ?></p>
                                     </div>
                                 </div>
                             </div>
                             <div class="accordion-item mb-3">
                                 <h2 class="accordion-header" id="headingLeagueRole">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLeagueRole" aria-expanded="false" aria-controls="collapseLeagueRole">
-                                        <span class="question-text">Your Leadership Role</span>
+                                        <span class="question-text"><?php esc_html_e( 'Your Leadership Role', 'influencer-hq' ); ?></span>
                                     </button>
                                 </h2>
                                 <div id="collapseLeagueRole" class="accordion-collapse collapse" aria-labelledby="headingLeagueRole" data-bs-parent="#leagueAccordion">
                                     <div class="accordion-body">
-                                        <p>Choose your Celebrity Follower Team. Choose your International League Team. Represent both - and lead them to victory.</p>
-                                        <p>As a Team Captain, your stream carries influence. Every match inspires followers. Every broadcast builds presence, momentum, and reach.</p>
-                                        <p>Your leadership begins the moment you go live.</p>
+                                        <p><?php esc_html_e( 'Choose your Celebrity Follower Team. Choose your International League Team. Represent both - and lead them to victory.', 'influencer-hq' ); ?></p>
+                                        <p><?php esc_html_e( 'As a Team Captain, your stream carries influence. Every match inspires followers. Every broadcast builds presence, momentum, and reach.', 'influencer-hq' ); ?></p>
+                                        <p><?php esc_html_e( 'Your leadership begins the moment you go live.', 'influencer-hq' ); ?></p>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="competition-dropdown">
-                        <div class="competition-dropdown-header">Celebrity Followers Leagues</div>
-                        <div class="competition-dropdown-body">
-                            <p class="competition-dropdown-label">Choose your favorite celebrity in each category. These selections are saved to your profile the same way they are on the Portal Profile page.</p>
-                            <div class="sett-card">
-                                <div class="celeb-grid-layout">
-                                    <?php foreach ( $celeb_labels as $cat => $label ) :
-                                        $saved = $celebrity_selections[ $cat ] ?? '';
-                                    ?>
-                                    <div class="celeb-col" id="leagues-<?php echo esc_attr( str_replace( '_', '-', $cat ) ); ?>">
-                                        <span class="celeb-col-label"><?php echo esc_html( $label ); ?></span>
-                                        <select class="celeb-select" data-category="<?php echo esc_attr( $cat ); ?>">
-                                            <option value="">Open</option>
-                                            <?php foreach ( $celeb_lists[ $cat ] as $name ) : ?>
-                                            <option value="<?php echo esc_attr( $name ); ?>"<?php selected( $saved, $name ); ?>><?php echo esc_html( $name ); ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
+                    <section class="leagues-picker-section">
+                        <h3 class="leagues-picker-heading">
+                            <span><?php esc_html_e( 'Celebrity Followers Leagues', 'influencer-hq' ); ?></span>
+                            <span class="leagues-picker-chevron" aria-hidden="true"></span>
+                        </h3>
+                        <p class="leagues-picker-note"><?php esc_html_e( 'Choose or change your favorite celebrity in each category by clicking the drop-down arrow and selecting a celebrity from the list.', 'influencer-hq' ); ?></p>
+                        <div class="leagues-picker-box">
+                            <div class="celeb-grid-layout">
+                                <?php foreach ( $celeb_labels as $cat => $label ) :
+                                    $saved = $celebrity_selections[ $cat ] ?? '';
+                                ?>
+                                <div class="celeb-col" id="leagues-<?php echo esc_attr( str_replace( '_', '-', $cat ) ); ?>">
+                                    <span class="celeb-col-label"><?php echo esc_html( $label ); ?></span>
+                                    <select class="celeb-select" data-category="<?php echo esc_attr( $cat ); ?>">
+                                        <option value=""><?php esc_html_e( 'Open', 'influencer-hq' ); ?></option>
+                                        <?php foreach ( $celeb_lists[ $cat ] as $name ) : ?>
+                                        <option value="<?php echo esc_attr( $name ); ?>"<?php selected( $saved, $name ); ?>><?php echo esc_html( $name ); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="leagues-picker-section">
+                        <h3 class="leagues-picker-heading">
+                            <span><?php esc_html_e( 'Choose Your International League Team', 'influencer-hq' ); ?></span>
+                            <span class="leagues-picker-chevron" aria-hidden="true"></span>
+                        </h3>
+                        <div class="leagues-picker-box leagues-picker-box--intl">
+                            <div class="celeb-col">
+                                <span class="celeb-col-label"><?php esc_html_e( 'Country / Region', 'influencer-hq' ); ?></span>
+                                <select class="celeb-select" id="intlLeagueSelect">
+                                    <option value=""><?php esc_html_e( 'Open', 'influencer-hq' ); ?></option>
+                                    <?php foreach ( $intl_league_regions as $region ) : ?>
+                                    <option value="<?php echo esc_attr( $region ); ?>"<?php selected( $intl_league_team, $region ); ?>><?php echo esc_html( $region ); ?></option>
                                     <?php endforeach; ?>
-                                </div>
+                                </select>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="competition-dropdown">
-                        <div class="competition-dropdown-header">International League Team</div>
-                        <div class="competition-dropdown-body">
-                            <p class="competition-dropdown-label">Select your country or region for the International League. This choice saves to the same profile field as Portal Profile.</p>
-                            <div class="sett-card">
-                                <div class="celeb-grid-layout" style="grid-template-columns:1fr;">
-                                    <div class="celeb-col">
-                                        <span class="celeb-col-label">Country / Region</span>
-                                        <select class="celeb-select" id="intlLeagueSelect">
-                                            <option value="">Open</option>
-                                            <?php foreach ( $intl_league_regions as $region ) : ?>
-                                            <option value="<?php echo esc_attr( $region ); ?>"<?php selected( $intl_league_team, $region ); ?>><?php echo esc_html( $region ); ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <style>
-                        .celeb-grid-layout {
-                            display: grid;
-                            grid-template-columns: 1fr 1fr 1fr;
-                            gap: 10px;
-                            padding: 10px;
-                        }
-                        .celeb-col {
-                            display: flex;
-                            flex-direction: column;
-                            gap: 6px;
-                        }
-                        .celeb-col-label {
-                            font-size: 15px;
-                            color: #e5e5e5;
-                            text-align: center;
-                            font-weight: 600;
-                        }
-                        .celeb-select {
-                            background: #000;
-                            color: #fff;
-                            border: 1px solid rgba(184, 151, 47, 0.5);
-                            border-radius: 3px;
-                            font-size: 14px;
-                            padding: 3px 4px;
-                            outline: none;
-                            cursor: pointer;
-                            width: 100%;
-                        }
-                        .celeb-select:focus {
-                            border-color: #b8972f;
-                        }
-                        .celeb-select option {
-                            background: #1a1a1a;
-                        }
-                        @media (max-width: 600px) {
-                            .celeb-grid-layout {
-                                grid-template-columns: 1fr;
-                            }
-                            .celeb-col-label {
-                                text-align: left;
-                            }
-                        }
-                    </style>
-
-                    <div class="competition-rule-block">
-                        <div class="competition-rule-header">League Medals</div>
-                        <p class="competition-rule-note">Points are awarded at the end of each week. Medals are awarded to Team Captains based on total points at the end of each 23-week season.</p>
-                        <div class="competition-rule-grid">
-                            <div>
-                                <div class="competition-rule-title">Finish</div>
-                                <div class="competition-rule-list">Top 10%<br>11%-20%<br>21%-30%<br>31%-40%<br>41%-50%</div>
-                            </div>
-                            <div>
-                                <div class="competition-rule-title">Points</div>
-                                <div class="competition-rule-list">5<br>4<br>3<br>2<br>1</div>
-                            </div>
-                            <div>
-                                <div class="competition-rule-title">Total Points</div>
-                                <div class="competition-rule-list">Top 10%<br>11%-20%<br>21%-30%<br>31%-40%</div>
-                            </div>
-                            <div>
-                                <div class="competition-rule-title">Medals</div>
-                                <div class="competition-rule-list">Diamond<br>Gold<br>Silver<br>Bronze</div>
-                            </div>
-                        </div>
-                    </div>
+                    </section>
 
                 </div>
             </div>
@@ -1683,7 +1578,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     tabButtons.forEach(button => {
-        button.addEventListener('click', function(ev) {
+        button.addEventListener('click', function() {
             const tabName = this.getAttribute('data-tab');
             
             // Remove active class from all buttons and contents
@@ -1694,9 +1589,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.classList.add('active');
             document.getElementById(tabName + '-tab').classList.add('active');
             syncCompetitionCoachFab();
-            if (ev && ev.isTrusted) {
-                scrollCompetitionPanelIntoView(tabName);
-            }
+            syncCompetitionTabsCompact();
         });
     });
 
@@ -1717,6 +1610,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!fab) {
             return;
         }
+        if (fab.classList.contains('is-moved')) {
+            return;
+        }
         var tab = getActiveCompetitionTabName();
         var host = null;
         if (tab === 'intro') {
@@ -1725,6 +1621,10 @@ document.addEventListener('DOMContentLoaded', function() {
             host = document.getElementById('private-coach-fab-host');
         } else if (tab === 'community') {
             host = document.getElementById('community-coach-fab-host');
+        } else if (tab === 'world') {
+            host = document.getElementById('world-coach-fab-host');
+        } else if (tab === 'leagues') {
+            host = document.getElementById('leagues-coach-fab-host');
         }
         if (host) {
             if (fab.parentNode !== host) {
@@ -1741,6 +1641,14 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         if (fab.parentNode && fab.parentNode.id === 'community-coach-fab-host') {
+            document.body.appendChild(fab);
+            return;
+        }
+        if (fab.parentNode && fab.parentNode.id === 'world-coach-fab-host') {
+            document.body.appendChild(fab);
+            return;
+        }
+        if (fab.parentNode && fab.parentNode.id === 'leagues-coach-fab-host') {
             document.body.appendChild(fab);
         }
     }
@@ -1759,21 +1667,14 @@ document.addEventListener('DOMContentLoaded', function() {
         document.documentElement.style.setProperty('--portal-comp-tabs-top', topOffset + 'px');
 
         /*
-         * Hysteresis: entering compact shrinks padding/icons, which bumps
-         * getBoundingClientRect().top and would otherwise flip the class
-         * every scroll frame. Enter tight, exit loose.
+         * Measure a zero-height sentinel above the tab bar, not the bar
+         * itself. Compacting shrinks the bar; using the bar's top as the
+         * trigger made is-compact flip every few pixels of scroll.
          */
-        var COMPACT_ENTER_PX = 2;
-        var COMPACT_EXIT_PX = 28;
-        var tabsTop = tabs.getBoundingClientRect().top;
-        var isCompact = tabs.classList.contains('is-compact');
-        var stuck;
-        if (isCompact) {
-            stuck = tabsTop <= (topOffset + COMPACT_EXIT_PX);
-        } else {
-            stuck = tabsTop <= (topOffset + COMPACT_ENTER_PX);
-        }
-        tabs.classList.toggle('is-compact', stuck);
+        var sentinel = document.querySelector('.competition-types-sentinel');
+        var probe = sentinel || tabs;
+        var probeTop = probe.getBoundingClientRect().top;
+        tabs.classList.toggle('is-compact', probeTop <= topOffset);
     }
 
     window.addEventListener('scroll', syncCompetitionTabsCompact, { passive: true });
@@ -1834,33 +1735,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     })();
 
-    // ICR — type tabs (World / Community / Private)
-    document.querySelectorAll('.icr-type-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.icr-type-btn').forEach(function(b) { b.classList.remove('active'); });
-            this.classList.add('active');
-        });
-    });
-
-    // ICR — time filter tabs
-    document.querySelectorAll('.icr-time-tabs').forEach(function(tabs) {
-        tabs.querySelectorAll('.icr-time-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                tabs.querySelectorAll('.icr-time-btn').forEach(function(b) { b.classList.remove('active'); });
-                this.classList.add('active');
-            });
-        });
-    });
-
-    // ICR — expand / collapse rows
-    document.querySelectorAll('.icr-expand-btn').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            var breakdown = this.closest('.icr-row').nextElementSibling;
-            if (!breakdown || !breakdown.classList.contains('icr-breakdown')) return;
-            var isOpen = breakdown.style.display !== 'none';
-            breakdown.style.display = isOpen ? 'none' : 'block';
-            this.textContent = isOpen ? '+' : '×';
+    document.querySelectorAll('#world-tab .competition-dropdown--figma > .competition-dropdown-header').forEach(function(header) {
+        header.addEventListener('click', function() {
+            header.parentNode.classList.toggle('is-open');
         });
     });
 

@@ -402,7 +402,92 @@ function ihq_parse_visitor_intent_ajax_request() {
 }
 
 /**
- * Issue a 6-digit code tied to visitor comm_methods; prepare Braze payload.
+ * Email a visitor verification code (PO-3192).
+ *
+ * Braze is the intended delivery channel — it is the only one that can reach
+ * LINE / WhatsApp / WeChat — but it is not configured on every instance, and a
+ * code that never arrives reads as a dead button. Mail mirrors the sign-in code
+ * message in inc/email-verification-handler.php so both codes look the same.
+ *
+ * @param string $email        Recipient address.
+ * @param string $code         Six-digit code.
+ * @param int    $minutes_left Minutes until the code expires.
+ * @return bool Whether wp_mail() accepted the message.
+ */
+function ihq_send_visitor_verification_code_email( $email, $code, $minutes_left ) {
+	$subject = __( 'Your Influencer HQ code', 'influencer-hq' );
+	$message = '
+	<!DOCTYPE html>
+	<html><head><meta charset="UTF-8"></head>
+	<body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background:#0a0a0a;color:#f0f0f0;">
+	  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 20px;">
+	    <tr><td align="center">
+	      <table width="560" cellpadding="0" cellspacing="0" style="background:#161612;border:1px solid rgba(240,201,58,.35);border-radius:12px;">
+	        <tr><td style="padding:40px 32px;text-align:center;">
+	          <h1 style="color:#F0C93A;font-size:26px;margin:0 0 16px;">Influencer HQ</h1>
+	          <p style="color:#EAD9B0;font-size:16px;line-height:1.6;margin:0 0 24px;">Your code is:</p>
+	          <div style="font-size:36px;font-weight:700;letter-spacing:12px;color:#fff;margin:16px 0 24px;">' . esc_html( $code ) . '</div>
+	          <p style="color:#888;font-size:14px;line-height:1.6;margin:0;">This code expires in ' . (int) $minutes_left . ' minutes.</p>
+	        </td></tr>
+	      </table>
+	    </td></tr>
+	  </table>
+	</body></html>';
+
+	$headers = array(
+		'Content-Type: text/html; charset=UTF-8',
+		'From: Influencer HQ <verify@influencerhq.co>',
+	);
+
+	$mail_error  = null;
+	$failed_hook = function ( $wp_error ) use ( &$mail_error ) {
+		$mail_error = $wp_error->get_error_message();
+	};
+
+	add_action( 'wp_mail_failed', $failed_hook );
+	$sent = wp_mail( $email, $subject, $message, $headers );
+	remove_action( 'wp_mail_failed', $failed_hook );
+
+	if ( ! $sent ) {
+		error_log( 'IHQ visitor verification email failed for ' . $email . ': ' . ( $mail_error ? $mail_error : 'unknown error' ) );
+	}
+
+	return (bool) $sent;
+}
+
+/**
+ * Deliver an already-issued verification code to the visitor.
+ *
+ * Failures are returned rather than logged-and-ignored: the gate shows a code
+ * box as soon as this succeeds, so reporting success without delivering leaves
+ * the visitor waiting for a code that is never coming.
+ *
+ * @param array  $intent       Visitor intent.
+ * @param string $code         Six-digit code.
+ * @param int    $minutes_left Minutes until the code expires.
+ * @return array{ok:bool,message?:string}
+ */
+function ihq_deliver_visitor_verification_code( array $intent, $code, $minutes_left ) {
+	$email = ihq_visitor_intent_extract_email( $intent );
+	if ( $email === '' ) {
+		return array(
+			'ok'      => false,
+			'message' => __( 'We need an email address to send your code. Please add one and try again.', 'influencer-hq' ),
+		);
+	}
+
+	if ( ! ihq_send_visitor_verification_code_email( $email, $code, $minutes_left ) ) {
+		return array(
+			'ok'      => false,
+			'message' => __( 'We could not send your code. Please try again in a moment.', 'influencer-hq' ),
+		);
+	}
+
+	return array( 'ok' => true );
+}
+
+/**
+ * Issue a 6-digit code tied to visitor comm_methods and deliver it by email.
  *
  * @param array  $intent           Visitor intent.
  * @param string $button_press_url Trigger URL for Braze event.
@@ -424,6 +509,14 @@ function ihq_issue_visitor_verification_code( array $intent, $button_press_url =
 		$code          = (string) $existing['code'];
 		$braze_payload = ihq_build_braze_track_payload_for_visitor_intent( $intent, $button_press_url, $code );
 		$minutes_left  = max( 1, (int) ceil( ( (int) $existing['expires'] - time() ) / MINUTE_IN_SECONDS ) );
+
+		// Resend rather than assume the earlier attempt arrived — a code issued
+		// while delivery was broken would otherwise block the visitor for its
+		// whole 15-minute lifetime.
+		$delivery = ihq_deliver_visitor_verification_code( $intent, $code, $minutes_left );
+		if ( ! $delivery['ok'] ) {
+			return $delivery;
+		}
 
 		return array(
 			'ok'                  => true,
@@ -463,28 +556,39 @@ function ihq_issue_visitor_verification_code( array $intent, $button_press_url =
 	);
 
 	$braze_payload = ihq_build_braze_track_payload_for_visitor_intent( $intent, $button_press_url, $code );
-	$braze_result  = ihq_post_braze_track_payload( $braze_payload );
+	$minutes_left  = (int) ( ihq_visitor_verification_code_ttl_seconds() / MINUTE_IN_SECONDS );
 
-	if ( ! $braze_result['ok'] ) {
-		error_log( 'IHQ visitor verification Braze failed: ' . $braze_result['body'] );
+	/*
+	 * Braze delivery (PO-3192) — kept ready, not deleted. Braze is how this code
+	 * reaches LINE / WhatsApp / WeChat, so this comes back on once the
+	 * IHQ_BRAZE_REST_ENDPOINT and IHQ_BRAZE_TRACK_API_KEY constants are defined
+	 * on every instance. Until then it posted into the void and the visitor got
+	 * nothing, so email below is the delivery channel. When restoring this, add
+	 * 'braze_response' back to the returned array; the AJAX handler already
+	 * passes that key through when present.
+	 *
+	 * $braze_result = ihq_post_braze_track_payload( $braze_payload );
+	 * if ( ! $braze_result['ok'] ) {
+	 *     error_log( 'IHQ visitor verification Braze failed: ' . $braze_result['body'] );
+	 * }
+	 */
+
+	$delivery = ihq_deliver_visitor_verification_code( $intent, $code, $minutes_left );
+	if ( ! $delivery['ok'] ) {
+		return $delivery;
 	}
 
 	return array(
 		'ok'                  => true,
 		'code'                => $code,
 		'braze_track_payload' => $braze_payload,
-		'braze_response'      => array(
-			'ok'   => $braze_result['ok'],
-			'code' => $braze_result['code'],
-			'body' => $braze_result['body'],
-		),
-		'expires_minutes'     => (int) ( ihq_visitor_verification_code_ttl_seconds() / MINUTE_IN_SECONDS ),
+		'expires_minutes'     => $minutes_left,
 		'reused'              => false,
 	);
 }
 
 /**
- * AJAX: issue 6-digit visitor verification code + send first Braze message.
+ * AJAX: issue a 6-digit visitor verification code and email it to the visitor.
  */
 function ihq_handle_issue_visitor_verification_ajax() {
 	$parsed = ihq_parse_visitor_intent_ajax_request();

@@ -5,23 +5,41 @@
 import { createClient, AnamEvent } from 'https://cdn.jsdelivr.net/npm/@anam-ai/js-sdk@4/+esm';
 
 /*
- * FR-01 + FR-02 + FR-03 — on arrival, the coach speaks a fixed sequence of
- * screens (intro, two "We Believe" screens, then the time-selection pitch —
- * this last one spoken over the existing tier-selection UI rather than a
- * separate screen) verbatim via Sami's existing Anam avatar (same session-
- * token proxy page-portal-poc.php already uses), with on-screen captions
- * built from the SDK's own MESSAGE_STREAM_EVENT_RECEIVED content stream
- * (Anam's documented captioning pattern — append role="persona" chunks in
- * arrival order). Each screen advances to the next when its line finishes,
- * or immediately on a visitor tap/click (FR-02's "narration timing or
- * visitor tap/click"); confirming a time tier (FR-03) is the same kind of
- * early-advance, plus it marks the sequence done and starts elapsed-time
- * tracking. Unlike page-portal-poc.php this is NOT tap-to-start — the AC
- * requires the video to begin on load.
+ * PO-3062 avatar connection — as of 2026-09-15, the avatar/video is opened via
+ * a real Gary Coach API session (inc/gary-proxy.php's /coach/session), not a
+ * directly-minted Anam token anymore. Gary's response includes an Anam
+ * session_token (say.video.session_token) that the same Anam client SDK
+ * connects with — Gary is effectively brokering the Anam session for us now.
+ *
+ * KNOWN, FLAGGED GAP: Gary's API has no "say this exact text" capability — it
+ * generates its own contextual response, it doesn't recite a script we hand
+ * it. That means only the FIRST thing the avatar says (its own generated
+ * opening line, shown live from Gary's session-open response) is real,
+ * Gary-spoken content. Every screen after that (We Believe, equity examples,
+ * competition types, etc.) still uses this file's existing fixed SCREENS
+ * copy, but displayed as a static caption — same pacing as the
+ * no-connection fallback path — rather than spoken/lip-synced, since there's
+ * no way to make Gary recite it. This is a known content gap, not a bug:
+ * confirmed with Filip Milinkovic (2026-09-15) that connecting the avatar
+ * should proceed anyway while Sami's Gary-side prompt/config is separately
+ * requested to cover IHQ's registration content ("this isn't a technical
+ * blocker, continue connecting the API"). Revisit this file once that
+ * config lands — at that point some/all of SCREENS' copy may become real
+ * Gary `event`/`message` calls instead of static display.
+ *
+ * FR-01 + FR-02 + FR-03 — on arrival, the coach's own real greeting plays
+ * live, then the rest of the fixed sequence (intro, two "We Believe"
+ * screens, then the time-selection pitch — this last one spoken over the
+ * existing tier-selection UI rather than a separate screen) is shown as
+ * static captions per the gap above. Each screen advances to the next after
+ * a reading dwell, or immediately on a visitor tap/click (FR-02's
+ * "narration timing or visitor tap/click"); confirming a time tier (FR-03)
+ * is the same kind of early-advance, plus it marks the sequence done and
+ * starts elapsed-time tracking. Unlike page-portal-poc.php this is NOT
+ * tap-to-start — the AC requires the video to begin on load.
  */
 const FADE_MS = 400;
-const SCREEN_ADVANCE_DELAY_MS = 1200; // natural pause after a line finishes before the panel swaps
-const FALLBACK_READ_MS = 9000;        // per-screen dwell for the static-text fallback (no speech to sync against)
+const FALLBACK_READ_MS = 9000; // per-screen dwell for the static-text fallback (no speech to sync against)
 const AVATAR_VIDEO_ID = 'aicoach-avatar-video';
 
 // FR-17 — trigger the time-remaining check once this proportion of the
@@ -144,6 +162,40 @@ function applyLocale( locale ) {
     } );
 }
 
+// FR-12 — language auto-detected from browser locale, with English fallback
+// (Scenario 22/23). The ticket's priority order is: saved Luna preference →
+// browser locale → English. Only the last two are implemented here — Luna
+// session persistence (PO-3102) doesn't exist yet, so there's no saved
+// preference to read. Revisit this once PO-3102 ships.
+function detectInitialLocale() {
+    const supportedCodes = SUPPORTED_LOCALES.map( function ( loc ) { return loc.code; } );
+    const browserTags = ( navigator.languages && navigator.languages.length )
+        ? navigator.languages
+        : [ navigator.language || '' ];
+
+    for ( let i = 0; i < browserTags.length; i++ ) {
+        const tag = ( browserTags[ i ] || '' ).toLowerCase();
+        if ( ! tag ) {
+            continue;
+        }
+        const primary = tag.split( '-' )[ 0 ];
+        // Cantonese has no primary subtag browsers actually report — "yue" is
+        // valid BCP 47 but essentially never seen in the wild. Hong Kong/Macau
+        // region on "zh" is the closest practical signal; any other "zh" region
+        // (or bare "zh") is treated as Mandarin, matching SUPPORTED_LOCALES.
+        if ( primary === 'yue' ) {
+            return 'yue';
+        }
+        if ( primary === 'zh' && /^zh(?:-[a-z]{4})*-(?:hk|mo)(?:-|$)/.test( tag ) ) {
+            return 'yue';
+        }
+        if ( supportedCodes.indexOf( primary ) !== -1 ) {
+            return primary;
+        }
+    }
+    return 'en';
+}
+
 const SCREENS = [
     {
         panel: 'intro',
@@ -259,7 +311,10 @@ const FINAL_SCREEN = {
 };
 
 const cfg = window.AICOACH_SAMI || {};
-const SESSION_TOKEN_URL = cfg.restBase + '/session-token';
+// inc/gary-proxy.php's routes live under the same ihq/v1 namespace FR-07/09's
+// identity endpoints already use — no new PHP localization needed for this.
+const GARY_SESSION_URL = cfg.identityRestBase + '/coach/session';
+const garyCloseUrl = ( sessionId ) => cfg.identityRestBase + '/coach/' + encodeURIComponent( sessionId ) + '/close';
 const PERSONA_PREVIEW_URL = cfg.restBase + '/persona-preview';
 
 const stage = document.getElementById('aicoach-stage');
@@ -284,7 +339,7 @@ if ( stage && avatarWrap ) {
     // breaking that other feature. This script only ever runs on this one page
     // (see ihq_aicoach_enqueue_coach_flow()'s is_page_template check), so injecting
     // here is safe without any extra page check.
-    let currentLocale = 'en';
+    let currentLocale = detectInitialLocale();
 
     function selectLocale( locale ) {
         if ( locale === currentLocale ) {
@@ -301,13 +356,15 @@ if ( stage && avatarWrap ) {
                 opt.removeAttribute( 'aria-current' );
             }
         } );
-        // NOTE — scope boundary for this story: this switches the selector state
-        // and every data-i18n/data-i18n-attr element's text. It does NOT yet
-        // reconnect the avatar/voice to a Gary session using this locale (Scenario
-        // 25's "avatar and voice switch" clause) — that needs the interim
-        // direct-Anam-SDK avatar driver replaced with inc/gary-proxy.php's
-        // session/message calls, a separate, larger piece of work tracked
-        // separately rather than folded in here silently.
+        // NOTE — scope boundary: this switches the selector state and every
+        // data-i18n/data-i18n-attr element's text. It does NOT yet reconnect the
+        // live avatar/voice to a fresh Gary session in this locale (Scenario 25's
+        // "avatar and voice switch" clause, and FR-14/PO-3105's "video restarts in
+        // the new language"). The avatar now DOES open its initial connection via
+        // a real Gary session (see start()/openGarySession() below), but switching
+        // mid-flow would mean closing that session, tearing down the connected
+        // Anam client, and opening a new one — not done here, tracked as the next
+        // increment on top of this rather than folded in silently.
     }
 
     ( function buildLanguageSelector() {
@@ -372,6 +429,12 @@ if ( stage && avatarWrap ) {
             btn.setAttribute( 'aria-expanded', 'false' );
         } );
     }() );
+
+    // Apply the detected locale to the DOM now that the selector (and its
+    // is-current marking, set from currentLocale above) exists. A no-op for
+    // English/untranslated locales today (t() falls back to I18N_EN either
+    // way) but keeps behavior correct once real translations land.
+    applyLocale( currentLocale );
 
     function syncSelected() {
         tiers.forEach( function ( tier ) {
@@ -447,8 +510,6 @@ if ( stage && avatarWrap ) {
         }, FADE_MS );
     }
 
-    const sleep = ( ms ) => new Promise( ( resolve ) => window.setTimeout( resolve, ms ) );
-
     let sequenceIndex = 0;
     let sequenceFinished = false;
     let skipCurrent = null; // set while a screen's line is in flight; a tap calls this to advance early
@@ -461,8 +522,10 @@ if ( stage && avatarWrap ) {
     let elapsedStartedAt = null;
     let selectedTierMinutes = null;
     let tierConfirmed = false; // FR-03 confirm is one-time; ignore further tier clicks after that
-    let activeClient = null;   // set once Anam connects; lets a late tier click resume a finished live sequence
-    let usingFallback = false; // true once runFallback has taken over, so a late tier click resumes the right runner
+    let activeClient = null;   // the connected Anam client (via Gary's session_token), once one exists
+    let garySessionId = null;  // this visit's Gary coach session id, for the close() call on completion
+    let avatarIsLive = false;  // true once Gary's session connected and video started — keeps the avatar
+                                // visible (not the idle portrait) through runFallback()'s static captions
 
     // Where finishSequence() navigates once the current SCREENS queue is fully
     // consumed — this changes as later FRs queue more content after their own
@@ -480,8 +543,8 @@ if ( stage && avatarWrap ) {
         sequenceFinished = true;
         // No coach script exists for identity capture (unlike every screen
         // before it) or anything after it yet, so those steps aren't part of
-        // SCREENS/speakScreen — they're plain showPanel() destinations reached
-        // once whatever's currently queued in SCREENS runs out. Which
+        // SCREENS — they're plain showPanel() destinations reached once
+        // whatever's currently queued in SCREENS runs out. Which
         // destination that is changes as later stories queue more content (see
         // sequenceEndDestination); null means nothing built yet, just stop.
         if ( sequenceEndDestination ) {
@@ -493,11 +556,11 @@ if ( stage && avatarWrap ) {
     // is also the FR-03 "confirm" action: it ends the coach's time-selection line
     // early if she's still mid-sentence (same tap-to-advance mechanism as the We
     // Believe screens), then queues that tier's FR-05 equity examples and (for
-    // 5/10-minute tiers) FR-06 competition-type screens onto SCREENS — runSequence's
+    // 5/10-minute tiers) FR-06 competition-type screens onto SCREENS — runFallback's
     // own loop picks them up and shows them in the usual way. If
     // that loop already finished by the time the visitor clicks (they took a
     // moment to decide), nothing is left running to notice the new screens, so
-    // resume whichever runner (live or fallback) was active.
+    // resume it explicitly.
     tiers.forEach( function ( tier ) {
         const input = tier.querySelector( '.aicoach-tier-check' );
         if ( ! input ) {
@@ -529,11 +592,7 @@ if ( stage && avatarWrap ) {
 
             if ( loopAlreadyExited ) {
                 sequenceFinished = false;
-                if ( usingFallback ) {
-                    runFallback();
-                } else if ( activeClient ) {
-                    runSequence( activeClient );
-                }
+                runFallback( avatarIsLive );
             }
         } );
     } );
@@ -558,31 +617,29 @@ if ( stage && avatarWrap ) {
 
     // Text has nothing to sync against here, so each screen is shown in full
     // and paced by an estimated reading dwell rather than word-by-word reveal.
-    // Resumes from sequenceIndex, so a mid-sequence connection drop picks up
-    // wherever the live playback left off instead of restarting from the intro.
-    async function runFallback() {
-        usingFallback = true;
-        avatarWrap.dataset.status = 'idle';
-        for ( ; sequenceIndex < SCREENS.length; sequenceIndex++ ) {
-            const screen = SCREENS[ sequenceIndex ];
-            showPanel( screen.panel );
-            const captionEl = getCaptionEl( screen.panel );
-            if ( captionEl ) {
-                captionEl.textContent = screen.script;
-            }
-            await sleep( FALLBACK_READ_MS );
-        }
-        finishSequence();
-    }
+    // Resumes from sequenceIndex, so a mid-sequence connection drop (or a late
+    // tier click after the queue already ran out) picks up wherever playback
+    // left off instead of restarting from the intro.
+    //
+    // keepAvatarLive: true when a real Gary session is connected and the video
+    // should stay visible while these static captions play (the normal path,
+    // now that Gary has no way to recite this copy itself — see the top-of-file
+    // note); false/omitted for a genuine connection failure, which reverts the
+    // avatar to the idle portrait like before.
+    //
+    // fallbackRunning guards against a second concurrent loop racing the same
+    // shared sequenceIndex/skipCurrent — Anam's VIDEO_PLAY_STARTED has been
+    // observed to fire more than once for a single session (a WebRTC
+    // renegotiation, not a real second connection), which would otherwise call
+    // this twice and advance two screens per tap instead of one.
+    let fallbackRunning = false;
 
-    // Speaks one screen's line and resolves on endOfSpeech (or an early tap-to-advance).
-    function speakScreen( client, screen ) {
-        const captionEl = getCaptionEl( screen.panel );
-        if ( captionEl ) {
-            captionEl.textContent = '';
-        }
-
-        let activeUtteranceId = null;
+    // FR-02 — narration timing OR visitor tap/click; the stage click handler
+    // below calls skipCurrent() to advance early. Shared by runFallback()'s own
+    // loop and by the VIDEO_PLAY_STARTED handler, which needs the exact same
+    // dwell-or-skip behavior for Gary's opening line before handing off to
+    // runFallback() for the rest of the screens.
+    function waitForReadOrSkip() {
         return new Promise( ( resolve ) => {
             let settled = false;
             const finish = () => {
@@ -591,47 +648,35 @@ if ( stage && avatarWrap ) {
                 }
                 settled = true;
                 skipCurrent = null;
-                client.removeListener( AnamEvent.MESSAGE_STREAM_EVENT_RECEIVED, onEvent );
                 resolve();
             };
-
-            // Anam's documented captioning pattern: consecutive persona chunks
-            // sharing an utteranceId are appended in arrival order to build the
-            // live caption; endOfSpeech on that utterance marks completion.
-            function onEvent( evt ) {
-                if ( ! evt || evt.role !== 'persona' ) {
-                    return;
-                }
-                if ( activeUtteranceId === null ) {
-                    activeUtteranceId = evt.utteranceId;
-                }
-                if ( evt.utteranceId !== activeUtteranceId ) {
-                    return;
-                }
-                if ( evt.content && captionEl ) {
-                    captionEl.textContent += evt.content;
-                }
-                if ( evt.endOfSpeech ) {
-                    finish();
-                }
-            }
-
             skipCurrent = finish;
-            client.addListener( AnamEvent.MESSAGE_STREAM_EVENT_RECEIVED, onEvent );
-            client.talk( screen.script ).catch( finish );
+            window.setTimeout( finish, FALLBACK_READ_MS );
         } );
     }
 
-    async function runSequence( client ) {
+    async function runFallback( keepAvatarLive ) {
+        if ( fallbackRunning ) {
+            return;
+        }
+        fallbackRunning = true;
+        if ( ! keepAvatarLive ) {
+            avatarWrap.dataset.status = 'idle';
+        }
         for ( ; sequenceIndex < SCREENS.length; sequenceIndex++ ) {
             const screen = SCREENS[ sequenceIndex ];
             showPanel( screen.panel );
-            await speakScreen( client, screen );
-            if ( sequenceFinished ) {
-                return; // the fallback path already took over mid-sequence
+            const captionEl = getCaptionEl( screen.panel );
+            if ( captionEl ) {
+                captionEl.textContent = screen.script;
             }
-            await sleep( SCREEN_ADVANCE_DELAY_MS );
+            await waitForReadOrSkip();
+            if ( sequenceFinished ) {
+                fallbackRunning = false;
+                return; // a fresh runFallback() call elsewhere already took over
+            }
         }
+        fallbackRunning = false;
         finishSequence();
     }
 
@@ -784,11 +829,7 @@ if ( stage && avatarWrap ) {
             sequenceEndDestination = null;
             if ( loopAlreadyExited ) {
                 sequenceFinished = false;
-                if ( usingFallback ) {
-                    runFallback();
-                } else if ( activeClient ) {
-                    runSequence( activeClient );
-                }
+                runFallback( avatarIsLive );
             }
         } );
     }
@@ -902,54 +943,58 @@ if ( stage && avatarWrap ) {
             SCREENS.push( FINAL_SCREEN );
             if ( loopAlreadyExited ) {
                 sequenceFinished = false;
-                if ( usingFallback ) {
-                    runFallback();
-                } else if ( activeClient ) {
-                    runSequence( activeClient );
-                }
+                runFallback( avatarIsLive );
             }
         } );
     }
 
-    // FR-09 — account creation + portal transfer. BE owns account creation,
-    // session/login establishment, and Braze writes entirely (confirmed with
-    // Dejan, same agreement as FR-07's username check) — this just posts what
-    // FR-07/FR-08 captured and either redirects on success or shows an inline
-    // error and lets the visitor retry (Scenario 16). Unlike FR-07's
-    // uniqueness check, there's no safe "fail open" here — faking a redirect
-    // to a portal session that doesn't actually exist would just break, so a
-    // missing/failing endpoint surfaces as a real error, not a silent pass.
+    // FR-09 / PO-3257 — account creation + portal transfer. Luna and this
+    // button share window.ihqCoachEvents.register(); redirect:false so we can
+    // close the Gary session before navigating. No fail-open: a missing
+    // event module or a failed create must surface, not fake a portal session.
     const finalContinueBtn = document.getElementById( 'aicoach-final-continue' );
     const finalError = document.getElementById( 'aicoach-final-error' );
 
     finalContinueBtn?.addEventListener( 'click', async function () {
-        if ( ! capturedIdentity || ! capturedChannels ) {
-            return; // shouldn't be reachable — both prior screens already gate on this
+        if ( typeof window.ihqCoachEvents?.register !== 'function' ) {
+            if ( finalError ) {
+                finalError.textContent = cfg.i18n?.accountCreateErr || 'Something went wrong creating your account. Please try again.';
+            }
+            return;
         }
 
         finalContinueBtn.disabled = true;
-        finalError.textContent = '';
+        if ( finalError ) {
+            finalError.textContent = '';
+        }
 
         try {
-            const res = await fetch( cfg.identityRestBase + '/create-account', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': cfg.nonce },
-                body: JSON.stringify( {
-                    firstName: capturedIdentity.firstName,
-                    lastName: capturedIdentity.lastName,
-                    username: capturedIdentity.username,
-                    channels: capturedChannels,
-                    language: 'en', // FR-12/13 (language detection/selector) aren't built yet
-                } ),
+            const captured = capturedIdentity || {};
+            const data = await window.ihqCoachEvents.register( {
+                firstName: captured.firstName,
+                lastName: captured.lastName,
+                username: captured.username,
+                channels: capturedChannels || undefined,
+                language: currentLocale,
+                redirect: false,
             } );
-            const data = await res.json();
-            if ( ! res.ok || ! data.success ) {
-                throw new Error( data.error || 'create-account failed' );
+            if ( ! data || ! data.success || ! data.redirectUrl ) {
+                throw new Error( ( data && data.error ) || 'create-account failed' );
             }
+
+            // Best-effort cleanup, matches Gary's documented session lifecycle —
+            // not awaited so it never delays the redirect the visitor is waiting on.
+            if ( garySessionId ) {
+                fetch( garyCloseUrl( garySessionId ), { method: 'POST', headers: { 'X-WP-Nonce': cfg.nonce } } )
+                    .catch( function () {} );
+            }
+
             window.location.href = data.redirectUrl;
         } catch ( error ) {
             console.warn( '[aicoach] account creation failed:', error );
-            finalError.textContent = cfg.i18n?.accountCreateErr || 'Something went wrong creating your account. Please try again.';
+            if ( finalError ) {
+                finalError.textContent = cfg.i18n?.accountCreateErr || 'Something went wrong creating your account. Please try again.';
+            }
             finalContinueBtn.disabled = false;
         }
     } );
@@ -1004,29 +1049,67 @@ if ( stage && avatarWrap ) {
         // FR-18 isn't built yet — nothing further happens until it exists.
     } );
 
+    // Open a Gary Coach API session (inc/gary-proxy.php) and return its parsed
+    // envelope — { session: { id }, say: { text, video: { session_token } }, ... }.
+    // Throws on any failure; the caller decides what to do (fall back).
+    async function openGarySession( locale ) {
+        const res = await fetch( GARY_SESSION_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': cfg.nonce },
+            body: JSON.stringify( { locale: locale } ),
+        } );
+        const data = await res.json();
+        if ( ! res.ok || ! data.session?.id || ! data.say?.video?.session_token ) {
+            throw new Error( data.error || 'Failed to open Gary session.' );
+        }
+        return data;
+    }
+
     // Auto-start on arrival — no tap required (unlike page-portal-poc.php).
     ( async function start() {
         avatarWrap.dataset.status = 'connecting';
         try {
-            const res = await fetch( SESSION_TOKEN_URL, { method: 'POST', headers: { 'X-WP-Nonce': cfg.nonce } } );
-            const data = await res.json();
-            if ( ! res.ok || ! data.sessionToken ) {
-                throw new Error( data.error || 'Failed to start Sami.' );
-            }
+            const gary = await openGarySession( currentLocale );
+            garySessionId = gary.session.id;
 
-            const client = createClient( data.sessionToken );
+            const client = createClient( gary.say.video.session_token );
             activeClient = client;
             let handledClose = false;
+            let videoStarted = false; // VIDEO_PLAY_STARTED has been observed firing more than
+                                       // once per session (a WebRTC renegotiation, not a real
+                                       // second connection) — guard so a repeat event can't
+                                       // reset sequenceIndex/the panel out from under an
+                                       // already-in-progress runFallback() loop.
 
-            client.addListener( AnamEvent.VIDEO_PLAY_STARTED, function () {
+            client.addListener( AnamEvent.VIDEO_PLAY_STARTED, async function () {
+                if ( videoStarted ) {
+                    return;
+                }
+                videoStarted = true;
+
                 avatarWrap.dataset.status = 'live';
-                runSequence( client );
+                avatarIsLive = true;
+
+                // Gary's own opening line is real, live content — show it as the
+                // intro caption, and give it the same read-or-skip dwell as every
+                // other screen before moving on (there's no endOfSpeech event to
+                // sync against here — see the top-of-file note on why). Everything
+                // after this falls back to the static SCREENS display.
+                showPanel( 'intro' );
+                const introCaptionEl = getCaptionEl( 'intro' );
+                if ( introCaptionEl ) {
+                    introCaptionEl.textContent = gary.say.text || SCREENS[ 0 ].script;
+                }
+                await waitForReadOrSkip();
+                sequenceIndex = 1;
+                runFallback( true );
             } );
             client.addListener( AnamEvent.CONNECTION_CLOSED, function ( event ) {
                 if ( handledClose || sequenceFinished ) {
                     return;
                 }
                 handledClose = true;
+                avatarIsLive = false;
                 console.warn( '[aicoach] Sami CONNECTION_CLOSED before sequence finished', event );
                 runFallback();
             } );
@@ -1034,6 +1117,15 @@ if ( stage && avatarWrap ) {
             await client.streamToVideoElement( AVATAR_VIDEO_ID );
         } catch ( error ) {
             console.warn( '[aicoach] falling back to static intro text:', error );
+            // openGarySession() may have succeeded (garySessionId set) even though
+            // a later step here failed — best-effort close so that session doesn't
+            // stay open on Gary's side for no reason. Token-validation failures
+            // never reach this with an id set, since openGarySession() throws
+            // before returning one.
+            if ( garySessionId ) {
+                fetch( garyCloseUrl( garySessionId ), { method: 'POST', headers: { 'X-WP-Nonce': cfg.nonce } } )
+                    .catch( function () {} );
+            }
             runFallback();
         }
     }() );

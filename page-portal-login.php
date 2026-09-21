@@ -754,6 +754,38 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
         window.setTimeout(renderRegTs, 80);
     });
 
+    // AI Coach existing-email path (PO-3257): resume the code step with the
+    // token already issued so the visitor does not hit the resend throttle.
+    (function resumePendingLoginFromCoach() {
+        var token = '';
+        var email = '';
+        var message = '';
+        try {
+            token = window.sessionStorage.getItem('ihq_pending_login_token') || '';
+            email = window.sessionStorage.getItem('ihq_pending_login_email') || '';
+            message = window.sessionStorage.getItem('ihq_pending_login_message') || '';
+            window.sessionStorage.removeItem('ihq_pending_login_token');
+            window.sessionStorage.removeItem('ihq_pending_login_email');
+            window.sessionStorage.removeItem('ihq_pending_login_message');
+        } catch (storageError) {
+            return;
+        }
+        if (!token) {
+            return;
+        }
+        portalLoginToken = token;
+        if (email) {
+            document.getElementById('login-email').value = email;
+        }
+        var infoBox = document.getElementById('login-info');
+        if (infoBox) {
+            infoBox.textContent = message || 'If that email matches an account, you will receive a code.';
+            infoBox.style.display = 'block';
+        }
+        document.getElementById('login-step-email').style.display = 'none';
+        document.getElementById('login-step-code').style.display = 'block';
+    })();
+
     window.setTimeout(function () {
         renderLoginTs();
         renderRegTs();

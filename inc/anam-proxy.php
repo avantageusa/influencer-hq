@@ -259,7 +259,7 @@ function ihq_aicoach_enqueue_coach_flow() {
 	wp_register_script(
 		'ihq-aicoach-coach-flow',
 		get_template_directory_uri() . '/js/aicoach-coach-flow.js',
-		array(),
+		array( 'ihq-aicoach-events' ),
 		$script_ver,
 		true
 	);
@@ -271,10 +271,9 @@ function ihq_aicoach_enqueue_coach_flow() {
 			// FR-07 — username availability check. Namespace/route/response shape
 			// (GET ?username=, expects { available: bool }) is this FE's assumption;
 			// confirm with BE once they build the real endpoint (PO-3098 note).
-			// FR-09 — account creation reuses the same namespace: POST .../create-account
-			// with { firstName, lastName, username, channels: [{channel, value}], language },
-			// expects { success: true, redirectUrl } or { success: false, error }. Also this
-			// FE's assumption — BE owns account creation + Braze writes entirely (PO-3100 note).
+			// FR-09 / PO-3257 — account creation is POST .../create-account via
+			// js/ihq-aicoach-events.js (window.ihqCoachEvents.register). The
+			// Let's Continue button and Luna both use that event.
 			'identityRestBase' => esc_url_raw( rest_url( 'ihq/v1' ) ),
 			'nonce'            => wp_create_nonce( 'wp_rest' ),
 			'i18n'             => array(

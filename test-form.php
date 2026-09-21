@@ -11,7 +11,7 @@
 
 get_header();
 
-$portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.games/av-baccarat/external/leaderboards';
+$portal_leaderboards_iframe_url = ihq_get_hq_game_portal_base_url() . '/external/leaderboards';
 ?>
 
     <main id="primary" class="site-main" style="padding: 50px;">
@@ -35,6 +35,7 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
                         </div>
                         
                         <form method="post" style="margin-bottom: 20px;">
+                            <?php wp_nonce_field( 'ihq_test_form', 'ihq_test_form_nonce' ); ?>
                             <input type="submit" name="list_accounts" value="List Accounts" class="btn btn-secondary">
                             <input type="submit" name="list_advocates" value="List Newest 10 Advocates for dev_qc" class="btn btn-primary" style="margin-left: 10px;">
                             <input type="submit" name="create_advocate" value="Create Advocate" class="btn btn-success" style="margin-left: 10px;">
@@ -68,17 +69,24 @@ $portal_leaderboards_iframe_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.g
 
 <?php
 $referral_link = '';
+
+// Debug tool: the buttons below call Genius Referrals with the instance token,
+// so only administrators may trigger them, and only from this form.
+$ihq_test_form_may_run = is_user_logged_in()
+	&& current_user_can( 'manage_options' )
+	&& isset( $_POST['ihq_test_form_nonce'] )
+	&& wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['ihq_test_form_nonce'] ) ), 'ihq_test_form' );
 ?>
 
                         <?php
-                        if (isset($_POST['list_accounts'])) {
+                        if ( $ihq_test_form_may_run && isset( $_POST['list_accounts'] ) ) {
                             echo '<h3>POST Data:</h3>';
                             echo '<pre class="api-response-box">' . print_r($_POST, true) . '</pre>';
                             
                             $url = 'https://api.geniusreferrals.com/accounts';
                             $args = array(
                                 'headers' => array(
-                                    'X-Auth-Token' => '1a5b59cf8307b1b1f0f922aa12d4807c05ebaa10',
+                                    'X-Auth-Token' => (string) ihq_env_get( 'IHQ_GENIUS_REFERRALS_API_TOKEN', '' ),
                                     'Content-Type' => 'application/json',
                                     'Accept' => 'application/json'
                                 )
@@ -99,14 +107,14 @@ $referral_link = '';
                             }
                         }
                         
-                        if (isset($_POST['list_advocates'])) {
+                        if ( $ihq_test_form_may_run && isset( $_POST['list_advocates'] ) ) {
                             echo '<h3>POST Data:</h3>';
                             echo '<pre class="api-response-box">' . print_r($_POST, true) . '</pre>';
                             
                             $url = 'https://api.geniusreferrals.com/accounts/dev_qc/advocates?limit=10&sort=-created';
                             $args = array(
                                 'headers' => array(
-                                    'X-Auth-Token' => '1a5b59cf8307b1b1f0f922aa12d4807c05ebaa10',
+                                    'X-Auth-Token' => (string) ihq_env_get( 'IHQ_GENIUS_REFERRALS_API_TOKEN', '' ),
                                     'Content-Type' => 'application/json',
                                     'Accept' => 'application/json'
                                 )
@@ -127,7 +135,7 @@ $referral_link = '';
                             }
                         }
                         
-                        if (isset($_POST['create_advocate'])) {
+                        if ( $ihq_test_form_may_run && isset( $_POST['create_advocate'] ) ) {
                             echo '<h3>POST Data:</h3>';
                             echo '<pre class="api-response-box">' . print_r($_POST, true) . '</pre>';
                             
@@ -146,7 +154,7 @@ $referral_link = '';
                             $args = array(
                                 'method' => 'POST',
                                 'headers' => array(
-                                    'X-Auth-Token' => '1a5b59cf8307b1b1f0f922aa12d4807c05ebaa10',
+                                    'X-Auth-Token' => (string) ihq_env_get( 'IHQ_GENIUS_REFERRALS_API_TOKEN', '' ),
                                     'Content-Type' => 'application/json',
                                     'Accept' => 'application/json'
                                 ),
