@@ -157,6 +157,12 @@ const IHQ_REG_IP_ATTEMPT_WINDOW_SECONDS = 300;
 /** Login-only email code uses the same TTL as registration. */
 const IHQ_LOGIN_CODE_EXPIRY_SECONDS = 900;
 
+/** Wrong login-code guesses allowed per IP before lockout (PO-3262). */
+const IHQ_LOGIN_CODE_MAX_FAILURES = 3;
+
+/** Seconds an IP stays locked out of login-code verify after too many wrong guesses. */
+const IHQ_LOGIN_CODE_LOCKOUT_SECONDS = 900;
+
 /**
  * Normalize comma-separated competition preference slug(s) from portal home (s7).
  *
@@ -341,6 +347,347 @@ function ihq_get_client_ip_for_rate_limit() {
     }
 
     return '';
+}
+
+/**
+ * Transient / option keys for login-code verify failure counting / lockout (per IP).
+ *
+ * @return array{fail:string,lock:string,fail_timeout:string}
+ */
+function ihq_login_verify_rate_limit_keys() {
+    $ip   = ihq_get_client_ip_for_rate_limit();
+    $hash = md5( $ip !== '' ? $ip : 'unknown' );
+
+    return array(
+        'fail'         => 'ihq_login_verify_fail_' . $hash,
+        'fail_timeout' => 'ihq_login_verify_fail_timeout_' . $hash,
+        'lock'         => 'ihq_login_verify_lock_' . $hash,
+    );
+}
+
+/**
+ * MySQL advisory-lock name for serializing verify attempts from one IP.
+ *
+ * @return string
+ */
+function ihq_login_verify_ip_mutex_name() {
+    $keys = ihq_login_verify_rate_limit_keys();
+    return 'ihq_lv_' . md5( $keys['fail'] );
+}
+
+/**
+ * Acquire a named MySQL advisory lock.
+ *
+ * @param string $lock_name        Lock name.
+ * @param int    $timeout_seconds  Seconds to wait; 0 means do not wait.
+ * @return bool
+ */
+function ihq_login_verify_acquire_named_mutex( $lock_name, $timeout_seconds = 5 ) {
+    global $wpdb;
+
+    if ( ! is_string( $lock_name ) || $lock_name === '' ) {
+        return false;
+    }
+
+    $got = (int) $wpdb->get_var(
+        $wpdb->prepare(
+            'SELECT GET_LOCK(%s, %d)',
+            $lock_name,
+            (int) $timeout_seconds
+        )
+    );
+
+    return ( 1 === $got );
+}
+
+/**
+ * Advisory-lock name for a fail-option key (same mapping as live verify).
+ *
+ * @param string $fail_name Fail option name.
+ * @return string
+ */
+function ihq_login_verify_mutex_name_for_fail_key( $fail_name ) {
+    return 'ihq_lv_' . md5( (string) $fail_name );
+}
+
+/**
+ * Acquire a per-IP mutex for login-code verify (lock check + compare + failure).
+ *
+ * @param int $timeout_seconds Seconds to wait for the lock.
+ * @return array{acquired:bool,name:string}
+ */
+function ihq_login_verify_acquire_ip_mutex( $timeout_seconds = 5 ) {
+    $name = ihq_login_verify_ip_mutex_name();
+
+    return array(
+        'acquired' => ihq_login_verify_acquire_named_mutex( $name, $timeout_seconds ),
+        'name'     => $name,
+    );
+}
+
+/**
+ * Release the per-IP login-code verify mutex.
+ *
+ * @param string $lock_name Lock name from ihq_login_verify_acquire_ip_mutex().
+ * @return void
+ */
+function ihq_login_verify_release_ip_mutex( $lock_name ) {
+    global $wpdb;
+
+    if ( ! is_string( $lock_name ) || $lock_name === '' ) {
+        return;
+    }
+
+    $wpdb->query(
+        $wpdb->prepare(
+            'SELECT RELEASE_LOCK(%s)',
+            $lock_name
+        )
+    );
+}
+
+/**
+ * Release the IP mutex then send a JSON error (wp_send_json_error exits).
+ *
+ * @param string               $lock_name Mutex name.
+ * @param array<string,mixed>  $payload   Error payload.
+ * @return void
+ */
+function ihq_login_verify_json_error_releasing_mutex( $lock_name, array $payload ) {
+    ihq_login_verify_release_ip_mutex( $lock_name );
+    wp_send_json_error( $payload );
+}
+
+/**
+ * Uniform lockout copy — must not reveal whether an account exists (PO-3262).
+ *
+ * @return string
+ */
+function ihq_login_verify_lockout_message() {
+    return __( 'You are temporarily locked out, try again in 15 minutes', 'influencer-hq' );
+}
+
+/**
+ * Whether this IP is currently blocked from submitting login codes.
+ *
+ * @return bool
+ */
+function ihq_login_verify_is_locked_out() {
+    $keys = ihq_login_verify_rate_limit_keys();
+    return (bool) get_transient( $keys['lock'] );
+}
+
+/**
+ * Drop an expired per-IP fail counter (best-effort; race-safe with atomic incr).
+ *
+ * @param array{fail:string,fail_timeout:string} $keys Rate-limit keys.
+ * @return void
+ */
+function ihq_login_verify_purge_expired_failures( array $keys ) {
+    $timeout = get_option( $keys['fail_timeout'], false );
+    if ( false === $timeout ) {
+        return;
+    }
+    if ( (int) $timeout >= time() ) {
+        return;
+    }
+    delete_option( $keys['fail'] );
+    delete_option( $keys['fail_timeout'] );
+}
+
+/**
+ * Atomically increment the per-IP wrong-code counter and return the new value.
+ *
+ * Uses MySQL INSERT ... ON DUPLICATE KEY UPDATE with LAST_INSERT_ID() so concurrent
+ * requests cannot read-modify-write the same count and skip the lockout threshold.
+ *
+ * @param array{fail:string,fail_timeout:string} $keys Rate-limit keys.
+ * @return int New failure count (>= 1).
+ */
+function ihq_login_verify_increment_failures( array $keys ) {
+    global $wpdb;
+
+    ihq_login_verify_purge_expired_failures( $keys );
+
+    // LAST_INSERT_ID(1) on insert and LAST_INSERT_ID(n+1) on update make insert_id
+    // the new counter value (not the options.option_id auto-increment).
+    $wpdb->query(
+        $wpdb->prepare(
+            "INSERT INTO {$wpdb->options} (option_name, option_value, autoload)
+             VALUES (%s, LAST_INSERT_ID(1), 'no')
+             ON DUPLICATE KEY UPDATE option_value = LAST_INSERT_ID(CAST(option_value AS UNSIGNED) + 1)",
+            $keys['fail']
+        )
+    );
+
+    $failures = (int) $wpdb->insert_id;
+    if ( $failures < 1 ) {
+        $failures = (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT CAST(option_value AS UNSIGNED) FROM {$wpdb->options} WHERE option_name = %s",
+                $keys['fail']
+            )
+        );
+    }
+
+    wp_cache_delete( $keys['fail'], 'options' );
+    update_option( $keys['fail_timeout'], (string) ( time() + IHQ_LOGIN_CODE_LOCKOUT_SECONDS ), false );
+
+    return max( 1, $failures );
+}
+
+/**
+ * Record a wrong login-code guess for this IP. Locks out after the max failures.
+ *
+ * @return array{locked:bool,failures:int}
+ */
+function ihq_login_verify_record_failure() {
+    $keys = ihq_login_verify_rate_limit_keys();
+
+    if ( get_transient( $keys['lock'] ) ) {
+        return array(
+            'locked'   => true,
+            'failures' => IHQ_LOGIN_CODE_MAX_FAILURES,
+        );
+    }
+
+    $failures = ihq_login_verify_increment_failures( $keys );
+
+    if ( $failures >= IHQ_LOGIN_CODE_MAX_FAILURES ) {
+        set_transient( $keys['lock'], 1, IHQ_LOGIN_CODE_LOCKOUT_SECONDS );
+        delete_option( $keys['fail'] );
+        delete_option( $keys['fail_timeout'] );
+        return array(
+            'locked'   => true,
+            'failures' => $failures,
+        );
+    }
+
+    return array(
+        'locked'   => false,
+        'failures' => $failures,
+    );
+}
+
+/**
+ * Clear login-code failure / lockout state for this IP (after a successful verify).
+ *
+ * @return void
+ */
+function ihq_login_verify_clear_failures() {
+    $keys = ihq_login_verify_rate_limit_keys();
+    delete_option( $keys['fail'] );
+    delete_option( $keys['fail_timeout'] );
+    delete_transient( $keys['lock'] );
+    // Legacy transient counter from the first PO-3262 revision.
+    delete_transient( $keys['fail'] );
+}
+
+/**
+ * Delete expired login-code fail counters globally (PO-3262).
+ *
+ * Per-IP purge only runs when that IP fails again; this sweep prevents unbounded
+ * wp_options growth from one-off IPs that never retry. Each delete takes the
+ * matching verify mutex with no wait so a live increment cannot be wiped.
+ *
+ * @return void
+ */
+function ihq_cleanup_expired_login_verify_failures() {
+    global $wpdb;
+
+    $now      = time();
+    $timeouts = $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT option_name, option_value FROM {$wpdb->options} WHERE option_name LIKE %s",
+            $wpdb->esc_like( 'ihq_login_verify_fail_timeout_' ) . '%'
+        ),
+        ARRAY_A
+    );
+
+    if ( is_array( $timeouts ) ) {
+        foreach ( $timeouts as $row ) {
+            if ( ! isset( $row['option_name'], $row['option_value'] ) ) {
+                continue;
+            }
+            if ( (int) $row['option_value'] >= $now ) {
+                continue;
+            }
+            $timeout_name = (string) $row['option_name'];
+            $fail_name    = str_replace(
+                'ihq_login_verify_fail_timeout_',
+                'ihq_login_verify_fail_',
+                $timeout_name
+            );
+            ihq_login_verify_delete_expired_fail_pair( $fail_name, $timeout_name );
+        }
+    }
+
+    // Orphan counters with no timeout row (interrupted writes / legacy).
+    $fail_rows = $wpdb->get_col(
+        $wpdb->prepare(
+            "SELECT option_name FROM {$wpdb->options}
+             WHERE option_name LIKE %s
+             AND option_name NOT LIKE %s",
+            $wpdb->esc_like( 'ihq_login_verify_fail_' ) . '%',
+            $wpdb->esc_like( 'ihq_login_verify_fail_timeout_' ) . '%'
+        )
+    );
+
+    if ( ! is_array( $fail_rows ) ) {
+        return;
+    }
+
+    foreach ( $fail_rows as $fail_name ) {
+        $fail_name = (string) $fail_name;
+        $hash      = substr( $fail_name, strlen( 'ihq_login_verify_fail_' ) );
+        if ( $hash === '' || $hash === $fail_name ) {
+            continue;
+        }
+        $timeout_name = 'ihq_login_verify_fail_timeout_' . $hash;
+        ihq_login_verify_delete_orphan_fail_counter( $fail_name, $timeout_name );
+    }
+}
+
+/**
+ * Delete an expired fail/timeout pair only after a non-blocking mutex + re-read.
+ *
+ * @param string $fail_name    Fail option name.
+ * @param string $timeout_name Timeout option name.
+ * @return void
+ */
+function ihq_login_verify_delete_expired_fail_pair( $fail_name, $timeout_name ) {
+    $lock_name = ihq_login_verify_mutex_name_for_fail_key( $fail_name );
+    if ( ! ihq_login_verify_acquire_named_mutex( $lock_name, 0 ) ) {
+        return;
+    }
+
+    $fresh_timeout = get_option( $timeout_name, false );
+    if ( false !== $fresh_timeout && (int) $fresh_timeout < time() ) {
+        delete_option( $timeout_name );
+        delete_option( $fail_name );
+    }
+
+    ihq_login_verify_release_ip_mutex( $lock_name );
+}
+
+/**
+ * Delete a fail counter with no timeout row, only if it is still orphaned.
+ *
+ * @param string $fail_name    Fail option name.
+ * @param string $timeout_name Timeout option name.
+ * @return void
+ */
+function ihq_login_verify_delete_orphan_fail_counter( $fail_name, $timeout_name ) {
+    $lock_name = ihq_login_verify_mutex_name_for_fail_key( $fail_name );
+    if ( ! ihq_login_verify_acquire_named_mutex( $lock_name, 0 ) ) {
+        return;
+    }
+
+    if ( false === get_option( $timeout_name, false ) ) {
+        delete_option( $fail_name );
+    }
+
+    ihq_login_verify_release_ip_mutex( $lock_name );
 }
 
 /**
@@ -960,10 +1307,29 @@ function ihq_handle_verify_login_code_ajax() {
         return;
     }
 
+    // Serialize lock check + hash compare + failure transition per IP (PO-3262).
+    $mutex = ihq_login_verify_acquire_ip_mutex();
+    if ( empty( $mutex['acquired'] ) ) {
+        wp_send_json_error( array( 'message' => __( 'Please wait a moment and try again.', 'influencer-hq' ) ) );
+        return;
+    }
+    $lock_name = $mutex['name'];
+
+    if ( ihq_login_verify_is_locked_out() ) {
+        ihq_login_verify_json_error_releasing_mutex(
+            $lock_name,
+            array( 'message' => ihq_login_verify_lockout_message() )
+        );
+        return;
+    }
+
     $opt_key = 'pending_login_code_' . $signup_token;
     $pending = get_option( $opt_key );
     if ( ! is_array( $pending ) || empty( $pending['email'] ) ) {
-        wp_send_json_error( array( 'message' => __( 'Invalid or expired code. Request a new one', 'influencer-hq' ) ) );
+        ihq_login_verify_json_error_releasing_mutex(
+            $lock_name,
+            array( 'message' => __( 'Invalid or expired code. Request a new one', 'influencer-hq' ) )
+        );
         return;
     }
 
@@ -971,7 +1337,10 @@ function ihq_handle_verify_login_code_ajax() {
         delete_option( $opt_key );
         $emap = 'ihq_pending_login_email_' . md5( strtolower( $pending['email'] ) );
         delete_option( $emap );
-        wp_send_json_error( array( 'message' => __( 'This code has expired. Request a new one', 'influencer-hq' ) ) );
+        ihq_login_verify_json_error_releasing_mutex(
+            $lock_name,
+            array( 'message' => __( 'This code has expired. Request a new one', 'influencer-hq' ) )
+        );
         return;
     }
 
@@ -979,7 +1348,14 @@ function ihq_handle_verify_login_code_ajax() {
     $try_hash      = hash_hmac( 'sha256', $code_raw, wp_salt( 'ihq_login_code' ) . $signup_token );
 
     if ( ! hash_equals( $expected_hash, $try_hash ) ) {
-        wp_send_json_error( array( 'message' => __( 'That code does not match. Check your email and try again', 'influencer-hq' ) ) );
+        $failure = ihq_login_verify_record_failure();
+        $message = ! empty( $failure['locked'] )
+            ? ihq_login_verify_lockout_message()
+            : __( 'That code does not match. Check your email and try again', 'influencer-hq' );
+        ihq_login_verify_json_error_releasing_mutex(
+            $lock_name,
+            array( 'message' => $message )
+        );
         return;
     }
 
@@ -992,7 +1368,10 @@ function ihq_handle_verify_login_code_ajax() {
             delete_option( $opt_key );
             $emap = 'ihq_pending_login_email_' . md5( strtolower( $pending['email'] ) );
             delete_option( $emap );
-            wp_send_json_error( array( 'message' => __( 'Invalid or expired code. Request a new one', 'influencer-hq' ) ) );
+            ihq_login_verify_json_error_releasing_mutex(
+                $lock_name,
+                array( 'message' => __( 'Invalid or expired code. Request a new one', 'influencer-hq' ) )
+            );
             return;
         }
         $user_id = (int) $user->ID;
@@ -1001,6 +1380,9 @@ function ihq_handle_verify_login_code_ajax() {
     $emap = 'ihq_pending_login_email_' . md5( strtolower( $pending['email'] ) );
     delete_option( $opt_key );
     delete_option( $emap );
+
+    ihq_login_verify_clear_failures();
+    ihq_login_verify_release_ip_mutex( $lock_name );
 
     wp_set_current_user( $user_id );
     wp_set_auth_cookie( $user_id, false );
@@ -1405,4 +1787,6 @@ function cleanup_expired_registrations() {
             }
         }
     }
+
+    ihq_cleanup_expired_login_verify_failures();
 }
