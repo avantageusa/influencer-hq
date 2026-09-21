@@ -165,7 +165,11 @@ function ihq_aicoach_anam_create_video( $script, $idempotency_key ) {
 
 	$status = (int) wp_remote_retrieve_response_code( $response );
 	$body   = json_decode( wp_remote_retrieve_body( $response ), true );
-	if ( $status >= 400 ) {
+	// Only 200-299 is a real success. redirection => 0 above means a 3xx no
+	// longer gets silently followed — it comes back here instead, and with
+	// only a ">= 400" check it would fall through as "success" carrying an
+	// empty/non-JSON body, handing the caller a job with no id or status.
+	if ( $status < 200 || $status >= 300 ) {
 		return new WP_Error(
 			'anam_create_video_failed',
 			sprintf( 'Anam avatar-video create failed (HTTP %d): %s', $status, wp_remote_retrieve_body( $response ) )
@@ -200,7 +204,8 @@ function ihq_aicoach_anam_get_video( $job_id ) {
 
 	$status = (int) wp_remote_retrieve_response_code( $response );
 	$body   = json_decode( wp_remote_retrieve_body( $response ), true );
-	if ( $status >= 400 ) {
+	// See ihq_aicoach_anam_create_video()'s comment — same 3xx-vs->=400 gap.
+	if ( $status < 200 || $status >= 300 ) {
 		return new WP_Error(
 			'anam_get_video_failed',
 			sprintf( 'Anam avatar-video get failed (HTTP %d): %s', $status, wp_remote_retrieve_body( $response ) )
@@ -340,6 +345,20 @@ function ihq_aicoach_prerender_all( $log = null ) {
 	if ( is_wp_error( $scripts_result ) ) {
 		$log( 'Failed to fetch registration scripts: ' . $scripts_result->get_error_message() );
 		return $scripts_result;
+	}
+	// ihq_coach_request() only returns a WP_Error for a transport-level
+	// failure (DNS, connection) — a non-2xx from Gary's own API (500, 404,
+	// ...) comes back here as a normal array with that status code. Without
+	// this check, a Gary-side outage would make $segments silently empty,
+	// every wanted segment log "not present... skipping", and the whole run
+	// report as a clean, empty success.
+	$scripts_status = (int) ( $scripts_result['status'] ?? 0 );
+	if ( $scripts_status < 200 || $scripts_status >= 300 ) {
+		$log( "Failed to fetch registration scripts: Gary returned HTTP {$scripts_status}" );
+		return new WP_Error(
+			'coach_scripts_fetch_failed',
+			"Gary returned HTTP {$scripts_status} for GET /coach/v1/registration/scripts"
+		);
 	}
 
 	$segments = $scripts_result['body']['segments'] ?? array();
