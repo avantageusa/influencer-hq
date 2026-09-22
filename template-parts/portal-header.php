@@ -298,7 +298,6 @@ $hm_ch = function ( $tab, $hash = '' ) {
 
 (function () {
     function initAccordionNavButtons() {
-        if (window.innerWidth <= 1024) return;
         // Find every accordion group (each direct accordion wrapper)
         var accordions = document.querySelectorAll('.accordion.custom-accordion, #equityAccordion');
         accordions.forEach(function (accordion) {
@@ -306,6 +305,7 @@ $hm_ch = function ( $tab, $hash = '' ) {
             panels.forEach(function (panel, index) {
                 var body = panel.querySelector('.accordion-body');
                 if (!body) return;
+                if (body.querySelector('.accordion-nav-btns')) return;
 
                 var wrap = document.createElement('div');
                 wrap.className = 'accordion-nav-btns';
