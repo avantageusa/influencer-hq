@@ -4375,34 +4375,39 @@
             max-height: 60px;
         }
 
-        .accordion-next-btn,
-        .accordion-prev-btn {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 16px;
-            font-weight: 600;
-            text-transform: uppercase;
-            text-decoration: underline;
-            cursor: pointer;
-            padding: 0;
-        }
+    }
 
-        .accordion-next-btn:hover,
-        .accordion-prev-btn:hover {
-            color: #b8972f;
-        }
+    /* Accordion Previous / Next — all breakpoints (ENGR-6750) */
+    .accordion-next-btn,
+    .accordion-prev-btn {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 16px;
+        font-weight: 600;
+        text-transform: uppercase;
+        text-decoration: underline;
+        cursor: pointer;
+        padding: 0;
+    }
 
-        .accordion-nav-btns {
-            display: flex;
-            justify-content: center;
-            margin-top: 20px;
-            gap: 50px;
-        }
+    .accordion-next-btn:hover,
+    .accordion-prev-btn:hover {
+        color: #b8972f;
+    }
 
+    .accordion-nav-btns {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+        gap: 50px;
     }
 
     @media (max-width: 1024px) {
+        .accordion-nav-btns {
+            gap: 28px;
+        }
+
         body.page-template-page-portal-home-php .dealer-row {
             margin: -10px auto 0;
         }
