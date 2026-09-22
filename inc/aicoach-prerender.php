@@ -432,8 +432,21 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, array $ava
 
 	$log( "  {$segment_key}: downloading..." );
 	$dest_file = ihq_aicoach_prerender_dir() . "/{$segment_key}.mp4";
-	$download  = wp_remote_get( $video_url, array( 'timeout' => 60, 'stream' => true, 'filename' => $dest_file ) );
+	// A fingerprint change (new script, or — as of the avatar-matching fix —
+	// a new avatar/voice from Gary) now routinely forces a re-render of a
+	// segment that already has a perfectly good clip serving live visitors.
+	// Streaming straight into $dest_file would truncate that valid file the
+	// moment the download starts, before we know the replacement is any
+	// good — a failed re-render would then take down a clip that was
+	// working fine seconds earlier. Stream to a temp file instead, validate
+	// it, and only replace $dest_file once validation passes; on failure,
+	// only the temp file is removed and the existing clip is untouched.
+	$temp_file = $dest_file . '.tmp';
+	$download  = wp_remote_get( $video_url, array( 'timeout' => 60, 'stream' => true, 'filename' => $temp_file ) );
 	if ( is_wp_error( $download ) ) {
+		if ( file_exists( $temp_file ) ) {
+			wp_delete_file( $temp_file );
+		}
 		return array(
 			'status' => 'error',
 			'error'  => 'download failed: ' . $download->get_error_message(),
@@ -448,8 +461,8 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, array $ava
 	// 3xx (redirects exhausted, a 304, etc.) would otherwise pass this check
 	// and get saved as a "valid" cached clip.
 	if ( $download_status < 200 || $download_status >= 300 ) {
-		if ( file_exists( $dest_file ) ) {
-			wp_delete_file( $dest_file );
+		if ( file_exists( $temp_file ) ) {
+			wp_delete_file( $temp_file );
 		}
 		return array(
 			'status' => 'error',
@@ -460,13 +473,25 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, array $ava
 	// zero bytes) passes the status check above but leaves a 0-byte file —
 	// that still satisfies the cache check's file_exists() on every future
 	// run, so a genuinely broken render would silently keep "succeeding".
-	if ( ! file_exists( $dest_file ) || 0 === filesize( $dest_file ) ) {
-		if ( file_exists( $dest_file ) ) {
-			wp_delete_file( $dest_file );
+	if ( ! file_exists( $temp_file ) || 0 === filesize( $temp_file ) ) {
+		if ( file_exists( $temp_file ) ) {
+			wp_delete_file( $temp_file );
 		}
 		return array(
 			'status' => 'error',
 			'error'  => "download failed: HTTP {$download_status} but the saved file is empty",
+		);
+	}
+	// Validation passed — atomically swap the temp file into place. rename()
+	// within the same directory replaces $dest_file in one filesystem
+	// operation, so a concurrent request never sees a partial/missing file.
+	if ( ! @rename( $temp_file, $dest_file ) ) {
+		if ( file_exists( $temp_file ) ) {
+			wp_delete_file( $temp_file );
+		}
+		return array(
+			'status' => 'error',
+			'error'  => 'downloaded clip validated but could not be moved into place',
 		);
 	}
 
