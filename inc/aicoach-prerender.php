@@ -165,6 +165,18 @@ function ihq_aicoach_gary_avatar_config() {
 	if ( is_wp_error( $session ) ) {
 		return $session;
 	}
+	// is_wp_error() only catches a transport-level failure — a non-2xx from
+	// Gary itself (401, 429, 500...) comes back as a normal array here, and
+	// without this check the missing avatar/voice fields below would surface
+	// as the misleading "gary_avatar_config_missing" instead of the real
+	// HTTP status. Same gap already closed for the scripts fetch below.
+	$session_status = (int) ( $session['status'] ?? 0 );
+	if ( $session_status < 200 || $session_status >= 300 ) {
+		return new WP_Error(
+			'gary_session_create_failed',
+			sprintf( 'Gary session creation failed (HTTP %d)', $session_status )
+		);
+	}
 
 	$session_id   = $session['body']['session']['id'] ?? null;
 	$avatar_id    = $session['body']['say']['video']['avatar_id'] ?? null;
@@ -562,7 +574,11 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			// failing or any per-segment error has to reach WP_CLI::error()
 			// instead, or a broken render would silently report as green.
 			if ( is_wp_error( $results ) ) {
-				WP_CLI::error( 'Failed to fetch registration scripts: ' . $results->get_error_message() );
+				// ihq_aicoach_prerender_all() now returns a WP_Error for either
+				// the scripts fetch OR the avatar-config fetch failing — the
+				// message used to always blame the scripts fetch regardless,
+				// which pointed operators at the wrong system to check.
+				WP_CLI::error( 'Prerender failed: ' . $results->get_error_message() );
 				return;
 			}
 
