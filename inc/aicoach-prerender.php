@@ -122,17 +122,137 @@ function ihq_aicoach_prerender_get_urls() {
 }
 
 /**
- * POST /v1/avatar-videos — start a render job. Uses the saved Sami persona
- * (same one everything else on this page uses) rather than a raw
- * avatar/voice pair, so a persona update (PO-3092's photo/voice fixes)
- * automatically applies to future re-renders too.
+ * Opens a throwaway Gary session purely to read which avatar/voice Gary is
+ * currently using for the LIVE registration-surface avatar, then closes it.
+ *
+ * Pre-rendered clips used to render with this theme's own separate Anam
+ * persona (anam_hq_persona_id(), inc/anam-proxy.php) — a completely
+ * different Anam avatar from whatever Gary's live session actually uses
+ * (confirmed 2026-09-22: our persona's avatar is Anam id 9c246015-...,
+ * described as dark hair / jewelry / cheongsam; Gary's live session
+ * returns a different avatar id, 3cb8331c-...). That's exactly the
+ * "starts as the new avatar, switches to an old one" visible mismatch
+ * flagged live (Ivan, 2026-09-22): the intro speaks live through Gary's
+ * avatar, then the following pre-rendered clips carried on with ours
+ * instead — two different-looking avatars in the same flow.
+ *
+ * The voice can't be borrowed the same simple way: say.audio.voice_id in
+ * Gary's response is an ElevenLabs id from their own realtime TTS/audio
+ * pipeline, not an id Anam's avatar-videos endpoint recognizes (confirmed
+ * live — POST /v1/avatar-videos 404s with "voice_not_found" when given
+ * it). Anam has no way from this API to ask "what voice does avatar X
+ * normally use", so this pairs Gary's avatar_id/avatar_model (fixes the
+ * visible mismatch, which was the actual complaint) with our own known-
+ * good Anam voice id, read from our existing persona. Voice may not be
+ * Gary's exact live voice as a result — acceptable trade-off until Anam
+ * exposes a way to look up an avatar's own default voice, or Gary
+ * publishes their avatar's paired voice id directly.
+ *
+ * @return array{avatar_id:string,avatar_model:string,voice_id:string}|WP_Error
+ */
+function ihq_aicoach_gary_avatar_config() {
+	$session = ihq_coach_request(
+		'POST',
+		'/coach/v1/session',
+		array(
+			'player' => array(
+				'ref'    => 'prerender-' . wp_generate_uuid4(),
+				'locale' => 'en',
+			),
+			'want'   => array( 'text', 'audio', 'video' ),
+		)
+	);
+	if ( is_wp_error( $session ) ) {
+		return $session;
+	}
+
+	$session_id   = $session['body']['session']['id'] ?? null;
+	$avatar_id    = $session['body']['say']['video']['avatar_id'] ?? null;
+	$avatar_model = $session['body']['say']['video']['avatar_model'] ?? null;
+
+	if ( $session_id ) {
+		// Best-effort close — this session only ever existed to read the
+		// config above, nothing depends on its outcome.
+		ihq_coach_request( 'POST', '/coach/v1/session/' . rawurlencode( $session_id ) . '/close', null );
+	}
+
+	if ( ! $avatar_id || ! $avatar_model ) {
+		return new WP_Error(
+			'gary_avatar_config_missing',
+			'Gary session response did not include say.video.avatar_id/avatar_model — cannot render a matching avatar.'
+		);
+	}
+
+	$voice_id = ihq_aicoach_fallback_voice_id();
+	if ( is_wp_error( $voice_id ) ) {
+		return $voice_id;
+	}
+
+	return array(
+		'avatar_id'    => $avatar_id,
+		'avatar_model' => $avatar_model,
+		'voice_id'     => $voice_id,
+	);
+}
+
+/**
+ * The voice id from our own existing Anam persona — a voice we know Anam's
+ * avatar-videos endpoint accepts, used to pair with Gary's avatar_id since
+ * Gary's own voice_id isn't in a format that endpoint recognizes (see
+ * ihq_aicoach_gary_avatar_config()'s docblock).
+ *
+ * @return string|WP_Error
+ */
+function ihq_aicoach_fallback_voice_id() {
+	$api_key = anam_hq_api_key();
+	if ( ! $api_key ) {
+		return new WP_Error( 'anam_not_configured', 'ANAM_API_KEY is not set.' );
+	}
+
+	$response = wp_remote_get(
+		ANAM_HQ_BASE_URL . '/personas/' . anam_hq_persona_id(),
+		array(
+			'timeout'     => 15,
+			'redirection' => 0,
+			'headers'     => array( 'Authorization' => 'Bearer ' . $api_key ),
+		)
+	);
+	if ( is_wp_error( $response ) ) {
+		return $response;
+	}
+
+	$status = (int) wp_remote_retrieve_response_code( $response );
+	if ( $status < 200 || $status >= 300 ) {
+		return new WP_Error(
+			'anam_persona_lookup_failed',
+			sprintf( 'Anam persona lookup failed (HTTP %d)', $status )
+		);
+	}
+
+	$data     = json_decode( wp_remote_retrieve_body( $response ), true );
+	$voice_id = $data['voice']['id'] ?? null;
+	if ( ! $voice_id ) {
+		return new WP_Error( 'anam_persona_voice_missing', 'Persona response did not include voice.id.' );
+	}
+
+	return $voice_id;
+}
+
+/**
+ * POST /v1/avatar-videos — start a render job, using the exact avatar_id /
+ * voice_id / avatar_model Gary's live session is currently using (see
+ * ihq_aicoach_gary_avatar_config()) rather than this theme's own separate
+ * Anam persona, so pre-rendered clips always match the live avatar.
  *
  * @param string $script          Exact text to speak (Anam: TTS only, no LLM).
  * @param string $idempotency_key Stable per-script key — this file always
- *                                 passes the segment's own sha256.
+ *                                 passes a fingerprint of the segment's own
+ *                                 sha256 plus the avatar config.
+ * @param array  $avatar_config   { avatar_id, avatar_model, voice_id } from
+ *                                 ihq_aicoach_gary_avatar_config().
  * @return array|WP_Error Decoded response body on success.
  */
-function ihq_aicoach_anam_create_video( $script, $idempotency_key ) {
+function ihq_aicoach_anam_create_video( $script, $idempotency_key, array $avatar_config ) {
 	$api_key = anam_hq_api_key();
 	if ( ! $api_key ) {
 		return new WP_Error( 'anam_not_configured', 'ANAM_API_KEY is not set.' );
@@ -153,8 +273,10 @@ function ihq_aicoach_anam_create_video( $script, $idempotency_key ) {
 			),
 			'body'    => wp_json_encode(
 				array(
-					'personaId' => anam_hq_persona_id(),
-					'script'    => $script,
+					'avatarId'    => $avatar_config['avatar_id'],
+					'voiceId'     => $avatar_config['voice_id'],
+					'avatarModel' => $avatar_config['avatar_model'],
+					'script'      => $script,
 				)
 			),
 		)
@@ -220,32 +342,38 @@ function ihq_aicoach_anam_get_video( $job_id ) {
  * (returns 'cached') if the manifest already has this exact sha256 stored
  * and the file is still on disk.
  *
- * @param string $segment_key Gary's segment key, e.g. "we_believe_1".
- * @param string $text        Exact approved script text.
- * @param string $sha256      Gary's sha256 for this exact text — also used
- *                             as the Anam Idempotency-Key.
- * @param callable|null $log  Optional fn(string $line) for CLI progress output.
+ * @param string $segment_key   Gary's segment key, e.g. "we_believe_1".
+ * @param string $text          Exact approved script text.
+ * @param string $sha256        Gary's sha256 for this exact text.
+ * @param array  $avatar_config { avatar_id, avatar_model, voice_id } from
+ *                               ihq_aicoach_gary_avatar_config() — also used
+ *                               to build the Anam Idempotency-Key, alongside
+ *                               $sha256.
+ * @param callable|null $log    Optional fn(string $line) for CLI progress output.
  * @return array{status:string, url?:string, error?:string}
  */
-function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $log = null ) {
+function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, array $avatar_config, $log = null ) {
 	$log = $log ?: function ( $line ) {};
 
 	// Cache key on sha256 alone would keep serving a clip rendered with a
-	// now-stale persona (voice/avatar) after anam_hq_persona_id() changes,
-	// since the script text — and therefore its sha256 — never moved. Fold
-	// the persona into the identity used for both the cache check and the
-	// Anam Idempotency-Key so a persona change forces a fresh render.
-	$fingerprint = hash( 'sha256', $sha256 . '|' . anam_hq_persona_id() );
+	// now-stale avatar/voice after Gary's live config changes, since the
+	// script text — and therefore its sha256 — never moved. Fold the avatar
+	// config into the identity used for both the cache check and the Anam
+	// Idempotency-Key so a change on Gary's side forces a fresh render.
+	$fingerprint = hash(
+		'sha256',
+		$sha256 . '|' . $avatar_config['avatar_id'] . '|' . $avatar_config['avatar_model'] . '|' . $avatar_config['voice_id']
+	);
 
 	$manifest = ihq_aicoach_prerender_load_manifest();
 	$existing = $manifest[ $segment_key ] ?? null;
 	if ( $existing && ( $existing['fingerprint'] ?? '' ) === $fingerprint && file_exists( ihq_aicoach_prerender_dir() . '/' . $existing['file'] ) ) {
-		$log( "  {$segment_key}: already rendered for this script+persona, skipping" );
+		$log( "  {$segment_key}: already rendered for this script+avatar, skipping" );
 		return array( 'status' => 'cached' );
 	}
 
 	$log( "  {$segment_key}: creating render job..." );
-	$job = ihq_aicoach_anam_create_video( $text, $fingerprint );
+	$job = ihq_aicoach_anam_create_video( $text, $fingerprint, $avatar_config );
 	if ( is_wp_error( $job ) ) {
 		return array(
 			'status' => 'error',
@@ -377,6 +505,14 @@ function ihq_aicoach_prerender_all( $log = null ) {
 		);
 	}
 
+	$log( 'Reading Gary\'s current live avatar/voice config...' );
+	$avatar_config = ihq_aicoach_gary_avatar_config();
+	if ( is_wp_error( $avatar_config ) ) {
+		$log( 'Failed to read avatar config: ' . $avatar_config->get_error_message() );
+		return $avatar_config;
+	}
+	$log( "  using avatar_id={$avatar_config['avatar_id']} avatar_model={$avatar_config['avatar_model']}" );
+
 	$segments = $scripts_result['body']['segments'] ?? array();
 	$wanted   = array_unique( array_values( ihq_aicoach_prerender_panel_map() ) );
 	$results  = array();
@@ -392,7 +528,7 @@ function ihq_aicoach_prerender_all( $log = null ) {
 			continue;
 		}
 		$log( "{$segment_key}: rendering..." );
-		$results[ $segment_key ] = ihq_aicoach_prerender_segment( $segment_key, $segment['text'], $segment['sha256'], $log );
+		$results[ $segment_key ] = ihq_aicoach_prerender_segment( $segment_key, $segment['text'], $segment['sha256'], $avatar_config, $log );
 	}
 
 	return $results;
