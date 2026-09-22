@@ -71,7 +71,6 @@ const SUPPORTED_LOCALES = [
 // epic has followed for every other TBD piece of content.
 const I18N_EN = {
     belief: 'We believe conversations should be easy.',
-    unmuteLabel: "Turn on Sami's voice",
     weBelieve: 'We Believe',
     tierGroupLabel: 'Conversation length',
     'tier-2-duration': '2 minutes',
@@ -342,7 +341,13 @@ const stage = document.getElementById('aicoach-stage');
 const avatarWrap = document.getElementById('aicoach-avatar-wrap');
 const video = document.getElementById('aicoach-avatar-video');
 const portrait = document.getElementById('aicoach-portrait');
-const unmuteBtn = document.getElementById('aicoach-unmute');
+// Reuses the site-wide header volume control (template-parts/portal-header.php)
+// instead of a second, dedicated mute button overlaid on the avatar itself —
+// that button currently does nothing but open its own slider on every other
+// page, so wiring it to this page's avatar audio is a natural fit rather
+// than duplicating a control the visitor already sees top-right.
+const headerVolumeBtn = document.getElementById('headerVolumeBtn');
+const headerVolumeSlider = document.getElementById('headerVolumeSlider');
 
 function getCaptionEl( panelKey ) {
     return stage.querySelector( '.aicoach-panel[data-panel="' + panelKey + '"] .aicoach-caption' );
@@ -837,18 +842,24 @@ if ( stage && avatarWrap ) {
         }
     } );
 
-    unmuteBtn?.addEventListener( 'click', function () {
+    // Click toggles mute (also opens/closes the slider — see portal-header.php's
+    // own handler for that part, unchanged); dragging the slider sets a level
+    // directly and drives mute from it, same as any standard volume control.
+    headerVolumeBtn?.addEventListener( 'click', function () {
         video.muted = ! video.muted;
-        unmuteBtn.setAttribute( 'aria-pressed', String( ! video.muted ) );
-        avatarWrap.dataset.muted = String( video.muted );
+    } );
+    headerVolumeSlider?.addEventListener( 'input', function () {
+        const level = Number( headerVolumeSlider.value ) / 100;
+        video.volume = level;
+        video.muted = 0 === level;
     } );
 
     // Browsers block autoplaying audio until the visitor has interacted with
     // the page at least once — there's no way around that for a page that
-    // starts talking on arrival with no required tap. Rather than making
-    // visitors hunt for the small unmute button on the avatar, the first
-    // click/tap/keypress anywhere unmutes it, same as the "tap to unmute"
-    // pattern used elsewhere for autoplaying video with sound.
+    // starts talking on arrival with no required tap. The first click/tap/
+    // keypress anywhere unmutes it, same as the "tap to unmute" pattern used
+    // elsewhere for autoplaying video with sound; the header volume control
+    // above is for explicitly muting/adjusting afterward.
     function unmuteOnFirstInteraction() {
         document.removeEventListener( 'click', unmuteOnFirstInteraction );
         document.removeEventListener( 'keydown', unmuteOnFirstInteraction );
@@ -856,8 +867,6 @@ if ( stage && avatarWrap ) {
             return;
         }
         video.muted = false;
-        unmuteBtn?.setAttribute( 'aria-pressed', 'true' );
-        avatarWrap.dataset.muted = 'false';
     }
     document.addEventListener( 'click', unmuteOnFirstInteraction );
     document.addEventListener( 'keydown', unmuteOnFirstInteraction );
