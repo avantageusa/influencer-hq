@@ -146,7 +146,6 @@ $aicoach_channels = array(
                     >
                     <video class="aicoach-avatar-video" id="aicoach-avatar-video" autoplay playsinline muted></video>
                     <div class="aicoach-avatar-loading" aria-hidden="true"><div class="aicoach-avatar-spinner"></div></div>
-                    <button type="button" class="aicoach-unmute" id="aicoach-unmute" aria-pressed="false" data-i18n-attr="aria-label:unmuteLabel" aria-label="<?php esc_attr_e( 'Turn on Sami\'s voice', 'influencer-hq' ); ?>">&#128264;</button>
                 </div>
 
                 <div class="aicoach-stage" id="aicoach-stage">
@@ -501,30 +500,6 @@ $aicoach_channels = array(
     }
 
     @keyframes aicoach-spin { to { transform: rotate(360deg); } }
-
-    .aicoach-unmute {
-        position: absolute;
-        bottom: 12px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 34px;
-        height: 34px;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        border: none;
-        border-radius: 50%;
-        background: rgba(0, 0, 0, .55);
-        color: #fff;
-        font-size: 16px;
-        cursor: pointer;
-        z-index: 2;
-    }
-
-    .aicoach-unmute:hover { background: rgba(0, 0, 0, .8); }
-    .aicoach-avatar-wrap[data-status="live"] .aicoach-unmute { display: flex; }
-    .aicoach-avatar-wrap[data-status="live"][data-muted="false"] .aicoach-unmute { opacity: .5; }
 
     .aicoach-caption {
         max-width: 560px;

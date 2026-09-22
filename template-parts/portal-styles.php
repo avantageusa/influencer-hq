@@ -73,7 +73,28 @@
         color: #666;
         margin: 0 4px;
     }
-    
+
+    /* This row wraps onto 3 lines on narrow screens at the desktop font
+    size/padding (6 items, "Live Appearance" alone is the longest), pushing
+    page content — e.g. the AI Coach intro — below the fold. The hamburger
+    drawer already repeats every one of these links, so nothing here is only
+    reachable through this row; shrinking it is purely a spacing fix, not a
+    loss of navigation. Kept as a visible, shorter row rather than hiding it
+    outright: adjustContentPadding() (below, in this same file's script)
+    measures .sticky-nav's real rendered height to clear page content, and a
+    display:none row measures as zero height, which would stop that
+    calculation from applying any clearance at all. */
+    @media (max-width: 767px) {
+        .nav-link-inline {
+            padding: 0 4px;
+            font-size: 13px;
+        }
+
+        .nav-separator {
+            margin: 0 2px;
+        }
+    }
+
     /* Reduce margins for containers inside sticky elements */
     .sticky-header .container,
     .sticky-nav .container {
