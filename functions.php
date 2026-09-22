@@ -423,6 +423,7 @@ require_once get_template_directory() . '/inc/portal-username.php';
  * API AJAX Calls (equity chart data, etc.)
  */
 require_once get_template_directory() . '/inc/api-ajax-calls.php';
+require_once get_template_directory() . '/inc/video-submissions.php';
 
 /**
  * Ask Sami — Anam real-time avatar proxy + POC-page concierge suppression (ENGR-5831).

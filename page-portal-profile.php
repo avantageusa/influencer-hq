@@ -38,25 +38,6 @@ if ( ! function_exists( 'ihq_parse_platform_handle_pairs' ) ) {
     }
 }
 
-if ( ! function_exists( 'ihq_extract_youtube_video_id' ) ) {
-    /**
-     * Returns the 11-character YouTube video ID or an empty string.
-     *
-     * @param string $url Video URL or pasted link.
-     */
-    function ihq_extract_youtube_video_id( $url ) {
-        $url = trim( (string) $url );
-        if ( $url === '' ) {
-            return '';
-        }
-        $pattern = '~(?:youtube\.com/(?:watch\?v=|embed/|shorts/)|youtu\.be/)([a-zA-Z0-9_-]{11})~';
-        if ( preg_match( $pattern, $url, $matches ) ) {
-            return $matches[1];
-        }
-        return '';
-    }
-}
-
 // Handle OAuth start-session API URL (per-user override; SSO refresh via AJAX button).
 if ( isset( $_POST['ihq_oauth_start_session_url_submit'] ) && is_user_logged_in() ) {
     check_admin_referer( 'ihq_oauth_start_session_url_save' );
@@ -81,37 +62,646 @@ if ( isset( $_POST['hq_game_url_submit'] ) && is_user_logged_in() ) {
     exit;
 }
 
-// Handle gameplay YouTube URL (stored in user meta; thumbnail derived from ID).
-if ( isset( $_POST['ihq_gameplay_video_submit'] ) && is_user_logged_in() ) {
-    check_admin_referer( 'ihq_gameplay_video_save' );
-    $raw = isset( $_POST['ihq_gameplay_video_url'] ) ? wp_unslash( $_POST['ihq_gameplay_video_url'] ) : '';
-    $raw = trim( (string) $raw );
-    if ( $raw === '' ) {
-        update_user_meta( get_current_user_id(), '_ihq_gameplay_video_url', '' );
-        $account_url = function_exists( 'ihq_portal_account_url' ) ? ihq_portal_account_url() : trailingslashit( home_url( '/portal/account' ) );
-        wp_safe_redirect( add_query_arg( 'ihq_video_saved', '1', $account_url ) );
-        exit;
-    }
-    $url = esc_url_raw( $raw );
+// Handle video submissions (up to 5 links from any platform).
+if ( isset( $_POST['ihq_video_action'] ) && is_user_logged_in() ) {
+    check_admin_referer( 'ihq_video_submissions_save' );
     $account_url = function_exists( 'ihq_portal_account_url' ) ? ihq_portal_account_url() : trailingslashit( home_url( '/portal/account' ) );
-    if ( ! $url || ihq_extract_youtube_video_id( $url ) === '' ) {
-        wp_safe_redirect( add_query_arg( 'ihq_video_err', '1', $account_url ) );
+    $user_id     = get_current_user_id();
+    $action      = sanitize_key( wp_unslash( $_POST['ihq_video_action'] ) );
+    $items       = ihq_get_video_submissions( $user_id );
+    $redirect    = static function ( $code ) use ( $account_url ) {
+        wp_safe_redirect( add_query_arg( 'ihq_video', $code, $account_url ) );
         exit;
+    };
+
+    if ( $action === 'remove' ) {
+        $remove_id = isset( $_POST['ihq_video_id'] ) ? sanitize_text_field( wp_unslash( $_POST['ihq_video_id'] ) ) : '';
+        if ( $remove_id === '' ) {
+            $redirect( 'err_missing' );
+        }
+        $next = array();
+        $found = false;
+        foreach ( $items as $row ) {
+            if ( $row['id'] === $remove_id ) {
+                $found = true;
+                continue;
+            }
+            $next[] = $row;
+        }
+        if ( ! $found ) {
+            $redirect( 'err_missing' );
+        }
+        ihq_save_video_submissions( $user_id, $next );
+        $redirect( 'removed' );
     }
-    update_user_meta( get_current_user_id(), '_ihq_gameplay_video_url', $url );
-    wp_safe_redirect( add_query_arg( 'ihq_video_saved', '1', $account_url ) );
-    exit;
+
+    $subject = isset( $_POST['ihq_video_subject'] ) ? sanitize_text_field( wp_unslash( $_POST['ihq_video_subject'] ) ) : '';
+    $subject = function_exists( 'mb_substr' )
+        ? mb_substr( $subject, 0, ihq_video_subject_max_length() )
+        : substr( $subject, 0, ihq_video_subject_max_length() );
+    if ( $subject === '' ) {
+        $redirect( 'err_subject' );
+    }
+
+    $url = ihq_sanitize_http_media_url( isset( $_POST['ihq_video_url'] ) ? wp_unslash( $_POST['ihq_video_url'] ) : '' );
+    if ( $url === '' ) {
+        $redirect( 'err_url' );
+    }
+
+    $now = gmdate( 'c' );
+
+    if ( $action === 'replace' ) {
+        $replace_id = isset( $_POST['ihq_video_id'] ) ? sanitize_text_field( wp_unslash( $_POST['ihq_video_id'] ) ) : '';
+        if ( $replace_id === '' ) {
+            $redirect( 'err_missing' );
+        }
+        $found = false;
+        foreach ( $items as $index => $row ) {
+            if ( $row['id'] !== $replace_id ) {
+                continue;
+            }
+            $items[ $index ]['url']        = $url;
+            $items[ $index ]['subject']    = $subject;
+            $items[ $index ]['updated_at'] = $now;
+            if ( empty( $items[ $index ]['status'] ) ) {
+                $items[ $index ]['status'] = ihq_video_status_auto_promoted();
+            }
+            $found = true;
+            break;
+        }
+        if ( ! $found ) {
+            $redirect( 'err_missing' );
+        }
+        ihq_save_video_submissions( $user_id, $items );
+        $redirect( 'replaced' );
+    }
+
+    if ( $action === 'add' ) {
+        if ( count( $items ) >= ihq_video_submission_max() ) {
+            $redirect( 'err_limit' );
+        }
+        $items[] = array(
+            'id'         => wp_generate_uuid4(),
+            'url'        => $url,
+            'subject'    => $subject,
+            'status'     => ihq_video_status_auto_promoted(),
+            'created_at' => $now,
+            'updated_at' => $now,
+        );
+        ihq_save_video_submissions( $user_id, $items );
+        $redirect( 'saved' );
+    }
+
+    $redirect( 'err_missing' );
 }
 
 get_header();
 
 // Load styles before content to prevent FOUC
 get_template_part( 'template-parts/portal-styles' );
+?>
+<style id="ihq-profile-figma">
+/* Profile layout — Figma Settings_Desktop (79:4533). Scoped so live can ship this PHP file without merging portal-styles. */
+#portal-content.sett-wrap {
+    max-width: 1120px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 24px;
+    padding-right: 24px;
+}
+#portal-content .sett-content {
+    padding-bottom: 96px;
+    font-family: 'Be Vietnam Pro', sans-serif;
+}
+#portal-content .sett-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: 28px 0 12px;
+}
+#portal-content .sett-header-icon {
+    width: clamp(72px, 7vw, 134px);
+    height: clamp(72px, 7vw, 134px);
+    object-fit: contain;
+}
+#portal-content .sett-title {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(40px, 5vw, 63px);
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.04em;
+    line-height: 1.1;
+    margin: 0;
+}
+#portal-content .sett-sep {
+    height: 9px;
+    margin: 8px 0 28px;
+    background: radial-gradient(ellipse 55% 100% at 50% 50%, rgba(184,151,47,.9) 0%, rgba(184,151,47,0) 100%);
+}
+#portal-content .sett-identity {
+    display: flex;
+    align-items: center;
+    gap: clamp(24px, 4vw, 48px);
+    padding: 8px 0 36px;
+}
+#portal-content .sett-avatar-ring {
+    width: clamp(150px, 17vw, 326px);
+    height: clamp(150px, 17vw, 326px);
+    border-radius: 50%;
+    border: clamp(6px, 0.6vw, 12px) solid #fff;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+#portal-content .sett-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+#portal-content .sett-identity-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+#portal-content .sett-display-name {
+    font-family: 'Be Vietnam Pro', sans-serif;
+    font-size: clamp(30px, 3.9vw, 74px);
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.06;
+}
+#portal-content .sett-user-handle {
+    font-family: 'Be Vietnam Pro', sans-serif;
+    font-size: clamp(24px, 3.4vw, 65px);
+    font-weight: 700;
+    color: #616161;
+    line-height: 1.06;
+    overflow-wrap: anywhere;
+}
+#portal-content .sett-social-row {
+    display: flex;
+    align-items: center;
+    gap: clamp(12px, 1.4vw, 26px);
+    margin-top: clamp(10px, 1vw, 20px);
+}
+#portal-content .sett-soc-icon {
+    width: clamp(28px, 2.7vw, 52px);
+    height: clamp(28px, 2.7vw, 52px);
+    object-fit: contain;
+    opacity: 1;
+}
+#portal-content .sett-gameplay-promo {
+    margin: 8px 0 36px;
+}
+#portal-content .sett-gameplay-promo-text {
+    font-family: 'Be Vietnam Pro', sans-serif;
+    font-size: clamp(20px, 2vw, 39px);
+    font-weight: 600;
+    line-height: 1.35;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    margin: 0 0 20px;
+    max-width: none;
+}
+#portal-content .sett-gameplay-with-coach {
+    position: relative;
+    overflow: visible;
+}
+#portal-content .sett-gameplay-main {
+    width: 100%;
+    padding-right: 0;
+}
+#portal-content .sett-gameplay-promo-card,
+#portal-content .sett-card {
+    background: #000;
+    border: 3px solid #b8972f;
+    border-radius: 16px;
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+#portal-content .sett-gameplay-promo-card {
+    padding: 18px 8px 8px;
+}
+#portal-content .ihq-video-item-label {
+    margin: 0 20px 12px;
+    font-size: clamp(15px, 1.35vw, 24px);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #b8972f;
+}
+#portal-content .sett-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 64px;
+    padding: 10px 28px;
+    border-bottom: 3px solid rgba(230,230,230,.85);
+    gap: 16px;
+}
+#portal-content .sett-row:last-of-type {
+    border-bottom: none;
+}
+#portal-content .sett-gameplay-promo-card .sett-row {
+    min-height: 56px;
+    padding: 8px 20px;
+}
+#portal-content .sett-row-lbl {
+    font-family: 'Be Vietnam Pro', sans-serif;
+    font-size: clamp(17px, 1.7vw, 32px);
+    font-weight: 400;
+    color: #fff;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: none;
+}
+#portal-content .sett-row-val {
+    width: auto;
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 0;
+}
+#portal-content .sett-editable,
+#portal-content .hq-game-url-input,
+#portal-content .sett-timezone-select,
+#portal-content .sett-place-select,
+#portal-content .celeb-select {
+    font-family: 'Be Vietnam Pro', sans-serif;
+    font-size: clamp(17px, 1.7vw, 32px);
+    color: #fff;
+}
+#portal-content .hq-game-url-input {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid #b8972f;
+    width: 100%;
+    outline: none;
+    padding: 6px 4px;
+    text-align: right;
+}
+#portal-content .hq-game-url-save-btn,
+#portal-content .sett-referral-copy-btn {
+    background: none;
+    border: 2px solid #b8972f;
+    color: #b8972f;
+    font-size: clamp(15px, 1.3vw, 22px);
+    padding: 8px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-left: 8px;
+}
+#portal-content .ihq-video-item-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    padding: 12px 20px 16px;
+}
+#portal-content .ihq-video-remove-btn {
+    border-color: rgba(255,107,107,.7);
+    color: #ff8a8a;
+}
+#portal-content .sett-section-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: clamp(26px, 3vw, 56px) 0 14px;
+    padding-left: 4px;
+    padding-right: 4px;
+}
+#portal-content .sett-section-head > .sett-section-title:first-child {
+    min-width: 0;
+    flex: 1;
+}
+#portal-content .sett-section-title {
+    font-family: 'Be Vietnam Pro', sans-serif;
+    font-size: clamp(21px, 2vw, 39px);
+    font-weight: 600;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    line-height: 1.25;
+}
+#portal-content .sett-hint-text {
+    font-size: clamp(14px, 1.35vw, 26px);
+    color: #919191;
+}
+#portal-content .sett-arrow {
+    font-size: clamp(18px, 1.6vw, 30px);
+    color: #fff;
+}
+#portal-content .sett-quote,
+#portal-content .sett-media-ask {
+    font-family: 'Be Vietnam Pro', sans-serif;
+    font-size: clamp(17px, 1.75vw, 34px);
+    font-weight: 400;
+    font-style: italic;
+    color: #fff;
+    line-height: 1.35;
+    margin: 10px 0 24px;
+}
+#portal-content .sett-media-ask {
+    font-style: normal;
+    font-weight: 700;
+    margin: 40px 0 48px;
+}
+#portal-content .sett-media-ask p {
+    margin: 0 0 20px;
+}
+#portal-content .sett-change-photo {
+    font-size: clamp(17px, 1.7vw, 32px);
+    color: #919191;
+}
+#portal-content .profile-coach-fab-host {
+    position: absolute;
+    z-index: 5;
+    right: -8px;
+    top: 88px;
+    width: 160px;
+    height: 160px;
+    pointer-events: none;
+}
+#portal-content .profile-coach-fab-host .ihq-concierge-fab {
+    position: absolute !important;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0;
+    pointer-events: auto;
+    right: auto;
+    bottom: auto;
+}
+#portal-content .celeb-col-label {
+    font-size: clamp(15px, 1.4vw, 26px);
+}
+#portal-content .celeb-select,
+#portal-content .sett-place-select,
+#portal-content .sett-timezone-select {
+    background: #000;
+    border: 2px solid #b8972f;
+    border-radius: 10px;
+    padding: 8px 10px;
+    min-height: 48px;
+}
+#portal-content .contact-card {
+    padding: 8px 20px 16px;
+    box-shadow: 0 13px 13px rgba(0,0,0,.25);
+}
+#portal-content .contact-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    min-height: 72px;
+    padding: 0 24px;
+    border-bottom: 3px solid rgba(230,230,230,.85);
+    background: transparent;
+}
+#portal-content .contact-row:last-of-type {
+    border-bottom: none;
+}
+#portal-content .contact-row-main {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex: 0 0 auto;
+    padding: 12px 0;
+    background: none;
+}
+#portal-content .contact-row-main:hover {
+    background: none;
+}
+#portal-content .contact-check {
+    margin: 0;
+}
+/* The gold square is the control; the native checkbox must never render beside it. */
+#portal-content .contact-check-input {
+    display: none;
+}
+#portal-content .contact-check-box {
+    width: 36px;
+    height: 36px;
+    border: 3px solid #b8972f;
+    border-radius: 6px;
+    background: transparent;
+    display: inline-block;
+    box-sizing: border-box;
+}
+#portal-content .contact-row.is-selected .contact-check-box,
+#portal-content .contact-check-input:checked + .contact-check-box {
+    background: #b8972f;
+}
+#portal-content .contact-row-lbl {
+    flex: 0 0 clamp(120px, 13vw, 250px);
+    width: clamp(120px, 13vw, 250px);
+    max-width: none;
+    font-family: 'Be Vietnam Pro', sans-serif;
+    font-size: clamp(17px, 1.7vw, 32px);
+    font-weight: 400;
+    color: #e5e5e5;
+}
+#portal-content .contact-row-addval {
+    font-family: 'Be Vietnam Pro', sans-serif;
+    font-size: clamp(15px, 1.35vw, 26px);
+    color: #919191;
+    font-style: normal;
+    min-width: 80px;
+}
+#portal-content .contact-row-addval--filled {
+    color: #919191;
+    font-style: normal;
+}
+#portal-content .contact-row-expand {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    padding: 0 0 0 8px;
+    border: none;
+    background: none;
+}
+#portal-content .contact-row-expand[hidden] {
+    display: none !important;
+}
+#portal-content .contact-toggles {
+    display: none !important;
+}
+#portal-content .contact-input {
+    width: min(470px, 100%);
+    max-width: 100%;
+    height: clamp(38px, 2.7vw, 52px);
+    border: 3px dashed #fff;
+    border-radius: 0;
+    background: transparent;
+    color: #fff;
+    font-family: 'Be Vietnam Pro', sans-serif;
+    font-size: clamp(15px, 1.35vw, 26px);
+    text-align: left;
+    padding: 6px 14px;
+    outline: none;
+}
+#portal-content .contact-input::placeholder {
+    color: #919191;
+    font-style: normal;
+}
+
+#portal-content .sett-section-head--account {
+    margin: 36px 0 12px;
+    padding-left: 4px;
+    padding-right: 4px;
+}
+#portal-content .sett-section-head--account .sett-hint-text {
+    font-size: clamp(16px, 1.6vw, 22px);
+    color: #919191;
+    text-transform: lowercase;
+}
+#portal-content .sett-section-head--account .sett-info-icon {
+    display: none;
+}
+#portal-content .sett-account-card {
+    padding: 10px 8px 18px;
+}
+#portal-content .sett-account-card .sett-row {
+    min-height: 68px;
+    padding: 8px 32px;
+    border-bottom: 3px solid rgba(230,230,230,.85);
+}
+#portal-content .sett-account-card .sett-row:last-child {
+    border-bottom: none;
+}
+#portal-content .sett-account-card .sett-row-lbl {
+    flex: 0 1 auto;
+    max-width: none;
+    font-size: clamp(17px, 1.7vw, 32px);
+    font-weight: 400;
+    white-space: nowrap;
+}
+/* Values stay on one line like the mock; long emails and referral URLs truncate. */
+#portal-content .sett-account-card .sett-row-val > * {
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+#portal-content .sett-account-card .sett-row--name .sett-row-lbl,
+#portal-content .sett-account-card .sett-row--name .sett-editable {
+    font-weight: 700;
+}
+#portal-content .sett-account-card .sett-editable {
+    text-align: right;
+}
+#portal-content .sett-account-card .sett-email-link {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+#portal-content .sett-account-card .sett-referral-url {
+    color: #828282;
+    font-style: italic;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    font-size: clamp(17px, 1.7vw, 32px);
+    text-align: right;
+}
+#portal-content .sett-account-card .sett-referral-url--has-value {
+    color: #fff;
+    font-style: normal;
+}
+#portal-content .sett-account-card .sett-referral-copy-btn,
+#portal-content .sett-account-card #portal-username-save-btn {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+}
+#portal-content .sett-account-card .sett-change-photo {
+    font-size: clamp(17px, 1.7vw, 32px);
+    color: #828282;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    background: none;
+    border: none;
+    padding: 0;
+}
+#portal-content .sett-account-card .sett-username-at {
+    color: #fff;
+    font-size: clamp(17px, 1.7vw, 32px);
+    font-weight: 400;
+    line-height: 1;
+}
+#portal-content .sett-account-card .sett-portal-username-val {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0;
+    width: auto;
+}
+#portal-content .sett-account-card .sett-portal-username-input {
+    width: auto;
+    min-width: 8ch;
+    max-width: 28ch;
+    border: none;
+    border-bottom: none;
+    padding: 0;
+    text-align: left;
+}
+#portal-content .sett-account-card .sett-place-fields {
+    align-items: flex-end;
+    width: auto;
+}
+#portal-content .sett-account-card .sett-place-select,
+#portal-content .sett-account-card .sett-timezone-select {
+    border: none;
+    background: transparent;
+    text-align: right;
+    text-align-last: right;
+    appearance: none;
+    -webkit-appearance: none;
+    min-height: 0;
+    padding: 0;
+    max-width: 100%;
+    cursor: pointer;
+    border-radius: 0;
+}
+#portal-content .sett-account-card .sett-portal-username-feedback {
+    padding: 0 32px 8px;
+    margin: 0;
+    text-align: right;
+}
+
+@media (max-width: 900px) {
+    #portal-content .sett-identity {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    #portal-content .profile-coach-fab-host {
+        position: relative;
+        right: auto;
+        top: auto;
+        margin: 16px 0 0 auto;
+    }
+    #portal-content .sett-row {
+        flex-wrap: wrap;
+        min-height: 0;
+        padding: 12px 16px;
+    }
+}
+</style>
+<?php
 
 $user            = wp_get_current_user();
 $display_name    = $user->display_name ?: $user->user_login;
 $first_name      = get_user_meta( $user->ID, 'first_name', true ) ?: $user->first_name;
 $last_name       = get_user_meta( $user->ID, 'last_name',  true ) ?: $user->last_name;
+$full_name       = trim( $first_name . ' ' . $last_name );
+if ( $full_name === '' ) {
+    $full_name = $display_name;
+}
 $user_email      = $user->user_email;
 $portal_username = function_exists( 'ihq_get_portal_username' ) ? ihq_get_portal_username( $user->ID ) : '';
 $needs_portal_username_setup = function_exists( 'ihq_user_needs_portal_username' ) && ihq_user_needs_portal_username( $user->ID );
@@ -124,7 +714,7 @@ $user_city       = get_user_meta( $user->ID, '_ihq_city',      true );
 $user_timezone   = get_user_meta( $user->ID, '_ihq_timezone',  true );
 $user_avatar     = get_user_meta( $user->ID, '_ihq_avatar_url', true );
 if ( ! $user_avatar ) {
-    $user_avatar = get_avatar_url( $user->ID, [ 'size' => 100 ] );
+    $user_avatar = get_avatar_url( $user->ID, [ 'size' => 320 ] );
 }
 
 $social_handles  = get_user_meta( $user->ID, '_ihq_social_handles',  true );
@@ -161,10 +751,34 @@ $celebrity_selections = [
 
 $intl_league_team = get_user_meta( $user->ID, '_ihq_intl_league_team', true ) ?: '';
 
-$gameplay_video_url = get_user_meta( $user->ID, '_ihq_gameplay_video_url', true );
-$gameplay_yt_id     = ihq_extract_youtube_video_id( $gameplay_video_url );
+$video_submissions = ihq_get_video_submissions( $user->ID );
+$video_feedback    = isset( $_GET['ihq_video'] ) ? sanitize_key( wp_unslash( $_GET['ihq_video'] ) ) : '';
 
-$contact_platforms = [ 'Email', 'Telegram' ];
+$contact_platforms = array(
+    array( 'key' => 'email', 'label' => 'Email' ),
+    array( 'key' => 'facebook', 'label' => 'Facebook' ),
+    array( 'key' => 'instagram', 'label' => 'Instagram' ),
+    array( 'key' => 'kakaotalk', 'label' => 'KakaoTalk' ),
+    array( 'key' => 'kick', 'label' => 'KICK' ),
+    array( 'key' => 'line', 'label' => 'Line' ),
+    array( 'key' => 'tiktok', 'label' => 'TikTok' ),
+    array( 'key' => 'twitch', 'label' => 'Twitch' ),
+    array( 'key' => 'wechat', 'label' => 'WeChat' ),
+    array( 'key' => 'whatsapp', 'label' => 'WhatsApp' ),
+    array( 'key' => 'x', 'label' => 'X' ),
+);
+
+$ihq_profile_countries = array(
+    'Australia', 'Canada', 'China', 'France', 'Germany', 'Hong Kong', 'India', 'Indonesia',
+    'Italy', 'Japan', 'Malaysia', 'Mexico', 'Netherlands', 'New Zealand', 'Philippines',
+    'Serbia', 'Singapore', 'South Africa', 'South Korea', 'Spain', 'Taiwan', 'Thailand',
+    'United Arab Emirates', 'United Kingdom', 'United States', 'Vietnam',
+);
+$ihq_profile_cities = array(
+    'Atlanta', 'Bangkok', 'Beijing', 'Belgrade', 'Hong Kong', 'Jakarta', 'Kuala Lumpur',
+    'London', 'Los Angeles', 'Manila', 'Melbourne', 'Mexico City', 'Mumbai', 'New York',
+    'Paris', 'Seoul', 'Shanghai', 'Singapore', 'Sydney', 'Taipei', 'Tokyo', 'Toronto',
+);
 
 $_settings_nonce = wp_create_nonce( 'settings_save_nonce' );
 $ihq_oauth_sso_nonce = wp_create_nonce( 'ihq_oauth_sso_nonce' );
@@ -234,89 +848,146 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                             <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/youtube.png" alt="YouTube" class="sett-soc-icon">
                             <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/x.png" alt="X" class="sett-soc-icon">
                             <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/tiktok.png" alt="TikTok" class="sett-soc-icon">
+                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/kick.png" alt="Kick" class="sett-soc-icon">
                         </div>
                     </div>
                 </div>
 
-                <div class="sett-referral-block">
-                    <p class="sett-referral-label"><?php esc_html_e( 'Referral Link', 'influencer-hq' ); ?></p>
-                    <div class="sett-referral-wrap">
-                        <div class="sett-referral-url" id="profile-referral-url-display"><?php esc_html_e( 'URL will appear here...', 'influencer-hq' ); ?></div>
-                        <button type="button" id="profile-referral-copy-btn" class="sett-referral-copy-btn"><?php esc_html_e( 'copy', 'influencer-hq' ); ?></button>
-                    </div>
-                </div>
-
-                <!-- GAMEPLAY VIDEO PROMOTION -->
-                <div class="sett-gameplay-promo">
+                <div class="sett-gameplay-promo sett-gameplay-with-coach ihq-video-submissions">
+                    <div class="sett-gameplay-main">
                     <p class="sett-gameplay-promo-text">
-                        <?php esc_html_e( 'Post a link of your favorite gameplay video stream to enable immediate worldwide promotion by Influencer Headquarters.', 'influencer-hq' ); ?>
+                        <?php esc_html_e( 'Share up to five video links from any platform. Add a short subject for each one so Influencer HQ knows what to promote. Saved videos go into automatic worldwide promotion immediately.', 'influencer-hq' ); ?>
                     </p>
-                    <form method="post" action="" class="ihq-gameplay-video-form">
-                        <?php wp_nonce_field( 'ihq_gameplay_video_save' ); ?>
+                    <?php
+                    $video_feedback_ok  = array(
+                        'saved'    => __( 'Saved. This video is now in automatic promotion.', 'influencer-hq' ),
+                        'replaced' => __( 'Updated. The replacement is now in automatic promotion.', 'influencer-hq' ),
+                        'removed'  => __( 'Removed. That video is no longer in promotion.', 'influencer-hq' ),
+                    );
+                    $video_feedback_err = array(
+                        'err_url'     => __( 'Enter a valid http or https link from any video platform.', 'influencer-hq' ),
+                        'err_subject' => __( 'Subject is required (50 characters max).', 'influencer-hq' ),
+                        'err_limit'   => __( 'You already have 5 videos. Remove or replace one to add another.', 'influencer-hq' ),
+                        'err_missing' => __( 'That video could not be found. Refresh and try again.', 'influencer-hq' ),
+                    );
+                    if ( isset( $video_feedback_ok[ $video_feedback ] ) ) :
+                        ?>
+                        <p class="sett-gameplay-promo-feedback sett-gameplay-promo-feedback--ok" role="status">&#10003; <?php echo esc_html( $video_feedback_ok[ $video_feedback ] ); ?></p>
+                    <?php elseif ( isset( $video_feedback_err[ $video_feedback ] ) ) : ?>
+                        <p class="sett-gameplay-promo-feedback sett-gameplay-promo-feedback--err" role="alert"><?php echo esc_html( $video_feedback_err[ $video_feedback ] ); ?></p>
+                    <?php endif; ?>
+
+                    <?php foreach ( $video_submissions as $index => $submission ) : ?>
+                    <form method="post" action="" class="ihq-video-item-form">
+                        <?php wp_nonce_field( 'ihq_video_submissions_save' ); ?>
+                        <input type="hidden" name="ihq_video_id" value="<?php echo esc_attr( $submission['id'] ); ?>">
                         <div class="sett-card sett-gameplay-promo-card">
+                            <p class="ihq-video-item-label"><?php echo esc_html( sprintf( /* translators: %d: slot number */ __( 'Video %d of %d', 'influencer-hq' ), $index + 1, ihq_video_submission_max() ) ); ?></p>
                             <div class="sett-row sett-gameplay-promo-row">
-                                <label for="ihq_gameplay_video_url" class="sett-row-lbl"><?php esc_html_e( 'YouTube video', 'influencer-hq' ); ?></label>
+                                <label class="sett-row-lbl" for="ihq-video-subject-<?php echo esc_attr( $submission['id'] ); ?>"><?php esc_html_e( 'Subject', 'influencer-hq' ); ?></label>
+                                <div class="sett-row-val sett-gameplay-promo-input-wrap">
+                                    <input
+                                        type="text"
+                                        id="ihq-video-subject-<?php echo esc_attr( $submission['id'] ); ?>"
+                                        name="ihq_video_subject"
+                                        value="<?php echo esc_attr( $submission['subject'] ); ?>"
+                                        maxlength="<?php echo (int) ihq_video_subject_max_length(); ?>"
+                                        required
+                                        class="hq-game-url-input"
+                                    >
+                                </div>
+                            </div>
+                            <div class="sett-row sett-gameplay-promo-row">
+                                <label class="sett-row-lbl" for="ihq-video-url-<?php echo esc_attr( $submission['id'] ); ?>"><?php esc_html_e( 'Video link', 'influencer-hq' ); ?></label>
                                 <div class="sett-row-val sett-gameplay-promo-input-wrap">
                                     <input
                                         type="url"
-                                        id="ihq_gameplay_video_url"
-                                        name="ihq_gameplay_video_url"
-                                        value="<?php echo esc_attr( $gameplay_video_url ); ?>"
-                                        placeholder="https://www.youtube.com/watch?v=..."
+                                        id="ihq-video-url-<?php echo esc_attr( $submission['id'] ); ?>"
+                                        name="ihq_video_url"
+                                        value="<?php echo esc_attr( $submission['url'] ); ?>"
+                                        placeholder="<?php esc_attr_e( 'https://', 'influencer-hq' ); ?>"
+                                        required
                                         class="hq-game-url-input"
                                         autocomplete="url"
                                     >
                                 </div>
-                                <button type="submit" name="ihq_gameplay_video_submit" class="hq-game-url-save-btn"><?php esc_html_e( 'Save', 'influencer-hq' ); ?></button>
+                            </div>
+                            <div class="ihq-video-item-actions">
+                                <button type="submit" name="ihq_video_action" value="replace" class="hq-game-url-save-btn"><?php esc_html_e( 'Replace', 'influencer-hq' ); ?></button>
+                                <button type="submit" name="ihq_video_action" value="remove" class="hq-game-url-save-btn ihq-video-remove-btn" data-ihq-video-remove="1"><?php esc_html_e( 'Remove', 'influencer-hq' ); ?></button>
                             </div>
                         </div>
-                        <?php if ( isset( $_GET['ihq_video_saved'] ) ) : ?>
-                            <p class="sett-gameplay-promo-feedback sett-gameplay-promo-feedback--ok">&#10003; <?php esc_html_e( 'Saved.', 'influencer-hq' ); ?></p>
-                        <?php endif; ?>
-                        <?php if ( isset( $_GET['ihq_video_err'] ) ) : ?>
-                            <p class="sett-gameplay-promo-feedback sett-gameplay-promo-feedback--err"><?php esc_html_e( 'Enter a valid YouTube link, or clear the field and save.', 'influencer-hq' ); ?></p>
-                        <?php endif; ?>
                     </form>
-                    <?php if ( $gameplay_yt_id !== '' ) : ?>
-                        <?php
-                        $embed_base = 'https://www.youtube.com/embed/' . $gameplay_yt_id;
-                        $embed_src  = add_query_arg(
-                            [
-                                'playsinline' => '1',
-                                'controls'    => '1',
-                            ],
-                            $embed_base
-                        );
-                        ?>
-                        <div class="sett-gameplay-embed-wrap">
-                            <iframe
-                                class="sett-gameplay-embed"
-                                src="<?php echo esc_url( $embed_src ); ?>"
-                                title="<?php echo esc_attr__( 'Gameplay video preview', 'influencer-hq' ); ?>"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                allowfullscreen
-                                loading="lazy"
-                            ></iframe>
+                    <?php endforeach; ?>
+
+                    <?php if ( count( $video_submissions ) < ihq_video_submission_max() ) : ?>
+                    <form method="post" action="" class="ihq-video-add-form">
+                        <?php wp_nonce_field( 'ihq_video_submissions_save' ); ?>
+                        <div class="sett-card sett-gameplay-promo-card">
+                            <p class="ihq-video-item-label"><?php esc_html_e( 'Add a video', 'influencer-hq' ); ?></p>
+                            <div class="sett-row sett-gameplay-promo-row">
+                                <label class="sett-row-lbl" for="ihq_video_subject_new"><?php esc_html_e( 'Subject', 'influencer-hq' ); ?></label>
+                                <div class="sett-row-val sett-gameplay-promo-input-wrap">
+                                    <input
+                                        type="text"
+                                        id="ihq_video_subject_new"
+                                        name="ihq_video_subject"
+                                        value=""
+                                        maxlength="<?php echo (int) ihq_video_subject_max_length(); ?>"
+                                        required
+                                        class="hq-game-url-input"
+                                        placeholder="<?php esc_attr_e( 'What should we promote?', 'influencer-hq' ); ?>"
+                                    >
+                                </div>
+                            </div>
+                            <div class="sett-row sett-gameplay-promo-row">
+                                <label class="sett-row-lbl" for="ihq_video_url_new"><?php esc_html_e( 'Video link', 'influencer-hq' ); ?></label>
+                                <div class="sett-row-val sett-gameplay-promo-input-wrap">
+                                    <input
+                                        type="url"
+                                        id="ihq_video_url_new"
+                                        name="ihq_video_url"
+                                        value=""
+                                        placeholder="<?php esc_attr_e( 'https://', 'influencer-hq' ); ?>"
+                                        required
+                                        class="hq-game-url-input"
+                                        autocomplete="url"
+                                    >
+                                </div>
+                            </div>
+                            <div class="ihq-video-item-actions">
+                                <button type="submit" name="ihq_video_action" value="add" class="hq-game-url-save-btn"><?php esc_html_e( 'Save', 'influencer-hq' ); ?></button>
+                            </div>
                         </div>
+                    </form>
                     <?php endif; ?>
+                    </div>
+                    <div class="profile-coach-fab-host" id="profile-coach-fab-host" aria-hidden="true"></div>
                 </div>
 
                 <!-- ACCOUNT INFORMATION -->
-                <div class="sett-section-head">
+                <div class="sett-section-head sett-section-head--account">
                     <span class="sett-section-title">ACCOUNT &nbsp;INFORMATION</span>
-                    <span class="sett-hint"><span class="sett-hint-text">Click to enter / edit</span><span class="sett-info-icon">i<span class="sett-info-tooltip">Entered information is saved by pressing Enter key, or by clicking anywhere outside the input field.</span></span></span>
+                    <span class="sett-hint"><span class="sett-hint-text">click to enter / edit</span><span class="sett-info-icon">i<span class="sett-info-tooltip">Entered information is saved by pressing Enter key, or by clicking anywhere outside the input field.</span></span></span>
                 </div>
 
-                <div class="sett-card">
+                <div class="sett-card sett-account-card">
+                    <div class="sett-row sett-row--name">
+                        <div class="sett-row-lbl"><?php esc_html_e( 'Name', 'influencer-hq' ); ?></div>
+                        <div class="sett-row-val">
+                            <span class="sett-editable" data-group="account" data-field="name"><?php echo esc_html( $full_name ); ?></span>
+                        </div>
+                    </div>
                     <div class="sett-row sett-portal-username-row" id="portal-username-setup-zone">
-                        <label for="portal-username-input" class="sett-row-lbl"><?php esc_html_e( 'Your username', 'influencer-hq' ); ?></label>
+                        <label for="portal-username-input" class="sett-row-lbl"><?php esc_html_e( 'Username', 'influencer-hq' ); ?></label>
                         <div class="sett-row-val sett-portal-username-val">
+                            <span class="sett-username-at" aria-hidden="true">@</span>
                             <input
                                 type="text"
                                 id="portal-username-input"
                                 class="hq-game-url-input sett-portal-username-input"
                                 value="<?php echo esc_attr( $portal_username ); ?>"
-                                placeholder="<?php esc_attr_e( 'Choose your username', 'influencer-hq' ); ?>"
+                                placeholder="<?php esc_attr_e( 'username', 'influencer-hq' ); ?>"
                                 autocomplete="username"
                                 maxlength="30"
                                 spellcheck="false"
@@ -326,15 +997,36 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                     </div>
                     <p class="sett-portal-username-feedback sett-portal-username-feedback--ok" id="portal-username-ok" hidden></p>
                     <p class="sett-portal-username-feedback sett-portal-username-feedback--err" id="portal-username-err" hidden></p>
+                    <div class="sett-row">
+                        <div class="sett-row-lbl"><?php esc_html_e( 'Follower Referral link:', 'influencer-hq' ); ?></div>
+                        <div class="sett-row-val sett-referral-inline">
+                            <span class="sett-referral-url" id="profile-follower-referral-url"><?php esc_html_e( 'link appears here', 'influencer-hq' ); ?></span>
+                            <button type="button" class="sett-referral-copy-btn" data-referral-target="profile-follower-referral-url"><?php esc_html_e( 'copy', 'influencer-hq' ); ?></button>
+                        </div>
+                    </div>
+                    <div class="sett-row">
+                        <div class="sett-row-lbl"><?php esc_html_e( 'Influencer Referral link:', 'influencer-hq' ); ?></div>
+                        <div class="sett-row-val sett-referral-inline">
+                            <span class="sett-referral-url" id="profile-influencer-referral-url"><?php esc_html_e( 'link appears here', 'influencer-hq' ); ?></span>
+                            <button type="button" class="sett-referral-copy-btn" data-referral-target="profile-influencer-referral-url"><?php esc_html_e( 'copy', 'influencer-hq' ); ?></button>
+                        </div>
+                    </div>
                     <?php
+                    $country_options = $ihq_profile_countries;
+                    if ( $user_country !== '' && ! in_array( $user_country, $country_options, true ) ) {
+                        array_unshift( $country_options, $user_country );
+                    }
+                    $city_options = $ihq_profile_cities;
+                    if ( $user_city !== '' && ! in_array( $user_city, $city_options, true ) ) {
+                        array_unshift( $city_options, $user_city );
+                    }
+                    $country_is_listed = ( $user_country !== '' && in_array( $user_country, $country_options, true ) );
+                    $city_is_listed    = ( $user_city !== '' && in_array( $user_city, $city_options, true ) );
                     $acct_rows = [
-                        [ 'key' => 'first_name', 'label' => 'First Name',             'value' => $first_name,    'type' => 'text'   ],
-                        [ 'key' => 'last_name',  'label' => 'Last Name',              'value' => $last_name,     'type' => 'text'   ],
                         [ 'key' => 'email',    'label' => 'Email',                  'value' => $user_email,    'type' => 'email'  ],
-                        [ 'key' => 'country',  'label' => 'Country',                'value' => $user_country,  'type' => 'text'   ],
-                        [ 'key' => 'city',     'label' => 'City',                   'value' => $user_city,     'type' => 'text'   ],
+                        [ 'key' => 'country',  'label' => 'Country',                'value' => $user_country,  'type' => 'place'  ],
+                        [ 'key' => 'city',     'label' => 'City',                   'value' => $user_city,     'type' => 'place'  ],
                         [ 'key' => 'timezone', 'label' => 'Time Zone',              'value' => $user_timezone, 'type' => 'timezone' ],
-                        [ 'key' => 'handle',   'label' => 'InfluencerHQ Handle',    'value' => $user_handle,   'type' => 'text'   ],
                         [ 'key' => 'avatar',   'label' => 'Profile Photo or Avatar','value' => '',             'type' => 'avatar' ],
                     ];
                     foreach ( $acct_rows as $row ) :
@@ -342,8 +1034,32 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                     <div class="sett-row">
                         <div class="sett-row-lbl"><?php echo esc_html( $row['label'] ); ?></div>
                         <div class="sett-row-val">
-                            <?php if ( $row['type'] === 'avatar' ) : ?>
-                                <button type="button" class="sett-change-photo" id="sett-avatar-btn">Add or Change Photo</button>
+                            <?php if ( $row['type'] === 'email' ) : ?>
+                                <span class="sett-editable sett-email-link" data-group="account" data-field="email"><?php echo esc_html( $row['value'] ); ?></span>
+                            <?php elseif ( $row['type'] === 'avatar' ) : ?>
+                                <button type="button" class="sett-change-photo" id="sett-avatar-btn"><?php esc_html_e( 'Add or Change Photo', 'influencer-hq' ); ?></button>
+                            <?php elseif ( $row['type'] === 'place' ) : ?>
+                                <?php
+                                $place_options = $row['key'] === 'country' ? $country_options : $city_options;
+                                $place_listed  = $row['key'] === 'country' ? $country_is_listed : $city_is_listed;
+                                ?>
+                                <div class="sett-place-fields">
+                                    <select class="sett-place-select" data-group="account" data-field="<?php echo esc_attr( $row['key'] ); ?>">
+                                        <option value=""><?php esc_html_e( 'Select', 'influencer-hq' ); ?></option>
+                                        <?php foreach ( $place_options as $place_name ) : ?>
+                                        <option value="<?php echo esc_attr( $place_name ); ?>"<?php selected( $row['value'], $place_name ); ?>><?php echo esc_html( $place_name ); ?></option>
+                                        <?php endforeach; ?>
+                                        <option value="__other__"<?php selected( $row['value'] !== '' && ! $place_listed ); ?>><?php esc_html_e( 'Other…', 'influencer-hq' ); ?></option>
+                                    </select>
+                                    <input
+                                        type="text"
+                                        class="sett-place-other hq-game-url-input"
+                                        data-place-field="<?php echo esc_attr( $row['key'] ); ?>"
+                                        value="<?php echo $place_listed ? '' : esc_attr( $row['value'] ); ?>"
+                                        placeholder="<?php esc_attr_e( 'Type your own', 'influencer-hq' ); ?>"
+                                        <?php echo ( $row['value'] !== '' && ! $place_listed ) ? '' : 'hidden'; ?>
+                                    >
+                                </div>
                             <?php elseif ( $row['type'] === 'timezone' ) : ?>
                                 <?php
                                 $now = new DateTime('now', new DateTimeZone('UTC'));
@@ -377,76 +1093,15 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                     <?php endforeach; ?>
                 </div>
 
-                <!-- SOCIAL MEDIA (from registration platform_handle) -->
-                <div class="sett-section-head sett-section-head--comm" id="socialMediaHead" style="cursor:pointer;">
-                    <span class="sett-section-title"><?php esc_html_e( 'Social Media You Post On', 'influencer-hq' ); ?></span>
-                    <span class="sett-hint"><span class="sett-hint-text"><?php esc_html_e( 'Click a platform, then enter handle or URL', 'influencer-hq' ); ?></span></span>
-                    <span class="sett-arrow" id="socialMediaArrow">▼</span>
-                </div>
-
-                <div id="socialMediaBody">
-                    <div class="sett-card sett-social-profile-card">
-                        <div class="sett-social-grid" role="group" aria-label="<?php esc_attr_e( 'Social media platforms', 'influencer-hq' ); ?>">
-                            <?php foreach ( $ihq_profile_social_platforms as $ihq_social ) :
-                                $ihq_social_val = '';
-                                foreach ( $platform_handle_pairs as $pair_label => $pair_val ) {
-                                    if ( strcasecmp( $pair_label, $ihq_social['label'] ) === 0 ) {
-                                        $ihq_social_val = $pair_val;
-                                        break;
-                                    }
-                                }
-                                $ihq_social_selected = $ihq_social_val !== '';
-                                ?>
-                            <button
-                                type="button"
-                                class="sett-social-grid-item<?php echo $ihq_social_selected ? ' is-selected' : ''; ?>"
-                                id="profile-social-grid-<?php echo esc_attr( $ihq_social['key'] ); ?>"
-                                data-social-key="<?php echo esc_attr( $ihq_social['key'] ); ?>"
-                                data-social-label="<?php echo esc_attr( $ihq_social['label'] ); ?>"
-                                aria-pressed="<?php echo $ihq_social_selected ? 'true' : 'false'; ?>"
-                            ><?php echo esc_html( $ihq_social['label'] ); ?></button>
-                            <?php endforeach; ?>
-                        </div>
-                        <div class="sett-social-inputs" id="profile-social-inputs-panel">
-                            <?php foreach ( $ihq_profile_social_platforms as $ihq_social ) :
-                                $ihq_social_val = '';
-                                foreach ( $platform_handle_pairs as $pair_label => $pair_val ) {
-                                    if ( strcasecmp( $pair_label, $ihq_social['label'] ) === 0 ) {
-                                        $ihq_social_val = $pair_val;
-                                        break;
-                                    }
-                                }
-                                $ihq_social_selected = $ihq_social_val !== '';
-                                $ihq_social_remove_aria = sprintf(
-                                    /* translators: %s: social platform name */
-                                    __( 'Remove %s', 'influencer-hq' ),
-                                    $ihq_social['label']
-                                );
-                                ?>
-                            <div class="sett-social-input-row" id="profile-social-entry-<?php echo esc_attr( $ihq_social['key'] ); ?>"<?php echo $ihq_social_selected ? '' : ' hidden'; ?>>
-                                <span class="sett-social-input-label"><?php echo esc_html( $ihq_social['label'] ); ?></span>
-                                <div class="sett-social-input-field">
-                                    <input
-                                        class="sett-social-handle-input"
-                                        type="text"
-                                        data-social-key="<?php echo esc_attr( $ihq_social['key'] ); ?>"
-                                        value="<?php echo esc_attr( $ihq_social_val ); ?>"
-                                        placeholder="<?php echo esc_attr( $ihq_profile_social_placeholder ); ?>"
-                                        aria-label="<?php echo esc_attr( $ihq_social['label'] ); ?>"
-                                    >
-                                    <button
-                                        type="button"
-                                        class="sett-social-clear-btn"
-                                        data-social-key="<?php echo esc_attr( $ihq_social['key'] ); ?>"
-                                        aria-label="<?php echo esc_attr( $ihq_social_remove_aria ); ?>"
-                                        <?php echo $ihq_social_val !== '' ? '' : ' hidden'; ?>
-                                    >×</button>
-                                </div>
-                            </div>
-                            <?php endforeach; ?>
-                        </div>
-                        <p class="sett-social-save-hint" id="profile-social-save-hint" aria-live="polite"></p>
-                    </div>
+                <div class="sett-media-ask">
+                    <p><?php esc_html_e( 'Send us your face. Let us put you everywhere.', 'influencer-hq' ); ?></p>
+                    <p><?php esc_html_e( 'You built something real. Now help us put it in front of the world.', 'influencer-hq' ); ?></p>
+                    <p><?php esc_html_e( 'To promote you the way we promised, we need two things from you:', 'influencer-hq' ); ?></p>
+                    <p><?php esc_html_e( 'A short video — 30 seconds, headset on, behind your microphone. Speak in your own voice, in your own language, the way you always do. This becomes the foundation for how we introduce you to new audiences across every market we reach.', 'influencer-hq' ); ?></p>
+                    <p><?php esc_html_e( 'A still photo — clear, bright, and unmistakably you. This is the face our campaigns put in front of millions of prospective followers. It belongs everywhere your name appears.', 'influencer-hq' ); ?></p>
+                    <p><?php esc_html_e( 'Why this matters: every Influencer who shares their video and photo gets put into rotation across our promotion channels. Without them, we can’t promote you the way we want to. With them, you become impossible to overlook.', 'influencer-hq' ); ?></p>
+                    <p><?php esc_html_e( 'This is the difference between a name on a list and a presence in the world.', 'influencer-hq' ); ?></p>
+                    <p><?php esc_html_e( 'Send us yours. We’ll do the rest.', 'influencer-hq' ); ?></p>
                 </div>
 
                 <!-- CELEBRITY FOLLOWERS LEAGUES -->
@@ -456,7 +1111,7 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                 </div>
 
                 <div id="celebLeaguesBody">
-                    <p class="sett-quote" style="margin-top:0;"><em>Choose your favorite celebrity in all three categories. Influencer Headquarters will be promoting you as a Team Captain with all new game participants.</em></p>
+                    <p class="sett-quote" style="margin-top:0;"><em><?php esc_html_e( 'Select or Change your favorite celebrity in all three categories. Influencer Headquarters will be promoting you as a Team Captain with all new game participants.', 'influencer-hq' ); ?></em></p>
 
                     <?php
                     $celeb_lists = [
@@ -488,11 +1143,12 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
 
                 <!-- INTERNATIONAL LEAGUE TEAM -->
                 <div class="sett-section-head sett-section-head--comm celeb-leagues-head" id="intlLeagueHead" style="cursor:pointer;">
-                    <span class="sett-section-title">CHOOSE YOUR INTERNATIONAL LEAGUE TEAM</span>
+                    <span class="sett-section-title"><?php esc_html_e( 'International League Team', 'influencer-hq' ); ?></span>
                     <span class="sett-arrow" id="intlLeagueArrow">▼</span>
                 </div>
 
                 <div id="intlLeagueBody">
+                    <p class="sett-quote" style="margin-top:0;"><em><?php esc_html_e( 'Select or Change your favorite team.', 'influencer-hq' ); ?></em></p>
                     <div class="sett-card">
                         <div class="celeb-grid-layout" style="grid-template-columns:1fr;">
                             <div class="celeb-col">
@@ -511,43 +1167,45 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                     </div>
                 </div>
 
-                <!-- Quote -->
-                <p class="sett-quote"><em>We believe visibility powers competition. The more visible you choose to be, the farther your leadership can travel.</em></p>
-
-                <!-- USERNAME OR CONTACT -->
-                <div class="sett-section-head sett-section-head--comm" id="contactHead" style="cursor:pointer;">
-                    <span class="sett-section-title">USERNAME OR CONTACT</span>
-                    <span class="sett-arrow" id="contactArrow">▼</span>
+                <div class="sett-section-head sett-section-head--comm" id="socialMediaHead" style="cursor:pointer;">
+                    <span class="sett-section-title"><?php esc_html_e( 'Social Media Platforms Where You Post', 'influencer-hq' ); ?></span>
+                    <span class="sett-arrow" id="socialMediaArrow">▼</span>
                 </div>
 
-                <div id="contactBody">
-                    <div class="sett-card contact-card">
+                <div id="socialMediaBody">
+                    <p class="sett-quote" style="margin-top:0;"><em><?php esc_html_e( 'Tell us where you post and your username so we can assist you with creating content tuned to the competition, built to drive more participation from your followers and increase your opportunity to earn equity.', 'influencer-hq' ); ?></em></p>
+                    <div class="sett-card contact-card" id="contactBody">
                         <?php
                         foreach ( $contact_platforms as $cp ) :
-                            $ckey  = strtolower( $cp );
+                            $ckey  = $cp['key'];
+                            $clabel = $cp['label'];
                             $cval  = $social_handles[ $ckey ] ?? '';
-                            if ( $ckey === 'email' && $cval === '' ) {
-                                $cval = $user_email;
-                            }
-                            if ( $ckey === 'telegram' && $cval === '' ) {
-                                $tg_handle = get_user_meta( $user->ID, 'communication_username', true );
-                                if ( is_string( $tg_handle ) && $tg_handle !== '' ) {
-                                    $cval = $tg_handle;
+                            if ( $cval === '' ) {
+                                foreach ( $platform_handle_pairs as $pair_label => $pair_val ) {
+                                    if ( strcasecmp( $pair_label, $clabel ) === 0 ) {
+                                        $cval = $pair_val;
+                                        break;
+                                    }
                                 }
                             }
                             $ccomm = ! empty( $comm_prefs[ $ckey ] );
+                            $is_selected = $cval !== '';
                         ?>
-                        <div class="contact-row" data-key="<?php echo esc_attr( $ckey ); ?>">
+                        <div class="contact-row<?php echo $is_selected ? ' is-selected' : ''; ?>" data-key="<?php echo esc_attr( $ckey ); ?>" data-social-label="<?php echo esc_attr( $clabel ); ?>">
                             <div class="contact-row-main">
-                                <span class="contact-row-lbl"><?php echo esc_html( $cp ); ?></span>
-                                <span class="contact-row-addval<?php echo $cval ? ' contact-row-addval--filled' : ''; ?>"><?php echo $cval ? esc_html( $cval ) : 'add'; ?></span>
+                                <label class="contact-check">
+                                    <input type="checkbox" class="contact-check-input"<?php checked( $is_selected ); ?>>
+                                    <span class="contact-check-box" aria-hidden="true"></span>
+                                </label>
+                                <span class="contact-row-lbl"><?php echo esc_html( $clabel ); ?></span>
+                                <span class="contact-row-addval<?php echo $cval ? ' contact-row-addval--filled' : ''; ?>"<?php echo $is_selected ? ' hidden' : ''; ?>><?php echo $cval ? esc_html( $cval ) : esc_html__( 'add', 'influencer-hq' ); ?></span>
                             </div>
-                            <div class="contact-row-expand" style="display:none;">
-                                <input type="text" class="contact-input" value="<?php echo esc_attr( $cval ); ?>" placeholder="click to enter / edit">
-                                <div class="contact-toggles">
+                            <div class="contact-row-expand"<?php echo $is_selected ? '' : ' hidden'; ?>>
+                                <input type="text" class="contact-input sett-social-handle-input" data-social-key="<?php echo esc_attr( $ckey ); ?>" value="<?php echo esc_attr( $cval ); ?>" placeholder="<?php esc_attr_e( 'click to enter / edit', 'influencer-hq' ); ?>">
+                                <div class="contact-toggles" hidden>
                                     <label class="contact-toggle<?php echo $ccomm ? ' contact-toggle--on' : ''; ?>">
                                         <input type="checkbox" class="contact-toggle-cb" data-type="comm"<?php checked( $ccomm ); ?>>
-                                        <span class="contact-toggle-label">Communicate with Me</span>
+                                        <span class="contact-toggle-label"><?php esc_html_e( 'Communicate with Me', 'influencer-hq' ); ?></span>
                                         <span class="contact-toggle-track"></span>
                                     </label>
                                 </div>
@@ -665,15 +1323,15 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
     var _needsPortalUsername = <?php echo $needs_portal_username_setup ? 'true' : 'false'; ?>;
     var _portalUsernameSetupMsg = <?php echo wp_json_encode( __( 'Please create your username to be able to continue your journey on Influencer HQ', 'influencer-hq' ) ); ?>;
 
-    /* ── Referral link (same API as Live Appearance page) ── */
-    function setProfileReferralUrl(url) {
-        var el = document.getElementById('profile-referral-url-display');
+    /* ── Referral links (same API as Live Appearance page) ── */
+    function setProfileReferralUrl(elId, url, fallback) {
+        var el = document.getElementById(elId);
         if (!el) return;
         if (url) {
             el.textContent = url;
             el.classList.add('sett-referral-url--has-value');
         } else {
-            el.textContent = 'URL will appear here...';
+            el.textContent = fallback || 'link appears here';
             el.classList.remove('sett-referral-url--has-value');
         }
     }
@@ -685,39 +1343,38 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
         fetch(_ajax, { method: 'POST', body: fd })
             .then(function(r) { return r.json(); })
             .then(function(res) {
-                if (res.success && res.data && res.data.url) {
-                    setProfileReferralUrl(res.data.url);
+                var url = (res.success && res.data && res.data.url) ? res.data.url : '';
+                var follower = (res.data && res.data.follower_url) ? res.data.follower_url : url;
+                var influencer = (res.data && res.data.influencer_url) ? res.data.influencer_url : url;
+                if (url || follower || influencer) {
+                    setProfileReferralUrl('profile-follower-referral-url', follower || url);
+                    setProfileReferralUrl('profile-influencer-referral-url', influencer || url);
                     return;
                 }
                 var errMsg = (res.data && res.data.message) ? res.data.message : 'Referral link unavailable.';
-                setProfileReferralUrl('');
-                var el = document.getElementById('profile-referral-url-display');
-                if (el) {
-                    el.textContent = errMsg;
-                }
+                setProfileReferralUrl('profile-follower-referral-url', '', errMsg);
+                setProfileReferralUrl('profile-influencer-referral-url', '', errMsg);
             }).catch(function() {
-                var el = document.getElementById('profile-referral-url-display');
-                if (el) {
-                    el.textContent = 'Could not load referral link.';
-                }
+                setProfileReferralUrl('profile-follower-referral-url', '', 'Could not load referral link.');
+                setProfileReferralUrl('profile-influencer-referral-url', '', 'Could not load referral link.');
             });
     })();
 
-    var profileReferralCopyBtn = document.getElementById('profile-referral-copy-btn');
-    if (profileReferralCopyBtn) {
-        profileReferralCopyBtn.addEventListener('click', function() {
-            var txt = document.getElementById('profile-referral-url-display');
-            if (!txt || !txt.textContent || txt.textContent === 'URL will appear here...') {
+    document.querySelectorAll('.sett-referral-copy-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var targetId = btn.getAttribute('data-referral-target');
+            var txt = targetId ? document.getElementById(targetId) : null;
+            if (!txt || !txt.classList.contains('sett-referral-url--has-value')) {
                 return;
             }
             navigator.clipboard.writeText(txt.textContent).then(function() {
-                profileReferralCopyBtn.textContent = 'copied!';
+                btn.textContent = 'copied!';
                 window.setTimeout(function() {
-                    profileReferralCopyBtn.textContent = 'copy';
+                    btn.textContent = 'copy';
                 }, 2000);
             });
         });
-    }
+    });
 
     /* ── OAuth start-session: Request SSO again ── */
     var ihqRequestSsoBtn = document.getElementById('ihq-request-sso-again-btn');
@@ -823,7 +1480,7 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
     }
 
     if (portalUsernameSaveBtn && portalUsernameInput) {
-        portalUsernameSaveBtn.addEventListener('click', function() {
+        function savePortalUsername() {
             clearPortalUsernameFeedback();
             portalUsernameSaveBtn.disabled = true;
             var fd = new FormData();
@@ -858,6 +1515,14 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                     portalUsernameSaveBtn.disabled = false;
                     showPortalUsernameErr('Network error. Please try again.');
                 });
+        }
+        portalUsernameSaveBtn.addEventListener('click', savePortalUsername);
+        portalUsernameInput.addEventListener('blur', savePortalUsername);
+        portalUsernameInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                portalUsernameInput.blur();
+            }
         });
     }
 
@@ -869,7 +1534,7 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
             var input = document.createElement('input');
             input.type  = 'text';
             input.value = val;
-            input.style.cssText = 'background:transparent;border:none;border-bottom:1px solid #b8972f;color:#fff;font-size:16px;text-align:right;width:100%;outline:none;';
+            input.style.cssText = 'background:transparent;border:none;border-bottom:1px solid #b8972f;color:#fff;font-size:inherit;font-family:inherit;font-weight:inherit;text-align:right;width:100%;outline:none;';
             el.textContent = '';
             el.appendChild(input);
             input.focus();
@@ -877,8 +1542,9 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                 var v = input.value.trim();
                 el.textContent = v;
                 var field = el.dataset.field;
-                if ( field === 'first_name' || field === 'last_name' ) {
-                    saveFullname();
+                if ( field === 'name' ) {
+                    save('save_settings_field', { group: el.dataset.group, field: 'name', value: v });
+                    saveFullnameFromDisplay(v);
                 } else {
                     save('save_settings_field', { group: el.dataset.group, field: field, value: v });
                 }
@@ -906,12 +1572,48 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
         var expand = row.querySelector('.contact-row-expand');
         var input  = row.querySelector('.contact-input');
         var valEl  = row.querySelector('.contact-row-addval');
+        var check  = row.querySelector('.contact-check-input');
 
-        main.addEventListener('click', function(){
-            var isOpen = expand.style.display !== 'none';
-            document.querySelectorAll('.contact-row-expand').forEach(function(e){ e.style.display = 'none'; });
-            if (!isOpen) {
-                expand.style.display = '';
+        function setRowSelected(on) {
+            row.classList.toggle('is-selected', on);
+            if (check) {
+                check.checked = on;
+            }
+            if (expand) {
+                expand.hidden = !on;
+            }
+            if (valEl) {
+                valEl.hidden = on;
+            }
+            if (!on) {
+                input.value = '';
+                if (valEl) {
+                    valEl.textContent = 'add';
+                    valEl.classList.remove('contact-row-addval--filled');
+                }
+                save('save_settings_field', { group: 'social', field: key, value: '' });
+                ihqProfileSavePlatformHandle();
+            }
+        }
+
+        if (check) {
+            check.addEventListener('click', function(e){
+                e.stopPropagation();
+            });
+            check.addEventListener('change', function(){
+                setRowSelected(check.checked);
+                if (check.checked) {
+                    input.focus();
+                }
+            });
+        }
+
+        main.addEventListener('click', function(e){
+            if (e.target.closest('.contact-check')) {
+                return;
+            }
+            if (!row.classList.contains('is-selected')) {
+                setRowSelected(true);
                 input.focus();
             }
         });
@@ -921,12 +1623,15 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
             valEl.textContent = v || 'add';
             v ? valEl.classList.add('contact-row-addval--filled') : valEl.classList.remove('contact-row-addval--filled');
             save('save_settings_field', { group: 'social', field: key, value: v });
+            ihqProfileSavePlatformHandle();
         }
         input.addEventListener('blur', commitInput);
         input.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); commitInput(); } });
-        expand.addEventListener('mousedown', function(e){
-            if (e.target !== input) e.preventDefault();
-        });
+        if (expand) {
+            expand.addEventListener('mousedown', function(e){
+                if (e.target !== input) e.preventDefault();
+            });
+        }
 
         var commCb = row.querySelector('.contact-toggle-cb[data-type="comm"]');
         if (commCb) {
@@ -965,19 +1670,15 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
         });
     }
 
-    function saveFullname() {
-        var fn = document.querySelector('.sett-editable[data-field="first_name"]');
-        var ln = document.querySelector('.sett-editable[data-field="last_name"]');
-        if (!fn || !ln) return;
-        var payload = {
-            firstName: fn.textContent.trim(),
-            lastName:  ln.textContent.trim(),
-        };
+    function saveFullnameFromDisplay(fullName) {
+        var parts = (fullName || '').trim().split(/\s+/);
+        var firstName = parts.shift() || '';
+        var lastName = parts.join(' ');
         var fd = new FormData();
         fd.append('action', 'ihq_update_fullname');
         fd.append('nonce',  _nonce);
-        fd.append('firstName', payload.firstName);
-        fd.append('lastName',  payload.lastName);
+        fd.append('firstName', firstName);
+        fd.append('lastName',  lastName);
         fetch(_ajax, { method:'POST', body:fd })
             .then(function(r){ return r.json(); })
             .catch(function(){});
@@ -1001,10 +1702,10 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
     .then(function(res) {
         if (res.success && res.data) {
             var d = res.data;
-            var fn = document.querySelector('.sett-editable[data-field="first_name"]');
-            var ln = document.querySelector('.sett-editable[data-field="last_name"]');
-            if (fn && d.firstName !== undefined) fn.textContent = d.firstName;
-            if (ln && d.lastName  !== undefined) ln.textContent = d.lastName;
+            var nameEl = document.querySelector('.sett-editable[data-field="name"]');
+            if (nameEl && (d.firstName || d.lastName)) {
+                nameEl.textContent = [d.firstName, d.lastName].filter(Boolean).join(' ');
+            }
         }
     }).catch(function(){});
 
@@ -1023,12 +1724,10 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
 
     function ihqProfileBuildPlatformHandle() {
         var parts = [];
-        document.querySelectorAll('.sett-social-grid-item.is-selected').forEach(function(btn){
-            var key = btn.getAttribute('data-social-key');
-            var row = key ? document.getElementById('profile-social-entry-' + key) : null;
-            var inp = row ? row.querySelector('input.sett-social-handle-input') : null;
-            var label = btn.getAttribute('data-social-label') || btn.textContent.trim();
-            if (inp && inp.value.trim()) {
+        document.querySelectorAll('.contact-row.is-selected').forEach(function(row){
+            var inp = row.querySelector('input.sett-social-handle-input');
+            var label = row.getAttribute('data-social-label') || '';
+            if (inp && inp.value.trim() && label) {
                 parts.push(label + ': ' + inp.value.trim());
             }
         });
@@ -1220,6 +1919,71 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
             console.log('[Timezone] User changed to:', tzSelect.value);
             save('save_settings_field', { group: 'account', field: 'timezone', value: tzSelect.value });
         });
+    }
+
+    document.querySelectorAll('.sett-place-select').forEach(function(sel){
+        var field = sel.getAttribute('data-field');
+        var other = document.querySelector('.sett-place-other[data-place-field="' + field + '"]');
+        function persistPlace(value) {
+            save('save_settings_field', { group: 'account', field: field, value: value });
+        }
+        sel.addEventListener('change', function(){
+            if (sel.value === '__other__') {
+                if (other) {
+                    other.hidden = false;
+                    other.focus();
+                }
+                return;
+            }
+            if (other) {
+                other.hidden = true;
+                other.value = '';
+            }
+            persistPlace(sel.value);
+        });
+        if (other) {
+            other.addEventListener('blur', function(){
+                if (sel.value === '__other__') {
+                    persistPlace(other.value.trim());
+                }
+            });
+            other.addEventListener('keydown', function(e){
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    other.blur();
+                }
+            });
+        }
+    });
+
+    document.querySelectorAll('[data-ihq-video-remove]').forEach(function(btn){
+        btn.addEventListener('click', function(e){
+            if (!window.confirm(<?php echo wp_json_encode( __( 'Remove this video from automatic promotion?', 'influencer-hq' ) ); ?>)) {
+                e.preventDefault();
+                return;
+            }
+            var form = btn.closest('form');
+            if (!form) {
+                return;
+            }
+            form.querySelectorAll('[required]').forEach(function(el){
+                el.required = false;
+            });
+        });
+    });
+
+    function placeProfileCoachFab() {
+        var fab = document.getElementById('ihq-concierge-fab');
+        var host = document.getElementById('profile-coach-fab-host');
+        if (!fab || !host || fab.parentNode === host) {
+            return;
+        }
+        host.appendChild(fab);
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', placeProfileCoachFab);
+    } else {
+        placeProfileCoachFab();
     }
 
 })();

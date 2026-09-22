@@ -5088,9 +5088,108 @@
     line-height: 1.45;
     text-align: center;
 }
-.sett-referral-block {
-    margin: 0 0 18px;
+.sett-referral-inline {
+    display:flex;
+    align-items:center;
+    gap:8px;
+    width:auto;
+    flex:1;
+    min-width:0;
+    justify-content:flex-end;
 }
+.sett-referral-inline .sett-referral-url {
+    flex:1;
+    text-align:right;
+    border:none;
+    padding:0;
+    color:#828282;
+    font-style:italic;
+    text-decoration:underline;
+    font-size:14px;
+}
+.sett-referral-inline .sett-referral-url.sett-referral-url--has-value {
+    color:#fff;
+    font-style:normal;
+    text-decoration:underline;
+}
+
+.sett-gameplay-with-coach {
+    position:relative;
+    overflow:visible;
+}
+.sett-gameplay-main {
+    width:100%;
+    padding-right: 72px;
+}
+.profile-coach-fab-host {
+    position:absolute;
+    z-index:5;
+    right:-16px;
+    top:72px;
+    width:120px;
+    height:120px;
+    pointer-events:none;
+}
+.profile-coach-fab-host .ihq-concierge-fab {
+    position:absolute !important;
+    inset:0;
+    width:100% !important;
+    height:100% !important;
+    margin:0;
+    pointer-events:auto;
+    right:auto;
+    bottom:auto;
+}
+.sett-media-ask {
+    margin: 28px 0 32px;
+    color:#fff;
+    font-family:'Be Vietnam Pro',sans-serif;
+    font-size:16px;
+    font-weight:700;
+    line-height:1.45;
+}
+.sett-media-ask p { margin:0 0 14px; }
+.sett-media-ask p:last-child { margin-bottom:0; }
+.sett-place-fields {
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:6px;
+    width:100%;
+}
+.sett-place-select {
+    background:#000; color:#fff;
+    border:1px solid rgba(184,151,47,.5); border-radius:3px;
+    font-size:14px; padding:3px 4px;
+    outline:none; cursor:pointer; width:100%;
+    max-width:260px;
+}
+.contact-check {
+    display:flex;
+    align-items:center;
+    margin-right:8px;
+    cursor:pointer;
+}
+.contact-check-input {
+    position:absolute;
+    opacity:0;
+    width:1px;
+    height:1px;
+}
+.contact-check-box {
+    width:18px;
+    height:18px;
+    border:2px solid #b8972f;
+    border-radius:4px;
+    background:transparent;
+    display:block;
+}
+.contact-row.is-selected .contact-check-box,
+.contact-check-input:checked + .contact-check-box {
+    background:#b8972f;
+}
+.contact-row-main { gap:8px; }
+.contact-row-lbl { flex:1; }
 .sett-referral-label {
     font-size: 13px;
     font-weight: 700;
@@ -5129,7 +5228,7 @@
 }
 .sett-referral-copy-btn:hover { background: rgba(184,151,47,.15); }
 
-/* Gameplay video URL + YouTube thumbnail preview */
+/* Video submissions (any platform, up to 5) */
 .sett-gameplay-promo {
     margin-bottom: 14px;
     text-align: left;
@@ -5157,8 +5256,26 @@
     font-size: 13px;
     margin: -4px 0 10px;
 }
-.sett-gameplay-promo-feedback--ok { color: #7CCA8A; }
-.sett-gameplay-promo-feedback--err { color: #ff6b6b; }
+.sett-gameplay-promo-feedback--ok { color: #6fcf97; }
+.sett-gameplay-promo-feedback--err { color: #ff8a8a; }
+.ihq-video-item-label {
+    margin: 0 0 8px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #b8972f;
+}
+.ihq-video-item-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    padding: 8px 10px 10px;
+}
+.ihq-video-remove-btn {
+    border-color: rgba(255,107,107,.7);
+    color: #ff8a8a;
+}
 .sett-gameplay-embed-wrap {
     margin: 16px 0 0;
     width: 100%;
