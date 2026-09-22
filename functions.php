@@ -437,6 +437,14 @@ require_once get_template_directory() . '/inc/luna-users-rest.php';
 require_once get_template_directory() . '/inc/gary-proxy.php';
 
 /**
+ * AI Coach pre-rendered avatar clips (PO-3062) — offline WP-CLI render of
+ * Gary's approved script segments via Anam's avatar-videos API. Depends on
+ * both ihq_coach_request() (gary-proxy.php, above) and anam_hq_api_key() /
+ * ANAM_HQ_BASE_URL (anam-proxy.php, above) — must load after both.
+ */
+require_once get_template_directory() . '/inc/aicoach-prerender.php';
+
+/**
  * AI Coach uninterrupted registration event (PO-3257).
  */
 require_once get_template_directory() . '/inc/aicoach-register.php';

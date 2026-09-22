@@ -317,6 +317,27 @@ const GARY_SESSION_URL = cfg.identityRestBase + '/coach/session';
 const garyCloseUrl = ( sessionId ) => cfg.identityRestBase + '/coach/' + encodeURIComponent( sessionId ) + '/close';
 const PERSONA_PREVIEW_URL = cfg.restBase + '/persona-preview';
 
+// PO-3062 pre-rendered clips — SCREENS panel name -> Gary's own segment key
+// (see inc/aicoach-prerender.php's ihq_aicoach_prerender_panel_map(), kept
+// in sync with this by hand; the two naming schemes predate each other).
+// "competition-world"/"competition-community"/"competition-private" are
+// deliberately not mapped — Gary's script has one combined "competitions"
+// segment where this page shows three separate panels, and there's no
+// single clip that fits all three yet.
+const PRERENDERED_PANEL_MAP = {
+    'believe-1': 'we_believe_1',
+    'believe-2': 'we_believe_2',
+    home: 'time_selection',
+    'equity-magic': 'magic_johnson',
+    'equity-alix': 'alix_earle',
+    'equity-bts': 'bts',
+};
+
+function getPrerenderedUrl( panelKey ) {
+    const segmentKey = PRERENDERED_PANEL_MAP[ panelKey ];
+    return segmentKey ? ( cfg.prerenderedVideos || {} )[ segmentKey ] || null : null;
+}
+
 const stage = document.getElementById('aicoach-stage');
 const avatarWrap = document.getElementById('aicoach-avatar-wrap');
 const video = document.getElementById('aicoach-avatar-video');
@@ -462,10 +483,27 @@ if ( stage && avatarWrap ) {
         } );
     }
 
+    // Callers that need to know the requested panel is actually visible
+    // (not just "requested") — currently just playPrerenderedClip() below —
+    // await showPanel()'s returned promise instead of guessing a fixed delay.
+    // Every other call site still just fires it and moves on, which is fine:
+    // a Promise nobody awaits behaves exactly like the old `undefined` return.
+    let panelActivationWaiters = []; // [{ key, resolve }]
+
+    function resolvePanelWaiters( key ) {
+        panelActivationWaiters = panelActivationWaiters.filter( ( waiter ) => {
+            if ( waiter.key !== key ) {
+                return true;
+            }
+            waiter.resolve();
+            return false;
+        } );
+    }
+
     function showPanel( panelKey ) {
         const next = stage.querySelector( '.aicoach-panel[data-panel="' + panelKey + '"]' );
         if ( ! next ) {
-            return;
+            return Promise.resolve();
         }
 
         hydratePanelImages( next );
@@ -475,13 +513,22 @@ if ( stage && avatarWrap ) {
             // FR-07's own showPanel('identity') call, well within the 800ms fade
             // window on a fast/automated submit. Remember the latest request and
             // apply it once the in-flight transition finishes.
+            if ( pendingPanelKey && pendingPanelKey !== panelKey ) {
+                // The previously queued key is about to be overwritten and will
+                // never show — resolve its waiters now so an awaiting caller
+                // doesn't hang forever, same "latest wins" trade-off the
+                // fire-and-forget callers already silently accept.
+                resolvePanelWaiters( pendingPanelKey );
+            }
             pendingPanelKey = panelKey;
-            return;
+            return new Promise( ( resolve ) => {
+                panelActivationWaiters.push( { key: panelKey, resolve } );
+            } );
         }
 
         const current = getActivePanel();
         if ( ! current || next === current ) {
-            return;
+            return Promise.resolve();
         }
 
         isAnimating = true;
@@ -490,24 +537,28 @@ if ( stage && avatarWrap ) {
         current.classList.remove( 'is-active' );
         current.setAttribute( 'aria-hidden', 'true' );
 
-        window.setTimeout( function () {
-            next.classList.add( 'is-active' );
-            next.setAttribute( 'aria-hidden', 'false' );
-            stage.style.minHeight = next.offsetHeight + 'px';
-
+        return new Promise( ( resolve ) => {
             window.setTimeout( function () {
-                stage.style.minHeight = '';
-                isAnimating = false;
+                next.classList.add( 'is-active' );
+                next.setAttribute( 'aria-hidden', 'false' );
+                stage.style.minHeight = next.offsetHeight + 'px';
+                resolvePanelWaiters( panelKey );
+                resolve();
 
-                if ( pendingPanelKey && pendingPanelKey !== panelKey ) {
-                    const queued = pendingPanelKey;
-                    pendingPanelKey = null;
-                    showPanel( queued );
-                } else {
-                    pendingPanelKey = null;
-                }
+                window.setTimeout( function () {
+                    stage.style.minHeight = '';
+                    isAnimating = false;
+
+                    if ( pendingPanelKey && pendingPanelKey !== panelKey ) {
+                        const queued = pendingPanelKey;
+                        pendingPanelKey = null;
+                        showPanel( queued );
+                    } else {
+                        pendingPanelKey = null;
+                    }
+                }, FADE_MS );
             }, FADE_MS );
-        }, FADE_MS );
+        } );
     }
 
     let sequenceIndex = 0;
@@ -684,6 +735,47 @@ if ( stage && avatarWrap ) {
         } );
     }
 
+    // Plays a pre-rendered clip (inc/aicoach-prerender.php) in the same
+    // <video> element the live avatar uses, resolving true on the clip's
+    // natural 'ended' event (or a manual skip) instead of a fixed dwell —
+    // the clip's own length already matches its audio exactly, nothing to
+    // estimate. Resolves false on a playback error; the caller is
+    // responsible for falling back to the ordinary caption dwell in that
+    // case (this function only plays video, it doesn't own the caption's
+    // timing on failure).
+    function playPrerenderedClip( url ) {
+        return new Promise( ( resolve ) => {
+            let settled = false;
+            const finish = ( ok ) => {
+                if ( settled ) {
+                    return;
+                }
+                settled = true;
+                skipCurrent = null;
+                video.removeEventListener( 'ended', onEnded );
+                video.removeEventListener( 'error', onError );
+                video.pause(); // a manual skip or the safety cap would otherwise leave it playing into the next screen
+                resolve( ok );
+            };
+            const onEnded = () => finish( true );
+            const onError = () => {
+                console.warn( '[aicoach] prerendered clip failed to play, falling back to caption dwell:', url );
+                finish( false );
+            };
+            // srcObject (the live WebRTC stream, if any) takes priority over
+            // src in the video element — clear it first or a plain MP4 src
+            // silently never plays.
+            video.srcObject = null;
+            video.src = url;
+            video.addEventListener( 'ended', onEnded );
+            video.addEventListener( 'error', onError );
+            avatarWrap.dataset.status = 'live'; // same CSS state that reveals .aicoach-avatar-video over the static portrait
+            video.play().catch( onError );
+            skipCurrent = () => finish( true ); // a visitor tap is a normal advance, not a failure
+            window.setTimeout( () => finish( true ), 60000 ); // safety cap — 'ended' should always fire first
+        } );
+    }
+
     async function runFallback( keepAvatarLive ) {
         if ( fallbackRunning ) {
             return;
@@ -694,12 +786,28 @@ if ( stage && avatarWrap ) {
         }
         for ( ; sequenceIndex < SCREENS.length; sequenceIndex++ ) {
             const screen = SCREENS[ sequenceIndex ];
-            showPanel( screen.panel );
+            const panelReady = showPanel( screen.panel );
             const captionEl = getCaptionEl( screen.panel );
             if ( captionEl ) {
                 captionEl.textContent = screen.script;
             }
-            await waitForReadOrSkip();
+            // PO-3062 — an approved segment with a pre-rendered clip plays it
+            // (real voice + lip-sync, dwell = the clip's own length); every
+            // other screen keeps the original caption-only fixed dwell.
+            const clipUrl = getPrerenderedUrl( screen.panel );
+            if ( clipUrl ) {
+                // Wait for this exact panel to actually be the active one —
+                // not just a fixed FADE_MS guess, which breaks if showPanel()
+                // had to queue behind another in-flight transition (it can
+                // take longer than one FADE_MS in that case; see showPanel()).
+                await panelReady;
+                const played = await playPrerenderedClip( clipUrl );
+                if ( ! played ) {
+                    await waitForReadOrSkip();
+                }
+            } else {
+                await waitForReadOrSkip();
+            }
             if ( sequenceFinished ) {
                 fallbackRunning = false;
                 return; // a fresh runFallback() call elsewhere already took over

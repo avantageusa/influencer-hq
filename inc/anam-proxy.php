@@ -276,6 +276,11 @@ function ihq_aicoach_enqueue_coach_flow() {
 			// Let's Continue button and Luna both use that event.
 			'identityRestBase' => esc_url_raw( rest_url( 'ihq/v1' ) ),
 			'nonce'            => wp_create_nonce( 'wp_rest' ),
+			// PO-3062 pre-rendered clips (inc/aicoach-prerender.php) — Gary
+			// segment key => public clip URL, only for whatever `wp aicoach
+			// prerender` has actually rendered so far. Empty/missing keys are
+			// expected and fall back to the existing static caption.
+			'prerenderedVideos' => function_exists( 'ihq_aicoach_prerender_get_urls' ) ? ihq_aicoach_prerender_get_urls() : array(),
 			'i18n'             => array(
 				'usernameTaken'    => __( 'That username is already taken.', 'influencer-hq' ),
 				'identitySaved'    => __( 'Saved', 'influencer-hq' ),
