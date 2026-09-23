@@ -108,6 +108,17 @@ function ihq_aicoach_prerender_save_manifest( array $manifest ) {
  * and downloaded so far. Missing keys simply have no clip yet — the caller
  * falls back to the static caption, same as before this feature existed.
  *
+ * Every URL carries a ?v={fingerprint} cache-buster. The filename itself
+ * never changes (always "{segment_key}.mp4"), and re-rendering overwrites
+ * it in place — confirmed live (2026-09-23) that Cloudflare's edge cache
+ * (public, max-age=31536000 on this upload path) happily keeps serving the
+ * pre-re-render bytes under that unchanged URL for a full year otherwise, a
+ * new script or a new avatar/voice from Gary is invisible to visitors no
+ * matter how successfully it re-rendered server-side. The fingerprint
+ * already changes on exactly those occasions (it's what decides whether a
+ * re-render happens at all), so reusing it here makes each real content
+ * change a genuinely new URL instead of fighting the CDN's cache lifetime.
+ *
  * @return array<string,string>
  */
 function ihq_aicoach_prerender_get_urls() {
@@ -115,7 +126,11 @@ function ihq_aicoach_prerender_get_urls() {
 	$urls     = array();
 	foreach ( $manifest as $segment_key => $entry ) {
 		if ( ! empty( $entry['file'] ) && file_exists( ihq_aicoach_prerender_dir() . '/' . $entry['file'] ) ) {
-			$urls[ $segment_key ] = ihq_aicoach_prerender_url_base() . '/' . rawurlencode( $entry['file'] );
+			$url = ihq_aicoach_prerender_url_base() . '/' . rawurlencode( $entry['file'] );
+			if ( ! empty( $entry['fingerprint'] ) ) {
+				$url = add_query_arg( 'v', substr( $entry['fingerprint'], 0, 12 ), $url );
+			}
+			$urls[ $segment_key ] = $url;
 		}
 	}
 	return $urls;
