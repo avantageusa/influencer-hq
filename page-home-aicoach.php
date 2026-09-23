@@ -11,13 +11,26 @@ get_template_part( 'template-parts/portal-styles' );
 
 $theme_uri = get_template_directory_uri();
 
+// PO-3062 — Alix Earle's photo (design-approved, 2026-09-23) is served from
+// this same, permanently-fixed filename ("alix-earle-placeholder.svg" — kept
+// as-is rather than renamed, since swapping the SVG's own content in place
+// for the real asset needs no code/PR change at all). Cloudflare caches this
+// upload path for a full year (confirmed live on the pre-rendered coach
+// clips, same root cause) — without a cache-busting version on the URL,
+// updating the file would be invisible to visitors exactly like the old
+// "PHOTO PENDING" placeholder would otherwise keep being served here.
+$alix_image_path = get_template_directory() . '/images/aicoach/alix-earle-placeholder.svg';
+$alix_image_url  = $theme_uri . '/images/aicoach/alix-earle-placeholder.svg';
+$alix_mtime       = file_exists( $alix_image_path ) ? filemtime( $alix_image_path ) : false;
+if ( $alix_mtime ) {
+	$alix_image_url = add_query_arg( 'v', $alix_mtime, $alix_image_url );
+}
+
 $aicoach_img = array(
 	'portrait'     => $theme_uri . '/images/aicoach/coach-portrait.webp',
 	'bts'          => $theme_uri . '/images/aicoach/bts.webp',
 	'magic'        => $theme_uri . '/images/aicoach/magic-johnson.webp',
-	// Placeholder — no licensed Alix Earle photo exists in this repo yet; swap
-	// this src for the real asset once design/legal supplies one.
-	'alix'         => $theme_uri . '/images/aicoach/alix-earle-placeholder.svg',
+	'alix'         => $alix_image_url,
 	'check'        => $theme_uri . '/images/aicoach/icon-check.svg',
 	'x'            => $theme_uri . '/images/aicoach/icon-x.svg',
 	'belief-coin'  => $theme_uri . '/images/aicoach/icon-belief-coin.svg',
