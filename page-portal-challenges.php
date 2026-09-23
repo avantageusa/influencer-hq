@@ -376,15 +376,18 @@ $portal_embed_urls = [
                         <div class="portal-leaderboards-section-title">
                             <?php esc_html_e( 'Influencer/FolLOwer Competition Results', 'influencer-hq' ); ?>
                         </div>
-                        <div class="portal-leaderboards-iframe-wrap" id="world-leaderboard-iframe">
-                            <iframe
-                                title="<?php echo esc_attr__( 'Influencer / Follower Competition Results', 'influencer-hq' ); ?>"
-                                src="<?php echo esc_url( $portal_leaderboards_iframe_url ); ?>"
-                                loading="lazy"
-                                referrerpolicy="strict-origin-when-cross-origin"
-                                allowfullscreen
-                            ></iframe>
-                        </div>
+                        <?php
+                        get_template_part(
+                            'template-parts/portal-external-embed',
+                            null,
+                            array(
+                                'url'      => $portal_embed_urls['world'],
+                                'title'    => __( 'Influencer / Follower Competition Results', 'influencer-hq' ),
+                                'fallback' => __( 'World competition content is temporarily unavailable. Please try again later.', 'influencer-hq' ),
+                                'wrap_id'  => 'world-leaderboard-iframe',
+                            )
+                        );
+                        ?>
                     </div>
 
                     <div class="accordion custom-accordion competition-scoring-accordion competition-accordion--figma" id="worldMedalsAccordion">
@@ -1153,6 +1156,19 @@ $portal_embed_urls = [
                     ?>
 
                     <h2 class="competition-section-title" id="leagues-results"><?php esc_html_e( 'Leagues', 'influencer-hq' ); ?></h2>
+
+                    <?php
+                    get_template_part(
+                        'template-parts/portal-external-embed',
+                        null,
+                        array(
+                            'url'      => $portal_embed_urls['leagues'],
+                            'title'    => __( 'Leagues standings', 'influencer-hq' ),
+                            'fallback' => __( 'Leagues content is temporarily unavailable. Please try again later.', 'influencer-hq' ),
+                            'wrap_id'  => 'leagues-standings',
+                        )
+                    );
+                    ?>
 
                     <div class="leagues-info-card">
                         <div class="leagues-info-heading" id="leagues-celebrity"><?php esc_html_e( 'Celebrity Follower Leagues', 'influencer-hq' ); ?></div>

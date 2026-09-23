@@ -223,7 +223,8 @@ add_action( 'wp_footer', 'ihq_render_concierge_fab', 15 );
  * Leave blank to use the theme default URL.
  */
 function influencer_hq_game_url_profile_field( $user ) {
-	$value = get_user_meta( $user->ID, 'hq_game_url', true );
+	$value          = get_user_meta( $user->ID, 'hq_game_url', true );
+	$default_portal = ihq_env_require_url( 'IHQ_GAME_PORTAL_BASE_URL' );
 	?>
 	<h3><?php esc_html_e( 'Game Portal Settings', 'influencer-hq' ); ?></h3>
 	<table class="form-table">
@@ -233,7 +234,17 @@ function influencer_hq_game_url_profile_field( $user ) {
 				<input type="url" name="hq_game_url" id="hq_game_url"
 					value="<?php echo esc_attr( $value ); ?>"
 					class="regular-text" />
-				<p class="description"><?php esc_html_e( 'Override the base game portal URL for this user. Leave blank to use the default.', 'influencer-hq' ); ?></p>
+				<p class="description">
+					<?php
+					echo esc_html(
+						sprintf(
+							/* translators: %s: IHQ_GAME_PORTAL_BASE_URL from wp-config.php */
+							__( 'Override the base game portal URL for this user. Leave blank to use %s.', 'influencer-hq' ),
+							$default_portal
+						)
+					);
+					?>
+				</p>
 			</td>
 		</tr>
 	</table>
