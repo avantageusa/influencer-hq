@@ -1177,6 +1177,37 @@ $aicoach_channels = array(
             top: 18%;
         }
     }
+
+    /* Ivan's request (2026-09-23): strip the chrome around this specific
+    landing flow down to just logo + language globe + volume — hamburger
+    menu, Help, Login/Logout, PLAY, the full nav row, and both footers are
+    visual noise here. Scoped to this page's own body class and hidden via
+    CSS rather than touching the shared header/footer template-parts (used
+    on every other portal page) or deleting any markup, so turning any of
+    it back on later is just deleting the matching line below — nothing to
+    rebuild. */
+    body.page-template-page-home-aicoach-php .hamburger-menu,
+    body.page-template-page-home-aicoach-php .header-help-btn,
+    body.page-template-page-home-aicoach-php .header-login-link,
+    body.page-template-page-home-aicoach-php .header-logout-btn,
+    body.page-template-page-home-aicoach-php .go-to-game-btn,
+    body.page-template-page-home-aicoach-php .sticky-nav,
+    body.page-template-page-home-aicoach-php .portal-footer,
+    body.page-template-page-home-aicoach-php footer.bg-dark {
+        display: none !important;
+    }
+
+    /* .aicoach-lang-wrap (the globe) is injected by js/aicoach-coach-flow.js
+    into .desktop-header-left-items, which portal-styles.php hides below
+    992px — .desktop-header-right-items (the volume control) already has its
+    own "show on mobile" override there, but the left container never got a
+    matching one since nothing used to live in it on small screens. Force it
+    visible at every width on this page; .header-help-btn inside the same
+    container stays hidden via the rule above. */
+    body.page-template-page-home-aicoach-php .desktop-header-left-items {
+        display: flex !important;
+        align-items: center;
+    }
 </style>
 
 <?php
