@@ -277,11 +277,17 @@ $hm_ch = function ( $tab, $hash = '' ) {
         var content      = document.getElementById('portal-content');
         if (!content) return;
 
-        var bottom = 0;
-        if (stickyNav)    bottom = stickyNav.getBoundingClientRect().bottom;
-        else if (stickyHeader) bottom = stickyHeader.getBoundingClientRect().bottom;
+        // .sticky-nav is position:fixed, so offsetParent is always null for it
+        // per spec regardless of visibility — not usable as a hidden check here.
+        // getComputedStyle().display reflects the real cascade result (including
+        // a page that hides .sticky-nav via CSS, e.g. page-home-aicoach.php),
+        // so a hidden nav correctly falls back to clearing just the header
+        // instead of measuring a stale/zero rect and skipping the padding.
+        var navVisible = stickyNav && getComputedStyle( stickyNav ).display !== 'none';
 
-        
+        var bottom = 0;
+        if (navVisible)         bottom = stickyNav.getBoundingClientRect().bottom;
+        else if (stickyHeader) bottom = stickyHeader.getBoundingClientRect().bottom;
 
         if (bottom > 0) content.style.setProperty('padding-top', (bottom + 20) + 'px', 'important');
     }
