@@ -9,21 +9,41 @@
  * caption with no voice at all (see the top-of-file note in
  * js/aicoach-coach-flow.js). Per Gary's own recommendation (2026-09-21,
  * Teams): approved, fixed-copy segments are cheaper and more reliably
- * "on-script" as pre-rendered clips (Anam's POST /v1/avatar-videos, a
- * text-to-MP4 render of the exact script, no LLM involved) than live avatar
- * turns; live stays reserved for parts where the visitor actually asks
- * something.
+ * "on-script" as pre-rendered clips than live avatar turns; live stays
+ * reserved for parts where the visitor actually asks something.
+ *
+ * Rendering goes through Gary's own Coach API (POST /coach/v1/videos et al,
+ * inc/gary-proxy.php's ihq_coach_request()/ihq_coach_download()) — NOT a
+ * direct call to Anam. This file used to call Anam's avatar-videos endpoint
+ * directly, passing this theme's own avatar_id/voice_id/avatarModel so the
+ * pre-rendered clips would match Gary's live avatar; Gary's email
+ * (2026-09-23) asked us to stop doing that and go through the Coach API
+ * instead: "No avatar, voice or model ids in your payload. The box pins the
+ * same ones the live session uses, so pre-rendered and live match, and if we
+ * change provider or model you change nothing." That also means capacity
+ * failures (the "All engines are currently at capacity" errors this was
+ * originally built to retry around) are now retried on Gary's side, with
+ * backoff, under the SAME job id, for up to 2 hours — confirmed against
+ * coach-api.openapi.json and coach-client.mjs (Gary's reference client,
+ * 2026-09-23) and verified live end-to-end (create, poll, download, and an
+ * idempotent replay all confirmed against the real influencerhq box). We
+ * never resubmit a slow job; see ihq_aicoach_prerender_segment()'s poll loop.
  *
  * This file renders each APPROVED segment to MP4 once (via `wp aicoach
- * prerender`), downloads it locally (the render API's content.url expires —
- * never relied on at runtime), and exposes the resulting URLs to the
- * frontend keyed by Gary's own segment key. js/aicoach-coach-flow.js maps
- * its panel names to these segment keys and plays the clip instead of the
- * static caption when one exists.
+ * prerender`), downloads it locally (content.url is a path back into the
+ * same signed API, not a public CDN link — never relied on at runtime), and
+ * exposes the resulting URLs to the frontend keyed by Gary's own segment
+ * key. js/aicoach-coach-flow.js maps its panel names to these segment keys
+ * and plays the clip instead of the static caption when one exists.
  *
- * Rendering is idempotent per segment text: the Idempotency-Key sent to Anam
- * IS the segment's sha256, so re-running the command after Gary approves new
- * copy only re-renders segments whose sha256 actually changed.
+ * Rendering is idempotent per segment text: the Idempotency-Key sent to Gary
+ * IS derived from the segment's own sha256, so re-running the command after
+ * Gary approves new copy only re-renders segments whose sha256 actually
+ * changed. Re-sending the same key for a job still in progress (or already
+ * done) is safe and cheap — Gary's API returns the existing job
+ * (`idempotent_replayed: true`) instead of starting a second render,
+ * confirmed live — which is what lets ihq_aicoach_prerender_segment() below
+ * just re-POST every run instead of tracking an in-flight job id anywhere.
  *
  * @package influencer-hq
  */
@@ -136,291 +156,101 @@ function ihq_aicoach_prerender_get_urls() {
 	return $urls;
 }
 
-// Confirmed by Gary directly (2026-09-22, email, in response to the
-// voice_not_found 404 below): the Anam voice id their live registration-
-// surface session actually speaks with. say.video.avatar_id/avatar_model
-// come back on every session response (read live below), but this voice id
-// doesn't — say.audio.voice_id is a different, ElevenLabs-only id from
-// Gary's own realtime audio pipeline, confirmed not to be what Anam's
-// avatar-videos endpoint means by voiceId. Gary: "It is built on the same
-// underlying voice, so live and pre-rendered will match." A fixed constant
-// rather than something read live, since there's no API to fetch it.
-if ( ! defined( 'GARY_SAMI_ANAM_VOICE_ID' ) ) {
-	define( 'GARY_SAMI_ANAM_VOICE_ID', '51a87888-4921-4e61-b41f-37ef5e2a8205' );
-}
-
 /**
- * Generation settings Gary pins on every call to GARY_SAMI_ANAM_VOICE_ID,
- * given directly (2026-09-22) so pre-rendered clips sound identical to the
- * live session instead of using Anam's own defaults for that voice.
+ * POST /coach/v1/videos — start (or, for an already-known idempotency key,
+ * resume/replay) a render job. No avatar/voice/model ids in the payload —
+ * per Gary's email (2026-09-23), the box pins whatever the live session
+ * currently uses, so this file no longer needs to read or track that config
+ * at all.
  *
- * @return array
- */
-function ihq_aicoach_voice_generation_options() {
-	return array(
-		'model'           => 'eleven_multilingual_v2',
-		'stability'       => 0.45,
-		'similarityBoost' => 0.8,
-		'style'           => 0.35,
-		'useSpeakerBoost' => true,
-	);
-}
-
-/**
- * Opens a throwaway Gary session purely to read which avatar Gary is
- * currently using for the LIVE registration-surface avatar, then closes it.
- * Voice comes from GARY_SAMI_ANAM_VOICE_ID above, not from this session.
- *
- * Pre-rendered clips used to render with this theme's own separate Anam
- * persona (anam_hq_persona_id(), inc/anam-proxy.php) — a completely
- * different Anam avatar from whatever Gary's live session actually uses
- * (confirmed 2026-09-22: our persona's avatar is Anam id 9c246015-...,
- * described as dark hair / jewelry / cheongsam; Gary's live session
- * returns a different avatar id, 3cb8331c-...). That's exactly the
- * "starts as the new avatar, switches to an old one" visible mismatch
- * flagged live (Ivan, 2026-09-22): the intro speaks live through Gary's
- * avatar, then the following pre-rendered clips carried on with ours
- * instead — two different-looking avatars in the same flow.
- *
- * @return array{avatar_id:string,avatar_model:string,voice_id:string}|WP_Error
- */
-function ihq_aicoach_gary_avatar_config() {
-	$session = ihq_coach_request(
-		'POST',
-		'/coach/v1/session',
-		array(
-			'player' => array(
-				'ref'    => 'prerender-' . wp_generate_uuid4(),
-				'locale' => 'en',
-			),
-			'want'   => array( 'text', 'audio', 'video' ),
-		)
-	);
-	if ( is_wp_error( $session ) ) {
-		return $session;
-	}
-	// is_wp_error() only catches a transport-level failure — a non-2xx from
-	// Gary itself (401, 429, 500...) comes back as a normal array here, and
-	// without this check the missing avatar/voice fields below would surface
-	// as the misleading "gary_avatar_config_missing" instead of the real
-	// HTTP status. Same gap already closed for the scripts fetch below.
-	$session_status = (int) ( $session['status'] ?? 0 );
-	if ( $session_status < 200 || $session_status >= 300 ) {
-		return new WP_Error(
-			'gary_session_create_failed',
-			sprintf( 'Gary session creation failed (HTTP %d)', $session_status )
-		);
-	}
-
-	$session_id   = $session['body']['session']['id'] ?? null;
-	$avatar_id    = $session['body']['say']['video']['avatar_id'] ?? null;
-	$avatar_model = $session['body']['say']['video']['avatar_model'] ?? null;
-
-	if ( $session_id ) {
-		// Best-effort close — this session only ever existed to read the
-		// config above, nothing depends on its outcome.
-		ihq_coach_request( 'POST', '/coach/v1/session/' . rawurlencode( $session_id ) . '/close', null );
-	}
-
-	if ( ! $avatar_id || ! $avatar_model ) {
-		return new WP_Error(
-			'gary_avatar_config_missing',
-			'Gary session response did not include say.video.avatar_id/avatar_model — cannot render a matching avatar.'
-		);
-	}
-
-	return array(
-		'avatar_id'    => $avatar_id,
-		'avatar_model' => $avatar_model,
-		'voice_id'     => GARY_SAMI_ANAM_VOICE_ID,
-	);
-}
-
-/**
- * POST /v1/avatar-videos — start a render job, using the exact avatar_id /
- * voice_id / avatar_model Gary's live session is currently using (see
- * ihq_aicoach_gary_avatar_config()) rather than this theme's own separate
- * Anam persona, so pre-rendered clips always match the live avatar.
- *
- * @param string $script          Exact text to speak (Anam: TTS only, no LLM).
- * @param string $idempotency_key Stable per-script key — this file always
- *                                 passes a fingerprint of the segment's own
- *                                 sha256 plus the avatar config.
- * @param array  $avatar_config   { avatar_id, avatar_model, voice_id } from
- *                                 ihq_aicoach_gary_avatar_config().
+ * @param string $script          Exact text to speak.
+ * @param string $idempotency_key Stable per-script key — see
+ *                                 ihq_aicoach_prerender_segment().
+ * @param string $segment_key     Gary's segment key, sent as metadata purely
+ *                                 for our own visibility (GET /v1/videos),
+ *                                 confirmed accepted as a free-form object.
  * @return array|WP_Error Decoded response body on success.
  */
-function ihq_aicoach_anam_create_video( $script, $idempotency_key, array $avatar_config ) {
-	$api_key = anam_hq_api_key();
-	if ( ! $api_key ) {
-		return new WP_Error( 'anam_not_configured', 'ANAM_API_KEY is not set.' );
-	}
-
-	$response = wp_remote_post(
-		ANAM_HQ_BASE_URL . '/avatar-videos',
+function ihq_aicoach_coach_create_video( $script, $idempotency_key, $segment_key ) {
+	$result = ihq_coach_request(
+		'POST',
+		'/coach/v1/videos',
 		array(
-			'timeout'     => 30,
-			// A redirect would resend the Authorization header (with the live
-			// Anam API key) to wherever it points — same CWE-200 discipline
-			// already applied to Gary's requests in inc/gary-proxy.php.
-			'redirection' => 0,
-			'headers'     => array(
-				'Authorization'    => 'Bearer ' . $api_key,
-				'Content-Type'     => 'application/json',
-				'Idempotency-Key'  => $idempotency_key,
-			),
-			'body'    => wp_json_encode(
-				array(
-					'avatarId'              => $avatar_config['avatar_id'],
-					'voiceId'               => $avatar_config['voice_id'],
-					'avatarModel'           => $avatar_config['avatar_model'],
-					'script'                => $script,
-					// Matches the generation settings Gary pins on every live
-					// call to this voice (given directly, 2026-09-22) — without
-					// these, Anam would use its own defaults for the voice
-					// instead, which wouldn't sound identical to the live avatar
-					// even with the right voiceId.
-					'voiceGenerationOptions' => ihq_aicoach_voice_generation_options(),
-				)
-			),
-		)
+			'script'   => $script,
+			'metadata' => array( 'segment' => $segment_key ),
+		),
+		array( 'Idempotency-Key' => $idempotency_key )
 	);
-	if ( is_wp_error( $response ) ) {
-		return $response;
+	if ( is_wp_error( $result ) ) {
+		return $result;
 	}
-
-	$status = (int) wp_remote_retrieve_response_code( $response );
-	$body   = json_decode( wp_remote_retrieve_body( $response ), true );
-	// Only 200-299 is a real success. redirection => 0 above means a 3xx no
-	// longer gets silently followed — it comes back here instead, and with
-	// only a ">= 400" check it would fall through as "success" carrying an
-	// empty/non-JSON body, handing the caller a job with no id or status.
+	// is_wp_error() only catches a transport-level failure — a non-2xx from
+	// Gary itself comes back as a normal array here. A fresh create is 202;
+	// an idempotent replay of an already-known key is 200 (confirmed live,
+	// 2026-09-23) — both are success, so this only rejects genuine errors.
+	$status = (int) $result['status'];
 	if ( $status < 200 || $status >= 300 ) {
 		return new WP_Error(
-			'anam_create_video_failed',
-			sprintf( 'Anam avatar-video create failed (HTTP %d): %s', $status, wp_remote_retrieve_body( $response ) )
+			'coach_video_create_failed',
+			sprintf( 'Coach video create failed (HTTP %d): %s', $status, wp_json_encode( $result['body'] ) )
 		);
 	}
-	return $body;
+	return $result['body'];
 }
 
 /**
- * GET /v1/avatar-videos/{id} — one status poll.
+ * GET /coach/v1/videos/{id} — one status poll.
  *
  * @param string $job_id
  * @return array|WP_Error
  */
-function ihq_aicoach_anam_get_video( $job_id ) {
-	$api_key = anam_hq_api_key();
-	if ( ! $api_key ) {
-		return new WP_Error( 'anam_not_configured', 'ANAM_API_KEY is not set.' );
+function ihq_aicoach_coach_get_video( $job_id ) {
+	$result = ihq_coach_request( 'GET', '/coach/v1/videos/' . rawurlencode( $job_id ), null );
+	if ( is_wp_error( $result ) ) {
+		return $result;
 	}
-
-	$response = wp_remote_get(
-		ANAM_HQ_BASE_URL . '/avatar-videos/' . rawurlencode( $job_id ),
-		array(
-			'timeout'     => 30,
-			'redirection' => 0, // see ihq_aicoach_anam_create_video()'s comment — same CWE-200 concern.
-			'headers'     => array( 'Authorization' => 'Bearer ' . $api_key ),
-		)
-	);
-	if ( is_wp_error( $response ) ) {
-		return $response;
-	}
-
-	$status = (int) wp_remote_retrieve_response_code( $response );
-	$body   = json_decode( wp_remote_retrieve_body( $response ), true );
-	// See ihq_aicoach_anam_create_video()'s comment — same 3xx-vs->=400 gap.
+	$status = (int) $result['status'];
 	if ( $status < 200 || $status >= 300 ) {
 		return new WP_Error(
-			'anam_get_video_failed',
-			sprintf( 'Anam avatar-video get failed (HTTP %d): %s', $status, wp_remote_retrieve_body( $response ) )
+			'coach_video_get_failed',
+			sprintf( 'Coach video get failed (HTTP %d): %s', $status, wp_json_encode( $result['body'] ) )
 		);
 	}
-	return $body;
+	return $result['body'];
 }
 
 /**
- * POST /v1/avatar-videos/{id}/retry — start a fresh attempt at a terminal
- * (failed/cancelled) job. Re-POSTing to /avatar-videos with the same
- * Idempotency-Key does NOT retry anything — Anam just replays the original
- * (still-failed) job — so a retryable failure needs this dedicated endpoint
- * instead, with its own, different Idempotency-Key.
+ * Render one segment end-to-end: create (or resume) the job, poll for a
+ * bounded window, download the MP4 once ready, and record it in the
+ * manifest. Skips the whole thing (returns 'cached') if the manifest already
+ * has this exact sha256 stored and the file is still on disk.
  *
- * @param string $job_id          The terminal job to retry.
- * @param string $idempotency_key Must differ from the original job's key.
- * @return array|WP_Error The new retry job.
+ * @param string        $segment_key Gary's segment key, e.g. "we_believe_1".
+ * @param string        $text        Exact approved script text.
+ * @param string        $sha256      Gary's sha256 for this exact text —
+ *                                    used for both the cache check and the
+ *                                    Coach API Idempotency-Key.
+ * @param callable|null $log         Optional fn(string $line) for CLI progress output.
+ * @return array{status:string, url?:string, error?:string, job_id?:string}
  */
-function ihq_aicoach_anam_retry_video( $job_id, $idempotency_key ) {
-	$api_key = anam_hq_api_key();
-	if ( ! $api_key ) {
-		return new WP_Error( 'anam_not_configured', 'ANAM_API_KEY is not set.' );
-	}
-
-	$response = wp_remote_post(
-		ANAM_HQ_BASE_URL . '/avatar-videos/' . rawurlencode( $job_id ) . '/retry',
-		array(
-			'timeout'     => 30,
-			'redirection' => 0, // see ihq_aicoach_anam_create_video()'s comment — same CWE-200 concern.
-			'headers'     => array(
-				'Authorization'   => 'Bearer ' . $api_key,
-				'Idempotency-Key' => $idempotency_key,
-			),
-		)
-	);
-	if ( is_wp_error( $response ) ) {
-		return $response;
-	}
-
-	$status = (int) wp_remote_retrieve_response_code( $response );
-	$body   = json_decode( wp_remote_retrieve_body( $response ), true );
-	if ( $status < 200 || $status >= 300 ) {
-		return new WP_Error(
-			'anam_retry_video_failed',
-			sprintf( 'Anam avatar-video retry failed (HTTP %d): %s', $status, wp_remote_retrieve_body( $response ) )
-		);
-	}
-	return $body;
-}
-
-/**
- * Render one segment end-to-end: create the job, poll until it's done,
- * download the MP4, and record it in the manifest. Skips the whole thing
- * (returns 'cached') if the manifest already has this exact sha256 stored
- * and the file is still on disk.
- *
- * @param string $segment_key   Gary's segment key, e.g. "we_believe_1".
- * @param string $text          Exact approved script text.
- * @param string $sha256        Gary's sha256 for this exact text.
- * @param array  $avatar_config { avatar_id, avatar_model, voice_id } from
- *                               ihq_aicoach_gary_avatar_config() — also used
- *                               to build the Anam Idempotency-Key, alongside
- *                               $sha256.
- * @param callable|null $log    Optional fn(string $line) for CLI progress output.
- * @return array{status:string, url?:string, error?:string}
- */
-function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, array $avatar_config, $log = null ) {
+function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $log = null ) {
 	$log = $log ?: function ( $line ) {};
-
-	// Cache key on sha256 alone would keep serving a clip rendered with a
-	// now-stale avatar/voice after Gary's live config changes, since the
-	// script text — and therefore its sha256 — never moved. Fold the avatar
-	// config into the identity used for both the cache check and the Anam
-	// Idempotency-Key so a change on Gary's side forces a fresh render.
-	$fingerprint = hash(
-		'sha256',
-		$sha256 . '|' . $avatar_config['avatar_id'] . '|' . $avatar_config['avatar_model'] . '|' . $avatar_config['voice_id']
-	);
 
 	$manifest = ihq_aicoach_prerender_load_manifest();
 	$existing = $manifest[ $segment_key ] ?? null;
-	if ( $existing && ( $existing['fingerprint'] ?? '' ) === $fingerprint && file_exists( ihq_aicoach_prerender_dir() . '/' . $existing['file'] ) ) {
-		$log( "  {$segment_key}: already rendered for this script+avatar, skipping" );
+	if ( $existing && ( $existing['fingerprint'] ?? '' ) === $sha256 && file_exists( ihq_aicoach_prerender_dir() . '/' . $existing['file'] ) ) {
+		$log( "  {$segment_key}: already rendered for this script, skipping" );
 		return array( 'status' => 'cached' );
 	}
 
-	$log( "  {$segment_key}: creating render job..." );
-	$job = ihq_aicoach_anam_create_video( $text, $fingerprint, $avatar_config );
+	// Human-readable + deterministic, matching Gary's own example format
+	// (email, 2026-09-23: "Idempotency-Key: ihq-seg-magic-johnson-v1"). Stable
+	// per exact script text, so re-running this after Gary approves new copy
+	// only touches segments whose sha256 actually changed.
+	$idempotency_key = 'ihq-seg-' . $segment_key . '-' . substr( $sha256, 0, 16 );
+
+	$log( "  {$segment_key}: creating (or resuming) render job..." );
+	$job = ihq_aicoach_coach_create_video( $text, $idempotency_key, $segment_key );
 	if ( is_wp_error( $job ) ) {
 		return array(
 			'status' => 'error',
@@ -428,86 +258,89 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, array $ava
 		);
 	}
 
-	$terminal     = array( 'completed', 'failed', 'cancelled' );
-	// Live-observed (2026-09-23): Anam occasionally fails a job with
-	// {"code":"session_start_failed","message":"All engines are currently at
-	// capacity...","retryable":true} — this is a real, transient provider
-	// limit, not a bad request. Retrying by re-POSTing /avatar-videos does
-	// nothing, since the Idempotency-Key is unchanged and Anam just replays
-	// the same failed job; the dedicated /retry endpoint (its own,
-	// different Idempotency-Key) is what actually starts a fresh attempt.
-	$retry_budget = 3;
-	$retry_count  = 0;
-
-	while ( true ) {
-		$job_id     = $job['id'] ?? null;
-		$status_now = $job['status'] ?? 'pending';
-		$attempts   = 0;
-		// Segments here run 10-40s of speech; renders have been slower than
-		// realtime in testing. 60 polls x 5s = up to 5 minutes per attempt
-		// before giving up, generous on purpose — this runs offline via
-		// WP-CLI, not in a visitor-facing request.
-		while ( ! in_array( $status_now, $terminal, true ) && $attempts < 60 ) {
-			sleep( 5 );
-			++$attempts;
-			$job = ihq_aicoach_anam_get_video( $job_id );
-			if ( is_wp_error( $job ) ) {
-				return array(
-					'status' => 'error',
-					'error'  => $job->get_error_message(),
-				);
-			}
-			$status_now = $job['status'] ?? 'pending';
-			$log( "  {$segment_key}: status={$status_now} ({$attempts}/60)" );
-		}
-
-		if ( 'completed' === $status_now ) {
-			break;
-		}
-
-		$retryable = 'failed' === $status_now && ! empty( $job['failure']['retryable'] );
-		if ( ! $retryable || $retry_count >= $retry_budget ) {
-			$failure_message = $job['failure']['message'] ?? '';
-			return array(
-				'status' => 'error',
-				'error'  => "render did not complete in time (last status: {$status_now})"
-					. ( $failure_message ? ": {$failure_message}" : '' ),
-			);
-		}
-
-		++$retry_count;
-		$log( "  {$segment_key}: " . ( $job['failure']['message'] ?? 'failed' ) . " — retrying ({$retry_count}/{$retry_budget})..." );
-		sleep( 10 ); // give the provider's capacity a moment before asking again
-		$job = ihq_aicoach_anam_retry_video( $job_id, "{$fingerprint}-retry-{$retry_count}" );
+	$job_id   = $job['id'] ?? null;
+	$terminal = array( 'ready', 'failed' );
+	// Confirmed live (2026-09-23) and in coach-client.mjs, Gary's own
+	// reference client: capacity failures are retried on Gary's side, with
+	// backoff, under this SAME job id, for up to 2 hours — while waiting, the
+	// job's waiting_reason field is set (e.g. "render_capacity"). We never
+	// resubmit a slow job (there's no retry endpoint in this API — POSTing
+	// again just idempotently replays this same job, confirmed live). This
+	// loop only polls for a bounded window per invocation, short enough to be
+	// safe both in a WP-CLI run and inside a single HTTP request (the SFTP
+	// one-off trigger script dev uses, since dev has no WP-CLI — see the
+	// top-of-file comment). If the window elapses before "ready"/"failed",
+	// this returns 'pending', not 'error': the job keeps rendering
+	// server-side regardless, and the NEXT run's create call above will
+	// idempotently replay this same job and just keep polling it — confirmed
+	// live that a replay returns the job's current state instantly, ready or
+	// not.
+	$max_attempts = 18; // 18 x 5s = 90s.
+	$attempts     = 0;
+	$status_now   = $job['status'] ?? 'queued';
+	while ( ! in_array( $status_now, $terminal, true ) && $attempts < $max_attempts ) {
+		sleep( 5 );
+		++$attempts;
+		$job = ihq_aicoach_coach_get_video( $job_id );
 		if ( is_wp_error( $job ) ) {
 			return array(
 				'status' => 'error',
 				'error'  => $job->get_error_message(),
+				'job_id' => $job_id,
 			);
 		}
+		$status_now     = $job['status'] ?? 'queued';
+		$waiting_reason = $job['waiting_reason'] ?? null;
+		$log( "  {$segment_key}: status={$status_now}" . ( $waiting_reason ? " ({$waiting_reason})" : '' ) . " ({$attempts}/{$max_attempts})" );
 	}
 
-	$video_url = $job['content']['url'] ?? null;
-	if ( ! $video_url ) {
+	if ( 'failed' === $status_now ) {
+		// "failed" is final (Gary's email) and carries a stable code —
+		// render_capacity, render_unavailable, or render_rejected — surfaced
+		// verbatim rather than hardcoding the enum, so a new code Gary adds
+		// later still shows up instead of silently falling through.
+		$failure_code    = $job['failure']['code'] ?? 'unknown';
+		$failure_message = $job['failure']['message'] ?? '';
 		return array(
 			'status' => 'error',
-			'error'  => 'completed but content.url missing',
+			'error'  => "render failed ({$failure_code})" . ( $failure_message ? ": {$failure_message}" : '' ),
+			'job_id' => $job_id,
+		);
+	}
+
+	if ( 'ready' !== $status_now ) {
+		$log( "  {$segment_key}: still {$status_now} after {$max_attempts} polls — job continues server-side, re-run later to pick it back up" );
+		return array(
+			'status' => 'pending',
+			'error'  => "render still in progress (status: {$status_now})",
+			'job_id' => $job_id,
+		);
+	}
+
+	$content_path = $job['content']['url'] ?? null;
+	if ( ! $content_path ) {
+		return array(
+			'status' => 'error',
+			'error'  => 'ready but content.url missing',
+			'job_id' => $job_id,
 		);
 	}
 
 	$log( "  {$segment_key}: downloading..." );
 	$dest_file = ihq_aicoach_prerender_dir() . "/{$segment_key}.mp4";
-	// A fingerprint change (new script, or — as of the avatar-matching fix —
-	// a new avatar/voice from Gary) now routinely forces a re-render of a
-	// segment that already has a perfectly good clip serving live visitors.
-	// Streaming straight into $dest_file would truncate that valid file the
-	// moment the download starts, before we know the replacement is any
-	// good — a failed re-render would then take down a clip that was
-	// working fine seconds earlier. Stream to a temp file instead, validate
-	// it, and only replace $dest_file once validation passes; on failure,
-	// only the temp file is removed and the existing clip is untouched.
+	// A sha256 change now routinely forces a re-render of a segment that
+	// already has a perfectly good clip serving live visitors. Streaming
+	// straight into $dest_file would truncate that valid file the moment the
+	// download starts, before we know the replacement is any good — a failed
+	// re-render would then take down a clip that was working fine seconds
+	// earlier. Stream to a temp file instead, validate it, and only replace
+	// $dest_file once validation passes; on failure, only the temp file is
+	// removed and the existing clip is untouched.
 	$temp_file = $dest_file . '.tmp';
-	$download  = wp_remote_get( $video_url, array( 'timeout' => 60, 'stream' => true, 'filename' => $temp_file ) );
+	// content.url is a path back into this same signed API ("/coach/v1/videos/
+	// {id}/content"), not a public CDN link — confirmed live (2026-09-23) — so
+	// this needs ihq_coach_download()'s signed GET, not a bare wp_remote_get().
+	$download = ihq_coach_download( $content_path, $temp_file );
 	if ( is_wp_error( $download ) ) {
 		if ( file_exists( $temp_file ) ) {
 			wp_delete_file( $temp_file );
@@ -515,16 +348,14 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, array $ava
 		return array(
 			'status' => 'error',
 			'error'  => 'download failed: ' . $download->get_error_message(),
+			'job_id' => $job_id,
 		);
 	}
-	// wp_remote_get() with 'filename' streams the response body straight to
-	// disk regardless of HTTP status — an expired/forbidden content.url would
-	// otherwise get saved as a "valid" .mp4 and marked rendered, and every
-	// future run would see the file+fingerprint match and keep serving it.
-	$download_status = (int) wp_remote_retrieve_response_code( $download );
-	// Same 2xx-only discipline as the two Anam API calls above — a terminal
-	// 3xx (redirects exhausted, a 304, etc.) would otherwise pass this check
-	// and get saved as a "valid" cached clip.
+	// ihq_coach_download() streams the response body straight to disk
+	// regardless of HTTP status — an error response would otherwise get
+	// saved as a "valid" .mp4 and marked rendered, and every future run
+	// would see the file+fingerprint match and keep serving it.
+	$download_status = (int) $download['status'];
 	if ( $download_status < 200 || $download_status >= 300 ) {
 		if ( file_exists( $temp_file ) ) {
 			wp_delete_file( $temp_file );
@@ -532,6 +363,7 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, array $ava
 		return array(
 			'status' => 'error',
 			'error'  => "download failed: HTTP {$download_status} from content.url",
+			'job_id' => $job_id,
 		);
 	}
 	// A 2xx with an empty body (204 No Content, or any response that streams
@@ -545,6 +377,7 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, array $ava
 		return array(
 			'status' => 'error',
 			'error'  => "download failed: HTTP {$download_status} but the saved file is empty",
+			'job_id' => $job_id,
 		);
 	}
 	// Validation passed — atomically swap the temp file into place. rename()
@@ -557,11 +390,12 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, array $ava
 		return array(
 			'status' => 'error',
 			'error'  => 'downloaded clip validated but could not be moved into place',
+			'job_id' => $job_id,
 		);
 	}
 
 	$manifest[ $segment_key ] = array(
-		'fingerprint' => $fingerprint,
+		'fingerprint' => $sha256,
 		'file'        => "{$segment_key}.mp4",
 		'rendered_at' => gmdate( 'c' ),
 	);
@@ -607,14 +441,6 @@ function ihq_aicoach_prerender_all( $log = null ) {
 		);
 	}
 
-	$log( 'Reading Gary\'s current live avatar/voice config...' );
-	$avatar_config = ihq_aicoach_gary_avatar_config();
-	if ( is_wp_error( $avatar_config ) ) {
-		$log( 'Failed to read avatar config: ' . $avatar_config->get_error_message() );
-		return $avatar_config;
-	}
-	$log( "  using avatar_id={$avatar_config['avatar_id']} avatar_model={$avatar_config['avatar_model']}" );
-
 	$segments = $scripts_result['body']['segments'] ?? array();
 	$wanted   = array_unique( array_values( ihq_aicoach_prerender_panel_map() ) );
 	$results  = array();
@@ -630,7 +456,7 @@ function ihq_aicoach_prerender_all( $log = null ) {
 			continue;
 		}
 		$log( "{$segment_key}: rendering..." );
-		$results[ $segment_key ] = ihq_aicoach_prerender_segment( $segment_key, $segment['text'], $segment['sha256'], $avatar_config, $log );
+		$results[ $segment_key ] = ihq_aicoach_prerender_segment( $segment_key, $segment['text'], $segment['sha256'], $log );
 	}
 
 	return $results;
@@ -664,31 +490,40 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			// failing or any per-segment error has to reach WP_CLI::error()
 			// instead, or a broken render would silently report as green.
 			if ( is_wp_error( $results ) ) {
-				// ihq_aicoach_prerender_all() now returns a WP_Error for either
-				// the scripts fetch OR the avatar-config fetch failing — the
-				// message used to always blame the scripts fetch regardless,
-				// which pointed operators at the wrong system to check.
 				WP_CLI::error( 'Prerender failed: ' . $results->get_error_message() );
 				return;
 			}
 
 			$rendered = 0;
 			$cached   = 0;
+			$pending  = 0;
 			$errors   = 0;
 			foreach ( $results as $segment_key => $result ) {
 				if ( 'rendered' === $result['status'] ) {
 					++$rendered;
 				} elseif ( 'cached' === $result['status'] ) {
 					++$cached;
+				} elseif ( 'pending' === $result['status'] ) {
+					// Not a failure — the job is still rendering on Gary's side
+					// (possibly waiting out a capacity window, retried
+					// automatically under the same job id for up to 2 hours) and
+					// this run's poll budget just ran out first. Re-running the
+					// command later will idempotently pick the same job back up.
+					++$pending;
+					WP_CLI::warning( "{$segment_key}: {$result['error']} — re-run later to pick it back up" );
 				} else {
 					++$errors;
 					WP_CLI::warning( "{$segment_key}: {$result['error']}" );
 				}
 			}
 
-			$summary = "Rendered: {$rendered}, already cached: {$cached}, errors: {$errors}.";
+			$summary = "Rendered: {$rendered}, already cached: {$cached}, still pending: {$pending}, errors: {$errors}.";
 			if ( $errors > 0 ) {
 				WP_CLI::error( "Done with errors. {$summary}" );
+				return;
+			}
+			if ( $pending > 0 ) {
+				WP_CLI::warning( "Done, but some segments are still rendering. {$summary}" );
 				return;
 			}
 			WP_CLI::success( "Done. {$summary}" );

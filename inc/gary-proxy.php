@@ -151,14 +151,51 @@ function ihq_coach_sign_stage_release( $stage, $key_id, $player_ref, $session_id
 }
 
 /**
+ * Compute the three signed headers (X-Coach-Key/Timestamp/Signature) for a
+ * request to Gary's Coach API. Shared by ihq_coach_request() (JSON calls) and
+ * ihq_coach_download() (the binary /videos/{id}/content endpoint) so the
+ * HMAC formula lives in exactly one place.
+ *
+ * @param string $method    HTTP method, e.g. 'GET' or 'POST'.
+ * @param string $path      Full path including "/coach", e.g. "/coach/v1/session".
+ * @param string $body_json The exact JSON string being sent, or '' for a bodyless request.
+ * @return array{X-Coach-Key:string,X-Coach-Timestamp:string,X-Coach-Signature:string}|WP_Error
+ */
+function ihq_coach_sign_headers( $method, $path, $body_json ) {
+	$key    = ihq_coach_key();
+	$secret = ihq_coach_secret();
+	if ( ! $key || ! $secret ) {
+		return new WP_Error(
+			'coach_not_configured',
+			'GARY_COACH_KEY / GARY_COACH_SECRET are not set. Define them in wp-config.php (or .wp-env.json locally).'
+		);
+	}
+
+	$timestamp = (string) time();
+	$base      = $timestamp . '.' . $method . '.' . $path . '.' . $body_json;
+	$signature = 'sha256=' . hash_hmac( 'sha256', $base, $secret );
+
+	return array(
+		'X-Coach-Key'       => $key,
+		'X-Coach-Timestamp' => $timestamp,
+		'X-Coach-Signature' => $signature,
+	);
+}
+
+/**
  * Sign and send a request to Gary's Coach API.
  *
- * @param string     $method     HTTP method, e.g. 'GET' or 'POST'.
- * @param string     $path       Full path including "/coach", e.g. "/coach/v1/session".
- * @param array|null $body_array Request payload, or null for a bodyless request.
+ * @param string     $method        HTTP method, e.g. 'GET' or 'POST'.
+ * @param string     $path          Full path including "/coach", e.g. "/coach/v1/session".
+ * @param array|null $body_array    Request payload, or null for a bodyless request.
+ * @param array      $extra_headers Additional headers to send alongside the signed ones,
+ *                                    e.g. array( 'Idempotency-Key' => '...' ) for POST
+ *                                    /coach/v1/videos. Never part of the signature base —
+ *                                    confirmed against coach-client.mjs, Gary's own reference
+ *                                    signer, which only signs method/path/body.
  * @return array{status:int,body:array}|WP_Error
  */
-function ihq_coach_request( $method, $path, $body_array = null ) {
+function ihq_coach_request( $method, $path, $body_array = null, $extra_headers = array() ) {
 	// IHQ_COACH_HOST is a trusted admin-defined constant, not user input — but
 	// it's still worth refusing to sign/send anything to it unless it's an
 	// absolute https:// origin, same "never trust a bare constant" discipline
@@ -172,19 +209,11 @@ function ihq_coach_request( $method, $path, $body_array = null ) {
 		);
 	}
 
-	$key    = ihq_coach_key();
-	$secret = ihq_coach_secret();
-	if ( ! $key || ! $secret ) {
-		return new WP_Error(
-			'coach_not_configured',
-			'GARY_COACH_KEY / GARY_COACH_SECRET are not set. Define them in wp-config.php (or .wp-env.json locally).'
-		);
+	$body_json      = null !== $body_array ? wp_json_encode( $body_array ) : '';
+	$signed_headers = ihq_coach_sign_headers( $method, $path, $body_json );
+	if ( is_wp_error( $signed_headers ) ) {
+		return $signed_headers;
 	}
-
-	$body_json = null !== $body_array ? wp_json_encode( $body_array ) : '';
-	$timestamp = (string) time();
-	$base      = $timestamp . '.' . $method . '.' . $path . '.' . $body_json;
-	$signature = 'sha256=' . hash_hmac( 'sha256', $base, $secret );
 
 	$args = array(
 		'method'      => $method,
@@ -195,11 +224,10 @@ function ihq_coach_request( $method, $path, $body_array = null ) {
 		// with a live API key attached (CWE-200, flagged by CodeRabbit on
 		// PR #34).
 		'redirection' => 0,
-		'headers'     => array(
-			'Content-Type'      => 'application/json',
-			'X-Coach-Key'       => $key,
-			'X-Coach-Timestamp' => $timestamp,
-			'X-Coach-Signature' => $signature,
+		'headers'     => array_merge(
+			array( 'Content-Type' => 'application/json' ),
+			$signed_headers,
+			$extra_headers
 		),
 	);
 	if ( '' !== $body_json ) {
@@ -218,6 +246,49 @@ function ihq_coach_request( $method, $path, $body_array = null ) {
 		'status' => $status,
 		'body'   => is_array( $data ) ? $data : array(),
 	);
+}
+
+/**
+ * Sign and stream-download a binary response from Gary's Coach API straight
+ * to disk. GET /coach/v1/videos/{id}/content returns raw video/mp4 bytes, not
+ * JSON — confirmed live (2026-09-23) — so ihq_coach_request()'s
+ * json_decode()-everything shape doesn't fit; this is its binary sibling,
+ * same signing formula via ihq_coach_sign_headers().
+ *
+ * @param string $path      Full path including "/coach", e.g.
+ *                            "/coach/v1/videos/vid_xxx/content".
+ * @param string $dest_file Absolute path to stream the response body into.
+ * @return array{status:int}|WP_Error
+ */
+function ihq_coach_download( $path, $dest_file ) {
+	if ( ! ihq_env_is_https_url( IHQ_COACH_HOST ) ) {
+		return new WP_Error(
+			'coach_host_untrusted',
+			'IHQ_COACH_HOST must be an absolute https:// URL.'
+		);
+	}
+
+	$signed_headers = ihq_coach_sign_headers( 'GET', $path, '' );
+	if ( is_wp_error( $signed_headers ) ) {
+		return $signed_headers;
+	}
+
+	$response = wp_remote_request(
+		IHQ_COACH_HOST . $path,
+		array(
+			'method'      => 'GET',
+			'timeout'     => 60,
+			'redirection' => 0, // same CWE-200 discipline as ihq_coach_request().
+			'stream'      => true,
+			'filename'    => $dest_file,
+			'headers'     => $signed_headers,
+		)
+	);
+	if ( is_wp_error( $response ) ) {
+		return $response;
+	}
+
+	return array( 'status' => (int) wp_remote_retrieve_response_code( $response ) );
 }
 
 /**
