@@ -121,9 +121,40 @@ function ihq_aicoach_prerender_get_urls() {
 	return $urls;
 }
 
+// Confirmed by Gary directly (2026-09-22, email, in response to the
+// voice_not_found 404 below): the Anam voice id their live registration-
+// surface session actually speaks with. say.video.avatar_id/avatar_model
+// come back on every session response (read live below), but this voice id
+// doesn't — say.audio.voice_id is a different, ElevenLabs-only id from
+// Gary's own realtime audio pipeline, confirmed not to be what Anam's
+// avatar-videos endpoint means by voiceId. Gary: "It is built on the same
+// underlying voice, so live and pre-rendered will match." A fixed constant
+// rather than something read live, since there's no API to fetch it.
+if ( ! defined( 'GARY_SAMI_ANAM_VOICE_ID' ) ) {
+	define( 'GARY_SAMI_ANAM_VOICE_ID', '51a87888-4921-4e61-b41f-37ef5e2a8205' );
+}
+
 /**
- * Opens a throwaway Gary session purely to read which avatar/voice Gary is
+ * Generation settings Gary pins on every call to GARY_SAMI_ANAM_VOICE_ID,
+ * given directly (2026-09-22) so pre-rendered clips sound identical to the
+ * live session instead of using Anam's own defaults for that voice.
+ *
+ * @return array
+ */
+function ihq_aicoach_voice_generation_options() {
+	return array(
+		'model'           => 'eleven_multilingual_v2',
+		'stability'       => 0.45,
+		'similarityBoost' => 0.8,
+		'style'           => 0.35,
+		'useSpeakerBoost' => true,
+	);
+}
+
+/**
+ * Opens a throwaway Gary session purely to read which avatar Gary is
  * currently using for the LIVE registration-surface avatar, then closes it.
+ * Voice comes from GARY_SAMI_ANAM_VOICE_ID above, not from this session.
  *
  * Pre-rendered clips used to render with this theme's own separate Anam
  * persona (anam_hq_persona_id(), inc/anam-proxy.php) — a completely
@@ -135,18 +166,6 @@ function ihq_aicoach_prerender_get_urls() {
  * flagged live (Ivan, 2026-09-22): the intro speaks live through Gary's
  * avatar, then the following pre-rendered clips carried on with ours
  * instead — two different-looking avatars in the same flow.
- *
- * The voice can't be borrowed the same simple way: say.audio.voice_id in
- * Gary's response is an ElevenLabs id from their own realtime TTS/audio
- * pipeline, not an id Anam's avatar-videos endpoint recognizes (confirmed
- * live — POST /v1/avatar-videos 404s with "voice_not_found" when given
- * it). Anam has no way from this API to ask "what voice does avatar X
- * normally use", so this pairs Gary's avatar_id/avatar_model (fixes the
- * visible mismatch, which was the actual complaint) with our own known-
- * good Anam voice id, read from our existing persona. Voice may not be
- * Gary's exact live voice as a result — acceptable trade-off until Anam
- * exposes a way to look up an avatar's own default voice, or Gary
- * publishes their avatar's paired voice id directly.
  *
  * @return array{avatar_id:string,avatar_model:string,voice_id:string}|WP_Error
  */
@@ -195,59 +214,11 @@ function ihq_aicoach_gary_avatar_config() {
 		);
 	}
 
-	$voice_id = ihq_aicoach_fallback_voice_id();
-	if ( is_wp_error( $voice_id ) ) {
-		return $voice_id;
-	}
-
 	return array(
 		'avatar_id'    => $avatar_id,
 		'avatar_model' => $avatar_model,
-		'voice_id'     => $voice_id,
+		'voice_id'     => GARY_SAMI_ANAM_VOICE_ID,
 	);
-}
-
-/**
- * The voice id from our own existing Anam persona — a voice we know Anam's
- * avatar-videos endpoint accepts, used to pair with Gary's avatar_id since
- * Gary's own voice_id isn't in a format that endpoint recognizes (see
- * ihq_aicoach_gary_avatar_config()'s docblock).
- *
- * @return string|WP_Error
- */
-function ihq_aicoach_fallback_voice_id() {
-	$api_key = anam_hq_api_key();
-	if ( ! $api_key ) {
-		return new WP_Error( 'anam_not_configured', 'ANAM_API_KEY is not set.' );
-	}
-
-	$response = wp_remote_get(
-		ANAM_HQ_BASE_URL . '/personas/' . anam_hq_persona_id(),
-		array(
-			'timeout'     => 15,
-			'redirection' => 0,
-			'headers'     => array( 'Authorization' => 'Bearer ' . $api_key ),
-		)
-	);
-	if ( is_wp_error( $response ) ) {
-		return $response;
-	}
-
-	$status = (int) wp_remote_retrieve_response_code( $response );
-	if ( $status < 200 || $status >= 300 ) {
-		return new WP_Error(
-			'anam_persona_lookup_failed',
-			sprintf( 'Anam persona lookup failed (HTTP %d)', $status )
-		);
-	}
-
-	$data     = json_decode( wp_remote_retrieve_body( $response ), true );
-	$voice_id = $data['voice']['id'] ?? null;
-	if ( ! $voice_id ) {
-		return new WP_Error( 'anam_persona_voice_missing', 'Persona response did not include voice.id.' );
-	}
-
-	return $voice_id;
 }
 
 /**
@@ -285,10 +256,16 @@ function ihq_aicoach_anam_create_video( $script, $idempotency_key, array $avatar
 			),
 			'body'    => wp_json_encode(
 				array(
-					'avatarId'    => $avatar_config['avatar_id'],
-					'voiceId'     => $avatar_config['voice_id'],
-					'avatarModel' => $avatar_config['avatar_model'],
-					'script'      => $script,
+					'avatarId'              => $avatar_config['avatar_id'],
+					'voiceId'               => $avatar_config['voice_id'],
+					'avatarModel'           => $avatar_config['avatar_model'],
+					'script'                => $script,
+					// Matches the generation settings Gary pins on every live
+					// call to this voice (given directly, 2026-09-22) — without
+					// these, Anam would use its own defaults for the voice
+					// instead, which wouldn't sound identical to the live avatar
+					// even with the right voiceId.
+					'voiceGenerationOptions' => ihq_aicoach_voice_generation_options(),
 				)
 			),
 		)
@@ -349,6 +326,49 @@ function ihq_aicoach_anam_get_video( $job_id ) {
 }
 
 /**
+ * POST /v1/avatar-videos/{id}/retry — start a fresh attempt at a terminal
+ * (failed/cancelled) job. Re-POSTing to /avatar-videos with the same
+ * Idempotency-Key does NOT retry anything — Anam just replays the original
+ * (still-failed) job — so a retryable failure needs this dedicated endpoint
+ * instead, with its own, different Idempotency-Key.
+ *
+ * @param string $job_id          The terminal job to retry.
+ * @param string $idempotency_key Must differ from the original job's key.
+ * @return array|WP_Error The new retry job.
+ */
+function ihq_aicoach_anam_retry_video( $job_id, $idempotency_key ) {
+	$api_key = anam_hq_api_key();
+	if ( ! $api_key ) {
+		return new WP_Error( 'anam_not_configured', 'ANAM_API_KEY is not set.' );
+	}
+
+	$response = wp_remote_post(
+		ANAM_HQ_BASE_URL . '/avatar-videos/' . rawurlencode( $job_id ) . '/retry',
+		array(
+			'timeout'     => 30,
+			'redirection' => 0, // see ihq_aicoach_anam_create_video()'s comment — same CWE-200 concern.
+			'headers'     => array(
+				'Authorization'   => 'Bearer ' . $api_key,
+				'Idempotency-Key' => $idempotency_key,
+			),
+		)
+	);
+	if ( is_wp_error( $response ) ) {
+		return $response;
+	}
+
+	$status = (int) wp_remote_retrieve_response_code( $response );
+	$body   = json_decode( wp_remote_retrieve_body( $response ), true );
+	if ( $status < 200 || $status >= 300 ) {
+		return new WP_Error(
+			'anam_retry_video_failed',
+			sprintf( 'Anam avatar-video retry failed (HTTP %d): %s', $status, wp_remote_retrieve_body( $response ) )
+		);
+	}
+	return $body;
+}
+
+/**
  * Render one segment end-to-end: create the job, poll until it's done,
  * download the MP4, and record it in the manifest. Skips the whole thing
  * (returns 'cached') if the manifest already has this exact sha256 stored
@@ -393,33 +413,63 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, array $ava
 		);
 	}
 
-	$job_id     = $job['id'] ?? null;
-	$terminal   = array( 'completed', 'failed', 'cancelled' );
-	$status_now = $job['status'] ?? 'pending';
-	$attempts   = 0;
-	// Segments here run 10-40s of speech; renders have been slower than
-	// realtime in testing. 60 polls x 5s = up to 5 minutes per segment
-	// before giving up, generous on purpose — this runs offline via WP-CLI,
-	// not in a visitor-facing request.
-	while ( ! in_array( $status_now, $terminal, true ) && $attempts < 60 ) {
-		sleep( 5 );
-		++$attempts;
-		$job = ihq_aicoach_anam_get_video( $job_id );
+	$terminal     = array( 'completed', 'failed', 'cancelled' );
+	// Live-observed (2026-09-23): Anam occasionally fails a job with
+	// {"code":"session_start_failed","message":"All engines are currently at
+	// capacity...","retryable":true} — this is a real, transient provider
+	// limit, not a bad request. Retrying by re-POSTing /avatar-videos does
+	// nothing, since the Idempotency-Key is unchanged and Anam just replays
+	// the same failed job; the dedicated /retry endpoint (its own,
+	// different Idempotency-Key) is what actually starts a fresh attempt.
+	$retry_budget = 3;
+	$retry_count  = 0;
+
+	while ( true ) {
+		$job_id     = $job['id'] ?? null;
+		$status_now = $job['status'] ?? 'pending';
+		$attempts   = 0;
+		// Segments here run 10-40s of speech; renders have been slower than
+		// realtime in testing. 60 polls x 5s = up to 5 minutes per attempt
+		// before giving up, generous on purpose — this runs offline via
+		// WP-CLI, not in a visitor-facing request.
+		while ( ! in_array( $status_now, $terminal, true ) && $attempts < 60 ) {
+			sleep( 5 );
+			++$attempts;
+			$job = ihq_aicoach_anam_get_video( $job_id );
+			if ( is_wp_error( $job ) ) {
+				return array(
+					'status' => 'error',
+					'error'  => $job->get_error_message(),
+				);
+			}
+			$status_now = $job['status'] ?? 'pending';
+			$log( "  {$segment_key}: status={$status_now} ({$attempts}/60)" );
+		}
+
+		if ( 'completed' === $status_now ) {
+			break;
+		}
+
+		$retryable = 'failed' === $status_now && ! empty( $job['failure']['retryable'] );
+		if ( ! $retryable || $retry_count >= $retry_budget ) {
+			$failure_message = $job['failure']['message'] ?? '';
+			return array(
+				'status' => 'error',
+				'error'  => "render did not complete in time (last status: {$status_now})"
+					. ( $failure_message ? ": {$failure_message}" : '' ),
+			);
+		}
+
+		++$retry_count;
+		$log( "  {$segment_key}: " . ( $job['failure']['message'] ?? 'failed' ) . " — retrying ({$retry_count}/{$retry_budget})..." );
+		sleep( 10 ); // give the provider's capacity a moment before asking again
+		$job = ihq_aicoach_anam_retry_video( $job_id, "{$fingerprint}-retry-{$retry_count}" );
 		if ( is_wp_error( $job ) ) {
 			return array(
 				'status' => 'error',
 				'error'  => $job->get_error_message(),
 			);
 		}
-		$status_now = $job['status'] ?? 'pending';
-		$log( "  {$segment_key}: status={$status_now} ({$attempts}/60)" );
-	}
-
-	if ( 'completed' !== $status_now ) {
-		return array(
-			'status' => 'error',
-			'error'  => "render did not complete in time (last status: {$status_now})",
-		);
 	}
 
 	$video_url = $job['content']['url'] ?? null;
