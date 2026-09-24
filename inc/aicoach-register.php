@@ -341,6 +341,12 @@ function ihq_aicoach_handle_create_account( WP_REST_Request $request ) {
 	ihq_aicoach_sign_in_user( (int) $user_id, $country_iso );
 	set_transient( $throttle_key, 1, IHQ_AICOACH_REGISTER_THROTTLE_SECONDS );
 
+	// PO-3102 — the visitor is a real WP user now; the pre-registration progress
+	// draft (inc/aicoach-progress.php) has served its purpose.
+	if ( function_exists( 'ihq_aicoach_progress_get_ref' ) && function_exists( 'ihq_aicoach_progress_clear' ) ) {
+		ihq_aicoach_progress_clear( ihq_aicoach_progress_get_ref() );
+	}
+
 	return new WP_REST_Response(
 		array(
 			'success'     => true,

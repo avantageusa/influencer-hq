@@ -337,6 +337,55 @@ function getPrerenderedUrl( panelKey ) {
     return segmentKey ? ( cfg.prerenderedVideos || {} )[ segmentKey ] || null : null;
 }
 
+// PO-3102 — session persistence (inc/aicoach-progress.php). saveProgress() is
+// fire-and-forget as far as any caller is concerned — a failed save must never
+// block the coach flow, same best-effort treatment PERSONA_PREVIEW_URL's fetch
+// below already gets for a non-critical endpoint. loadProgress() is only ever
+// awaited once, at start, before deciding whether this is a fresh visitor or a
+// resume.
+const PROGRESS_URL = cfg.identityRestBase + '/aicoach/progress';
+
+// The backend does a read-merge-write on the saved record (inc/aicoach-
+// progress.php's ihq_aicoach_progress_save()), not a real per-field update —
+// two saveProgress() calls fired close together (e.g. identityForm's submit
+// handler saves the captured identity, then its own showPanel('comm-channels')
+// call saves the new stage a moment later) can otherwise reach the server as
+// overlapping requests and race: whichever read happens first has its write
+// clobbered by the other's merge of now-stale data, silently dropping a field
+// that was, from the caller's point of view, already saved. Chaining every
+// call onto this promise serializes them client-side — each POST only starts
+// once the previous one has settled — which is enough to eliminate the overlap
+// without needing a lock on the PHP side for what's a low-frequency, per-visitor
+// write.
+let progressSaveChain = Promise.resolve();
+
+function saveProgress( partial ) {
+    progressSaveChain = progressSaveChain.then( function () {
+        return fetch( PROGRESS_URL, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': cfg.nonce },
+            body: JSON.stringify( partial ),
+        } ).catch( function () {} );
+    } );
+}
+
+async function loadProgress() {
+    try {
+        const res = await fetch( PROGRESS_URL, {
+            credentials: 'same-origin',
+            headers: { 'X-WP-Nonce': cfg.nonce },
+        } );
+        if ( ! res.ok ) {
+            return {};
+        }
+        const data = await res.json();
+        return ( data && typeof data === 'object' ) ? data : {};
+    } catch ( error ) {
+        return {};
+    }
+}
+
 const stage = document.getElementById('aicoach-stage');
 const avatarWrap = document.getElementById('aicoach-avatar-wrap');
 const video = document.getElementById('aicoach-avatar-video');
@@ -373,6 +422,7 @@ if ( stage && avatarWrap ) {
         }
         currentLocale = locale;
         applyLocale( locale );
+        saveProgress( { language: locale } ); // PO-3102
         document.querySelectorAll( '.aicoach-lang-option' ).forEach( function ( opt ) {
             const isCurrent = opt.dataset.locale === locale;
             opt.classList.toggle( 'is-current', isCurrent );
@@ -511,6 +561,10 @@ if ( stage && avatarWrap ) {
             return Promise.resolve();
         }
 
+        // PO-3102 — every real panel transition is "current stage" for Scenario
+        // 20's continuous save, not just the 3 form-submit checkpoints.
+        saveProgress( { stage: panelKey } );
+
         hydratePanelImages( next );
 
         if ( isAnimating ) {
@@ -638,6 +692,7 @@ if ( stage && avatarWrap ) {
 
             elapsedStartedAt = Date.now();
             selectedTierMinutes = panelKey;
+            saveProgress( { tier: panelKey } ); // PO-3102
             scheduleTimeRemainingCheck( panelKey );
             const loopAlreadyExited = sequenceFinished;
             SCREENS.push( ...getEquityScreensForTier( panelKey ), ...getCompetitionScreensForTier( panelKey ) );
@@ -974,6 +1029,7 @@ if ( stage && avatarWrap ) {
                 lastName: lastNameInput.value.trim(),
                 username: usernameInput.value.trim(),
             };
+            saveProgress( { identity: capturedIdentity } ); // PO-3102
             identityContinueBtn.disabled = true;
             identityContinueBtn.textContent = cfg.i18n?.identitySaved || 'Saved';
 
@@ -1096,6 +1152,7 @@ if ( stage && avatarWrap ) {
             capturedChannels = checked.map( function ( entry ) {
                 return { channel: entry.ch.key, value: entry.parts.input.value.trim() };
             } );
+            saveProgress( { channels: capturedChannels } ); // PO-3102
             channelsContinueBtn.disabled = true;
             channelsContinueBtn.textContent = cfg.i18n?.identitySaved || 'Saved';
 
@@ -1252,8 +1309,10 @@ if ( stage && avatarWrap ) {
         return data;
     }
 
-    // Auto-start on arrival — no tap required (unlike page-portal-poc.php).
-    ( async function start() {
+    // Auto-start on arrival — no tap required (unlike page-portal-poc.php), for a
+    // fresh visitor. A returning visitor with saved progress (PO-3102) skips this
+    // entirely — see init() below, which decides whether to call start() at all.
+    async function start() {
         avatarWrap.dataset.status = 'connecting';
         try {
             const gary = await openGarySession( currentLocale );
@@ -1346,5 +1405,148 @@ if ( stage && avatarWrap ) {
             }
             runFallback();
         }
+    }
+
+    // PO-3102 — resume-on-load helpers. Each applies one piece of saved progress
+    // to the same state a normal first-time flow would have set by the point the
+    // visitor reaches that stage, so everything downstream (identity/channels
+    // submit, final-continue) behaves exactly as if they'd just done it this visit.
+
+    function applyResumedTier( tierMinutes ) {
+        selectedTierMinutes = tierMinutes;
+        tierConfirmed = true;
+        elapsedStartedAt = Date.now();
+        scheduleTimeRemainingCheck( tierMinutes );
+        SCREENS.push( ...getEquityScreensForTier( tierMinutes ), ...getCompetitionScreensForTier( tierMinutes ) );
+        tiers.forEach( function ( tier ) {
+            const input = tier.querySelector( '.aicoach-tier-check' );
+            if ( input && input.getAttribute( 'data-panel' ) === tierMinutes ) {
+                input.checked = true;
+            }
+        } );
+        syncSelected();
+    }
+
+    function applyResumedIdentity( identity ) {
+        capturedIdentity = identity;
+        if ( firstNameInput ) {
+            firstNameInput.value = identity.firstName || '';
+        }
+        if ( lastNameInput ) {
+            lastNameInput.value = identity.lastName || '';
+        }
+        if ( usernameInput ) {
+            usernameInput.value = identity.username || '';
+        }
+        updateIdentityContinueState();
+        if ( identityContinueBtn && identityFieldsFilled() ) {
+            identityContinueBtn.disabled = true;
+            identityContinueBtn.textContent = cfg.i18n?.identitySaved || 'Saved';
+        }
+    }
+
+    function applyResumedChannels( channels ) {
+        capturedChannels = channels;
+        channels.forEach( function ( entry ) {
+            const { checkbox, field, input } = getChannelParts( entry.channel );
+            if ( ! checkbox || ! field || ! input ) {
+                return;
+            }
+            checkbox.checked = true;
+            field.hidden = false;
+            input.value = entry.value;
+        } );
+        updateChannelsContinueState();
+        if ( channelsContinueBtn && channels.length > 0 ) {
+            channelsContinueBtn.disabled = true;
+            channelsContinueBtn.textContent = cfg.i18n?.identitySaved || 'Saved';
+        }
+    }
+
+    // The dynamic SCREENS panel keys in the exact order a fresh flow reaches them
+    // for a given tier (or with no tier picked yet) — used to find a saved
+    // 'stage's resume index without replaying whatever came before it (Scenario
+    // 21). Mirrors exactly what the tier-click handler pushes onto SCREENS.
+    function dynamicPanelSequence( tierMinutes ) {
+        const tierScreens = tierMinutes
+            ? [ ...getEquityScreensForTier( tierMinutes ), ...getCompetitionScreensForTier( tierMinutes ) ].map( function ( s ) { return s.panel; } )
+            : [];
+        return [ 'intro', 'believe-1', 'believe-2', 'home' ].concat( tierScreens );
+    }
+
+    // Panels reached only after the dynamic SCREENS sequence ends — plain
+    // showPanel() destinations, not part of SCREENS (see finishSequence()).
+    const POST_SEQUENCE_PANELS = [ 'identity', 'comm-channels', 'final-continue' ];
+
+    ( async function init() {
+        const progress = await loadProgress();
+
+        // FR-12/13's priority order, already anticipated in detectInitialLocale()'s
+        // own comment: saved preference → browser locale → English. currentLocale
+        // was already set to the browser/English guess above; selectLocale() (not
+        // a bare applyLocale() call) also syncs the language dropdown's own
+        // is-current marker — skipping it would leave the dropdown showing the
+        // browser-guessed language as "current" while the page's actual text and
+        // avatar locale are the resumed one. Its own no-op guard (locale ===
+        // currentLocale) only short-circuits when the two already agree, which is
+        // harmless — the dropdown already matches in that case.
+        if ( progress.language ) {
+            selectLocale( progress.language );
+        }
+
+        if ( progress.tier ) {
+            applyResumedTier( progress.tier );
+        }
+        if ( progress.identity && ( progress.identity.firstName || progress.identity.lastName || progress.identity.username ) ) {
+            applyResumedIdentity( progress.identity );
+        }
+        if ( progress.channels && progress.channels.length ) {
+            applyResumedChannels( progress.channels );
+        }
+
+        const stageKey = progress.stage;
+        if ( ! stageKey || stageKey === 'intro' ) {
+            // Fresh visitor, or never got past the live intro last time — there's
+            // no meaningful place to resume "into" (the intro itself is live,
+            // real-time content, not something worth resuming mid-sentence), so
+            // this is a normal start.
+            start();
+            return;
+        }
+
+        if ( POST_SEQUENCE_PANELS.indexOf( stageKey ) !== -1 ) {
+            // Mark the dynamic SCREENS queue as fully consumed so a LATER resume
+            // of runFallback() — identity/channels submit's own "loop already
+            // exited" pattern, e.g. if the visitor still needs to submit channels
+            // from here — only plays newly queued screens (comm-channels/
+            // final-continue) instead of replaying the whole sequence from index 0.
+            sequenceIndex = SCREENS.length;
+            if ( stageKey !== 'identity' ) {
+                // Matches what a real identity-form submit already set to reach
+                // this far, so finishSequence() (once FINAL_SCREEN finishes)
+                // doesn't bounce back to the identity panel.
+                sequenceEndDestination = null;
+            }
+            sequenceFinished = true;
+            showPanel( stageKey );
+            return;
+        }
+
+        const order = dynamicPanelSequence( progress.tier );
+        const idx = order.indexOf( stageKey );
+        if ( idx === -1 ) {
+            // Unrecognized saved stage (e.g. a panel key from an older build) —
+            // don't get stuck on it, fall back to a normal fresh start.
+            start();
+            return;
+        }
+
+        // No approved copy exists yet for "this is a continuation" dialogue
+        // (Scenario 21) — silent resume for v1: no live Gary session, straight to
+        // the exact stage with whatever that panel already shows. runFallback()'s
+        // own loop (unchanged) shows + plays sequenceIndex onward, so screens
+        // before this one are never replayed.
+        sequenceIndex = idx;
+        runFallback( false );
     }() );
 }
