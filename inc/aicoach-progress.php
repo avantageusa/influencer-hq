@@ -225,6 +225,31 @@ function ihq_aicoach_progress_sanitize_partial( array $params ) {
  * one (set_transient() always restarts the TTL), which is exactly the level of
  * sophistication that file already uses for the same kind of unauthenticated-write abuse.
  *
+ * Two known, deliberately-not-fixed-here limitations (CodeRabbit review, PR #49):
+ *
+ * 1. ihq_get_client_ip_for_rate_limit() (inc/email-verification-handler.php) trusts
+ *    X-Forwarded-For/CF-Connecting-IP without a configured trusted-proxy check, so a
+ *    request that reaches PHP directly (bypassing Cloudflare) could vary its own IP per
+ *    request and get a fresh counter every time. This is the SAME shared helper this
+ *    repo's registration throttle and login-code lockout already rely on — hardening it
+ *    only here would be cosmetic while leaving those two exactly as exposed, and fixing
+ *    it properly needs knowing this host's actual trusted-proxy topology (does WP Engine's
+ *    edge only accept Cloudflare origin traffic here?), which isn't something to guess at
+ *    for a security-relevant change. A shared-helper fix, if warranted, is a separate,
+ *    cross-cutting piece of work, not a PO-3102-scoped one.
+ * 2. This check-then-set is not atomic — concurrent requests from the same IP can read
+ *    the same count and both pass, allowing bounded overshoot under a real concurrent
+ *    burst. The registration throttle and login lockout use the identical non-atomic
+ *    transient pattern (this repo does have an atomic INSERT...ON DUPLICATE KEY UPDATE
+ *    counter elsewhere, ihq_login_verify_increment_failures(), if a hard cap is ever
+ *    needed here). This limiter's job is bounding a sustained flood to a low rate, not
+ *    guaranteeing an exact count — a soft cap is enough for that and matches this
+ *    codebase's existing convention for the same class of problem.
+ *
+ * Neither weakens what this specific rate limit is actually for: the empty-partial guard
+ * and the sanitizer's length/count caps (both applied regardless of this check) already
+ * bound how much a single request — spoofed IP or not — can write.
+ *
  * @return bool True if this IP has already hit the write cap for the current window.
  */
 function ihq_aicoach_progress_rate_limited() {
