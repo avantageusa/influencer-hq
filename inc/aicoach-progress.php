@@ -199,13 +199,34 @@ function ihq_aicoach_progress_permission_check( WP_REST_Request $request ) {
 }
 
 /**
+ * Mark a response as never cacheable by any layer between the visitor and
+ * this server. Every visitor's progress record is identified only by an
+ * HttpOnly cookie, not by anything in the URL or a per-visitor nonce (a
+ * logged-out wp_rest nonce is the same value for every anonymous visitor,
+ * so it can't be relied on to vary a cache key either) — a CDN that caches
+ * this response by URL alone would hand one visitor's saved identity/
+ * channels/tier to whichever other visitor's request happens to land on
+ * the same cached entry. Confirmed as a real, not theoretical, risk on
+ * this exact site (review feedback, PR #49): this page's own
+ * persona-preview GET is already served from Cloudflare's cache across
+ * visitors for 10 minutes on influencerhq.co.
+ *
+ * @param WP_REST_Response $response
+ * @return WP_REST_Response The same response, for chaining.
+ */
+function ihq_aicoach_progress_no_store( WP_REST_Response $response ) {
+	$response->header( 'Cache-Control', 'no-store, private' );
+	return $response;
+}
+
+/**
  * GET /ihq/v1/aicoach/progress
  *
  * @return WP_REST_Response
  */
 function ihq_aicoach_progress_handle_get() {
 	$ref = ihq_aicoach_progress_get_ref();
-	return new WP_REST_Response( ihq_aicoach_progress_load( $ref ), 200 );
+	return ihq_aicoach_progress_no_store( new WP_REST_Response( ihq_aicoach_progress_load( $ref ), 200 ) );
 }
 
 /**
@@ -224,7 +245,7 @@ function ihq_aicoach_progress_handle_post( WP_REST_Request $request ) {
 	$partial = ihq_aicoach_progress_sanitize_partial( $params );
 	$saved   = ihq_aicoach_progress_save( $ref, $partial );
 
-	return new WP_REST_Response( $saved, 200 );
+	return ihq_aicoach_progress_no_store( new WP_REST_Response( $saved, 200 ) );
 }
 
 /**
