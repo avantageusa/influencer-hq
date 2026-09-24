@@ -7,10 +7,11 @@ overview: >
   capped at 30 days anyway) or this repo's actual Luna integration (inc/luna-users-rest.php
   is a one-way COMPLETED-registration export Gary's team pulls, authenticated as WP user
   "gary" — nothing about in-progress state). This ticket needs its own persistence layer:
-  a stable pseudonymous visitor ref (cookie, replacing today's fresh-UUID-per-session),
-  our own storage (wp_options, this theme has no custom DB tables anywhere and this doesn't
-  need one), and a resume-on-load path through js/aicoach-coach-flow.js's panel/SCREENS
-  state machine.
+  a stable pseudonymous visitor ref (cookie, used only to key our own local progress
+  record — Gary's own player.ref, sent with every Coach API call, stays exactly what it
+  was: a fresh per-session UUID, never this cookie's value), our own storage (wp_options,
+  this theme has no custom DB tables anywhere and this doesn't need one), and a
+  resume-on-load path through js/aicoach-coach-flow.js's panel/SCREENS state machine.
 todos:
   - id: scope-decisions
     content: "Two open questions resolved with the user before implementation: (1) Scenario
@@ -24,8 +25,9 @@ todos:
     status: completed
   - id: backend-storage
     content: "New inc/aicoach-progress.php: a stable ihq_aicoach_ref cookie (UUID, HttpOnly,
-      2-year expiry, generated on first read if absent) replaces opening every registration
-      session with a fresh throwaway ref. Storage is wp_options keyed
+      2-year expiry, generated on first read if absent) identifies the visitor's local
+      progress record only; player.ref sent to Gary remains a fresh per-session UUID. Storage
+      is wp_options keyed
       ihq_aicoach_progress_{ref}, autoload=no — this theme has zero custom DB tables
       anywhere (checked), and a single per-visitor JSON blob with no querying/reporting need
       doesn't justify being the first. GET/POST /ihq/v1/aicoach/progress (nonce-protected,

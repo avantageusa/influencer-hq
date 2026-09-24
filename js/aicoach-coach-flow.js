@@ -1191,6 +1191,13 @@ if ( stage && avatarWrap ) {
         }
 
         try {
+            // PO-3102 — every prior showPanel()/identity/channels save is chained
+            // onto this same promise. Without waiting for it here, a still-in-flight
+            // save (e.g. this very panel's own "stage: final-continue" save, fired
+            // moments ago) could reach the server AFTER account creation already
+            // cleared the progress record, recreating an orphaned row for a visitor
+            // who's already a real WP user and will never return to this flow.
+            await progressSaveChain;
             const captured = capturedIdentity || {};
             const data = await window.ihqCoachEvents.register( {
                 firstName: captured.firstName,
