@@ -1274,7 +1274,7 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
 
                         <?php
                         $hq_current_url = get_user_meta( $user->ID, 'hq_game_url', true );
-                        $hq_default_url = 'https://qc-game-portal-client-tf-b2c.dev.ae.games/av-baccarat';
+                        $hq_default_url = ihq_env_require_url( 'IHQ_GAME_PORTAL_BASE_URL' );
                         ?>
                         <form method="post" action="" class="hq-game-url-form">
                             <?php wp_nonce_field( 'hq_game_url_save' ); ?>
