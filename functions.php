@@ -446,6 +446,13 @@ require_once get_template_directory() . '/inc/gary-proxy.php';
 require_once get_template_directory() . '/inc/aicoach-prerender.php';
 
 /**
+ * AI Coach registration progress persistence (PO-3102) — must load before
+ * inc/aicoach-register.php, which clears a visitor's progress record on
+ * successful account creation.
+ */
+require_once get_template_directory() . '/inc/aicoach-progress.php';
+
+/**
  * AI Coach uninterrupted registration event (PO-3257).
  */
 require_once get_template_directory() . '/inc/aicoach-register.php';
