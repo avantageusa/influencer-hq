@@ -356,6 +356,41 @@ get_template_part( 'template-parts/portal-styles' );
     flex-shrink: 0;
     margin-left: 8px;
 }
+#portal-content .ihq-video-preview {
+    position: relative;
+    margin: 4px 20px 8px;
+    border: 1px solid #b8972f;
+    border-radius: 10px;
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+    background: #111;
+}
+#portal-content .ihq-video-preview iframe,
+#portal-content .ihq-video-preview video {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+    background: #111;
+}
+#portal-content .ihq-video-play {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    border: 0;
+    background: rgba(0, 0, 0, 0.45);
+    color: #b8972f;
+    font-family: 'Be Vietnam Pro', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 #portal-content .ihq-video-item-actions {
     display: flex;
     gap: 10px;
@@ -883,6 +918,22 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                         <input type="hidden" name="ihq_video_id" value="<?php echo esc_attr( $submission['id'] ); ?>">
                         <div class="sett-card sett-gameplay-promo-card">
                             <p class="ihq-video-item-label"><?php echo esc_html( sprintf( /* translators: %d: slot number */ __( 'Video %d of %d', 'influencer-hq' ), $index + 1, ihq_video_submission_max() ) ); ?></p>
+                            <?php
+                            $video_preview = function_exists( 'ihq_video_preview_source' )
+                                ? ihq_video_preview_source( $submission['url'] )
+                                : array( 'kind' => '', 'src' => '' );
+                            if ( $video_preview['src'] !== '' ) :
+                                ?>
+                            <div class="ihq-video-preview">
+                                <?php if ( $video_preview['kind'] === 'file' ) : ?>
+                                    <video controls playsinline preload="metadata" src="<?php echo esc_url( $video_preview['src'] ); ?>"></video>
+                                <?php elseif ( $video_preview['kind'] === 'embed' ) : ?>
+                                    <button type="button" class="ihq-video-play" data-ihq-video-play data-src="<?php echo esc_url( $video_preview['src'] ); ?>"><?php esc_html_e( 'Play video', 'influencer-hq' ); ?></button>
+                                <?php else : ?>
+                                    <a class="ihq-video-play" href="<?php echo esc_url( $video_preview['src'] ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Play video', 'influencer-hq' ); ?></a>
+                                <?php endif; ?>
+                            </div>
+                            <?php endif; ?>
                             <div class="sett-row sett-gameplay-promo-row">
                                 <label class="sett-row-lbl" for="ihq-video-subject-<?php echo esc_attr( $submission['id'] ); ?>"><?php esc_html_e( 'Subject', 'influencer-hq' ); ?></label>
                                 <div class="sett-row-val sett-gameplay-promo-input-wrap">
@@ -1954,6 +2005,23 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                 }
             });
         }
+    });
+
+    document.querySelectorAll('[data-ihq-video-play]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+            var src = btn.getAttribute('data-src') || '';
+            var wrap = btn.parentNode;
+            if (!src || !wrap) {
+                return;
+            }
+            var frame = document.createElement('iframe');
+            frame.className = 'sett-gameplay-embed';
+            frame.setAttribute('title', <?php echo wp_json_encode( __( 'Video preview', 'influencer-hq' ) ); ?>);
+            frame.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
+            frame.setAttribute('allowfullscreen', '');
+            frame.src = src + (src.indexOf('?') === -1 ? '?' : '&') + 'autoplay=1';
+            wrap.replaceChild(frame, btn);
+        });
     });
 
     document.querySelectorAll('[data-ihq-video-remove]').forEach(function(btn){

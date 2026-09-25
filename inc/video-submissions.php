@@ -141,3 +141,80 @@ function ihq_save_video_submissions( $user_id, $items ) {
 	$first_url = isset( $clean[0]['url'] ) ? $clean[0]['url'] : '';
 	update_user_meta( $user_id, '_ihq_gameplay_video_url', $first_url );
 }
+
+/**
+ * Playable preview for a saved link.
+ *
+ * kind embed: iframe src we build (YouTube, Vimeo).
+ * kind file: direct media URL for a video element.
+ * kind link: any other http(s) URL; play opens that page.
+ *
+ * @param string $url Saved video link.
+ * @return array{kind: string, src: string}
+ */
+function ihq_video_preview_source( $url ) {
+	$url = ihq_sanitize_http_media_url( $url );
+	if ( $url === '' ) {
+		return array(
+			'kind' => '',
+			'src'  => '',
+		);
+	}
+
+	$parts = wp_parse_url( $url );
+	$host  = isset( $parts['host'] ) ? strtolower( (string) $parts['host'] ) : '';
+	$host  = preg_replace( '/^www\./', '', $host );
+	$path  = isset( $parts['path'] ) ? (string) $parts['path'] : '';
+
+	if ( $host === 'youtu.be' ) {
+		$id = strtok( trim( $path, '/' ), '/' );
+		if ( is_string( $id ) && preg_match( '/^[A-Za-z0-9_-]{11}$/', $id ) ) {
+			return array(
+				'kind' => 'embed',
+				'src'  => 'https://www.youtube-nocookie.com/embed/' . $id,
+			);
+		}
+	}
+
+	if ( $host === 'youtube.com' || $host === 'm.youtube.com' || $host === 'music.youtube.com' ) {
+		$id = '';
+		if ( preg_match( '#/(?:embed|shorts|live)/([A-Za-z0-9_-]{11})#', $path, $match ) ) {
+			$id = $match[1];
+		} else {
+			$query = array();
+			if ( isset( $parts['query'] ) ) {
+				parse_str( (string) $parts['query'], $query );
+			}
+			if ( isset( $query['v'] ) && is_string( $query['v'] ) && preg_match( '/^[A-Za-z0-9_-]{11}$/', $query['v'] ) ) {
+				$id = $query['v'];
+			}
+		}
+		if ( $id !== '' ) {
+			return array(
+				'kind' => 'embed',
+				'src'  => 'https://www.youtube-nocookie.com/embed/' . $id,
+			);
+		}
+	}
+
+	if ( $host === 'vimeo.com' || $host === 'player.vimeo.com' ) {
+		if ( preg_match( '#/(\d+)#', $path, $match ) ) {
+			return array(
+				'kind' => 'embed',
+				'src'  => 'https://player.vimeo.com/video/' . $match[1],
+			);
+		}
+	}
+
+	if ( preg_match( '/\.(mp4|webm|ogg)(?:$|\?)/i', $url ) ) {
+		return array(
+			'kind' => 'file',
+			'src'  => $url,
+		);
+	}
+
+	return array(
+		'kind' => 'link',
+		'src'  => $url,
+	);
+}
