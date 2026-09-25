@@ -150,14 +150,15 @@ function ihq_save_video_submissions( $user_id, $items ) {
  * kind link: any other http(s) URL; play opens that page.
  *
  * @param string $url Saved video link.
- * @return array{kind: string, src: string}
+ * @return array{kind: string, src: string, poster: string}
  */
 function ihq_video_preview_source( $url ) {
 	$url = ihq_sanitize_http_media_url( $url );
 	if ( $url === '' ) {
 		return array(
-			'kind' => '',
-			'src'  => '',
+			'kind'   => '',
+			'src'    => '',
+			'poster' => '',
 		);
 	}
 
@@ -170,8 +171,9 @@ function ihq_video_preview_source( $url ) {
 		$id = strtok( trim( $path, '/' ), '/' );
 		if ( is_string( $id ) && preg_match( '/^[A-Za-z0-9_-]{11}$/', $id ) ) {
 			return array(
-				'kind' => 'embed',
-				'src'  => 'https://www.youtube-nocookie.com/embed/' . $id,
+				'kind'   => 'embed',
+				'src'    => 'https://www.youtube-nocookie.com/embed/' . $id,
+				'poster' => 'https://i.ytimg.com/vi/' . $id . '/hqdefault.jpg',
 			);
 		}
 	}
@@ -191,8 +193,9 @@ function ihq_video_preview_source( $url ) {
 		}
 		if ( $id !== '' ) {
 			return array(
-				'kind' => 'embed',
-				'src'  => 'https://www.youtube-nocookie.com/embed/' . $id,
+				'kind'   => 'embed',
+				'src'    => 'https://www.youtube-nocookie.com/embed/' . $id,
+				'poster' => 'https://i.ytimg.com/vi/' . $id . '/hqdefault.jpg',
 			);
 		}
 	}
@@ -200,21 +203,58 @@ function ihq_video_preview_source( $url ) {
 	if ( $host === 'vimeo.com' || $host === 'player.vimeo.com' ) {
 		if ( preg_match( '#/(\d+)#', $path, $match ) ) {
 			return array(
-				'kind' => 'embed',
-				'src'  => 'https://player.vimeo.com/video/' . $match[1],
+				'kind'   => 'embed',
+				'src'    => 'https://player.vimeo.com/video/' . $match[1],
+				'poster' => ihq_vimeo_poster_url( $match[1] ),
 			);
 		}
 	}
 
 	if ( preg_match( '/\.(mp4|webm|ogg)(?:$|\?)/i', $url ) ) {
 		return array(
-			'kind' => 'file',
-			'src'  => $url,
+			'kind'   => 'file',
+			'src'    => $url,
+			'poster' => '',
 		);
 	}
 
 	return array(
-		'kind' => 'link',
-		'src'  => $url,
+		'kind'   => 'link',
+		'src'    => $url,
+		'poster' => '',
 	);
+}
+
+/**
+ * Vimeo does not publish a public thumbnail URL from the video id alone.
+ *
+ * @param string $video_id Numeric Vimeo id.
+ * @return string
+ */
+function ihq_vimeo_poster_url( $video_id ) {
+	$video_id = (string) $video_id;
+	if ( ! preg_match( '/^\d+$/', $video_id ) ) {
+		return '';
+	}
+
+	$cache_key = 'ihq_vimeo_poster_' . $video_id;
+	$cached    = get_transient( $cache_key );
+	if ( is_string( $cached ) ) {
+		return $cached;
+	}
+
+	$response = wp_remote_get(
+		'https://vimeo.com/api/oembed.json?url=' . rawurlencode( 'https://vimeo.com/' . $video_id ),
+		array( 'timeout' => 3 )
+	);
+	$poster = '';
+	if ( ! is_wp_error( $response ) ) {
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( is_array( $body ) && ! empty( $body['thumbnail_url'] ) && is_string( $body['thumbnail_url'] ) ) {
+			$poster = esc_url_raw( $body['thumbnail_url'] );
+		}
+	}
+
+	set_transient( $cache_key, $poster, DAY_IN_SECONDS );
+	return $poster;
 }

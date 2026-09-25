@@ -366,12 +366,18 @@ get_template_part( 'template-parts/portal-styles' );
     background: #111;
 }
 #portal-content .ihq-video-preview iframe,
-#portal-content .ihq-video-preview video {
+#portal-content .ihq-video-preview video,
+#portal-content .ihq-video-poster {
     width: 100%;
     height: 100%;
     border: 0;
     display: block;
     background: #111;
+    object-fit: cover;
+}
+#portal-content .ihq-video-poster {
+    position: absolute;
+    inset: 0;
 }
 #portal-content .ihq-video-play {
     position: absolute;
@@ -928,6 +934,9 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                                 <?php if ( $video_preview['kind'] === 'file' ) : ?>
                                     <video controls playsinline preload="metadata" src="<?php echo esc_url( $video_preview['src'] ); ?>"></video>
                                 <?php elseif ( $video_preview['kind'] === 'embed' ) : ?>
+                                    <?php if ( $video_preview['poster'] !== '' ) : ?>
+                                        <img class="ihq-video-poster" src="<?php echo esc_url( $video_preview['poster'] ); ?>" alt="">
+                                    <?php endif; ?>
                                     <button type="button" class="ihq-video-play" data-ihq-video-play data-src="<?php echo esc_url( $video_preview['src'] ); ?>"><?php esc_html_e( 'Play video', 'influencer-hq' ); ?></button>
                                 <?php else : ?>
                                     <a class="ihq-video-play" href="<?php echo esc_url( $video_preview['src'] ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Play video', 'influencer-hq' ); ?></a>
