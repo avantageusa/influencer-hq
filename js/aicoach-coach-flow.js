@@ -332,9 +332,20 @@ const PRERENDERED_PANEL_MAP = {
     'equity-bts': 'bts',
 };
 
-function getPrerenderedUrl( panelKey ) {
+// FR-16 — single avatar/voice for every language (confirmed with product,
+// 2026-09-25), so the only thing that changes per language is which clip
+// plays. cfg.prerenderedVideos is now segment_key -> language -> url
+// (inc/aicoach-prerender.php's ihq_aicoach_prerender_get_urls()); a language
+// with no clip yet for this segment falls back to English, same "missing
+// just means not ready" degrade this feature has always had — never no clip
+// at all if English exists.
+function getPrerenderedUrl( panelKey, locale ) {
     const segmentKey = PRERENDERED_PANEL_MAP[ panelKey ];
-    return segmentKey ? ( cfg.prerenderedVideos || {} )[ segmentKey ] || null : null;
+    if ( ! segmentKey ) {
+        return null;
+    }
+    const perLanguage = ( cfg.prerenderedVideos || {} )[ segmentKey ] || {};
+    return perLanguage[ locale ] || perLanguage.en || null;
 }
 
 // PO-3102 — session persistence (inc/aicoach-progress.php). saveProgress() is
@@ -854,7 +865,7 @@ if ( stage && avatarWrap ) {
             // PO-3062 — an approved segment with a pre-rendered clip plays it
             // (real voice + lip-sync, dwell = the clip's own length); every
             // other screen keeps the original caption-only fixed dwell.
-            const clipUrl = getPrerenderedUrl( screen.panel );
+            const clipUrl = getPrerenderedUrl( screen.panel, currentLocale );
             if ( clipUrl ) {
                 // Wait for this exact panel to actually be the active one —
                 // not just a fixed FADE_MS guess, which breaks if showPanel()

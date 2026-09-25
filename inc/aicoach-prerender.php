@@ -124,14 +124,46 @@ function ihq_aicoach_prerender_save_manifest( array $manifest ) {
 }
 
 /**
- * Segment key -> public clip URL, for whatever has actually been rendered
- * and downloaded so far. Missing keys simply have no clip yet — the caller
- * falls back to the static caption, same as before this feature existed.
+ * PO-3062's original manifest was keyed by segment_key alone (English only).
+ * FR-16 (single avatar/voice, one clip per segment PER LANGUAGE — confirmed
+ * with product 2026-09-25: not a different avatar per language, just this
+ * same one speaking each language's translated script) needs a second axis.
+ * Rather than reshape the manifest into a nested structure (touching every
+ * existing reader) or renaming already-rendered/deployed English entries
+ * (forcing a pointless re-render), English keeps using the bare segment_key
+ * exactly as before; only non-English languages get a suffixed key/filename.
+ * A manifest written before this change is still valid — every entry in it
+ * is implicitly 'en'.
+ *
+ * @param string $segment_key
+ * @param string $language BCP-47-ish code, e.g. 'ja'. 'en' is the default/
+ *                          original language and never suffixed.
+ * @return string
+ */
+function ihq_aicoach_prerender_manifest_key( $segment_key, $language = 'en' ) {
+	return 'en' === $language ? $segment_key : "{$segment_key}__{$language}";
+}
+
+/**
+ * @param string $segment_key
+ * @param string $language
+ * @return string Filename only, no directory.
+ */
+function ihq_aicoach_prerender_file_name( $segment_key, $language = 'en' ) {
+	return 'en' === $language ? "{$segment_key}.mp4" : "{$segment_key}-{$language}.mp4";
+}
+
+/**
+ * Segment key -> language -> public clip URL, for whatever has actually been
+ * rendered and downloaded so far. A segment/language combination with
+ * nothing rendered simply has no entry — the caller falls back (English clip,
+ * then the static caption), same "missing just means not ready yet" as
+ * before this feature existed.
  *
  * Every URL carries a ?v={fingerprint} cache-buster. The filename itself
- * never changes (always "{segment_key}.mp4"), and re-rendering overwrites
- * it in place — confirmed live (2026-09-23) that Cloudflare's edge cache
- * (public, max-age=31536000 on this upload path) happily keeps serving the
+ * never changes per segment+language, and re-rendering overwrites it in
+ * place — confirmed live (2026-09-23) that Cloudflare's edge cache (public,
+ * max-age=31536000 on this upload path) happily keeps serving the
  * pre-re-render bytes under that unchanged URL for a full year otherwise, a
  * new script or a new avatar/voice from Gary is invisible to visitors no
  * matter how successfully it re-rendered server-side. The fingerprint
@@ -139,19 +171,35 @@ function ihq_aicoach_prerender_save_manifest( array $manifest ) {
  * re-render happens at all), so reusing it here makes each real content
  * change a genuinely new URL instead of fighting the CDN's cache lifetime.
  *
- * @return array<string,string>
+ * @return array<string,array<string,string>>
  */
 function ihq_aicoach_prerender_get_urls() {
 	$manifest = ihq_aicoach_prerender_load_manifest();
 	$urls     = array();
-	foreach ( $manifest as $segment_key => $entry ) {
-		if ( ! empty( $entry['file'] ) && file_exists( ihq_aicoach_prerender_dir() . '/' . $entry['file'] ) ) {
-			$url = ihq_aicoach_prerender_url_base() . '/' . rawurlencode( $entry['file'] );
-			if ( ! empty( $entry['fingerprint'] ) ) {
-				$url = add_query_arg( 'v', substr( $entry['fingerprint'], 0, 12 ), $url );
-			}
-			$urls[ $segment_key ] = $url;
+	foreach ( $manifest as $manifest_key => $entry ) {
+		if ( empty( $entry['file'] ) || ! file_exists( ihq_aicoach_prerender_dir() . '/' . $entry['file'] ) ) {
+			continue;
 		}
+		// Manifest keys with no "__" are English (see
+		// ihq_aicoach_prerender_manifest_key()); anything else splits into
+		// segment_key + language on the LAST "__", so a segment_key that
+		// itself never contains "__" (true of every real Gary segment key)
+		// round-trips unambiguously.
+		if ( false === strpos( $manifest_key, '__' ) ) {
+			$segment_key = $manifest_key;
+			$language    = 'en';
+		} else {
+			list( $segment_key, $language ) = explode( '__', $manifest_key, 2 );
+		}
+
+		$url = ihq_aicoach_prerender_url_base() . '/' . rawurlencode( $entry['file'] );
+		if ( ! empty( $entry['fingerprint'] ) ) {
+			$url = add_query_arg( 'v', substr( $entry['fingerprint'], 0, 12 ), $url );
+		}
+		if ( ! isset( $urls[ $segment_key ] ) ) {
+			$urls[ $segment_key ] = array();
+		}
+		$urls[ $segment_key ][ $language ] = $url;
 	}
 	return $urls;
 }
@@ -226,31 +274,43 @@ function ihq_aicoach_coach_get_video( $job_id ) {
  * has this exact sha256 stored and the file is still on disk.
  *
  * @param string        $segment_key Gary's segment key, e.g. "we_believe_1".
- * @param string        $text        Exact approved script text.
- * @param string        $sha256      Gary's sha256 for this exact text —
- *                                    used for both the cache check and the
- *                                    Coach API Idempotency-Key.
+ * @param string        $text        Exact approved script text, in $language.
+ * @param string        $sha256      For English, Gary's own sha256 for this exact
+ *                                    text. For any other language there's no Gary
+ *                                    manifest to carry one, so the caller hashes the
+ *                                    translated text itself — either way this is
+ *                                    used for both the cache check and the Coach
+ *                                    API Idempotency-Key.
+ * @param string        $language    BCP-47-ish code, e.g. 'ja'. Defaults to 'en'.
  * @param callable|null $log         Optional fn(string $line) for CLI progress output.
  * @return array{status:string, url?:string, error?:string, job_id?:string}
  */
-function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $log = null ) {
+function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $language = 'en', $log = null ) {
 	$log = $log ?: function ( $line ) {};
 
+	$manifest_key = ihq_aicoach_prerender_manifest_key( $segment_key, $language );
+	$file_name    = ihq_aicoach_prerender_file_name( $segment_key, $language );
+
 	$manifest = ihq_aicoach_prerender_load_manifest();
-	$existing = $manifest[ $segment_key ] ?? null;
+	$existing = $manifest[ $manifest_key ] ?? null;
 	if ( $existing && ( $existing['fingerprint'] ?? '' ) === $sha256 && file_exists( ihq_aicoach_prerender_dir() . '/' . $existing['file'] ) ) {
-		$log( "  {$segment_key}: already rendered for this script, skipping" );
+		$log( "  {$manifest_key}: already rendered for this script, skipping" );
 		return array( 'status' => 'cached' );
 	}
 
 	// Human-readable + deterministic, matching Gary's own example format
 	// (email, 2026-09-23: "Idempotency-Key: ihq-seg-magic-johnson-v1"). Stable
 	// per exact script text, so re-running this after Gary approves new copy
-	// only touches segments whose sha256 actually changed.
-	$idempotency_key = 'ihq-seg-' . $segment_key . '-' . substr( $sha256, 0, 16 );
+	// (or a translation changes) only touches segment+language combinations
+	// whose sha256 actually changed. 'en' keeps the original key shape
+	// unchanged (no language suffix) so already-rendered English clips are
+	// never orphaned/re-rendered by this change.
+	$idempotency_key = 'en' === $language
+		? 'ihq-seg-' . $segment_key . '-' . substr( $sha256, 0, 16 )
+		: 'ihq-seg-' . $segment_key . '-' . $language . '-' . substr( $sha256, 0, 16 );
 
-	$log( "  {$segment_key}: creating (or resuming) render job..." );
-	$job = ihq_aicoach_coach_create_video( $text, $idempotency_key, $segment_key );
+	$log( "  {$manifest_key}: creating (or resuming) render job..." );
+	$job = ihq_aicoach_coach_create_video( $text, $idempotency_key, $manifest_key );
 	if ( is_wp_error( $job ) ) {
 		return array(
 			'status' => 'error',
@@ -291,7 +351,7 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $log = nul
 		}
 		$status_now     = $job['status'] ?? 'queued';
 		$waiting_reason = $job['waiting_reason'] ?? null;
-		$log( "  {$segment_key}: status={$status_now}" . ( $waiting_reason ? " ({$waiting_reason})" : '' ) . " ({$attempts}/{$max_attempts})" );
+		$log( "  {$manifest_key}: status={$status_now}" . ( $waiting_reason ? " ({$waiting_reason})" : '' ) . " ({$attempts}/{$max_attempts})" );
 	}
 
 	if ( 'failed' === $status_now ) {
@@ -309,7 +369,7 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $log = nul
 	}
 
 	if ( 'ready' !== $status_now ) {
-		$log( "  {$segment_key}: still {$status_now} after {$max_attempts} polls — job continues server-side, re-run later to pick it back up" );
+		$log( "  {$manifest_key}: still {$status_now} after {$max_attempts} polls — job continues server-side, re-run later to pick it back up" );
 		return array(
 			'status' => 'pending',
 			'error'  => "render still in progress (status: {$status_now})",
@@ -326,8 +386,8 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $log = nul
 		);
 	}
 
-	$log( "  {$segment_key}: downloading..." );
-	$dest_file = ihq_aicoach_prerender_dir() . "/{$segment_key}.mp4";
+	$log( "  {$manifest_key}: downloading..." );
+	$dest_file = ihq_aicoach_prerender_dir() . "/{$file_name}";
 	// A sha256 change now routinely forces a re-render of a segment that
 	// already has a perfectly good clip serving live visitors. Streaming
 	// straight into $dest_file would truncate that valid file the moment the
@@ -394,16 +454,16 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $log = nul
 		);
 	}
 
-	$manifest[ $segment_key ] = array(
+	$manifest[ $manifest_key ] = array(
 		'fingerprint' => $sha256,
-		'file'        => "{$segment_key}.mp4",
+		'file'        => $file_name,
 		'rendered_at' => gmdate( 'c' ),
 	);
 	ihq_aicoach_prerender_save_manifest( $manifest );
 
 	return array(
 		'status' => 'rendered',
-		'url'    => ihq_aicoach_prerender_url_base() . "/{$segment_key}.mp4",
+		'url'    => ihq_aicoach_prerender_url_base() . "/{$file_name}",
 	);
 }
 
@@ -455,8 +515,34 @@ function ihq_aicoach_prerender_all( $log = null ) {
 			$log( "{$segment_key}: status is '{$segment['status']}', not approved — skipping (held content stays as static caption for now)" );
 			continue;
 		}
-		$log( "{$segment_key}: rendering..." );
-		$results[ $segment_key ] = ihq_aicoach_prerender_segment( $segment_key, $segment['text'], $segment['sha256'], $log );
+		$log( "{$segment_key}: rendering (en)..." );
+		$results[ $segment_key ] = ihq_aicoach_prerender_segment( $segment_key, $segment['text'], $segment['sha256'], 'en', $log );
+
+		// FR-16 (single avatar/voice, confirmed with product 2026-09-25 — not a
+		// different avatar per language) — render the same approved segment in
+		// whatever other languages we have a translated script for.
+		// inc/aicoach-segment-translations.php is OUR OWN content, not Gary's:
+		// his registration/scripts manifest only ever carries reviewed English
+		// (confirmed live, registration_languages: ["en"]), so there's no sha256
+		// to borrow for non-English text — hash the translated text itself,
+		// which still gives the same "only re-render what actually changed"
+		// behavior once a translation gets corrected.
+		$translations = function_exists( 'ihq_aicoach_segment_translations' )
+			? ihq_aicoach_segment_translations()
+			: array();
+		foreach ( $translations[ $segment_key ] ?? array() as $language => $translated_text ) {
+			if ( '' === trim( (string) $translated_text ) ) {
+				continue;
+			}
+			$log( "{$segment_key}: rendering ({$language})..." );
+			$results[ "{$segment_key}__{$language}" ] = ihq_aicoach_prerender_segment(
+				$segment_key,
+				$translated_text,
+				hash( 'sha256', $translated_text ),
+				$language,
+				$log
+			);
+		}
 	}
 
 	return $results;

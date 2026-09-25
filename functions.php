@@ -449,10 +449,17 @@ require_once get_template_directory() . '/inc/luna-users-rest.php';
 require_once get_template_directory() . '/inc/gary-proxy.php';
 
 /**
+ * FR-16 (PO-3062) — translated spoken scripts for the pre-rendered segments,
+ * OUR OWN content since Gary's manifest is English-only. Loaded before
+ * aicoach-prerender.php, which reads ihq_aicoach_segment_translations().
+ */
+require_once get_template_directory() . '/inc/aicoach-segment-translations.php';
+
+/**
  * AI Coach pre-rendered avatar clips (PO-3062) — offline WP-CLI render of
- * Gary's approved script segments via Anam's avatar-videos API. Depends on
- * both ihq_coach_request() (gary-proxy.php, above) and anam_hq_api_key() /
- * ANAM_HQ_BASE_URL (anam-proxy.php, above) — must load after both.
+ * Gary's approved script segments (and, per FR-16, their translations above)
+ * via Gary's own Coach API (POST /coach/v1/videos et al). Depends on
+ * ihq_coach_request()/ihq_coach_download() (gary-proxy.php, above).
  */
 require_once get_template_directory() . '/inc/aicoach-prerender.php';
 
