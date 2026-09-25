@@ -314,7 +314,6 @@ const cfg = window.AICOACH_SAMI || {};
 // identity endpoints already use — no new PHP localization needed for this.
 const GARY_SESSION_URL = cfg.identityRestBase + '/coach/session';
 const garyCloseUrl = ( sessionId ) => cfg.identityRestBase + '/coach/' + encodeURIComponent( sessionId ) + '/close';
-const PERSONA_PREVIEW_URL = cfg.restBase + '/persona-preview';
 
 // PO-3062 pre-rendered clips — SCREENS panel name -> Gary's own segment key
 // (see inc/aicoach-prerender.php's ihq_aicoach_prerender_panel_map(), kept
@@ -350,10 +349,8 @@ function getPrerenderedUrl( panelKey, locale ) {
 
 // PO-3102 — session persistence (inc/aicoach-progress.php). saveProgress() is
 // fire-and-forget as far as any caller is concerned — a failed save must never
-// block the coach flow, same best-effort treatment PERSONA_PREVIEW_URL's fetch
-// below already gets for a non-critical endpoint. loadProgress() is only ever
-// awaited once, at start, before deciding whether this is a fresh visitor or a
-// resume.
+// block the coach flow. loadProgress() is only ever awaited once, at start,
+// before deciding whether this is a fresh visitor or a resume.
 const PROGRESS_URL = cfg.identityRestBase + '/aicoach/progress';
 
 // The backend does a read-merge-write on the saved record (inc/aicoach-
@@ -400,7 +397,6 @@ async function loadProgress() {
 const stage = document.getElementById('aicoach-stage');
 const avatarWrap = document.getElementById('aicoach-avatar-wrap');
 const video = document.getElementById('aicoach-avatar-video');
-const portrait = document.getElementById('aicoach-portrait');
 // Reuses the site-wide header volume control (template-parts/portal-header.php)
 // instead of a second, dedicated mute button overlaid on the avatar itself —
 // that button currently does nothing but open its own slider on every other
@@ -720,22 +716,6 @@ if ( stage && avatarWrap ) {
     } );
 
     syncSelected();
-
-    // Best-effort: use Sami's own portrait as the idle face so it matches the live video.
-    ( async function loadPreview() {
-        try {
-            const res = await fetch( PERSONA_PREVIEW_URL, { headers: { 'X-WP-Nonce': cfg.nonce } } );
-            if ( ! res.ok ) {
-                return;
-            }
-            const data = await res.json();
-            if ( data.portraitUrl && portrait ) {
-                portrait.src = data.portraitUrl;
-            }
-        } catch ( error ) {
-            // No portrait available — the placeholder image stays.
-        }
-    }() );
 
     // Text has nothing to sync against here, so each screen is shown in full
     // and paced by an estimated reading dwell rather than word-by-word reveal.

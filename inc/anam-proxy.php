@@ -149,7 +149,12 @@ function anam_hq_handle_session_token() {
 
 /**
  * GET /anam/v1/persona-preview — the static portrait + name for the idle face.
- * Purely cosmetic; failures are non-fatal for the overlay.
+ * Purely cosmetic; failures are non-fatal for the overlay. Still used by
+ * page-portal-poc.php's own idle-face loadPreview() — page-home-aicoach.php
+ * stopped calling this (PO-3062 dev fix, 2026-09-26: the persona metadata's
+ * portraitImageUrl doesn't actually match Anam's live avatar rendering, so
+ * that page now ships a real frame extracted from its own rendered video as
+ * images/aicoach/coach-portrait.webp instead).
  *
  * @return WP_REST_Response
  */
