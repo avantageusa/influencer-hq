@@ -2247,16 +2247,50 @@
         text-underline-offset: 4px;
     }
 
-    /* Same slot for every tab so active/glyph padding cannot lift one icon */
+    /* Same slot for every tab so active/glyph padding cannot lift one icon.
+       Icons are masks so the selected tab paints gold and the rest stay white. */
     body.page-template-page-portal-challenges-php .competition-tab-icon,
     body.page-template-page-portal-challenges-php .competition-tab-icon--intro {
         width: 52px;
         height: 52px;
-        object-fit: contain;
-        object-position: center;
         display: block;
         flex-shrink: 0;
-        transition: none;
+        background-color: #ffffff;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+    }
+
+    body.page-template-page-portal-challenges-php .competition-tab-btn.active .competition-tab-icon {
+        background-color: #b8972f;
+    }
+
+    body.page-template-page-portal-challenges-php .competition-tab-icon--intro {
+        -webkit-mask-image: url('<?php echo esc_url( get_template_directory_uri() . '/images/portal-c-intro.svg' ); ?>');
+        mask-image: url('<?php echo esc_url( get_template_directory_uri() . '/images/portal-c-intro.svg' ); ?>');
+    }
+
+    body.page-template-page-portal-challenges-php .competition-tab-icon--private {
+        -webkit-mask-image: url('<?php echo esc_url( get_template_directory_uri() . '/images/portal-c-private.svg' ); ?>');
+        mask-image: url('<?php echo esc_url( get_template_directory_uri() . '/images/portal-c-private.svg' ); ?>');
+    }
+
+    body.page-template-page-portal-challenges-php .competition-tab-icon--community {
+        -webkit-mask-image: url('<?php echo esc_url( get_template_directory_uri() . '/images/portal-c-community.svg' ); ?>');
+        mask-image: url('<?php echo esc_url( get_template_directory_uri() . '/images/portal-c-community.svg' ); ?>');
+    }
+
+    body.page-template-page-portal-challenges-php .competition-tab-icon--world {
+        -webkit-mask-image: url('<?php echo esc_url( get_template_directory_uri() . '/images/portal-c-world.svg' ); ?>');
+        mask-image: url('<?php echo esc_url( get_template_directory_uri() . '/images/portal-c-world.svg' ); ?>');
+    }
+
+    body.page-template-page-portal-challenges-php .competition-tab-icon--leagues {
+        -webkit-mask-image: url('<?php echo esc_url( get_template_directory_uri() . '/images/portal-c-leagues.svg' ); ?>');
+        mask-image: url('<?php echo esc_url( get_template_directory_uri() . '/images/portal-c-leagues.svg' ); ?>');
     }
 
     body.page-template-page-portal-challenges-php .competition-types.is-compact .competition-tab-btn {

@@ -54,23 +54,23 @@ $portal_embed_urls = [
                 <div class="competition-types">
                     <div class="competition-tabs">
                         <button class="competition-tab-btn active" data-tab="intro" type="button">
-                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-intro.svg" alt="" class="competition-tab-icon competition-tab-icon--intro">
+                            <span class="competition-tab-icon competition-tab-icon--intro" aria-hidden="true"></span>
                             <span>Intro</span>
                         </button>
                         <button class="competition-tab-btn" data-tab="private" type="button">
-                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-private.svg" alt="" class="competition-tab-icon">
+                            <span class="competition-tab-icon competition-tab-icon--private" aria-hidden="true"></span>
                             <span>Private</span>
                         </button>
                         <button class="competition-tab-btn" data-tab="community" type="button">
-                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-community.svg" alt="" class="competition-tab-icon">
+                            <span class="competition-tab-icon competition-tab-icon--community" aria-hidden="true"></span>
                             <span>Community</span>
                         </button>
                         <button class="competition-tab-btn" data-tab="world" type="button">
-                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-world.svg" alt="" class="competition-tab-icon">
+                            <span class="competition-tab-icon competition-tab-icon--world" aria-hidden="true"></span>
                             <span>World</span>
                         </button>
                         <button class="competition-tab-btn" data-tab="leagues" type="button">
-                            <img src="<?php echo get_template_directory_uri(); ?>/images/portal-c-leagues.svg" alt="" class="competition-tab-icon">
+                            <span class="competition-tab-icon competition-tab-icon--leagues" aria-hidden="true"></span>
                             <span>Leagues</span>
                         </button>
                     </div>
@@ -1593,10 +1593,37 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    var COMPETITION_TAB_STORAGE_KEY = 'ihq_competition_tab';
+    var COMPETITION_TAB_NAMES = /^(intro|private|community|world|leagues)$/;
+
+    function rememberCompetitionTab(tabName) {
+        if (!COMPETITION_TAB_NAMES.test(tabName)) {
+            return;
+        }
+        try {
+            window.sessionStorage.setItem(COMPETITION_TAB_STORAGE_KEY, tabName);
+        } catch (err) {
+            // Private browsing can block sessionStorage; the tab still switches.
+        }
+    }
+
+    function readRememberedCompetitionTab() {
+        try {
+            var stored = window.sessionStorage.getItem(COMPETITION_TAB_STORAGE_KEY) || '';
+            if (COMPETITION_TAB_NAMES.test(stored)) {
+                return stored;
+            }
+        } catch (err) {
+            // Private browsing can block sessionStorage; Intro stays selected.
+        }
+        return '';
+    }
+
     tabButtons.forEach(button => {
         button.addEventListener('click', function() {
             const tabName = this.getAttribute('data-tab');
-            
+            rememberCompetitionTab(tabName);
+
             // Remove active class from all buttons and contents
             tabButtons.forEach(btn => btn.classList.remove('active'));
             tabContents.forEach(content => content.classList.remove('active'));
@@ -1730,11 +1757,20 @@ document.addEventListener('DOMContentLoaded', function() {
         var params = new URLSearchParams(window.location.search);
         var tab = params.get('tab');
         var appliedTabFromQuery = false;
-        if (tab && /^(intro|private|community|world|leagues)$/.test(tab)) {
+        if (tab && COMPETITION_TAB_NAMES.test(tab)) {
             var btn = document.querySelector('.competition-tab-btn[data-tab="' + tab + '"]');
             if (btn) {
                 btn.click();
                 appliedTabFromQuery = true;
+            }
+        }
+        if (!appliedTabFromQuery) {
+            var remembered = readRememberedCompetitionTab();
+            var rememberedBtn = remembered
+                ? document.querySelector('.competition-tab-btn[data-tab="' + remembered + '"]')
+                : null;
+            if (rememberedBtn && !rememberedBtn.classList.contains('active')) {
+                rememberedBtn.click();
             }
         }
         var hashKey = window.location.hash.replace(/^#/, '');
