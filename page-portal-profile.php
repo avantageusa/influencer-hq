@@ -373,6 +373,20 @@ get_template_part( 'template-parts/portal-styles' );
     display: block;
     background: #111;
 }
+#portal-content .ihq-video-external {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: #b8972f;
+    font-family: 'Be Vietnam Pro', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+}
 #portal-content .ihq-video-item-actions {
     display: flex;
     gap: 10px;
@@ -909,7 +923,7 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                             <div class="ihq-video-preview">
                                 <?php if ( $video_preview['kind'] === 'file' ) : ?>
                                     <video controls playsinline preload="metadata" src="<?php echo esc_url( $video_preview['src'] ); ?>"></video>
-                                <?php else : ?>
+                                <?php elseif ( $video_preview['kind'] === 'embed' ) : ?>
                                     <iframe
                                         class="sett-gameplay-embed"
                                         src="<?php echo esc_url( $video_preview['src'] ); ?>"
@@ -917,6 +931,8 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                                         allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
                                         allowfullscreen
                                     ></iframe>
+                                <?php else : ?>
+                                    <a class="ihq-video-external" href="<?php echo esc_url( $video_preview['src'] ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Open video', 'influencer-hq' ); ?></a>
                                 <?php endif; ?>
                             </div>
                             <?php endif; ?>
