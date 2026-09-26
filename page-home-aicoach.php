@@ -26,8 +26,21 @@ if ( $alix_mtime ) {
 	$alix_image_url = add_query_arg( 'v', $alix_mtime, $alix_image_url );
 }
 
+// Same reasoning as the Alix image above — flagged by Dejan Arsic on PR #53:
+// a Cloudflare purge only clears the edge cache, not a browser that already
+// has this exact URL cached locally under the one-year max-age, so swapping
+// the file in place (as this one just did, to fix the idle-portrait/live-
+// avatar mismatch) would stay invisible to any visitor who loaded this page
+// before the purge.
+$portrait_image_path = get_template_directory() . '/images/aicoach/coach-portrait.webp';
+$portrait_image_url  = $theme_uri . '/images/aicoach/coach-portrait.webp';
+$portrait_mtime      = file_exists( $portrait_image_path ) ? filemtime( $portrait_image_path ) : false;
+if ( $portrait_mtime ) {
+	$portrait_image_url = add_query_arg( 'v', $portrait_mtime, $portrait_image_url );
+}
+
 $aicoach_img = array(
-	'portrait'     => $theme_uri . '/images/aicoach/coach-portrait.webp',
+	'portrait'     => $portrait_image_url,
 	'bts'          => $theme_uri . '/images/aicoach/bts.webp',
 	'magic'        => $theme_uri . '/images/aicoach/magic-johnson.webp',
 	'alix'         => $alix_image_url,
