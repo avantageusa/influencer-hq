@@ -1179,14 +1179,21 @@ if ( stage && avatarWrap ) {
             // PO-3062 — an approved segment with a pre-rendered clip plays it
             // (real voice + lip-sync, dwell = the clip's own length); every
             // other screen keeps the original caption-only fixed dwell.
-            const clipUrl = getPrerenderedUrl( screen.panel, currentLocale );
-            if ( clipUrl ) {
+            if ( getPrerenderedUrl( screen.panel, currentLocale ) ) {
                 // Wait for this exact panel to actually be the active one —
                 // not just a fixed FADE_MS guess, which breaks if showPanel()
                 // had to queue behind another in-flight transition (it can
                 // take longer than one FADE_MS in that case; see showPanel()).
                 await panelReady;
-                const played = await playPrerenderedClip( clipUrl );
+                // FR-14/PO-3105 — re-resolve against currentLocale rather than
+                // reusing a URL captured before this await: a visitor who picks
+                // a different language during showPanel()'s ~800ms fade (before
+                // playPrerenderedClip() below has even started, so
+                // restartCurrentClipForLocale() has nothing in flight yet to
+                // restart) would otherwise still hear this screen start in the
+                // language they just left.
+                const clipUrl = getPrerenderedUrl( screen.panel, currentLocale );
+                const played = clipUrl && await playPrerenderedClip( clipUrl );
                 if ( ! played ) {
                     await waitForReadOrSkip();
                 }
