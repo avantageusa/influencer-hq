@@ -691,15 +691,44 @@ if ( stage && avatarWrap ) {
                 opt.removeAttribute( 'aria-current' );
             }
         } );
-        // NOTE — scope boundary: this switches the selector state and every
-        // data-i18n/data-i18n-attr element's text. It does NOT yet reconnect the
-        // live avatar/voice to a fresh Gary session in this locale (Scenario 25's
-        // "avatar and voice switch" clause, and FR-14/PO-3105's "video restarts in
-        // the new language"). The avatar now DOES open its initial connection via
-        // a real Gary session (see start()/openGarySession() below), but switching
-        // mid-flow would mean closing that session, tearing down the connected
-        // Anam client, and opening a new one — not done here, tracked as the next
-        // increment on top of this rather than folded in silently.
+        restartCurrentClipForLocale( locale ); // FR-14/PO-3105
+        // NOTE — scope boundary: the line above restarts a currently-playing
+        // PRE-RENDERED clip (PO-3107) in the new language. It does NOT reconnect
+        // the LIVE avatar/voice to a fresh Gary session (Scenario 25's "avatar
+        // and voice switch" clause, for the one screen — "intro" — that's a real
+        // Gary session rather than a pre-rendered clip). That would mean closing
+        // the open session, tearing down the connected Anam client, and opening
+        // a new one — not done here, tracked as the next increment on top of
+        // this rather than folded in silently.
+    }
+
+    // FR-14/PO-3105 — "the current screen's avatar video restarts from the
+    // beginning in the newly selected language". Delegates to
+    // playPrerenderedClip()'s own activeClipRestart (set for whichever clip is
+    // currently in flight) so the SAME pending promise runFallback() is already
+    // awaiting for this screen keeps working — including its play()-rejection
+    // handling, which matters here: without it, an in-flight play() promise
+    // from the clip THIS call is replacing can still reject a moment later and
+    // wrongly resolve the screen as "failed", skipping straight to the next
+    // one instead of playing the just-restarted clip (confirmed live: without
+    // playPrerenderedClip()'s generation guard, a same-screen language switch
+    // silently lost the restarted clip to its predecessor's stale rejection).
+    // No need to touch sequenceIndex or the sequence loop at all. A no-op when
+    // the current screen has no pre-rendered clip (a
+    // caption-only or competition-name screen), when nothing is actually in
+    // flight, or when video.srcObject is set (the live Gary/Anam WebRTC stream
+    // for the "intro" screen — reconnecting that is a separate, bigger piece
+    // of work, see selectLocale()'s own note above).
+    function restartCurrentClipForLocale( locale ) {
+        const screen = SCREENS[ sequenceIndex ];
+        if ( ! screen || video.srcObject || ! activeClipRestart ) {
+            return;
+        }
+        const newUrl = getPrerenderedUrl( screen.panel, locale );
+        if ( ! newUrl ) {
+            return;
+        }
+        activeClipRestart( newUrl );
     }
 
     ( function buildLanguageSelector() {
@@ -882,6 +911,7 @@ if ( stage && avatarWrap ) {
     let sequenceIndex = 0;
     let sequenceFinished = false;
     let skipCurrent = null; // set while a screen's line is in flight; a tap calls this to advance early
+    let activeClipRestart = null; // set while a pre-rendered clip is in flight — FR-14/PO-3105's selectLocale() calls this to swap languages mid-playback
 
     // FR-03 — timestamp + chosen tier, captured the moment the visitor confirms a
     // selection. This is only the starting mark; FR-17 (time-remaining check) is a
@@ -1049,12 +1079,21 @@ if ( stage && avatarWrap ) {
     function playPrerenderedClip( url ) {
         return new Promise( ( resolve ) => {
             let settled = false;
+            // FR-14/PO-3105 — bumped by load() on every (re)start, including a
+            // restartCurrentClipForLocale() swap mid-playback. A play() promise
+            // rejection captures the generation it belongs to when it was issued;
+            // if a restart has since loaded a newer clip, that rejection is stale
+            // (the interrupted old attempt failing, not the new one) and must be
+            // ignored instead of wrongly finishing this screen as "failed" out
+            // from under the clip the visitor is now actually watching.
+            let generation = 0;
             const finish = ( ok ) => {
                 if ( settled ) {
                     return;
                 }
                 settled = true;
                 skipCurrent = null;
+                activeClipRestart = null;
                 video.removeEventListener( 'ended', onEnded );
                 video.removeEventListener( 'error', onError );
                 video.pause(); // a manual skip or the safety cap would otherwise leave it playing into the next screen
@@ -1065,16 +1104,31 @@ if ( stage && avatarWrap ) {
                 console.warn( '[aicoach] prerendered clip failed to play, falling back to caption dwell:', url );
                 finish( false );
             };
-            // srcObject (the live WebRTC stream, if any) takes priority over
-            // src in the video element — clear it first or a plain MP4 src
-            // silently never plays.
-            video.srcObject = null;
-            video.src = url;
+            const load = ( clipUrl ) => {
+                const myGeneration = ++generation;
+                // srcObject (the live WebRTC stream, if any) takes priority over
+                // src in the video element — clear it first or a plain MP4 src
+                // silently never plays.
+                video.srcObject = null;
+                video.currentTime = 0;
+                video.src = clipUrl;
+                avatarWrap.dataset.status = 'live'; // same CSS state that reveals .aicoach-avatar-video over the static portrait
+                video.play().catch( () => {
+                    if ( myGeneration === generation ) {
+                        onError();
+                    }
+                } );
+            };
             video.addEventListener( 'ended', onEnded );
             video.addEventListener( 'error', onError );
-            avatarWrap.dataset.status = 'live'; // same CSS state that reveals .aicoach-avatar-video over the static portrait
-            video.play().catch( onError );
+            load( url );
             skipCurrent = () => finish( true ); // a visitor tap is a normal advance, not a failure
+            // FR-14/PO-3105 — selectLocale() calls this (via
+            // restartCurrentClipForLocale()) to swap the currently-playing clip's
+            // language without disturbing this same pending promise; 'ended' for
+            // whichever clip is loaded when it naturally finishes still resolves
+            // it exactly as before.
+            activeClipRestart = load;
             window.setTimeout( () => finish( true ), 60000 ); // safety cap — 'ended' should always fire first
         } );
     }
