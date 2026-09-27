@@ -73,6 +73,33 @@ pending clip's own restart hook (`activeClipRestart`), so the exact promise
 `runFallback()` is awaiting keeps resolving correctly — no new sequencing
 state, no re-entrant `runFallback()` call.
 
+## Alternatives considered
+
+- **Manipulate `video.src`/`currentTime`/`play()` directly from
+  `restartCurrentClipForLocale()`, outside `playPrerenderedClip()`.** What
+  this PR actually shipped first — and the exact thing that exposed the
+  stale-rejection race below: the *original* clip's pending `play()` promise
+  has no idea a restart happened out from under it, rejects a moment later,
+  and wrongly resolves the whole screen as failed. Rejected once that race
+  was found live; fixing it meant the restart had to go through the same
+  promise, not around it.
+- **Let the current screen "fail," then have `runFallback()` re-render it.**
+  Would work, but replays `showPanel()`'s fade transition for no visual
+  reason and re-enters a loop guarded by `fallbackRunning` — more moving
+  parts than a same-screen language swap needs, for no benefit over reusing
+  the promise that's already there.
+- **Cancel the in-flight promise and hand `runFallback()` a fresh one for
+  the same index.** Requires restructuring the for-loop (or a cancellation
+  token threaded through it) to re-await a new promise mid-iteration —
+  meaningfully more surface area than the chosen approach for the same
+  outcome.
+
+Went with reusing the pending promise via a generation-guarded restart hook
+(`activeClipRestart`) because it's the smallest change, touches neither
+`sequenceIndex` nor the loop structure, and mirrors the `skipCurrent` pattern
+this file already uses for the same kind of "reach into the in-flight clip
+from outside" need.
+
 ## Bug found during verification
 
 Restarting mid-flight exposed a real race: the clip being replaced can have

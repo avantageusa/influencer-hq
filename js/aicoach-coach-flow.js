@@ -725,7 +725,17 @@ if ( stage && avatarWrap ) {
             return;
         }
         const newUrl = getPrerenderedUrl( screen.panel, locale );
-        if ( ! newUrl ) {
+        // getPrerenderedUrl() falls back to the English clip when the newly
+        // selected locale has none of its own for this segment (same "missing
+        // just means not ready" degrade as everywhere else) — if that fallback
+        // resolves to the EXACT clip already loaded (e.g. switching between two
+        // locales that both lack this segment), restarting would just replay
+        // the same English clip from 0 for no reason. Comparing against the
+        // resolved URL rather than "does this locale have its own entry" also
+        // correctly still restarts when the OLD locale had a real clip playing
+        // and the new one falls back to English — that genuinely is a
+        // different source, not a no-op.
+        if ( ! newUrl || newUrl === video.currentSrc ) {
             return;
         }
         activeClipRestart( newUrl );
@@ -1087,6 +1097,7 @@ if ( stage && avatarWrap ) {
             // ignored instead of wrongly finishing this screen as "failed" out
             // from under the clip the visitor is now actually watching.
             let generation = 0;
+            let safetyTimer = null;
             const finish = ( ok ) => {
                 if ( settled ) {
                     return;
@@ -1094,6 +1105,7 @@ if ( stage && avatarWrap ) {
                 settled = true;
                 skipCurrent = null;
                 activeClipRestart = null;
+                clearTimeout( safetyTimer );
                 video.removeEventListener( 'ended', onEnded );
                 video.removeEventListener( 'error', onError );
                 video.pause(); // a manual skip or the safety cap would otherwise leave it playing into the next screen
@@ -1118,6 +1130,13 @@ if ( stage && avatarWrap ) {
                         onError();
                     }
                 } );
+                // FR-14/PO-3105 — a restart mid-playback re-arms this cap from 0
+                // too. Without that, a language switch shortly before the
+                // original 60s deadline would have the STALE timer fire a few
+                // seconds into the restarted clip, cutting it off early even
+                // though 'ended' hasn't happened yet for it.
+                clearTimeout( safetyTimer );
+                safetyTimer = window.setTimeout( () => finish( true ), 60000 ); // safety cap — 'ended' should always fire first
             };
             video.addEventListener( 'ended', onEnded );
             video.addEventListener( 'error', onError );
@@ -1129,7 +1148,6 @@ if ( stage && avatarWrap ) {
             // whichever clip is loaded when it naturally finishes still resolves
             // it exactly as before.
             activeClipRestart = load;
-            window.setTimeout( () => finish( true ), 60000 ); // safety cap — 'ended' should always fire first
         } );
     }
 
