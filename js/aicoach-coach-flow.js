@@ -783,6 +783,15 @@ if ( stage && avatarWrap ) {
 
         btn.addEventListener( 'click', function ( event ) {
             event.stopPropagation();
+            // Dejan Arsic (PR #55 review) — this stopPropagation() means a
+            // click here never reaches document's unmuteOnFirstInteraction()
+            // listener below. If opening (or picking from, see the dropdown
+            // handler) this menu is the visitor's very first interaction with
+            // the page, audio would otherwise stay muted indefinitely with no
+            // other click ever arriving to satisfy the browser's autoplay
+            // gate. Calling it explicitly here counts this click too — it's a
+            // no-op once already unmuted.
+            unmuteOnFirstInteraction();
             const isOpen = wrap.classList.toggle( 'is-open' );
             btn.setAttribute( 'aria-expanded', isOpen ? 'true' : 'false' );
         } );
@@ -798,6 +807,7 @@ if ( stage && avatarWrap ) {
                 return;
             }
             event.stopPropagation();
+            unmuteOnFirstInteraction(); // see the same note on the open/close button above
             selectLocale( option.dataset.locale );
             wrap.classList.remove( 'is-open' );
             btn.setAttribute( 'aria-expanded', 'false' );
