@@ -369,7 +369,7 @@ const I18N_TRANSLATIONS = {
         'tier-10-item-0': '대회 소개',
         'tier-10-item-1': '소통방식 선택',
         'tier-10-item-2': '대회 세부사항 전체',
-        'tier-10-item-3': '지분 확득을 위한 첫 번째 대회 설정하기',
+        'tier-10-item-3': '지분 획득을 위한 첫 번째 대회 설정하기',
         'tier-10-item-4': '팔로워를 위한 게시물 작성 지원',
         magicAdidas: '아디다스 현금 10만 달러',
         alixPoppi: '포피(POPPI)와의 지분 기반 파트너십을 수락함',
