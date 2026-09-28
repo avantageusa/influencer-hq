@@ -607,11 +607,22 @@ function getPrerenderedUrl( panelKey, locale ) {
 // fallback getPrerenderedUrl() already gives the video itself.
 function getCaptionScript( panelKey, locale ) {
     const segmentKey = PRERENDERED_PANEL_MAP[ panelKey ];
-    if ( ! segmentKey || 'en' === locale ) {
+    if ( ! segmentKey ) {
         return null;
     }
+    // A translated script can exist (inc/aicoach-segment-translations.php)
+    // before `wp aicoach prerender` has actually rendered its clip on this
+    // environment — the two ship independently, translations in code, clips
+    // via a separate manual render step. Without this check, that gap
+    // reintroduces the exact mismatch this ticket fixed, just flipped: an
+    // English clip (getPrerenderedUrl()'s own fallback) under a translated
+    // caption. Deriving the caption's language from whichever locale the
+    // CLIP actually resolved to — not from whether a translation merely
+    // exists — keeps the two locked together.
     const perLanguage = ( cfg.segmentScripts || {} )[ segmentKey ] || {};
-    return perLanguage[ locale ] || null;
+    const perLanguageVideos = ( cfg.prerenderedVideos || {} )[ segmentKey ] || {};
+    const clipLocale = perLanguageVideos[ locale ] ? locale : 'en';
+    return perLanguage[ clipLocale ] || null;
 }
 
 // PO-3102 — session persistence (inc/aicoach-progress.php). saveProgress() is
