@@ -1137,6 +1137,124 @@ $aicoach_channels = array(
         font-weight: 700;
     }
 
+    /* FR-19/PO-3330 — "Ask Semi" question box, injected by
+    js/aicoach-coach-flow.js right after .aicoach-avatar-wrap. Same
+    dropdown-style show/hide as .aicoach-lang-dropdown above, kept as its own
+    block instead of reusing it since this holds a form, not a flat option
+    list. */
+    .aicoach-ask-wrap {
+        position: relative;
+        display: flex;
+        justify-content: center;
+        margin: 0 auto 24px;
+    }
+
+    .aicoach-ask-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 18px;
+        border: none;
+        border-radius: 999px;
+        background: #fdd65b;
+        color: #12131a;
+        font-weight: 700;
+        font-size: 0.95rem;
+        cursor: pointer;
+    }
+
+    .aicoach-ask-btn:disabled {
+        background: #3a3b47;
+        color: #7a7b87;
+        cursor: not-allowed;
+    }
+
+    .aicoach-ask-panel {
+        display: none;
+        position: absolute;
+        top: calc(100% + 10px);
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(360px, 88vw);
+        padding: 16px;
+        border: 1px solid #3a3b47;
+        border-radius: 12px;
+        background: #1b1c24;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, .4);
+        z-index: 10050;
+        text-align: left;
+    }
+
+    .aicoach-ask-wrap.is-open .aicoach-ask-panel {
+        display: block;
+    }
+
+    .aicoach-ask-close {
+        position: absolute;
+        top: 10px;
+        right: 12px;
+        border: none;
+        background: transparent;
+        color: #a9a9b3;
+        font-size: 1.3rem;
+        line-height: 1;
+        cursor: pointer;
+    }
+
+    .aicoach-ask-answer {
+        min-height: 1.4em;
+        margin: 0 28px 12px 0;
+        font-size: 0.95rem;
+        line-height: 1.45;
+        color: #fff;
+    }
+
+    .aicoach-ask-form {
+        display: flex;
+        gap: 8px;
+    }
+
+    .aicoach-ask-input {
+        flex: 1;
+        padding: 10px 12px;
+        border: 2px solid #3a3b47;
+        border-radius: 8px;
+        background: #12131a;
+        color: #fff;
+        font-size: 0.9rem;
+        font-family: inherit;
+    }
+
+    .aicoach-ask-input:focus {
+        outline: none;
+        border-color: #fdd65b;
+    }
+
+    .aicoach-ask-submit {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 8px;
+        background: #fdd65b;
+        color: #12131a;
+        font-weight: 700;
+        font-size: 0.9rem;
+        cursor: pointer;
+    }
+
+    .aicoach-ask-submit:disabled {
+        background: #3a3b47;
+        color: #7a7b87;
+        cursor: not-allowed;
+    }
+
+    .aicoach-ask-error {
+        min-height: 1.2em;
+        margin: 8px 0 0;
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: #eb0000;
+    }
+
     @media (max-width: 520px) {
         /* Ivan/Filip mobile feedback (2026-09-21): the shared portal header's
         nav wraps onto 3 lines on narrow screens, which already pushes
