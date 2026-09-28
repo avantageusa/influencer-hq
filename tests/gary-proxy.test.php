@@ -204,6 +204,8 @@ $GLOBALS['last_remote_request'] = null;
 $message_request = new WP_REST_Request( array( 'text' => 'hello', 'session_id' => 'cs_attacker_supplied' ), array( 'session_id' => 'cs_123' ) );
 ihq_coach_handle_message( $message_request );
 check( 'message: URL session_id wins over a conflicting body session_id', false !== strpos( $GLOBALS['last_remote_request']['url'], '/coach/v1/session/cs_123/message' ) );
+$message_sent_body = json_decode( $GLOBALS['last_remote_request']['args']['body'], true );
+check( 'message: requests audio and video, not just text (else a generated answer comes back with say.audio/say.video null)', array( 'text', 'audio', 'video' ) === $message_sent_body['want'] );
 
 $GLOBALS['last_remote_request'] = null;
 $close_request = new WP_REST_Request( array( 'session_id' => 'cs_attacker_supplied' ), array( 'session_id' => 'cs_123' ) );
