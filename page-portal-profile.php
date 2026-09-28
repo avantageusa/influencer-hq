@@ -2028,7 +2028,7 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
     function placeProfileCoachFab() {
         var fab = document.getElementById('ihq-concierge-fab');
         var host = document.getElementById('profile-coach-fab-host');
-        if (!fab || !host || fab.parentNode === host) {
+        if (!fab || !host || fab.classList.contains('is-moved') || fab.parentNode === host) {
             return;
         }
         host.appendChild(fab);

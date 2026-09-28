@@ -477,7 +477,7 @@ $equity_attribution_expanded = is_user_logged_in();
     function placeConciergeFab() {
         var fab = document.getElementById('ihq-concierge-fab');
         var host = document.getElementById('how-to-earn-equity');
-        if (!fab || !host || fab.parentNode === host) {
+        if (!fab || !host || fab.classList.contains('is-moved') || fab.parentNode === host) {
             return;
         }
         host.appendChild(fab);
