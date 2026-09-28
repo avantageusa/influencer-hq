@@ -596,7 +596,20 @@ function getPrerenderedUrl( panelKey, locale ) {
         return null;
     }
     const perLanguage = ( cfg.prerenderedVideos || {} )[ segmentKey ] || {};
-    return perLanguage[ locale ] || perLanguage.en || null;
+    // The mirror image of getCaptionScript()'s own check just below: if a
+    // translation is edited out of inc/aicoach-segment-translations.php
+    // AFTER its clip was already rendered, nothing deletes the now-orphaned
+    // clip file or its manifest entry — `wp aicoach prerender` only adds,
+    // it doesn't prune. Without this, the orphaned localized clip would
+    // still get selected here while getCaptionScript() (correctly, since it
+    // has no script text for this locale) falls back to the English
+    // caption — a non-English video under an English caption, the same
+    // mismatch this ticket fixed, from a third direction. Requiring a
+    // script to exist before trusting the clip keeps translated text as the
+    // single source of truth both functions key off.
+    const perLanguageScripts = ( cfg.segmentScripts || {} )[ segmentKey ] || {};
+    const hasScript = 'en' === locale || perLanguageScripts[ locale ];
+    return ( hasScript && perLanguage[ locale ] ) || perLanguage.en || null;
 }
 
 // NFR-03 — the on-screen caption for a pre-rendered segment, in whatever
