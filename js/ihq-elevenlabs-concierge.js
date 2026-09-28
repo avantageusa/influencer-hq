@@ -161,7 +161,7 @@
     resetTriggerState(context);
   }
 
-  function endTrackedSession(session, context) {
+  function endTrackedSession(session) {
     if (!session || !session.endSession) {
       return;
     }
@@ -171,13 +171,6 @@
       })
       .catch(function (error) {
         console.error('Failed to end voice session', error);
-        if (activeSession) {
-          return;
-        }
-        activeSession = session;
-        activeContext = context;
-        sessionPhase = SESSION_PHASE.OPEN;
-        setConnectedState(context);
       });
   }
 
@@ -185,10 +178,10 @@
     if (sessionPhase === SESSION_PHASE.CLOSING) {
       return;
     }
-    startToken += 1;
     var context = activeContext;
     var session = activeSession;
     if (!session || !session.endSession) {
+      startToken += 1;
       activeSession = null;
       activeContext = null;
       sessionPhase = SESSION_PHASE.IDLE;
@@ -204,6 +197,7 @@
         if (activeSession !== session) {
           return;
         }
+        startToken += 1;
         activeSession = null;
         activeContext = null;
         sessionPhase = SESSION_PHASE.IDLE;
@@ -286,7 +280,7 @@
           onMessage: function () {},
         }).then(function (session) {
           if (!isStartCurrent(token)) {
-            endTrackedSession(session, context);
+            endTrackedSession(session);
             return;
           }
           activeSession = session;
