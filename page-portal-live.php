@@ -150,168 +150,216 @@ if ( ! empty( $la_calendar_posts ) ) {
             <div class="live-page-content">
                 
 
-                <div class="live-header">
-                    <img src="<?php echo get_template_directory_uri(); ?>/images/live.png" alt="Live Appearance" class="live-icon">
-                    <h1 class="live-title">LIVE APPEARANCE</h1>
+                <?php
+                $la_theme_uri = get_template_directory_uri();
+                $la_months    = [ 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December' ];
+                ?>
+                <div class="live-wn-logo">
+                    <img src="<?php echo esc_url( $la_theme_uri ); ?>/images/live/world-network-logo.png" alt="" class="live-wn-logo__camera">
+                    <img src="<?php echo esc_url( $la_theme_uri ); ?>/images/live/world-network-wordmark.png" alt="world network live appearance" class="live-wn-logo__wordmark">
                 </div>
 
                 <section class="live-intro-text">
-                    <p>Live appearances take place on the World Broadcast Network.</p>
                     <p>We believe live competition creates real connection and lasting influence.</p>
-                    <p>Influencers will automatically be eligible to appear in all 52 World Tour weekend events and the year-long $100 Million Influencer HQ World Championship competition.</p>
+                    <p>Influencers will automatically be eligible to make a live appearance on the World Network.</p>
                 </section>
 
                     <div class="live-separator"></div>
-                    <h2 class="live-section-heading">REQUEST A LIVE APPEARANCE ON THE WORLD NETWORK</h2>
+                    <h2 class="live-section-heading live-section-heading--banner">SCHEDULE A LIVE APPEARANCE ON THE WORLD NETWORK FOR ANY OF THESE CONTEST TYPES</h2>
                     <div class="live-separator"></div>
 
-                    <div class="live-intro-item live-intro-item-wide">
-                        <div class="live-text-content">
-                        <p>The 1–1 Private Challenge format allows two verified Influencers who already know each other to compete head-to-head in a live World Network broadcast.</p>
-                        <p>This format is designed for rivalry, chemistry, and competitive storytelling.</p>
-                        <p><strong>Eligibility</strong></p>
-                        <ul>
-                            <li>Both participants must be verified Influencers</li>
-                            <li>One of the two must create the challenge</li>
-                            <li>Both must agree in advance to appear live</li>
-                            <li>Engagement must meet approval standards</li>
-                            <li>Final approval required from Influencer HQ</li>
-                        </ul>
-                        <p><strong>Application</strong></p>
-                        <ul>
-                            <li>The challenge creator submits a Live Appearance request</li>
-                            <li>Influencer HQ reviews engagement and readiness</li>
-                            <li>Approved challenges receive a scheduled broadcast slot</li>
-                        </ul>
-                        <p><strong>Live Format</strong></p>
-                        <ul>
-                            <li>Up to 1 hour duration</li>
-                            <li>Remote participation from each Influencer's location</li>
-                            <li>Real-time competitive commentary</li>
-                            <li>Followers may join and play along</li>
-                            <li>Performance metrics displayed live</li>
-                        </ul>
-                        <p><strong>Important</strong></p>
-                        <p>1–1 Challenges without a live request may proceed immediately.</p>
-                        <p>1–1 Challenges requesting live broadcast require review and approval.</p>
+                    <div class="live-contest-info" data-live-contest-info>
+                        <div class="live-contest-tabs" role="tablist">
+                            <button type="button" class="live-contest-tab is-open" role="tab" aria-selected="true" data-contest-panel="classic">
+                                <span>CLASSIC</span>
+                                <img src="<?php echo esc_url( $la_theme_uri ); ?>/images/live/chevron-right.svg" alt="" class="live-contest-chevron" aria-hidden="true">
+                            </button>
+                            <button type="button" class="live-contest-tab" role="tab" aria-selected="false" data-contest-panel="world_tour">
+                                <span>WORLD TOUR</span>
+                                <img src="<?php echo esc_url( $la_theme_uri ); ?>/images/live/chevron-right.svg" alt="" class="live-contest-chevron" aria-hidden="true">
+                            </button>
+                            <button type="button" class="live-contest-tab" role="tab" aria-selected="false" data-contest-panel="world_championship">
+                                <span>WORLD CHAMPIONSHIP</span>
+                                <img src="<?php echo esc_url( $la_theme_uri ); ?>/images/live/chevron-right.svg" alt="" class="live-contest-chevron" aria-hidden="true">
+                            </button>
+                        </div>
+                        <div class="live-contest-panel is-open" id="live-contest-panel-classic" data-contest-panel="classic" role="tabpanel">
+                            <ul>
+                                <li>Top 30% Split the Pool at the end of each 1 Hand contest.</li>
+                                <li>Four Entry Fees - $1, $10, $100, $1,000</li>
+                                <li>Example: 110 Finalists in the $10 contest would result in $1,000 being distributed to the top 30% of Finalists.</li>
+                            </ul>
+                        </div>
+                        <div class="live-contest-panel" id="live-contest-panel-world_tour" data-contest-panel="world_tour" role="tabpanel" hidden>
+                            <ul>
+                                <li>Weekend 3-level tournaments which alternate between 13 International cities throughout the year.</li>
+                                <li>Runs each week from 5 PM Thursday through 10 PM Sunday.</li>
+                                <li>Enter on the $10 or $100 level and win your way into the $1,000 finals.</li>
+                                <li>Example: 1100 Finalists will result in $1,000,000 being distributed to the top 30% of Finalists.</li>
+                            </ul>
+                        </div>
+                        <div class="live-contest-panel" id="live-contest-panel-world_championship" data-contest-panel="world_championship" role="tabpanel" hidden>
+                            <ul>
+                                <li>Yearly 5-level tournament.</li>
+                                <li>Enter on the $1, $10, $100 or $1,000 level and win your way into the $10,000 finals.</li>
+                                <li>Example: 11,000 Finalists will result in $100,000,000 being distributed to the top 30% of Finalists.</li>
+                            </ul>
                         </div>
                     </div>
 
                     <div class="live-form-block" id="live-request">
                         <form id="live-request-form">
+                            <h2 class="live-heading-gold">SELECT CONTEST TYPE</h2>
+                            <div class="live-check-list">
+                                <label class="live-check-opt">
+                                    <input type="radio" name="la_contest_type" value="classic" class="live-type-radio" data-live-contest-type checked>
+                                    <span class="live-check-label">Classic</span>
+                                </label>
+                                <label class="live-check-opt">
+                                    <input type="radio" name="la_contest_type" value="world_tour" class="live-type-radio" data-live-contest-type>
+                                    <span class="live-check-label">World Tour</span>
+                                </label>
+                                <label class="live-check-opt">
+                                    <input type="radio" name="la_contest_type" value="world_championship" class="live-type-radio" data-live-contest-type>
+                                    <span class="live-check-label">World Championship</span>
+                                </label>
+                            </div>
+
+                            <h2 class="live-heading-gold">SCHEDULE<br>WORLD NETWORK APPEARANCE</h2>
+                            <div class="live-check-list">
+                                <label class="live-check-opt">
+                                    <input type="radio" name="la_stream_mode" value="individual" class="live-type-radio" data-live-stream>
+                                    <span class="live-check-label">Individual Stream</span>
+                                </label>
+                                <label class="live-check-opt">
+                                    <input type="radio" name="la_stream_mode" value="joint" class="live-type-radio" data-live-stream checked>
+                                    <span class="live-check-label">Joint Stream - you and the Influencer you&rsquo;ve challenged who has already verbaly accepted.</span>
+                                </label>
+                            </div>
+
+                            <p class="live-referral-note">Please provide this link to Influencer you are referring who do not have already created account, so you will receive full credit of the play from his/hers and his/hers followers.</p>
+
+                            <div id="live-opponent-block">
+                                <p class="live-label live-label--opponent-info">Private Challenge Opponent Information</p>
+                                <div class="live-input-row live-input-row-2">
+                                    <div class="live-field">
+                                        <input type="text" name="la_opponent_first_name" id="la_opponent_first_name" class="live-input" placeholder="First Name" autocomplete="off">
+                                    </div>
+                                    <div class="live-field">
+                                        <input type="text" name="la_opponent_last_name" id="la_opponent_last_name" class="live-input" placeholder="Last Name" autocomplete="off">
+                                    </div>
+                                </div>
+                                <div class="live-input-row live-input-row-2">
+                                    <div class="live-field">
+                                        <input type="email" name="la_opponent_email" id="la_opponent_email" class="live-input" placeholder="Opponent email" autocomplete="off">
+                                    </div>
+                                    <div class="live-field">
+                                        <input type="text" name="la_opponent_handle" id="la_opponent_handle" class="live-input" placeholder="Opponent username" autocomplete="off">
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="live-calendar-launch-row">
                                 <span class="live-calendar-launch-label">Available time slots:</span>
-                                <button type="button" id="live-calendar-open-btn" class="live-calendar-open-btn" aria-haspopup="dialog" aria-controls="live-calendar-modal" aria-label="Open available time slots calendar"><img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/calendar.png" alt="Calendar" style="width:45px;height:45px;"></button>
+                                <button type="button" id="live-calendar-open-btn" class="live-calendar-open-btn" aria-haspopup="dialog" aria-controls="live-calendar-modal" aria-label="Open available time slots calendar"><img src="<?php echo esc_url( $la_theme_uri ); ?>/images/calendar.png" alt="Calendar" width="45" height="45"></button>
                             </div>
-                            <p class="live-label">Request Day &amp; Start Time (1 hour)</p>
-                            <?php
-                            $la_months  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-                            $la_choices = [['1st','1'],['2nd','2'],['3rd','3']];
-                            foreach ( $la_choices as [$la_ordinal, $la_num] ) :
-                            ?>
-                            <div class="live-input-row live-input-row-choice">
-                                <span class="live-choice-label"><?php echo esc_html( $la_ordinal ); ?> Choice</span>
+
+                            <div class="live-datetime-grid">
                                 <div class="live-field">
-                                    <select name="la_choice_<?php echo $la_num; ?>_month" id="la_choice_<?php echo $la_num; ?>_month" class="live-input">
-                                        <option value="" disabled selected>month</option>
+                                    <label class="live-field-label" for="la_choice_1_month">Month</label>
+                                    <select name="la_choice_1_month" id="la_choice_1_month" class="live-input">
+                                        <option value="" disabled selected>Month</option>
                                         <?php foreach ( $la_months as $la_mi => $la_month ) : ?>
-                                        <option value="<?php echo $la_mi + 1; ?>"><?php echo esc_html( $la_month ); ?></option>
+                                        <option value="<?php echo (int) ( $la_mi + 1 ); ?>"><?php echo esc_html( $la_month ); ?></option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
                                 <div class="live-field">
-                                    <select name="la_choice_<?php echo $la_num; ?>_day" id="la_choice_<?php echo $la_num; ?>_day" class="live-input">
-                                        <option value="" disabled selected>day</option>
+                                    <label class="live-field-label" for="la_choice_1_day">Day</label>
+                                    <select name="la_choice_1_day" id="la_choice_1_day" class="live-input">
+                                        <option value="" disabled selected>Day</option>
                                         <?php for ( $la_d = 1; $la_d <= 31; $la_d++ ) : ?>
-                                        <option value="<?php echo $la_d; ?>"><?php echo $la_d; ?></option>
+                                        <option value="<?php echo (int) $la_d; ?>"><?php echo esc_html( str_pad( (string) $la_d, 2, '0', STR_PAD_LEFT ) ); ?></option>
                                         <?php endfor; ?>
                                     </select>
                                 </div>
                                 <div class="live-field">
-                                    <input type="time" name="la_choice_<?php echo $la_num; ?>_time" id="la_choice_<?php echo $la_num; ?>_time" class="live-input" placeholder="start time">
+                                    <label class="live-field-label" for="la_choice_1_time">Start Time</label>
+                                    <input type="time" name="la_choice_1_time" id="la_choice_1_time" class="live-input" placeholder="Start Time">
+                                </div>
+                                <div class="live-field">
+                                    <label class="live-field-label" for="la_choice_1_end_time">End Time</label>
+                                    <input type="time" name="la_choice_1_end_time" id="la_choice_1_end_time" class="live-input" placeholder="End Time">
                                 </div>
                             </div>
-                            <?php endforeach; ?>
-                            <p class="live-label live-label--opponent">State your opponent</p>
-                            <div class="live-input-row live-input-row-2">
-                                <div class="live-field">
-                                    <input type="text" name="la_opponent_handle" id="la_opponent_handle" class="live-input" placeholder="opponent handle">
-                                </div>
-                                <div class="live-field">
-                                    <select name="la_opponent_comm" id="la_opponent_comm" class="live-input live-select">
-                                        <option value="" disabled selected>select comm method</option>
-                                        <option value="email">Email</option>
-                                        <option value="whatsapp">WhatsApp</option>
-                                        <option value="kakaotalk">KakaoTalk</option>
-                                        <option value="line">Line</option>
-                                        <option value="wechat">WeChat</option>
-                                        <option value="telegram">Telegram</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="live-input-row live-input-row-2">
-                                <div class="live-field">
-                                    <input type="text" name="la_backup_opponent_handle" id="la_backup_opponent_handle" class="live-input" placeholder="backup opponent handle">
-                                </div>
-                                <div class="live-field">
-                                    <select name="la_backup_opponent_comm" id="la_backup_opponent_comm" class="live-input live-select">
-                                        <option value="" disabled selected>select comm method</option>
-                                        <option value="email">Email</option>
-                                        <option value="whatsapp">WhatsApp</option>
-                                        <option value="kakaotalk">KakaoTalk</option>
-                                        <option value="line">Line</option>
-                                        <option value="wechat">WeChat</option>
-                                        <option value="telegram">Telegram</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="live-type-row">
-                                <label class="live-type-opt">
-                                    <input type="radio" name="la_type" value="single" class="live-type-radio">
-                                    <span class="live-type-label">Single</span>
+
+                            <div class="live-check-list">
+                                <label class="live-check-opt">
+                                    <input type="checkbox" name="la_make_appearance" id="la_make_appearance" value="1" class="live-type-radio">
+                                    <span class="live-check-label">Make This Appearance</span>
                                 </label>
-                                <label class="live-type-opt">
-                                    <input type="radio" name="la_type" value="regular" class="live-type-radio">
-                                    <span class="live-type-label">Regular</span>
+                                <label class="live-check-opt live-check-opt--nested">
+                                    <input type="checkbox" name="la_daily" id="la_daily" value="1" class="live-type-radio">
+                                    <span class="live-check-label">Daily</span>
                                 </label>
                             </div>
-                            <div class="live-submit-row">
-                                <button type="submit" class="live-submit" id="live-request-btn">REQUEST</button>
+
+                            <input type="hidden" name="la_type" id="la_type" value="single">
+                            <input type="hidden" name="la_choice_2_month" id="la_choice_2_month" value="">
+                            <input type="hidden" name="la_choice_2_day" id="la_choice_2_day" value="">
+                            <input type="hidden" name="la_choice_2_time" id="la_choice_2_time" value="">
+                            <input type="hidden" name="la_choice_3_month" id="la_choice_3_month" value="">
+                            <input type="hidden" name="la_choice_3_day" id="la_choice_3_day" value="">
+                            <input type="hidden" name="la_choice_3_time" id="la_choice_3_time" value="">
+                            <input type="hidden" name="la_backup_opponent_handle" id="la_backup_opponent_handle" value="">
+                            <input type="hidden" name="la_opponent_comm" id="la_opponent_comm" value="">
+                            <input type="hidden" name="la_backup_opponent_comm" id="la_backup_opponent_comm" value="">
+
+                            <p class="live-label">Unique Live Appearance URL Address to Share</p>
+                            <div id="live-url-wrap" class="live-url-wrap">
+                                <div class="live-url live-url--display" id="live-url-display">URL will appear here...</div>
+                                <button type="button" id="live-url-copy-btn" class="live-inline-btn" onclick="(function(){
+                                    var txt=document.getElementById('live-url-display').textContent;
+                                    if(!txt||txt==='URL will appear here...')return;
+                                    navigator.clipboard.writeText(txt).then(function(){
+                                        var btn=document.getElementById('live-url-copy-btn');
+                                        btn.textContent='copied!';
+                                        setTimeout(function(){btn.textContent='copy';},2000);
+                                    });
+                                })()">copy</button>
+                            </div>
+                            <div id="live-url-qr" style="display:none;margin-top:12px;"></div>
+                            <div id="live-qr-caption" style="display:none;margin-top:8px;font-size:13px;color:#ccc;display:none;align-items:center;gap:6px;">
+                                Download and share your QR image
+                                <a id="live-qr-download-btn" download="qr-code.png" href="#" style="background:#b8972f;color:#fff;font-size:13px;font-weight:600;text-decoration:none;padding:6px 14px;border-radius:4px;margin-left:6px;">Download</a>
+                                <span class="live-qr-info-icon" tabindex="0" aria-label="How to scan" style="position:relative;cursor:pointer;display:inline-flex;align-items:center;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                                    <span class="live-qr-tooltip" role="tooltip" style="display:none;position:absolute;left:24px;top:-8px;background:#1a1a1a;border:1px solid #555;border-radius:6px;padding:14px 16px;width:260px;font-size:12px;line-height:1.6;color:#ddd;z-index:9999;pointer-events:none;">
+                                        <strong style="display:block;margin-bottom:6px;">How to scan:</strong>
+                                        &bull; Open your phone&rsquo;s camera<br>
+                                        &bull; Point it at the code<br>
+                                        &bull; Tap the link that appears<br><br>
+                                        <em>Viewing on this phone? Press and hold the code, then tap the link.</em><br><br>
+                                        Works on any iPhone or Android from 2017 or newer. No app needed.
+                                    </span>
+                                </span>
+                            </div>
+
+                            <div class="live-submit-row live-submit-row--pair">
+                                <button type="submit" class="live-submit live-submit--wide" id="live-request-btn">SUBMIT</button>
+                                <button type="button" class="live-submit live-submit--wide" id="live-request-cancel">CANCEL</button>
                             </div>
                             <div id="live-request-msg" class="live-request-msg" style="display:none;"></div>
+
+                            <button type="button" class="live-add-another" id="live-add-another">
+                                <img src="<?php echo esc_url( $la_theme_uri ); ?>/images/live/icon-plus.png" alt="" class="live-add-another__icon" width="48" height="48">
+                                <span>CLICK TO ADD ANOTHER SCHEDULED APPEARANCE</span>
+                            </button>
+                            <button type="button" class="live-stream-now">STREAM NOW</button>
                         </form>
 
                         <p class="live-label">Status of Request</p>
                         <div class="live-status" id="live-request-status">—</div>
-
-                        <p class="live-label">Referral Link</p>
-                        <div id="live-url-wrap" style="display:flex;align-items:center;gap:8px;">
-                            <div class="live-url live-url--display" id="live-url-display">URL will appear here...</div>
-                            <button type="button" id="live-url-copy-btn" class="live-inline-btn" onclick="(function(){
-                                var txt=document.getElementById('live-url-display').textContent;
-                                if(!txt||txt==='URL will appear here...')return;
-                                navigator.clipboard.writeText(txt).then(function(){
-                                    var btn=document.getElementById('live-url-copy-btn');
-                                    btn.textContent='copied!';
-                                    setTimeout(function(){btn.textContent='copy';},2000);
-                                });
-                            })()">copy</button>
-                        </div>                        <div id="live-url-qr" style="display:none;margin-top:12px;"></div>
-                        <div id="live-qr-caption" style="display:none;margin-top:8px;font-size:13px;color:#ccc;display:none;align-items:center;gap:6px;">
-                            Download and share your QR image
-                            <a id="live-qr-download-btn" download="qr-code.png" href="#" style="background:#b8972f;color:#fff;font-size:13px;font-weight:600;text-decoration:none;padding:6px 14px;border-radius:4px;margin-left:6px;">Download</a>
-                            <span class="live-qr-info-icon" tabindex="0" aria-label="How to scan" style="position:relative;cursor:pointer;display:inline-flex;align-items:center;">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                                <span class="live-qr-tooltip" role="tooltip" style="display:none;position:absolute;left:24px;top:-8px;background:#1a1a1a;border:1px solid #555;border-radius:6px;padding:14px 16px;width:260px;font-size:12px;line-height:1.6;color:#ddd;z-index:9999;pointer-events:none;">
-                                    <strong style="display:block;margin-bottom:6px;">How to scan:</strong>
-                                    &bull; Open your phone&rsquo;s camera<br>
-                                    &bull; Point it at the code<br>
-                                    &bull; Tap the link that appears<br><br>
-                                    <em>Viewing on this phone? Press and hold the code, then tap the link.</em><br><br>
-                                    Works on any iPhone or Android from 2017 or newer. No app needed.
-                                </span>
-                            </span>
-                        </div>
                     </div>
 
                     <div id="live-calendar-modal" class="live-calendar-modal" style="display:none;">
@@ -442,6 +490,7 @@ if ( ! empty( $la_calendar_posts ) ) {
                         </div>
                     </div>
 
+
                 </div>
             
             </div>
@@ -530,8 +579,8 @@ $_live_nonce = wp_create_nonce( 'request_live_appearance_nonce' );
 ?>
 <script>
 (function () {
-    var _liveAjaxUrl = <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
-    var _liveNonce   = <?php echo wp_json_encode( $_live_nonce ); ?>;
+    var _liveAjaxUrl     = <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
+    var _liveNonce       = <?php echo wp_json_encode( $_live_nonce ); ?>;
 
     var calendarModal     = document.getElementById('live-calendar-modal');
     var calendarOpenBtn   = document.getElementById('live-calendar-open-btn');
@@ -807,11 +856,124 @@ $_live_nonce = wp_create_nonce( 'request_live_appearance_nonce' );
             });
     })();
 
-    // Form submission
+    function setLiveContestPanel(panelKey) {
+        var tabs = document.querySelectorAll('.live-contest-tab');
+        var panels = document.querySelectorAll('.live-contest-panel');
+        tabs.forEach(function(tab) {
+            var isOpen = tab.getAttribute('data-contest-panel') === panelKey;
+            tab.classList.toggle('is-open', isOpen);
+            tab.setAttribute('aria-selected', isOpen ? 'true' : 'false');
+        });
+        panels.forEach(function(panel) {
+            var isOpen = panel.getAttribute('data-contest-panel') === panelKey;
+            panel.classList.toggle('is-open', isOpen);
+            if (isOpen) {
+                panel.removeAttribute('hidden');
+            } else {
+                panel.setAttribute('hidden', 'hidden');
+            }
+        });
+        var typeInput = document.querySelector('input[name="la_contest_type"][value="' + panelKey + '"]');
+        if (typeInput) {
+            typeInput.checked = true;
+        }
+    }
+
+    function syncLiveStreamMode() {
+        var joint = document.querySelector('input[name="la_stream_mode"][value="joint"]');
+        var block = document.getElementById('live-opponent-block');
+        if (!block) return;
+        var isJoint = joint ? joint.checked : false;
+        block.hidden = !isJoint;
+        var fields = block.querySelectorAll('input');
+        fields.forEach(function(field) {
+            field.disabled = !isJoint;
+        });
+    }
+
+    function syncLiveTypeHidden() {
+        var typeEl = document.getElementById('la_type');
+        var dailyEl = document.getElementById('la_daily');
+        if (!typeEl) return;
+        typeEl.value = (dailyEl && dailyEl.checked) ? 'regular' : 'single';
+    }
+
+    function syncLiveOpponentComm() {
+        var commEl = document.getElementById('la_opponent_comm');
+        var emailEl = document.getElementById('la_opponent_email');
+        if (!commEl) return;
+        commEl.value = (emailEl && emailEl.value.trim()) ? 'email' : '';
+    }
+
     var form = document.getElementById('live-request-form');
+
+    function resetLiveRequestForm(keepMessage) {
+        if (!form) return;
+        var opponentBlock = document.getElementById('live-opponent-block');
+        if (opponentBlock) {
+            opponentBlock.querySelectorAll('input').forEach(function(field) {
+                field.disabled = false;
+            });
+        }
+        form.reset();
+        var classic = document.querySelector('input[name="la_contest_type"][value="classic"]');
+        var joint = document.querySelector('input[name="la_stream_mode"][value="joint"]');
+        if (classic) classic.checked = true;
+        if (joint) joint.checked = true;
+        setLiveContestPanel('classic');
+        syncLiveStreamMode();
+        syncLiveTypeHidden();
+        if (!keepMessage) {
+            var msg = document.getElementById('live-request-msg');
+            if (msg) msg.style.display = 'none';
+        }
+    }
+
+    document.querySelectorAll('.live-contest-tab').forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            setLiveContestPanel(tab.getAttribute('data-contest-panel'));
+        });
+    });
+
+    document.querySelectorAll('[data-live-contest-type]').forEach(function(input) {
+        input.addEventListener('change', function() {
+            if (input.checked) {
+                setLiveContestPanel(input.value);
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-live-stream]').forEach(function(input) {
+        input.addEventListener('change', syncLiveStreamMode);
+    });
+
+    var dailyEl = document.getElementById('la_daily');
+    var makeEl = document.getElementById('la_make_appearance');
+    if (dailyEl) {
+        dailyEl.addEventListener('change', function() {
+            if (dailyEl.checked && makeEl) {
+                makeEl.checked = true;
+            }
+            syncLiveTypeHidden();
+        });
+    }
+    if (makeEl) {
+        makeEl.addEventListener('change', function() {
+            if (!makeEl.checked && dailyEl) {
+                dailyEl.checked = false;
+            }
+            syncLiveTypeHidden();
+        });
+    }
+
+    // Form submission
+    syncLiveStreamMode();
+    syncLiveTypeHidden();
     if (form) {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
+            syncLiveTypeHidden();
+            syncLiveOpponentComm();
             var btn = document.getElementById('live-request-btn');
             if (btn) { btn.disabled = true; btn.textContent = 'SUBMITTING...'; }
             var fd = new FormData(form);
@@ -820,19 +982,39 @@ $_live_nonce = wp_create_nonce( 'request_live_appearance_nonce' );
             fetch(_liveAjaxUrl, { method: 'POST', body: fd })
                 .then(function(r) { return r.json(); })
                 .then(function(res) {
-                    if (btn) { btn.disabled = false; btn.textContent = 'REQUEST'; }
+                    if (btn) { btn.disabled = false; btn.textContent = 'SUBMIT'; }
                     if (res.success) {
                         showMsg(res.data.message || 'Request submitted successfully.', false);
                         setStatus(res.data.status_label, res.data.status_key);
-                        form.reset();
+                        resetLiveRequestForm(true);
                     } else {
                         var msg = (res.data && res.data.message) ? res.data.message : 'An error occurred.';
                         showMsg(msg, true);
                     }
                 }).catch(function () {
-                    if (btn) { btn.disabled = false; btn.textContent = 'REQUEST'; }
+                    if (btn) { btn.disabled = false; btn.textContent = 'SUBMIT'; }
                     showMsg('Network error. Please try again.', true);
                 });
+        });
+    }
+
+    var cancelBtn = document.getElementById('live-request-cancel');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function() {
+            resetLiveRequestForm();
+        });
+    }
+
+    var addAnotherBtn = document.getElementById('live-add-another');
+    if (addAnotherBtn) {
+        addAnotherBtn.addEventListener('click', function() {
+            resetLiveRequestForm();
+            var formBlock = document.getElementById('live-request');
+            if (formBlock && formBlock.scrollIntoView) {
+                formBlock.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            var firstType = document.querySelector('[data-live-contest-type]');
+            if (firstType) firstType.focus();
         });
     }
 
