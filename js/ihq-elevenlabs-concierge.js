@@ -15,6 +15,7 @@
     IDLE: 'idle',
     CONNECTING: 'connecting',
     OPEN: 'open',
+    CLOSING: 'closing',
   };
   var sessionPhase = SESSION_PHASE.IDLE;
 
@@ -160,17 +161,61 @@
     resetTriggerState(context);
   }
 
+  function endTrackedSession(session, context) {
+    if (!session || !session.endSession) {
+      return;
+    }
+    Promise.resolve()
+      .then(function () {
+        return session.endSession();
+      })
+      .catch(function (error) {
+        console.error('Failed to end voice session', error);
+        if (activeSession) {
+          return;
+        }
+        activeSession = session;
+        activeContext = context;
+        sessionPhase = SESSION_PHASE.OPEN;
+        setConnectedState(context);
+      });
+  }
+
   function endSession() {
+    if (sessionPhase === SESSION_PHASE.CLOSING) {
+      return;
+    }
     startToken += 1;
     var context = activeContext;
     var session = activeSession;
-    activeSession = null;
-    activeContext = null;
-    sessionPhase = SESSION_PHASE.IDLE;
-    if (session && session.endSession) {
-      session.endSession();
+    if (!session || !session.endSession) {
+      activeSession = null;
+      activeContext = null;
+      sessionPhase = SESSION_PHASE.IDLE;
+      resetTriggerState(context);
+      return;
     }
-    resetTriggerState(context);
+    sessionPhase = SESSION_PHASE.CLOSING;
+    Promise.resolve()
+      .then(function () {
+        return session.endSession();
+      })
+      .then(function () {
+        if (activeSession !== session) {
+          return;
+        }
+        activeSession = null;
+        activeContext = null;
+        sessionPhase = SESSION_PHASE.IDLE;
+        resetTriggerState(context);
+      })
+      .catch(function (error) {
+        console.error('Failed to end voice session', error);
+        if (activeSession !== session) {
+          return;
+        }
+        sessionPhase = SESSION_PHASE.OPEN;
+      });
   }
 
   function startSession(context) {
@@ -231,14 +276,17 @@
               return;
             }
             showInlineError(context, cfg.error_connect || 'Connection error. Please try again.');
+            if (activeSession) {
+              endSession();
+              return;
+            }
+            startToken += 1;
             clearSessionState(context);
           },
           onMessage: function () {},
         }).then(function (session) {
           if (!isStartCurrent(token)) {
-            if (session && session.endSession) {
-              session.endSession();
-            }
+            endTrackedSession(session, context);
             return;
           }
           activeSession = session;
