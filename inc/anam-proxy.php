@@ -286,6 +286,15 @@ function ihq_aicoach_enqueue_coach_flow() {
 			// prerender` has actually rendered so far. Empty/missing keys are
 			// expected and fall back to the existing static caption.
 			'prerenderedVideos' => function_exists( 'ihq_aicoach_prerender_get_urls' ) ? ihq_aicoach_prerender_get_urls() : array(),
+			// NFR-03 — the SAME translated text inc/aicoach-segment-translations.php
+			// already renders into the clip above, now also exposed so the on-screen
+			// caption can match what the avatar is actually saying instead of
+			// silently staying English under a non-English clip. segment key =>
+			// language => text; a segment/language this file has nothing for (see
+			// its own top-of-file note, e.g. time_selection) is simply absent and
+			// the caption falls back to the English SCREENS/EQUITY_SCREENS script,
+			// same "missing just means not ready" degrade as the clip itself.
+			'segmentScripts'   => function_exists( 'ihq_aicoach_segment_translations' ) ? ihq_aicoach_segment_translations() : array(),
 			'i18n'             => array(
 				'usernameTaken'    => __( 'That username is already taken.', 'influencer-hq' ),
 				'identitySaved'    => __( 'Saved', 'influencer-hq' ),

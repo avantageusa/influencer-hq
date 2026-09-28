@@ -599,6 +599,21 @@ function getPrerenderedUrl( panelKey, locale ) {
     return perLanguage[ locale ] || perLanguage.en || null;
 }
 
+// NFR-03 — the on-screen caption for a pre-rendered segment, in whatever
+// language its clip is actually playing. cfg.segmentScripts (localized from
+// inc/aicoach-segment-translations.php) has no 'en' entries — English lives
+// in SCREENS/EQUITY_SCREENS's own .script strings — so null here (locale not
+// translated for this segment yet) means "use the English .script", the same
+// fallback getPrerenderedUrl() already gives the video itself.
+function getCaptionScript( panelKey, locale ) {
+    const segmentKey = PRERENDERED_PANEL_MAP[ panelKey ];
+    if ( ! segmentKey || 'en' === locale ) {
+        return null;
+    }
+    const perLanguage = ( cfg.segmentScripts || {} )[ segmentKey ] || {};
+    return perLanguage[ locale ] || null;
+}
+
 // PO-3102 — session persistence (inc/aicoach-progress.php). saveProgress() is
 // fire-and-forget as far as any caller is concerned — a failed save must never
 // block the coach flow. loadProgress() is only ever awaited once, at start,
@@ -739,6 +754,13 @@ if ( stage && avatarWrap ) {
             return;
         }
         activeClipRestart( newUrl );
+        // NFR-03 — keep the on-screen caption matching whatever the restarted
+        // clip is actually saying, same as the initial-load path in
+        // runFallback() above.
+        const captionEl = getCaptionEl( screen.panel );
+        if ( captionEl ) {
+            captionEl.textContent = getCaptionScript( screen.panel, locale ) || screen.script;
+        }
     }
 
     ( function buildLanguageSelector() {
@@ -1174,7 +1196,11 @@ if ( stage && avatarWrap ) {
             const panelReady = showPanel( screen.panel );
             const captionEl = getCaptionEl( screen.panel );
             if ( captionEl ) {
-                captionEl.textContent = screen.script;
+                // NFR-03 — best-effort immediate text so the caption isn't blank
+                // during the fade; re-set below once currentLocale is final for
+                // this screen, same reasoning as the clip URL re-resolve just
+                // after panelReady.
+                captionEl.textContent = getCaptionScript( screen.panel, currentLocale ) || screen.script;
             }
             // PO-3062 — an approved segment with a pre-rendered clip plays it
             // (real voice + lip-sync, dwell = the clip's own length); every
@@ -1193,6 +1219,11 @@ if ( stage && avatarWrap ) {
                 // restart) would otherwise still hear this screen start in the
                 // language they just left.
                 const clipUrl = getPrerenderedUrl( screen.panel, currentLocale );
+                // NFR-03 — keep the caption in step with whichever clip just got
+                // (re-)resolved above, for the same reason.
+                if ( captionEl ) {
+                    captionEl.textContent = getCaptionScript( screen.panel, currentLocale ) || screen.script;
+                }
                 const played = clipUrl && await playPrerenderedClip( clipUrl );
                 if ( ! played ) {
                     await waitForReadOrSkip();
