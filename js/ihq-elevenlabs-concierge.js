@@ -7,9 +7,16 @@
   var cfg = window.ihqElevenLabs || {};
   var activeSession = null;
   var activeContext = null;
+  var startToken = 0;
   var DEFAULT_LANG = 'en';
   var FAB_SIZE_PX = 160;
   var DRAG_THRESHOLD_PX = 6;
+  var SESSION_PHASE = {
+    IDLE: 'idle',
+    CONNECTING: 'connecting',
+    OPEN: 'open',
+  };
+  var sessionPhase = SESSION_PHASE.IDLE;
 
   function pagePrimaryLang() {
     var raw = document.documentElement ? document.documentElement.getAttribute('lang') : '';
@@ -142,20 +149,44 @@
     }
   }
 
+  function isStartCurrent(token) {
+    return token === startToken;
+  }
+
+  function clearSessionState(context) {
+    activeSession = null;
+    activeContext = null;
+    sessionPhase = SESSION_PHASE.IDLE;
+    resetTriggerState(context);
+  }
+
   function endSession() {
-    if (activeSession) {
-      activeSession.endSession();
+    startToken += 1;
+    var context = activeContext;
+    var session = activeSession;
+    activeSession = null;
+    activeContext = null;
+    sessionPhase = SESSION_PHASE.IDLE;
+    if (session && session.endSession) {
+      session.endSession();
     }
+    resetTriggerState(context);
   }
 
   function startSession(context) {
+    if (sessionPhase !== SESSION_PHASE.IDLE) {
+      return Promise.resolve();
+    }
     if (typeof window.ElevenLabsClient === 'undefined' || !window.ElevenLabsClient.Conversation) {
       showInlineError(context, cfg.error_unavailable || 'Concierge is unavailable.');
       resetTriggerState(context);
       return Promise.resolve();
     }
 
+    var token = startToken;
     var agentId = resolveAgentId(context.agentMode);
+    sessionPhase = SESSION_PHASE.CONNECTING;
+    activeContext = context;
     setConnectingState(context);
     hideInlineError(context);
 
@@ -166,9 +197,12 @@
     })
       .then(function (response) { return response.json(); })
       .then(function (data) {
+        if (!isStartCurrent(token)) {
+          return;
+        }
         if (!data.success || !data.data || !data.data.signed_url) {
           showInlineError(context, cfg.error_connect || 'Could not connect. Please try again.');
-          resetTriggerState(context);
+          clearSessionState(context);
           return;
         }
 
@@ -180,40 +214,55 @@
             },
           },
           onConnect: function () {
+            if (!isStartCurrent(token)) {
+              return;
+            }
+            sessionPhase = SESSION_PHASE.OPEN;
             setConnectedState(context);
           },
           onDisconnect: function () {
-            activeSession = null;
-            activeContext = null;
-            resetTriggerState(context);
+            if (!isStartCurrent(token)) {
+              return;
+            }
+            clearSessionState(context);
           },
           onError: function () {
+            if (!isStartCurrent(token)) {
+              return;
+            }
             showInlineError(context, cfg.error_connect || 'Connection error. Please try again.');
-            activeSession = null;
-            activeContext = null;
-            resetTriggerState(context);
+            clearSessionState(context);
           },
           onMessage: function () {},
         }).then(function (session) {
+          if (!isStartCurrent(token)) {
+            if (session && session.endSession) {
+              session.endSession();
+            }
+            return;
+          }
           activeSession = session;
           activeContext = context;
+          sessionPhase = SESSION_PHASE.OPEN;
         }).catch(function () {
+          if (!isStartCurrent(token)) {
+            return;
+          }
           showInlineError(context, cfg.error_connect || 'Could not start conversation. Please try again.');
-          activeSession = null;
-          activeContext = null;
-          resetTriggerState(context);
+          clearSessionState(context);
         });
       })
       .catch(function () {
+        if (!isStartCurrent(token)) {
+          return;
+        }
         showInlineError(context, cfg.error_connect || 'Connection error. Please try again.');
-        activeSession = null;
-        activeContext = null;
-        resetTriggerState(context);
+        clearSessionState(context);
       });
   }
 
   function toggleFromContext(context) {
-    if (activeSession) {
+    if (sessionPhase !== SESSION_PHASE.IDLE) {
       endSession();
       return;
     }
@@ -241,10 +290,6 @@
 
     el.addEventListener('click', function (event) {
       event.preventDefault();
-      if (activeSession && activeContext) {
-        endSession();
-        return;
-      }
       toggleFromContext(context);
     });
   }
@@ -330,18 +375,27 @@
       fab.style.top = next.top + 'px';
     });
 
-    function endPointer(event) {
+    function endPointer(event, canceled) {
       if (pointerId !== event.pointerId) {
         return;
       }
       pointerId = null;
+      if (canceled) {
+        dragged = false;
+        fab.removeAttribute('data-ihq-dragged');
+        return;
+      }
       if (dragged) {
         fab.setAttribute('data-ihq-dragged', '1');
       }
     }
 
-    fab.addEventListener('pointerup', endPointer);
-    fab.addEventListener('pointercancel', endPointer);
+    fab.addEventListener('pointerup', function (event) {
+      endPointer(event, false);
+    });
+    fab.addEventListener('pointercancel', function (event) {
+      endPointer(event, true);
+    });
 
     fab.addEventListener('click', function (event) {
       if (fab.getAttribute('data-ihq-dragged') !== '1') {
@@ -353,6 +407,19 @@
     }, true);
   }
 
+  function clampFabToViewport() {
+    var fab = document.getElementById('ihq-concierge-fab');
+    if (!fab || !fab.classList.contains('is-moved')) {
+      return;
+    }
+    var left = parseFloat(fab.style.left);
+    var top = parseFloat(fab.style.top);
+    if (isNaN(left) || isNaN(top)) {
+      return;
+    }
+    placeFab(fab, left, top);
+  }
+
   function initTriggers() {
     var fab = document.getElementById('ihq-concierge-fab');
     if (fab) {
@@ -360,6 +427,7 @@
       placeFab(fab, start.left, start.top);
       enableFabDrag(fab);
     }
+    window.addEventListener('resize', clampFabToViewport);
     document.querySelectorAll('[data-ihq-concierge-trigger]').forEach(function (el) {
       bindTrigger(el, {});
     });
