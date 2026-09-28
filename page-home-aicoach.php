@@ -1149,6 +1149,14 @@ $aicoach_channels = array(
         margin: 0 auto 24px;
     }
 
+    /* An author "display: flex" rule beats the browser's own [hidden] rule
+    (equal specificity, author origin wins) — without this, setting the
+    wrap's hidden property (the non-English locale gate above) silently did
+    nothing and the button stayed visible everywhere. */
+    .aicoach-ask-wrap[hidden] {
+        display: none;
+    }
+
     .aicoach-ask-btn {
         display: inline-flex;
         align-items: center;

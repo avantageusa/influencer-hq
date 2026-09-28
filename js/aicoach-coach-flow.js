@@ -927,6 +927,7 @@ if ( stage && avatarWrap ) {
         input.maxLength = 500;
         input.autocomplete = 'off';
         input.placeholder = 'Ask Semi a question…';
+        input.setAttribute( 'aria-label', 'Ask Semi a question' ); // the placeholder alone disappears once the visitor types, leaving no accessible name
 
         const submitBtn = document.createElement( 'button' );
         submitBtn.type = 'submit';
@@ -1976,6 +1977,14 @@ if ( stage && avatarWrap ) {
             if ( garySessionId ) {
                 fetch( garyCloseUrl( garySessionId ), { method: 'POST', headers: { 'X-WP-Nonce': cfg.nonce } } )
                     .catch( function () {} );
+                // FR-19/PO-3330 — askSemiBtn may already be enabled at this point
+                // (start() flips it right after garySessionId is set, before this
+                // await). Without clearing both, Ask Semi would stay clickable
+                // against a session Gary just closed on his side.
+                garySessionId = null;
+                if ( askSemiBtn ) {
+                    askSemiBtn.disabled = true;
+                }
             }
             runFallback();
         }
