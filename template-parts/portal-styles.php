@@ -3672,13 +3672,18 @@
 
     body.page-template-page-portal-live-php .live-intro-text {
         margin-bottom: 16px;
+        text-align: center;
     }
 
     body.page-template-page-portal-live-php .live-intro-text p {
         margin: 0 0 20px;
         color: #e5e5e5;
-        font-size: 20px;
-        line-height: 1.55;
+        font-size: 22px;
+        line-height: 1.45;
+    }
+
+    body.page-template-page-portal-live-php .live-intro-text p:first-child {
+        color: #fff;
     }
 
     body.page-template-page-portal-live-php .live-text-content p {
@@ -3755,23 +3760,26 @@
 
     body.page-template-page-portal-live-php .live-section-heading--banner {
         font-family: "Cinzel", serif;
-        font-size: 22px;
+        font-size: 28px;
         font-weight: 700;
         letter-spacing: 0.04em;
         text-align: center;
+        color: #fff;
         line-height: 1.35;
-        margin: 16px 0;
+        margin: 16px auto;
+        max-width: 920px;
     }
 
     body.page-template-page-portal-live-php .live-heading-gold {
-        margin: 28px 0 18px;
+        margin: 28px auto 18px;
         font-family: "Cinzel", serif;
         font-size: 28px;
         font-weight: 700;
-        line-height: 1.2;
+        line-height: 1.25;
         letter-spacing: 0.04em;
         text-transform: uppercase;
-        color: #b8972f;
+        text-align: center;
+        color: #fff;
     }
 
     body.page-template-page-portal-live-php .live-contest-info {
@@ -3782,7 +3790,8 @@
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: 12px 28px;
+        justify-content: center;
+        gap: 12px 36px;
         margin-bottom: 18px;
     }
 
@@ -3804,7 +3813,7 @@
     }
 
     body.page-template-page-portal-live-php .live-contest-tab.is-open {
-        color: #fff;
+        color: #b8972f;
     }
 
     body.page-template-page-portal-live-php .live-contest-chevron {
@@ -3865,11 +3874,13 @@
     }
 
     body.page-template-page-portal-live-php .live-referral-note {
-        margin: 8px 0 28px;
+        margin: 8px auto 28px;
+        max-width: 720px;
         color: #fff;
         font-size: 16px;
         font-style: italic;
         line-height: 1.5;
+        text-align: center;
     }
 
     body.page-template-page-portal-live-php .live-label--opponent-info {
@@ -3911,6 +3922,7 @@
     body.page-template-page-portal-live-php .live-submit-row--pair {
         margin-top: 8px;
         gap: 16px;
+        justify-content: center;
     }
 
     body.page-template-page-portal-live-php .live-submit--wide {
@@ -3927,7 +3939,9 @@
     body.page-template-page-portal-live-php .live-add-another {
         display: flex;
         align-items: center;
+        justify-content: center;
         gap: 16px;
+        width: 100%;
         margin: 28px 0 8px;
         padding: 0;
         border: 0;
@@ -3937,7 +3951,7 @@
         font-weight: 600;
         letter-spacing: 0.04em;
         text-transform: uppercase;
-        text-align: left;
+        text-align: center;
         cursor: pointer;
     }
 
@@ -3946,6 +3960,22 @@
         height: 48px;
         object-fit: contain;
         flex-shrink: 0;
+    }
+
+    body.page-template-page-portal-live-php .live-stream-now {
+        display: block;
+        width: min(420px, 100%);
+        margin: 36px auto 8px;
+        padding: 18px 28px;
+        border: 0;
+        border-radius: 4px;
+        background: #b8972f;
+        color: #000;
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        cursor: default;
     }
 
 
