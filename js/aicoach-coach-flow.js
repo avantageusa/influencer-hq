@@ -596,7 +596,46 @@ function getPrerenderedUrl( panelKey, locale ) {
         return null;
     }
     const perLanguage = ( cfg.prerenderedVideos || {} )[ segmentKey ] || {};
-    return perLanguage[ locale ] || perLanguage.en || null;
+    // The mirror image of getCaptionScript()'s own check just below: if a
+    // translation is edited out of inc/aicoach-segment-translations.php
+    // AFTER its clip was already rendered, nothing deletes the now-orphaned
+    // clip file or its manifest entry — `wp aicoach prerender` only adds,
+    // it doesn't prune. Without this, the orphaned localized clip would
+    // still get selected here while getCaptionScript() (correctly, since it
+    // has no script text for this locale) falls back to the English
+    // caption — a non-English video under an English caption, the same
+    // mismatch this ticket fixed, from a third direction. Requiring a
+    // script to exist before trusting the clip keeps translated text as the
+    // single source of truth both functions key off.
+    const perLanguageScripts = ( cfg.segmentScripts || {} )[ segmentKey ] || {};
+    const hasScript = 'en' === locale || perLanguageScripts[ locale ];
+    return ( hasScript && perLanguage[ locale ] ) || perLanguage.en || null;
+}
+
+// NFR-03 — the on-screen caption for a pre-rendered segment, in whatever
+// language its clip is actually playing. cfg.segmentScripts (localized from
+// inc/aicoach-segment-translations.php) has no 'en' entries — English lives
+// in SCREENS/EQUITY_SCREENS's own .script strings — so null here (locale not
+// translated for this segment yet) means "use the English .script", the same
+// fallback getPrerenderedUrl() already gives the video itself.
+function getCaptionScript( panelKey, locale ) {
+    const segmentKey = PRERENDERED_PANEL_MAP[ panelKey ];
+    if ( ! segmentKey ) {
+        return null;
+    }
+    // A translated script can exist (inc/aicoach-segment-translations.php)
+    // before `wp aicoach prerender` has actually rendered its clip on this
+    // environment — the two ship independently, translations in code, clips
+    // via a separate manual render step. Without this check, that gap
+    // reintroduces the exact mismatch this ticket fixed, just flipped: an
+    // English clip (getPrerenderedUrl()'s own fallback) under a translated
+    // caption. Deriving the caption's language from whichever locale the
+    // CLIP actually resolved to — not from whether a translation merely
+    // exists — keeps the two locked together.
+    const perLanguage = ( cfg.segmentScripts || {} )[ segmentKey ] || {};
+    const perLanguageVideos = ( cfg.prerenderedVideos || {} )[ segmentKey ] || {};
+    const clipLocale = perLanguageVideos[ locale ] ? locale : 'en';
+    return perLanguage[ clipLocale ] || null;
 }
 
 // PO-3102 — session persistence (inc/aicoach-progress.php). saveProgress() is
@@ -739,6 +778,13 @@ if ( stage && avatarWrap ) {
             return;
         }
         activeClipRestart( newUrl );
+        // NFR-03 — keep the on-screen caption matching whatever the restarted
+        // clip is actually saying, same as the initial-load path in
+        // runFallback() above.
+        const captionEl = getCaptionEl( screen.panel );
+        if ( captionEl ) {
+            captionEl.textContent = getCaptionScript( screen.panel, locale ) || screen.script;
+        }
     }
 
     ( function buildLanguageSelector() {
@@ -1174,7 +1220,11 @@ if ( stage && avatarWrap ) {
             const panelReady = showPanel( screen.panel );
             const captionEl = getCaptionEl( screen.panel );
             if ( captionEl ) {
-                captionEl.textContent = screen.script;
+                // NFR-03 — best-effort immediate text so the caption isn't blank
+                // during the fade; re-set below once currentLocale is final for
+                // this screen, same reasoning as the clip URL re-resolve just
+                // after panelReady.
+                captionEl.textContent = getCaptionScript( screen.panel, currentLocale ) || screen.script;
             }
             // PO-3062 — an approved segment with a pre-rendered clip plays it
             // (real voice + lip-sync, dwell = the clip's own length); every
@@ -1193,6 +1243,11 @@ if ( stage && avatarWrap ) {
                 // restart) would otherwise still hear this screen start in the
                 // language they just left.
                 const clipUrl = getPrerenderedUrl( screen.panel, currentLocale );
+                // NFR-03 — keep the caption in step with whichever clip just got
+                // (re-)resolved above, for the same reason.
+                if ( captionEl ) {
+                    captionEl.textContent = getCaptionScript( screen.panel, currentLocale ) || screen.script;
+                }
                 const played = clipUrl && await playPrerenderedClip( clipUrl );
                 if ( ! played ) {
                     await waitForReadOrSkip();
