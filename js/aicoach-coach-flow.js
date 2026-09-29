@@ -685,6 +685,42 @@ async function loadProgress() {
     }
 }
 
+// PO-3343 — the shared adjustContentPadding() (template-parts/portal-header.php)
+// pads #portal-content to (header bottom + 20px), tuned as breathing room for
+// portal pages generally. This page's own chrome is already stripped down to
+// logo/globe/volume (PO-3062's "hide chrome" work), so that much clearance
+// just pushes the avatar/caption down for no benefit here — mirrors the same
+// bottom-measurement logic with a smaller buffer instead, page-scoped so the
+// shared function (and every other portal page relying on its own 20px) is
+// untouched. Registers its own load/resize listeners after portal-header.php's
+// inline script already has (this module script necessarily runs later), so
+// it always overrides with a freshly-measured value rather than compounding
+// off whatever the previous call left behind.
+function tightenAicoachTopPadding() {
+    const stickyNav = document.querySelector('.sticky-nav');
+    const stickyHeader = document.querySelector('.sticky-header');
+    const content = document.getElementById('portal-content');
+    if ( ! content ) {
+        return;
+    }
+    const navVisible = stickyNav && 'none' !== getComputedStyle( stickyNav ).display;
+    let bottom = 0;
+    if ( navVisible ) {
+        bottom = stickyNav.getBoundingClientRect().bottom;
+    } else if ( stickyHeader ) {
+        bottom = stickyHeader.getBoundingClientRect().bottom;
+    }
+    if ( bottom > 0 ) {
+        content.style.setProperty( 'padding-top', ( bottom + 4 ) + 'px', 'important' );
+    }
+}
+window.addEventListener( 'load', tightenAicoachTopPadding );
+let aicoachPaddingResizeTimer;
+window.addEventListener( 'resize', function () {
+    clearTimeout( aicoachPaddingResizeTimer );
+    aicoachPaddingResizeTimer = window.setTimeout( tightenAicoachTopPadding, 100 );
+} );
+
 const stage = document.getElementById('aicoach-stage');
 const avatarWrap = document.getElementById('aicoach-avatar-wrap');
 const video = document.getElementById('aicoach-avatar-video');
