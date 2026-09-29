@@ -566,6 +566,7 @@ const cfg = window.AICOACH_SAMI || {};
 // identity endpoints already use — no new PHP localization needed for this.
 const GARY_SESSION_URL = cfg.identityRestBase + '/coach/session';
 const garyCloseUrl = ( sessionId ) => cfg.identityRestBase + '/coach/' + encodeURIComponent( sessionId ) + '/close';
+const garyMessageUrl = ( sessionId ) => cfg.identityRestBase + '/coach/' + encodeURIComponent( sessionId ) + '/message';
 
 // PO-3062 pre-rendered clips — SCREENS panel name -> Gary's own segment key
 // (see inc/aicoach-prerender.php's ihq_aicoach_prerender_panel_map(), kept
@@ -713,6 +714,8 @@ if ( stage && avatarWrap ) {
     // (see ihq_aicoach_enqueue_coach_flow()'s is_page_template check), so injecting
     // here is safe without any extra page check.
     let currentLocale = detectInitialLocale();
+    let askSamiWrap = null; // set once buildAskSami() runs below; selectLocale() toggles its visibility
+    let askSamiBtn = null;
 
     function selectLocale( locale ) {
         if ( locale === currentLocale ) {
@@ -730,6 +733,12 @@ if ( stage && avatarWrap ) {
                 opt.removeAttribute( 'aria-current' );
             }
         } );
+        // FR-19/PO-3330 — Ask Sami's generated answers are English-only (Gary,
+        // 2026-09-28); hide the entry point rather than let a visitor ask a
+        // question in a language that can only ever get his fixed fallback line.
+        if ( askSamiWrap ) {
+            askSamiWrap.hidden = 'en' !== locale;
+        }
         restartCurrentClipForLocale( locale ); // FR-14/PO-3105
         // NOTE — scope boundary: the line above restarts a currently-playing
         // PRE-RENDERED clip (PO-3107) in the new language. It does NOT reconnect
@@ -857,6 +866,175 @@ if ( stage && avatarWrap ) {
             selectLocale( option.dataset.locale );
             wrap.classList.remove( 'is-open' );
             btn.setAttribute( 'aria-expanded', 'false' );
+        } );
+    }() );
+
+    // FR-19/PO-3330 — "Ask Sami": lets a visitor interrupt the fixed sequence
+    // and ask a free-text question, answered by Gary's /message endpoint
+    // (inc/gary-proxy.php's ihq_coach_handle_message()), reusing this visit's
+    // already-open garySessionId (stays open for the whole flow — see its
+    // declaration below). Confirmed with Gary 2026-09-28: generated answers
+    // are English-only for now, so this entry point is hidden outside the
+    // 'en' locale (selectLocale() above) rather than shown for a feature that
+    // would just return his fixed fallback line.
+    //
+    // Text-only for this MVP — deliberately does NOT play back say.audio or
+    // reconnect the avatar for say.video. Confirmed live (2026-09-28):
+    // say.audio is not a playable URL but an object ({ id, url, format,
+    // expires_at, ... }) whose "url" (e.g. "/coach/v1/audio/{id}") is a path
+    // on Gary's own API host, HMAC-signed the same way every other
+    // ihq_coach_request() call is — the visitor's browser can't fetch it
+    // directly, and nothing in inc/gary-proxy.php proxies it live today
+    // (ihq_coach_download() is a build-time, stream-to-disk tool used by the
+    // prerender scripts, not a REST route). Playing the answer back through
+    // Sami (live avatar or plain audio) needs that proxy route built first —
+    // tracked as a real follow-up, not silently attempted here. The main
+    // avatar video is still paused while this panel is open, independent of
+    // that — purely so the visitor isn't reading/typing while the sequence
+    // advances underneath them.
+    ( function buildAskSami() {
+        const wrap = document.createElement( 'div' );
+        wrap.className = 'aicoach-ask-wrap';
+        wrap.hidden = 'en' !== currentLocale;
+
+        const btn = document.createElement( 'button' );
+        btn.type = 'button';
+        btn.className = 'aicoach-ask-btn';
+        btn.disabled = true; // enabled once start() below has a real garySessionId
+        btn.setAttribute( 'aria-haspopup', 'true' );
+        btn.setAttribute( 'aria-expanded', 'false' );
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg><span>Ask Sami</span>';
+
+        const panel = document.createElement( 'div' );
+        panel.className = 'aicoach-ask-panel';
+
+        const closeBtn = document.createElement( 'button' );
+        closeBtn.type = 'button';
+        closeBtn.className = 'aicoach-ask-close';
+        closeBtn.setAttribute( 'aria-label', 'Close' );
+        closeBtn.textContent = '×';
+
+        const answerEl = document.createElement( 'p' );
+        answerEl.className = 'aicoach-ask-answer';
+        answerEl.setAttribute( 'aria-live', 'polite' );
+
+        const form = document.createElement( 'form' );
+        form.className = 'aicoach-ask-form';
+
+        const input = document.createElement( 'input' );
+        input.type = 'text';
+        input.className = 'aicoach-ask-input';
+        input.maxLength = 500;
+        input.autocomplete = 'off';
+        input.placeholder = 'Ask Sami a question…';
+        input.setAttribute( 'aria-label', 'Ask Sami a question' ); // the placeholder alone disappears once the visitor types, leaving no accessible name
+
+        const submitBtn = document.createElement( 'button' );
+        submitBtn.type = 'submit';
+        submitBtn.className = 'aicoach-ask-submit';
+        submitBtn.textContent = 'Ask';
+
+        const errorEl = document.createElement( 'p' );
+        errorEl.className = 'aicoach-ask-error';
+        errorEl.setAttribute( 'role', 'alert' );
+
+        form.appendChild( input );
+        form.appendChild( submitBtn );
+        panel.appendChild( closeBtn );
+        panel.appendChild( answerEl );
+        panel.appendChild( form );
+        panel.appendChild( errorEl );
+        wrap.appendChild( btn );
+        wrap.appendChild( panel );
+        // Sibling of .aicoach-stage, not inside it — .aicoach-stage's own click
+        // listener (tap-to-skip) would otherwise treat every click in here as
+        // "advance to the next screen".
+        avatarWrap.insertAdjacentElement( 'afterend', wrap );
+
+        askSamiWrap = wrap;
+        askSamiBtn = btn;
+
+        let wasPlaying = false; // the main avatar video's state before the panel paused it, restored on close
+
+        function openPanel() {
+            wrap.classList.add( 'is-open' );
+            btn.setAttribute( 'aria-expanded', 'true' );
+            wasPlaying = ! video.paused;
+            video.pause();
+            window.setTimeout( function () { input.focus(); }, 0 );
+        }
+
+        function closePanel() {
+            wrap.classList.remove( 'is-open' );
+            btn.setAttribute( 'aria-expanded', 'false' );
+            if ( wasPlaying ) {
+                video.play().catch( function () {} );
+            }
+        }
+
+        btn.addEventListener( 'click', function ( event ) {
+            event.stopPropagation();
+            unmuteOnFirstInteraction(); // see the same note on the language button above
+            if ( wrap.classList.contains( 'is-open' ) ) {
+                closePanel();
+            } else {
+                openPanel();
+            }
+        } );
+
+        closeBtn.addEventListener( 'click', function ( event ) {
+            event.stopPropagation();
+            closePanel();
+        } );
+
+        panel.addEventListener( 'click', function ( event ) {
+            event.stopPropagation(); // typing/clicking inside the panel must not trigger the document listener below
+        } );
+
+        document.addEventListener( 'click', function () {
+            if ( wrap.classList.contains( 'is-open' ) ) {
+                closePanel();
+            }
+        } );
+
+        form.addEventListener( 'submit', async function ( event ) {
+            event.preventDefault();
+            const text = input.value.trim();
+            if ( ! text || ! garySessionId ) {
+                return;
+            }
+            errorEl.textContent = '';
+            answerEl.textContent = '';
+            input.disabled = true;
+            submitBtn.disabled = true;
+            try {
+                const res = await fetch( garyMessageUrl( garySessionId ), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': cfg.nonce },
+                    body: JSON.stringify( { text: text } ),
+                } );
+                // Same "read as text first" reasoning as openGarySession() — a
+                // 502 from Cloudflare/PHP-FPM is an HTML page, not JSON.
+                const rawBody = await res.text();
+                let data;
+                try {
+                    data = JSON.parse( rawBody );
+                } catch ( parseError ) {
+                    throw new Error( 'Ask Sami returned a non-JSON response (HTTP ' + res.status + ').' );
+                }
+                if ( ! res.ok || ! data.say?.text ) {
+                    throw new Error( data.error || 'Ask Sami request failed.' );
+                }
+                answerEl.textContent = data.say.text;
+                input.value = '';
+            } catch ( error ) {
+                console.warn( '[aicoach] Ask Sami request failed:', error );
+                errorEl.textContent = 'Something went wrong — please try again.';
+            } finally {
+                input.disabled = false;
+                submitBtn.disabled = false;
+                input.focus();
+            }
         } );
     }() );
 
@@ -1711,6 +1889,9 @@ if ( stage && avatarWrap ) {
         try {
             const gary = await openGarySession( currentLocale );
             garySessionId = gary.session.id;
+            if ( askSamiBtn ) {
+                askSamiBtn.disabled = false; // FR-19/PO-3330 — a real session exists now, /message has something to reach
+            }
 
             // disableInputAudio — this page never uses the visitor's microphone
             // (no voice input UI), and omitting it made Anam request mic
@@ -1796,6 +1977,14 @@ if ( stage && avatarWrap ) {
             if ( garySessionId ) {
                 fetch( garyCloseUrl( garySessionId ), { method: 'POST', headers: { 'X-WP-Nonce': cfg.nonce } } )
                     .catch( function () {} );
+                // FR-19/PO-3330 — askSamiBtn may already be enabled at this point
+                // (start() flips it right after garySessionId is set, before this
+                // await). Without clearing both, Ask Sami would stay clickable
+                // against a session Gary just closed on his side.
+                garySessionId = null;
+                if ( askSamiBtn ) {
+                    askSamiBtn.disabled = true;
+                }
             }
             runFallback();
         }
