@@ -1260,7 +1260,7 @@ $portal_embed_urls = [
                         </div>
                     </section>
 
-                    <section class="leagues-picker-section">
+                    <section class="leagues-picker-section" id="leagues-choose-intl-team">
                         <h3 class="leagues-picker-heading">
                             <span><?php esc_html_e( 'Choose Your International League Team', 'influencer-hq' ); ?></span>
                             <span class="leagues-picker-chevron" aria-hidden="true"></span>
