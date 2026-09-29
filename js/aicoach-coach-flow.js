@@ -795,6 +795,7 @@ if ( stage && avatarWrap ) {
     let currentLocale = detectInitialLocale();
     let askSamiWrap = null; // set once buildAskSami() runs below; selectLocale() toggles its visibility
     let askSamiBtn = null;
+    let closeAskSamiPanel = null; // set once buildAskSami() runs below; selectLocale() calls this before hiding the panel
 
     function selectLocale( locale ) {
         if ( locale === currentLocale ) {
@@ -816,6 +817,17 @@ if ( stage && avatarWrap ) {
         // 2026-09-28); hide the entry point rather than let a visitor ask a
         // question in a language that can only ever get his fixed fallback line.
         if ( askSamiWrap ) {
+            // PR #63 (Dejan Arsić) — the header language selector stays
+            // clickable while Ask Sami's panel is open, same as the timer
+            // race CodeRabbit found. Hiding the panel out from under itself
+            // without closing it first left it stuck "open": the sequence
+            // timers it paused were never resumed (closePanel() is the only
+            // thing that resumes them) and the main video was never resumed
+            // either, so a caption screen would stop auto-advancing and the
+            // avatar would sit frozen until a manual tap happened to skip it.
+            if ( askSamiWrap.classList.contains( 'is-open' ) && 'en' !== locale ) {
+                closeAskSamiPanel();
+            }
             askSamiWrap.hidden = 'en' !== locale;
         }
         restartCurrentClipForLocale( locale ); // FR-14/PO-3105
@@ -1057,6 +1069,8 @@ if ( stage && avatarWrap ) {
                 video.play().catch( function () {} );
             }
         }
+
+        closeAskSamiPanel = closePanel; // exposed so selectLocale() can close this before hiding it out from under itself
 
         btn.addEventListener( 'click', function ( event ) {
             event.stopPropagation();
