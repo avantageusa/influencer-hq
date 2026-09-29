@@ -46,9 +46,15 @@ $aicoach_img = array(
 	'alix'         => $alix_image_url,
 	'check'        => $theme_uri . '/images/aicoach/icon-check.svg',
 	'x'            => $theme_uri . '/images/aicoach/icon-x.svg',
-	'belief-coin'  => $theme_uri . '/images/aicoach/icon-belief-coin.svg',
-	'belief-chart' => $theme_uri . '/images/aicoach/icon-belief-chart.svg',
-	'trophy'       => $theme_uri . '/images/aicoach/icon-trophy.svg',
+	// PO-3343 — coin/certificate re-exported from Figma "Belief 7" to match its
+	// filled illustration style now that all three sit together on one screen;
+	// belief-chart is deliberately NOT swapped yet — its Figma re-export kept
+	// failing (clipboard came back empty every attempt, cause unclear), so it
+	// stays the old outline-style icon as a placeholder until that's resolved.
+	'belief-coin'        => $theme_uri . '/images/aicoach/icon-belief-coin-v2.png',
+	'belief-chart'       => $theme_uri . '/images/aicoach/icon-belief-chart.svg',
+	'belief-certificate' => $theme_uri . '/images/aicoach/icon-belief-certificate.png',
+	'trophy'             => $theme_uri . '/images/aicoach/icon-trophy.svg',
 );
 
 $aicoach_tiers = array(
@@ -181,9 +187,13 @@ $aicoach_channels = array(
                     </div>
 
                     <div class="aicoach-panel" data-panel="believe-1" aria-hidden="true">
-                        <div class="aicoach-believe">
-                            <img class="aicoach-believe-icon" src="<?php echo esc_url( $aicoach_img['belief-coin'] ); ?>" alt="" width="72" height="72" aria-hidden="true">
+                        <div class="aicoach-believe" id="aicoach-believe-1">
                             <span class="aicoach-believe-kicker" data-i18n="weBelieve"><?php esc_html_e( 'We Believe', 'influencer-hq' ); ?></span>
+                            <div class="aicoach-believe-icons">
+                                <img class="aicoach-believe-icon" src="<?php echo esc_url( $aicoach_img['belief-coin'] ); ?>" alt="" width="72" height="72" aria-hidden="true">
+                                <img class="aicoach-believe-icon" src="<?php echo esc_url( $aicoach_img['belief-chart'] ); ?>" alt="" width="72" height="72" aria-hidden="true">
+                                <img class="aicoach-believe-icon" src="<?php echo esc_url( $aicoach_img['belief-certificate'] ); ?>" alt="" width="72" height="72" aria-hidden="true">
+                            </div>
                             <p class="aicoach-caption" data-caption-for="believe-1" aria-live="polite"></p>
                         </div>
                     </div>
@@ -551,6 +561,31 @@ $aicoach_channels = array(
         height: 72px;
     }
 
+    /* PO-3343 — believe-1's opening beat (coin/chart/certificate shown
+    together, matching Figma "Belief 7") pairs with a blank caption; once
+    getBelieveIntroActive() below switches it out, the icons row disappears
+    and the panel's own .aicoach-caption takes over exactly as every other
+    screen already works. Scoped under .aicoach-believe-icons rather than
+    resizing .aicoach-believe-icon itself, so believe-2's existing single-icon
+    layout (72px) is untouched. */
+    .aicoach-believe-icons {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        margin: 0 auto 20px;
+    }
+
+    .aicoach-believe-icons .aicoach-believe-icon {
+        margin: 0;
+        width: 64px;
+        height: 64px;
+    }
+
+    .aicoach-believe.is-text-phase .aicoach-believe-icons {
+        display: none;
+    }
+
     .aicoach-believe-kicker {
         display: block;
         margin: 0 0 16px;
@@ -869,6 +904,16 @@ $aicoach_channels = array(
     .aicoach-stage {
         position: relative;
         min-height: 200px;
+        /* PO-3343 — the real cause of Filip's "the scroll needs to go" report.
+        Inactive .aicoach-panel children are position:absolute (so they don't
+        add to this element's own auto height), but without this the page
+        still scrolled to fit whichever INACTIVE panel was tallest (e.g. the
+        comm-channels form, ~700px), regardless of which screen was actually
+        showing — every screen inherited empty scrollable space sized to the
+        single tallest one in the whole sequence. Clipping here means this
+        element's height tracks only the active (in-flow) panel, same as it
+        visually always looked like it did. */
+        overflow: hidden;
     }
 
     .aicoach-panel {

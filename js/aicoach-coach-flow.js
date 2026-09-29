@@ -1207,6 +1207,42 @@ if ( stage && avatarWrap ) {
         } );
     }
 
+    // PO-3343 — believe-1 opens on the coin/chart/certificate trio together
+    // (matching Figma "Belief 7"), no caption text yet, then switches to the
+    // normal icon-free caption once the opening line has had time to be said.
+    // Explicitly the "fallback" version Ivan signed off on (2026-09-29): a
+    // fixed dwell instead of syncing to the exact second in we_believe_1.mp4
+    // where Sami's opening line actually ends. Good enough for now; revisit
+    // with real per-segment timing if that's ever worth the precision.
+    const BELIEVE_1_ICON_PHASE_MS = 3500;
+    const believeOneEl = document.getElementById( 'aicoach-believe-1' );
+
+    function startBelieveOneIntro() {
+        if ( ! believeOneEl ) {
+            return;
+        }
+        const myIndex = sequenceIndex;
+        believeOneEl.classList.remove( 'is-text-phase' );
+        const captionEl = getCaptionEl( 'believe-1' );
+        if ( captionEl ) {
+            captionEl.textContent = '';
+        }
+        window.setTimeout( function () {
+            // A tap-to-skip (or a fresh runFallback() from a locale/tier
+            // change) may have already moved on to a later screen by the time
+            // this fires — applying the text phase to a screen the visitor
+            // isn't on anymore would just leave it in the wrong state for
+            // whenever they come back around to it.
+            if ( sequenceIndex !== myIndex ) {
+                return;
+            }
+            believeOneEl.classList.add( 'is-text-phase' );
+            if ( captionEl ) {
+                captionEl.textContent = getCaptionScript( 'believe-1', currentLocale ) || SCREENS[ myIndex ].script;
+            }
+        }, BELIEVE_1_ICON_PHASE_MS );
+    }
+
     async function runFallback( keepAvatarLive ) {
         if ( fallbackRunning ) {
             return;
@@ -1217,9 +1253,15 @@ if ( stage && avatarWrap ) {
         }
         for ( ; sequenceIndex < SCREENS.length; sequenceIndex++ ) {
             const screen = SCREENS[ sequenceIndex ];
+            // PO-3343 — believe-1 gets the icons-first opening beat instead of
+            // the normal immediate caption; startBelieveOneIntro() (called
+            // once the panel is actually visible, below) owns setting its
+            // caption text instead of the two spots in this loop that
+            // otherwise do it for every screen.
+            const isBelieveOne = 'believe-1' === screen.panel;
             const panelReady = showPanel( screen.panel );
             const captionEl = getCaptionEl( screen.panel );
-            if ( captionEl ) {
+            if ( captionEl && ! isBelieveOne ) {
                 // NFR-03 — best-effort immediate text so the caption isn't blank
                 // during the fade; re-set below once currentLocale is final for
                 // this screen, same reasoning as the clip URL re-resolve just
@@ -1243,9 +1285,11 @@ if ( stage && avatarWrap ) {
                 // restart) would otherwise still hear this screen start in the
                 // language they just left.
                 const clipUrl = getPrerenderedUrl( screen.panel, currentLocale );
-                // NFR-03 — keep the caption in step with whichever clip just got
-                // (re-)resolved above, for the same reason.
-                if ( captionEl ) {
+                if ( isBelieveOne ) {
+                    startBelieveOneIntro();
+                } else if ( captionEl ) {
+                    // NFR-03 — keep the caption in step with whichever clip just
+                    // got (re-)resolved above, for the same reason.
                     captionEl.textContent = getCaptionScript( screen.panel, currentLocale ) || screen.script;
                 }
                 const played = clipUrl && await playPrerenderedClip( clipUrl );
