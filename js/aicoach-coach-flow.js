@@ -42,6 +42,85 @@ const FADE_MS = 400;
 const FALLBACK_READ_MS = 9000; // per-screen dwell for the static-text fallback (no speech to sync against)
 const AVATAR_VIDEO_ID = 'aicoach-avatar-video';
 
+// PO-3346 — Ask Sami's openPanel() previously only paused the <video>
+// element; the sequence's own dwell/safety timers (waitForReadOrSkip(),
+// playPrerenderedClip()'s 60s cap) had no idea the panel was open and kept
+// counting down, so the sequence could advance to a later screen — or start
+// a new clip — while the panel was still open on top of it. Wrapping those
+// timers in something pause-aware, instead of a bare setTimeout(), is what
+// lets openPanel()/closePanel() below actually stop and resume them instead
+// of just hiding the video that was playing.
+//
+// Deliberately does NOT cover waitForSpeechOrSkip() (the live intro's own
+// wait) — pausing our local video rendering doesn't pause the real,
+// server-side Gary/Anam conversation, so there's no "resume from where we
+// left off" for that one the way there is for a fixed dwell or a local
+// clip's safety cap. Ask Sami is technically clickable that early (a narrow
+// window), and that gap is unaddressed — tracked, not silently assumed away.
+const pausableSequenceTimers = new Set();
+// PR #63 (CodeRabbit) — the language selector stays clickable while Ask
+// Sami's panel is open, and selectLocale() can create a brand-new timer
+// mid-panel (restartCurrentClipForLocale() -> playPrerenderedClip()'s
+// load() -> a fresh 60s safety cap). Without this flag, createPausableTimeout()
+// unconditionally armed every new timer on creation, so that new cap started
+// counting down live even though the panel was still open — the exact bug
+// pauseSequenceTimers()/resumeSequenceTimers() exist to prevent for timers
+// that already existed before the panel opened.
+let sequenceTimersPaused = false;
+
+function createPausableTimeout( callback, ms ) {
+    let remaining = ms;
+    let timerId = null;
+    let armedAt = null;
+    const handle = {
+        pause() {
+            if ( null === timerId ) {
+                return;
+            }
+            window.clearTimeout( timerId );
+            timerId = null;
+            remaining = Math.max( 0, remaining - ( Date.now() - armedAt ) );
+        },
+        resume() {
+            if ( null !== timerId ) {
+                return; // already running — pause()/resume() calls aren't expected to nest
+            }
+            armedAt = Date.now();
+            timerId = window.setTimeout( function () {
+                timerId = null;
+                pausableSequenceTimers.delete( handle );
+                callback();
+            }, remaining );
+        },
+        cancel() {
+            if ( null !== timerId ) {
+                window.clearTimeout( timerId );
+                timerId = null;
+            }
+            pausableSequenceTimers.delete( handle );
+        },
+    };
+    pausableSequenceTimers.add( handle );
+    if ( ! sequenceTimersPaused ) {
+        handle.resume();
+    }
+    return handle;
+}
+
+function pauseSequenceTimers() {
+    sequenceTimersPaused = true;
+    pausableSequenceTimers.forEach( function ( timer ) {
+        timer.pause();
+    } );
+}
+
+function resumeSequenceTimers() {
+    sequenceTimersPaused = false;
+    pausableSequenceTimers.forEach( function ( timer ) {
+        timer.resume();
+    } );
+}
+
 // FR-17 — trigger the time-remaining check once this proportion of the
 // selected tier's total duration has elapsed. The ticket explicitly says the
 // real threshold "requires confirmation" — 0.8 (80%) is a placeholder pending
@@ -752,6 +831,7 @@ if ( stage && avatarWrap ) {
     let currentLocale = detectInitialLocale();
     let askSamiWrap = null; // set once buildAskSami() runs below; selectLocale() toggles its visibility
     let askSamiBtn = null;
+    let closeAskSamiPanel = null; // set once buildAskSami() runs below; selectLocale() calls this before hiding the panel
 
     function selectLocale( locale ) {
         if ( locale === currentLocale ) {
@@ -773,6 +853,17 @@ if ( stage && avatarWrap ) {
         // 2026-09-28); hide the entry point rather than let a visitor ask a
         // question in a language that can only ever get his fixed fallback line.
         if ( askSamiWrap ) {
+            // PR #63 (Dejan Arsić) — the header language selector stays
+            // clickable while Ask Sami's panel is open, same as the timer
+            // race CodeRabbit found. Hiding the panel out from under itself
+            // without closing it first left it stuck "open": the sequence
+            // timers it paused were never resumed (closePanel() is the only
+            // thing that resumes them) and the main video was never resumed
+            // either, so a caption screen would stop auto-advancing and the
+            // avatar would sit frozen until a manual tap happened to skip it.
+            if ( askSamiWrap.classList.contains( 'is-open' ) && 'en' !== locale ) {
+                closeAskSamiPanel();
+            }
             askSamiWrap.hidden = 'en' !== locale;
         }
         restartCurrentClipForLocale( locale ); // FR-14/PO-3105
@@ -1005,16 +1096,25 @@ if ( stage && avatarWrap ) {
             btn.setAttribute( 'aria-expanded', 'true' );
             wasPlaying = ! video.paused;
             video.pause();
+            // PO-3346 — pausing the video alone left the sequence's own
+            // dwell/safety timers running, so it could advance to a later
+            // screen (or start a new clip) while this panel sat open on top
+            // of it. Doesn't cover the live intro's own wait — see the note
+            // on pausableSequenceTimers' declaration.
+            pauseSequenceTimers();
             window.setTimeout( function () { input.focus(); }, 0 );
         }
 
         function closePanel() {
             wrap.classList.remove( 'is-open' );
             btn.setAttribute( 'aria-expanded', 'false' );
+            resumeSequenceTimers();
             if ( wasPlaying ) {
                 video.play().catch( function () {} );
             }
         }
+
+        closeAskSamiPanel = closePanel; // exposed so selectLocale() can close this before hiding it out from under itself
 
         btn.addEventListener( 'click', function ( event ) {
             event.stopPropagation();
@@ -1314,16 +1414,18 @@ if ( stage && avatarWrap ) {
     function waitForReadOrSkip() {
         return new Promise( ( resolve ) => {
             let settled = false;
+            let timer;
             const finish = () => {
                 if ( settled ) {
                     return;
                 }
                 settled = true;
                 skipCurrent = null;
+                timer.cancel(); // PO-3346 — no-op if it already fired to get here
                 resolve();
             };
             skipCurrent = finish;
-            window.setTimeout( finish, FALLBACK_READ_MS );
+            timer = createPausableTimeout( finish, FALLBACK_READ_MS );
         } );
     }
 
@@ -1383,7 +1485,9 @@ if ( stage && avatarWrap ) {
                 settled = true;
                 skipCurrent = null;
                 activeClipRestart = null;
-                clearTimeout( safetyTimer );
+                if ( safetyTimer ) {
+                    safetyTimer.cancel();
+                }
                 video.removeEventListener( 'ended', onEnded );
                 video.removeEventListener( 'error', onError );
                 video.pause(); // a manual skip or the safety cap would otherwise leave it playing into the next screen
@@ -1413,8 +1517,11 @@ if ( stage && avatarWrap ) {
                 // original 60s deadline would have the STALE timer fire a few
                 // seconds into the restarted clip, cutting it off early even
                 // though 'ended' hasn't happened yet for it.
-                clearTimeout( safetyTimer );
-                safetyTimer = window.setTimeout( () => finish( true ), 60000 ); // safety cap — 'ended' should always fire first
+                if ( safetyTimer ) {
+                    safetyTimer.cancel();
+                }
+                // PO-3346 — pause-aware: safety cap — 'ended' should always fire first
+                safetyTimer = createPausableTimeout( () => finish( true ), 60000 );
             };
             video.addEventListener( 'ended', onEnded );
             video.addEventListener( 'error', onError );
