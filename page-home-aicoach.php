@@ -1137,7 +1137,7 @@ $aicoach_channels = array(
         font-weight: 700;
     }
 
-    /* FR-19/PO-3330 — "Ask Semi" question box, injected by
+    /* FR-19/PO-3330 — "Ask Sami" question box, injected by
     js/aicoach-coach-flow.js right after .aicoach-avatar-wrap. Same
     dropdown-style show/hide as .aicoach-lang-dropdown above, kept as its own
     block instead of reusing it since this holds a form, not a flat option

@@ -714,8 +714,8 @@ if ( stage && avatarWrap ) {
     // (see ihq_aicoach_enqueue_coach_flow()'s is_page_template check), so injecting
     // here is safe without any extra page check.
     let currentLocale = detectInitialLocale();
-    let askSemiWrap = null; // set once buildAskSemi() runs below; selectLocale() toggles its visibility
-    let askSemiBtn = null;
+    let askSamiWrap = null; // set once buildAskSami() runs below; selectLocale() toggles its visibility
+    let askSamiBtn = null;
 
     function selectLocale( locale ) {
         if ( locale === currentLocale ) {
@@ -733,11 +733,11 @@ if ( stage && avatarWrap ) {
                 opt.removeAttribute( 'aria-current' );
             }
         } );
-        // FR-19/PO-3330 — Ask Semi's generated answers are English-only (Gary,
+        // FR-19/PO-3330 — Ask Sami's generated answers are English-only (Gary,
         // 2026-09-28); hide the entry point rather than let a visitor ask a
         // question in a language that can only ever get his fixed fallback line.
-        if ( askSemiWrap ) {
-            askSemiWrap.hidden = 'en' !== locale;
+        if ( askSamiWrap ) {
+            askSamiWrap.hidden = 'en' !== locale;
         }
         restartCurrentClipForLocale( locale ); // FR-14/PO-3105
         // NOTE — scope boundary: the line above restarts a currently-playing
@@ -869,7 +869,7 @@ if ( stage && avatarWrap ) {
         } );
     }() );
 
-    // FR-19/PO-3330 — "Ask Semi": lets a visitor interrupt the fixed sequence
+    // FR-19/PO-3330 — "Ask Sami": lets a visitor interrupt the fixed sequence
     // and ask a free-text question, answered by Gary's /message endpoint
     // (inc/gary-proxy.php's ihq_coach_handle_message()), reusing this visit's
     // already-open garySessionId (stays open for the whole flow — see its
@@ -892,7 +892,7 @@ if ( stage && avatarWrap ) {
     // avatar video is still paused while this panel is open, independent of
     // that — purely so the visitor isn't reading/typing while the sequence
     // advances underneath them.
-    ( function buildAskSemi() {
+    ( function buildAskSami() {
         const wrap = document.createElement( 'div' );
         wrap.className = 'aicoach-ask-wrap';
         wrap.hidden = 'en' !== currentLocale;
@@ -903,7 +903,7 @@ if ( stage && avatarWrap ) {
         btn.disabled = true; // enabled once start() below has a real garySessionId
         btn.setAttribute( 'aria-haspopup', 'true' );
         btn.setAttribute( 'aria-expanded', 'false' );
-        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg><span>Ask Semi</span>';
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg><span>Ask Sami</span>';
 
         const panel = document.createElement( 'div' );
         panel.className = 'aicoach-ask-panel';
@@ -926,8 +926,8 @@ if ( stage && avatarWrap ) {
         input.className = 'aicoach-ask-input';
         input.maxLength = 500;
         input.autocomplete = 'off';
-        input.placeholder = 'Ask Semi a question…';
-        input.setAttribute( 'aria-label', 'Ask Semi a question' ); // the placeholder alone disappears once the visitor types, leaving no accessible name
+        input.placeholder = 'Ask Sami a question…';
+        input.setAttribute( 'aria-label', 'Ask Sami a question' ); // the placeholder alone disappears once the visitor types, leaving no accessible name
 
         const submitBtn = document.createElement( 'button' );
         submitBtn.type = 'submit';
@@ -951,8 +951,8 @@ if ( stage && avatarWrap ) {
         // "advance to the next screen".
         avatarWrap.insertAdjacentElement( 'afterend', wrap );
 
-        askSemiWrap = wrap;
-        askSemiBtn = btn;
+        askSamiWrap = wrap;
+        askSamiBtn = btn;
 
         let wasPlaying = false; // the main avatar video's state before the panel paused it, restored on close
 
@@ -1020,15 +1020,15 @@ if ( stage && avatarWrap ) {
                 try {
                     data = JSON.parse( rawBody );
                 } catch ( parseError ) {
-                    throw new Error( 'Ask Semi returned a non-JSON response (HTTP ' + res.status + ').' );
+                    throw new Error( 'Ask Sami returned a non-JSON response (HTTP ' + res.status + ').' );
                 }
                 if ( ! res.ok || ! data.say?.text ) {
-                    throw new Error( data.error || 'Ask Semi request failed.' );
+                    throw new Error( data.error || 'Ask Sami request failed.' );
                 }
                 answerEl.textContent = data.say.text;
                 input.value = '';
             } catch ( error ) {
-                console.warn( '[aicoach] Ask Semi request failed:', error );
+                console.warn( '[aicoach] Ask Sami request failed:', error );
                 errorEl.textContent = 'Something went wrong — please try again.';
             } finally {
                 input.disabled = false;
@@ -1889,8 +1889,8 @@ if ( stage && avatarWrap ) {
         try {
             const gary = await openGarySession( currentLocale );
             garySessionId = gary.session.id;
-            if ( askSemiBtn ) {
-                askSemiBtn.disabled = false; // FR-19/PO-3330 — a real session exists now, /message has something to reach
+            if ( askSamiBtn ) {
+                askSamiBtn.disabled = false; // FR-19/PO-3330 — a real session exists now, /message has something to reach
             }
 
             // disableInputAudio — this page never uses the visitor's microphone
@@ -1977,13 +1977,13 @@ if ( stage && avatarWrap ) {
             if ( garySessionId ) {
                 fetch( garyCloseUrl( garySessionId ), { method: 'POST', headers: { 'X-WP-Nonce': cfg.nonce } } )
                     .catch( function () {} );
-                // FR-19/PO-3330 — askSemiBtn may already be enabled at this point
+                // FR-19/PO-3330 — askSamiBtn may already be enabled at this point
                 // (start() flips it right after garySessionId is set, before this
-                // await). Without clearing both, Ask Semi would stay clickable
+                // await). Without clearing both, Ask Sami would stay clickable
                 // against a session Gary just closed on his side.
                 garySessionId = null;
-                if ( askSemiBtn ) {
-                    askSemiBtn.disabled = true;
+                if ( askSamiBtn ) {
+                    askSamiBtn.disabled = true;
                 }
             }
             runFallback();
