@@ -1112,6 +1112,14 @@ if ( stage && avatarWrap ) {
             if ( wasPlaying ) {
                 video.play().catch( function () {} );
             }
+            // PO-3346 (#7) — the time-remaining prompt may have come due
+            // while this panel was open; it was held back by
+            // maybeShowTimeRemainingCheck() rather than shown on top of a
+            // live Q&A exchange. Re-check now that the panel's closed.
+            if ( timeRemainingCheckPending ) {
+                timeRemainingCheckPending = false;
+                maybeShowTimeRemainingCheck();
+            }
         }
 
         closeAskSamiPanel = closePanel; // exposed so selectLocale() can close this before hiding it out from under itself
@@ -2048,10 +2056,33 @@ if ( stage && avatarWrap ) {
     const timeCheckNoBtn = document.getElementById( 'aicoach-time-check-no' );
     let timeRemainingPromptShown = false;
     let timeRemainingTimer = null;
+    // PO-3330's own AC pulls in two different directions here: elapsed-time
+    // tracking against the tier must keep counting THROUGH a Q&A exchange
+    // (so the underlying countdown below is deliberately a plain
+    // window.setTimeout, NOT one of the pausable sequence timers — it must
+    // not pause while Ask Sami is open), but the prompt it triggers must
+    // wait for an open Q&A to finish before it's shown on top of it. This
+    // flag defers just the SHOWING, not the counting.
+    let timeRemainingCheckPending = false;
 
     function hideTimeRemainingCheck() {
         timeCheckOverlay?.classList.remove( 'is-visible' );
         timeCheckOverlay?.setAttribute( 'aria-hidden', 'true' );
+    }
+
+    function maybeShowTimeRemainingCheck() {
+        if ( timeRemainingPromptShown ) {
+            return;
+        }
+        // PO-3346 (#7) — don't layer the prompt on top of an open Ask Sami
+        // panel; wait for it to close (see closePanel() below) instead.
+        if ( askSamiWrap && askSamiWrap.classList.contains( 'is-open' ) ) {
+            timeRemainingCheckPending = true;
+            return;
+        }
+        timeRemainingPromptShown = true;
+        timeCheckOverlay?.classList.add( 'is-visible' );
+        timeCheckOverlay?.setAttribute( 'aria-hidden', 'false' );
     }
 
     function scheduleTimeRemainingCheck( tierMinutes ) {
@@ -2060,14 +2091,7 @@ if ( stage && avatarWrap ) {
             return;
         }
         window.clearTimeout( timeRemainingTimer );
-        timeRemainingTimer = window.setTimeout( function () {
-            if ( timeRemainingPromptShown ) {
-                return;
-            }
-            timeRemainingPromptShown = true;
-            timeCheckOverlay?.classList.add( 'is-visible' );
-            timeCheckOverlay?.setAttribute( 'aria-hidden', 'false' );
-        }, totalMs * TIME_REMAINING_THRESHOLD_RATIO );
+        timeRemainingTimer = window.setTimeout( maybeShowTimeRemainingCheck, totalMs * TIME_REMAINING_THRESHOLD_RATIO );
     }
 
     timeCheckYesBtn?.addEventListener( 'click', function () {
