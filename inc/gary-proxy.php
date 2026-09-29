@@ -377,7 +377,14 @@ function ihq_coach_handle_message( WP_REST_Request $request ) {
 	$result = ihq_coach_request(
 		'POST',
 		'/coach/v1/session/' . rawurlencode( $session_id ) . '/message',
-		array( 'text' => $text )
+		array(
+			'text' => $text,
+			// Same as ihq_coach_handle_open_session() — without this, say.audio
+			// and say.video come back null even for a real generated answer
+			// (confirmed with Gary 2026-09-28), leaving no way for Sami to
+			// actually speak the reply.
+			'want' => array( 'text', 'audio', 'video' ),
+		)
 	);
 	if ( is_wp_error( $result ) ) {
 		return new WP_REST_Response( array( 'error' => $result->get_error_message() ), 502 );
