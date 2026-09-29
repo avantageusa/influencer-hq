@@ -58,6 +58,15 @@ const AVATAR_VIDEO_ID = 'aicoach-avatar-video';
 // clip's safety cap. Ask Sami is technically clickable that early (a narrow
 // window), and that gap is unaddressed — tracked, not silently assumed away.
 const pausableSequenceTimers = new Set();
+// PR #63 (CodeRabbit) — the language selector stays clickable while Ask
+// Sami's panel is open, and selectLocale() can create a brand-new timer
+// mid-panel (restartCurrentClipForLocale() -> playPrerenderedClip()'s
+// load() -> a fresh 60s safety cap). Without this flag, createPausableTimeout()
+// unconditionally armed every new timer on creation, so that new cap started
+// counting down live even though the panel was still open — the exact bug
+// pauseSequenceTimers()/resumeSequenceTimers() exist to prevent for timers
+// that already existed before the panel opened.
+let sequenceTimersPaused = false;
 
 function createPausableTimeout( callback, ms ) {
     let remaining = ms;
@@ -92,17 +101,21 @@ function createPausableTimeout( callback, ms ) {
         },
     };
     pausableSequenceTimers.add( handle );
-    handle.resume();
+    if ( ! sequenceTimersPaused ) {
+        handle.resume();
+    }
     return handle;
 }
 
 function pauseSequenceTimers() {
+    sequenceTimersPaused = true;
     pausableSequenceTimers.forEach( function ( timer ) {
         timer.pause();
     } );
 }
 
 function resumeSequenceTimers() {
+    sequenceTimersPaused = false;
     pausableSequenceTimers.forEach( function ( timer ) {
         timer.resume();
     } );
