@@ -823,6 +823,14 @@ if ( stage && avatarWrap ) {
             return;
         }
         activeClipRestart( newUrl );
+        // PO-3343 — believe-1's clip restarting from 0 means Sami is about to
+        // re-say the opening line too, in the new language — re-run the same
+        // icons-first intro rather than just patching in the (still-English,
+        // still-opening-included) caption text below.
+        if ( 'believe-1' === screen.panel ) {
+            startBelieveOneIntro();
+            return;
+        }
         // NFR-03 — keep the on-screen caption matching whatever the restarted
         // clip is actually saying, same as the initial-load path in
         // runFallback() above.
@@ -1426,9 +1434,32 @@ if ( stage && avatarWrap ) {
     // normal icon-free caption once the opening line has had time to be said.
     // Explicitly the "fallback" version Ivan signed off on (2026-09-29): a
     // fixed dwell instead of syncing to the exact second in we_believe_1.mp4
-    // where Sami's opening line actually ends. Good enough for now; revisit
-    // with real per-segment timing if that's ever worth the precision.
-    const BELIEVE_1_ICON_PHASE_MS = 3500;
+    // where Sami's opening line actually ends.
+    //
+    // 7200ms, not a guess — measured directly off the real we_believe_1.mp4
+    // (English) via Web Audio: decoded the clip and scanned RMS volume in
+    // 100ms windows to find the silence gaps between sentences. "Every
+    // successful company begins with a set of beliefs. Here's one of ours."
+    // (the two sentences meant to go with the icons) ends at the pause
+    // starting ~6.0s and finishing ~7.1s, right before "We believe influence
+    // is about..." begins — confirmed independently by word-count proportion
+    // (those two sentences are ~17% of the script's ~76 words, and 17% of
+    // the clip's ~31.8s of actual speech + its 1.8s lead-in silence lands at
+    // the same ~7.2s). The original 3500ms guess cut the sentence off
+    // mid-word (caught live: "quickly switches ... doesn't finish the
+    // opening sentence"). Only measured for English — every other locale's
+    // clip has its own pacing and still uses this same constant, the same
+    // "good enough fallback" gap already true of the rest of this feature.
+    const BELIEVE_1_ICON_PHASE_MS = 7200;
+    // Dejan (2026-09-29): once the opening two sentences have been spoken
+    // during the icon phase, re-showing them in the text-phase caption would
+    // have the visitor reading a line Sami already finished saying several
+    // seconds earlier — the same "caption must match what's actually being
+    // said right now" reasoning NFR-03 already cares about everywhere else.
+    // English-only for the same reason getCaptionScript() itself doesn't
+    // attempt this for translated captions: we don't have per-locale sentence
+    // boundaries, only a single continuous translated string.
+    const BELIEVE_1_OPENING_EN = "Every successful company begins with a set of beliefs. Here's one of ours. ";
     const believeOneEl = document.getElementById( 'aicoach-believe-1' );
 
     function startBelieveOneIntro() {
@@ -1452,7 +1483,8 @@ if ( stage && avatarWrap ) {
             }
             believeOneEl.classList.add( 'is-text-phase' );
             if ( captionEl ) {
-                captionEl.textContent = getCaptionScript( 'believe-1', currentLocale ) || SCREENS[ myIndex ].script;
+                const translated = getCaptionScript( 'believe-1', currentLocale );
+                captionEl.textContent = translated || SCREENS[ myIndex ].script.replace( BELIEVE_1_OPENING_EN, '' );
             }
         }, BELIEVE_1_ICON_PHASE_MS );
     }
