@@ -181,18 +181,19 @@ get_template_part( 'template-parts/portal-styles' );
     padding: 28px 0 12px;
 }
 #portal-content .sett-header-icon {
-    width: clamp(72px, 7vw, 134px);
-    height: clamp(72px, 7vw, 134px);
+    width: auto;
+    height: 48px;
     object-fit: contain;
 }
 #portal-content .sett-title {
     font-family: 'Cinzel', serif;
-    font-size: clamp(40px, 5vw, 63px);
-    font-weight: 700;
-    color: #fff;
-    letter-spacing: 0.04em;
-    line-height: 1.1;
+    font-size: 48px;
+    font-weight: 600;
+    color: #ffffff;
+    letter-spacing: 0.1em;
+    line-height: 1;
     margin: 0;
+    text-transform: uppercase;
 }
 #portal-content .sett-sep {
     height: 9px;
