@@ -262,7 +262,7 @@
         align-items: center;
         justify-content: center;
         max-width: 1024px;
-        margin: 200px auto 0;
+        margin: 220px auto 0;
         padding-left: 20px;
         padding-right: 20px;
     }
@@ -1341,6 +1341,34 @@
         text-transform: uppercase;
     }
 
+    body.page-template-page-portal-equity-php .equity-header-top {
+        align-items: center;
+    }
+
+    body.page-template-page-portal-equity-php .equity-icon {
+        width: auto;
+        height: 48px;
+        object-fit: contain;
+    }
+
+    body.page-template-page-portal-equity-php .equity-title {
+        color: #ffffff;
+        font-size: 48px;
+        line-height: 1;
+    }
+
+    body.page-template-page-portal-more-php .equity-icon {
+        width: auto;
+        height: 48px;
+        object-fit: contain;
+    }
+
+    body.page-template-page-portal-more-php .equity-title {
+        color: #ffffff;
+        font-size: 48px;
+        line-height: 1;
+    }
+
     body.page-template-page-portal-equity-php .equity-intro {
         margin: 0 0 32px;
         padding: 8px 12px 0;
@@ -1459,7 +1487,7 @@
         letter-spacing: 0.02em;
         text-transform: uppercase;
         color: #ffffff;
-        text-align: center;
+        text-align: left;
     }
 
     body.page-template-page-portal-equity-php .equity-earn-crowd {
@@ -2043,16 +2071,18 @@
     }
 
     body.page-template-page-portal-challenges-php .competition-icon {
-        width: 52px;
-        height: 52px;
+        width: auto;
+        height: 48px;
+        object-fit: contain;
     }
 
     body.page-template-page-portal-challenges-php .competition-title {
         color: #ffffff;
         font-family: 'Cinzel', serif;
-        font-size: 28px;
+        font-size: 48px;
         font-weight: 600;
         letter-spacing: 0.1em;
+        line-height: 1;
         margin: 0;
         text-transform: uppercase;
     }
@@ -3749,6 +3779,7 @@
         height: 64px;
         object-fit: contain;
         flex-shrink: 0;
+        filter: invert(22%) sepia(62%) saturate(700%) hue-rotate(6deg) brightness(90%);
     }
 
     body.page-template-page-portal-live-php .live-wn-logo__wordmark {
@@ -4513,7 +4544,7 @@
         }
 
         body.page-template-page-portal-home-php .dealer-row {
-            margin: -10px auto 0;
+            margin: 10px auto 0;
         }
 
         body.page-template-page-portal-home-php .dealer-row .dealer-image-container {
@@ -5420,11 +5451,16 @@
 	width:100%;
 	text-align:center;
 }
-.sett-header-icon { width:44px; height:44px; object-fit:contain; }
+.sett-header-icon { width:auto; height:48px; object-fit:contain; }
 .sett-title {
     font-family: 'Cinzel', serif;
-    font-size: 36px; font-weight:700; color:#b8972f;
-    margin:0; letter-spacing:.05em;
+    font-size: 48px;
+    font-weight: 600;
+    color: #ffffff;
+    line-height: 1;
+    margin: 0;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
 }
 
 /* Identity */

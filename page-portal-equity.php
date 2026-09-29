@@ -11,7 +11,6 @@ get_header();
 get_template_part( 'template-parts/portal-styles' );
 
 $portal_equity_iframe_url = ihq_build_hq_game_portal_external_url( '/external/equity' );
-$equity_attribution_expanded = is_user_logged_in();
 ?>
 
     <main id="primary" class="site-main">
@@ -114,38 +113,19 @@ $equity_attribution_expanded = is_user_logged_in();
                 </div>
 
                 <div class="equity-section" id="equity-earned">
-                    <div class="equity-card<?php echo $equity_attribution_expanded ? '' : ' ihq-gate-collapsed'; ?>" id="equityAttributionCard">
-                        <div
-                            class="equity-card-header"
-                            id="equityAttributionHead"
-                            role="button"
-                            tabindex="0"
-                            aria-expanded="<?php echo $equity_attribution_expanded ? 'true' : 'false'; ?>"
-                            aria-controls="equityAttributionBody"
-                        >
-                            <span class="equity-card-title"><?php esc_html_e( 'Equity Attribution', 'influencer-hq' ); ?></span>
-                            <span class="equity-card-toggle" aria-hidden="true"><?php echo $equity_attribution_expanded ? '▴' : '▾'; ?></span>
-                        </div>
-                        <div class="equity-card-body" id="equityAttributionBody"<?php echo $equity_attribution_expanded ? '' : ' hidden'; ?>>
-                            <?php if ( $equity_attribution_expanded ) : ?>
-                                <?php
-                                get_template_part(
-                                    'template-parts/portal-external-embed',
-                                    null,
-                                    array(
-                                        'url'        => $portal_equity_iframe_url,
-                                        'title'      => __( 'Influencer HQ equity', 'influencer-hq' ),
-                                        'fallback'   => __( 'Equity content is temporarily unavailable. Please try again later.', 'influencer-hq' ),
-                                        'wrap_class' => 'portal-equity-iframe-wrap',
-                                        'wrap_id'    => 'equity-external-embed',
-                                    )
-                                );
-                                ?>
-                            <?php else : ?>
-                                <div class="portal-equity-iframe-wrap" id="equity-external-embed"></div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
+                    <?php
+                    get_template_part(
+                        'template-parts/portal-external-embed',
+                        null,
+                        array(
+                            'url'        => $portal_equity_iframe_url,
+                            'title'      => __( 'Influencer HQ equity', 'influencer-hq' ),
+                            'fallback'   => __( 'Equity content is temporarily unavailable. Please try again later.', 'influencer-hq' ),
+                            'wrap_class' => 'portal-equity-iframe-wrap',
+                            'wrap_id'    => 'equity-external-embed',
+                        )
+                    );
+                    ?>
                 </div>
 
                 <div id="equity-results" class="hm-scroll-anchor" aria-hidden="true"></div>
@@ -400,43 +380,6 @@ $equity_attribution_expanded = is_user_logged_in();
         <?php get_template_part( 'template-parts/portal-footer' ); ?>
     </main><!-- #main -->
 
-<?php if ( is_user_logged_in() ) : ?>
-<script>
-(function () {
-    var head = document.getElementById('equityAttributionHead');
-    var body = document.getElementById('equityAttributionBody');
-    if (!head || !body) {
-        return;
-    }
-
-    var toggle = head.querySelector('.equity-card-toggle');
-
-    function setExpanded(isExpanded) {
-        body.hidden = !isExpanded;
-        head.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
-        if (toggle) {
-            toggle.textContent = isExpanded ? '\u25B4' : '\u25BE';
-        }
-        head.closest('.equity-card').classList.toggle('ihq-gate-collapsed', !isExpanded);
-    }
-
-    function onToggle() {
-        setExpanded(body.hidden);
-    }
-
-    head.addEventListener('click', onToggle);
-    head.addEventListener('keydown', function (event) {
-        if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            onToggle();
-        }
-    });
-
-    window.ihqEquitySetAttributionExpanded = setExpanded;
-})();
-</script>
-<?php endif; ?>
-
 <script>
 (function () {
     function portalScrollToId(id) {
@@ -465,9 +408,6 @@ $equity_attribution_expanded = is_user_logged_in();
         }
 
         if (hash === 'equity-earned') {
-            if (typeof window.ihqEquitySetAttributionExpanded === 'function') {
-                window.ihqEquitySetAttributionExpanded(true);
-            }
             window.setTimeout(function () {
                 portalScrollToId('equity-earned');
             }, 80);
