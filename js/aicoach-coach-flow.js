@@ -1543,6 +1543,16 @@ if ( stage && avatarWrap ) {
                     await waitForReadOrSkip();
                 }
             } else {
+                // PO-3343 — the same icons-first intro applies even in this
+                // no-prerendered-clip fallback (only reachable if believe-1's
+                // segment has no rendered video at all, in any locale —
+                // shouldn't happen in production, but leaving it dark here
+                // would mean icons forever with a blank caption for this
+                // screen's whole dwell instead of transitioning to text).
+                if ( isBelieveOne ) {
+                    await panelReady;
+                    startBelieveOneIntro();
+                }
                 await waitForReadOrSkip();
             }
             if ( sequenceFinished ) {
