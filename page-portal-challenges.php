@@ -1753,7 +1753,7 @@ document.addEventListener('DOMContentLoaded', function() {
     syncCompetitionCoachFab();
     syncCompetitionTabsCompact();
 
-    (function applyCompetitionTabFromQuery() {
+    function applyCompetitionTabFromQuery() {
         var params = new URLSearchParams(window.location.search);
         var tab = params.get('tab');
         var appliedTabFromQuery = false;
@@ -1785,7 +1785,51 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (appliedTabFromQuery && tab) {
             scrollCompetitionPanelIntoView(tab);
         }
-    })();
+    }
+
+    applyCompetitionTabFromQuery();
+
+    // A same-page menu link only changes the hash, so the load-time handler never
+    // runs again. Repeat clicks of the current hash do not fire hashchange either.
+    window.addEventListener('hashchange', applyCompetitionTabFromQuery);
+
+    document.addEventListener('click', function (event) {
+        if (event.defaultPrevented || event.button !== 0) {
+            return;
+        }
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+            return;
+        }
+        var link = event.target.closest ? event.target.closest('a[href]') : null;
+        if (!link) {
+            return;
+        }
+        var destination;
+        try {
+            destination = new URL(link.href, window.location.href);
+        } catch (err) {
+            return;
+        }
+        if (destination.origin !== window.location.origin) {
+            return;
+        }
+        if (destination.pathname !== window.location.pathname) {
+            return;
+        }
+        if (destination.search !== window.location.search) {
+            return;
+        }
+        var nextHash = destination.hash.replace(/^#/, '');
+        if (!nextHash) {
+            return;
+        }
+        event.preventDefault();
+        if (window.location.hash !== destination.hash) {
+            window.location.hash = destination.hash;
+            return;
+        }
+        applyCompetitionTabFromQuery();
+    });
 
     document.querySelectorAll('#world-tab .competition-dropdown--figma > .competition-dropdown-header').forEach(function(header) {
         header.addEventListener('click', function() {
