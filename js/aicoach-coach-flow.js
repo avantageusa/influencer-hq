@@ -1137,6 +1137,12 @@ if ( stage && avatarWrap ) {
                 return;
             }
             askGeneration++;
+            // PR #68 (CodeRabbit) — a prior askQuestion() may still be
+            // in-flight and disabled this on its way out; its own finally
+            // block won't re-enable it (the generation check above is
+            // exactly what makes it stale), so this new cycle has to do it
+            // itself or the mic could stay stuck disabled indefinitely.
+            micBtn.disabled = false;
             errorEl.textContent = '';
             answerEl.textContent = '';
             if ( ! SpeechRecognitionCtor ) {
@@ -1208,9 +1214,24 @@ if ( stage && avatarWrap ) {
 
         function stopListening() {
             if ( recognition ) {
-                recognition.onresult = null; // a result racing in after an explicit close (e.g. panel closed mid-utterance) must not still fire askQuestion()
+                // PR #68 (CodeRabbit) — abort() still fires 'error' (aborted)
+                // and 'end' on THIS instance asynchronously afterward. The
+                // recognition === instance identity check inside onend
+                // (above) only protects the shared `recognition` reference;
+                // it doesn't stop those late events from touching the UI —
+                // an 'aborted' onerror or a late onend could still overwrite
+                // a NEWER instance's "Listening…" status or wrongly clear
+                // its is-listening class if the panel is reopened before
+                // they arrive. Detach every handler so a dead instance stays
+                // dead.
+                recognition.onresult = null;
+                recognition.onerror = null;
+                recognition.onnomatch = null;
+                recognition.onstart = null;
+                recognition.onend = null;
                 recognition.abort();
                 recognition = null;
+                micBtn.classList.remove( 'is-listening' );
             }
         }
 
