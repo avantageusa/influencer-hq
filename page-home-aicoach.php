@@ -1189,7 +1189,11 @@ $aicoach_channels = array(
         border-radius: 12px;
         background: #1b1c24;
         box-shadow: 0 12px 28px rgba(0, 0, 0, .4);
-        z-index: 10050;
+        /* Below .aicoach-time-check's 10040 (not above it like
+        .aicoach-lang-dropdown's 10050) — that modal is a full-screen
+        inset:0 overlay meant to force a yes/no decision, and a visitor
+        must not be able to keep typing into this panel through it. */
+        z-index: 10030;
         text-align: left;
     }
 
