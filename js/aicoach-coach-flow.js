@@ -1461,18 +1461,27 @@ if ( stage && avatarWrap ) {
     // boundaries, only a single continuous translated string.
     const BELIEVE_1_OPENING_EN = "Every successful company begins with a set of beliefs. Here's one of ours. ";
     const believeOneEl = document.getElementById( 'aicoach-believe-1' );
+    let believeOneIntroTimer = null; // the pending icon->text switch, if any
 
     function startBelieveOneIntro() {
         if ( ! believeOneEl ) {
             return;
         }
+        // A locale switch during the icon phase calls this again (see
+        // restartCurrentClipForLocale()) without sequenceIndex changing, so
+        // the guard below alone can't tell the old timer it's stale — without
+        // clearing it here, BOTH timers fire: whichever was scheduled first
+        // flips to the text phase on the OLD schedule, which no longer
+        // matches the just-restarted (from 0) clip's real timeline.
+        window.clearTimeout( believeOneIntroTimer );
         const myIndex = sequenceIndex;
         believeOneEl.classList.remove( 'is-text-phase' );
         const captionEl = getCaptionEl( 'believe-1' );
         if ( captionEl ) {
             captionEl.textContent = '';
         }
-        window.setTimeout( function () {
+        believeOneIntroTimer = window.setTimeout( function () {
+            believeOneIntroTimer = null;
             // A tap-to-skip (or a fresh runFallback() from a locale/tier
             // change) may have already moved on to a later screen by the time
             // this fires — applying the text phase to a screen the visitor

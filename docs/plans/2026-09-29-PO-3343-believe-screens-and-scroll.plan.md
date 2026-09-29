@@ -24,11 +24,12 @@ todos:
   - id: believe-1-icon-trio
     content: "believe-1 now shows all three belief icons (coin, chart,
       certificate) together above the 'We Believe' title on load, caption
-      blank — matching Figma 'Belief 7'. After a fixed 3.5s dwell
-      (startBelieveOneIntro() in js/aicoach-coach-flow.js), icons hide and
-      the existing full believe-1 caption text takes over exactly as before.
-      Explicitly the fallback Ivan signed off on instead of syncing text
-      reveal to the actual seconds in we_believe_1.mp4."
+      blank — matching Figma 'Belief 7'. After a fixed 7.2s dwell
+      (startBelieveOneIntro() in js/aicoach-coach-flow.js; not the 3.5s first
+      tried — see Notes), icons hide and the existing believe-1 caption text
+      takes over, minus the opening two sentences already spoken during the
+      icon phase. Explicitly the fallback Ivan signed off on instead of
+      syncing text reveal to the actual seconds in we_believe_1.mp4."
     status: completed
   - id: new-assets
     content: "Re-exported the coin and certificate icons from Figma to match
@@ -105,12 +106,13 @@ once the opening line has had time to be said.
   reverted — it bought less than the real fix and cost readability for no
   remaining benefit.
 - **Sync believe-1's icon-to-text switch to the actual second in
-  we_believe_1.mp4 where the opening line ends.** This is the "correct"
-  version and is exactly what Ivan called out as the real fallback target.
-  Not done here — needs either manually timing the real rendered clip or a
-  new per-segment timestamp source, both bigger than this pass. The fixed
-  3.5s dwell is deliberately the simpler, "good enough" version Ivan agreed
-  to ship first.
+  we_believe_1.mp4 where the opening line ends, per-locale.** This is the
+  "correct" version and is exactly what Ivan called out as the real fallback
+  target. Not fully done here — what shipped instead is a single constant
+  (7.2s) measured off the *English* clip only (see Notes), not a real
+  per-segment timestamp source covering every language. Good enough for the
+  fallback Ivan agreed to ship first; still simpler than true per-locale
+  sync.
 - **Force the chart icon into the new filled style via a manual redraw**
   instead of leaving it as the old outline icon. Rejected for now — the
   Figma re-export kept failing for reasons never root-caused (every other
@@ -146,8 +148,13 @@ leaving it undiscovered.
 `page-home-aicoach.php`'s `$aicoach_img` array to a new filled-style export
 once one exists; nothing else needs to change.
 
-**believe-1's 3.5s dwell is a fixed guess**, not synced to the real clip.
-Live-verified it doesn't look broken, but nobody has confirmed it actually
-lines up with where Sami's spoken opening line ends in `we_believe_1.mp4`
-for each language — worth a real audio check before calling this fully
-done, not just a code review.
+**believe-1's dwell was originally a 3.5s guess** — caught live (Dejan,
+2026-09-29): "quickly switches to the next part and doesn't finish the
+opening sentence." Re-measured directly off the real `we_believe_1.mp4`
+(English) with Web Audio: decoded the clip and scanned RMS volume in 100ms
+windows for the silence gaps between sentences. The two opening sentences
+run to ~7.1s, confirmed independently by their ~17% share of the script's
+word count landing at the same point in the clip's ~31.8s of speech. Bumped
+to 7200ms. Only measured for English — every other locale's clip has its
+own pacing and still uses this same constant, worth a real per-locale audio
+check before calling this fully done everywhere, not just for English.
