@@ -107,10 +107,11 @@ needed to change.
   instead of transcribing in the browser. Rejected — confirmed in
   `inc/gary-proxy.php` that `/message` only ever accepted a `text` field;
   there's no audio-in route on Gary's side to build against, and the
-  browser's own `SpeechRecognition` already produces text locally with no
-  new infrastructure at all. Building a server-side STT pipeline would be
-  strictly more work for a result the AC doesn't ask for (it asks for a
-  voice **experience**, not audio specifically reaching Gary).
+  browser's own `SpeechRecognition` already produces text with no new
+  infrastructure of our own at all. Building a server-side STT pipeline
+  would be strictly more work for a result the AC doesn't ask for (it asks
+  for a voice **experience**, not audio specifically reaching Gary). Note
+  this doesn't mean the audio stays fully on-device either — see Notes.
 - **Keep the text input as a hidden fallback for browsers without
   `SpeechRecognition` support (e.g. Firefox).** Considered, but the AC is
   explicit that a blocked/unsupported microphone should tell the visitor
@@ -146,3 +147,12 @@ question, get it transcribed and answered" path is unverified beyond code
 review and the (very real) permission-blocked path this environment does
 exercise. Flagging for a real-device pass rather than claiming full
 end-to-end coverage.
+
+**Transcription is not guaranteed to happen on-device.** Flagged in review
+(CodeRabbit, PR #68): browser `SpeechRecognition` commonly sends the raw
+audio to the browser vendor's own remote service for transcription (e.g.
+Chrome's default implementation) rather than processing it locally, unless
+a newer, explicitly-requested on-device model is used — which this code
+doesn't request. Whether that meets IHQ's privacy requirements for this
+feature hasn't been confirmed; worth a product/legal check before treating
+this as settled, not assumed here.

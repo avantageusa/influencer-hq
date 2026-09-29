@@ -1013,12 +1013,20 @@ if ( stage && avatarWrap ) {
     // 'en' locale (selectLocale() above) rather than shown for a feature that
     // would just return his fixed fallback line.
     //
-    // Voice IN, text answer OUT. The question itself never touches our
+    // Voice IN, text answer OUT. The question itself never touches OUR
     // backend as audio — the browser's own SpeechRecognition transcribes it
-    // to text locally, which then goes through the exact same /message call
-    // typing would have; inc/gary-proxy.php's ihq_coach_handle_message() only
-    // ever accepted a `text` field; there's no server-side speech-to-text
-    // route to build. An earlier typed-question build was explicitly
+    // to text, which then goes through the exact same /message call typing
+    // would have; inc/gary-proxy.php's ihq_coach_handle_message() only ever
+    // accepted a `text` field; there's no server-side speech-to-text route
+    // to build here. That transcription is NOT necessarily on-device,
+    // though — browser speech recognition commonly sends the raw audio to
+    // the browser vendor's own remote service (e.g. Chrome's default
+    // SpeechRecognition does this unless a newer, explicitly-requested
+    // on-device model is used, which this code doesn't request). Flagged in
+    // review (CodeRabbit, PR #68) — worth a privacy-policy check with
+    // product/legal before treating this as settled, tracked as a separate
+    // open question rather than assumed here. An earlier typed-question
+    // build was explicitly
     // rejected in review (2026-09-29): "ne treba input polje da bude, samo
     // glasom" (no input field, voice only), which also matches PO-3330's
     // own AC ("ask by voice", decline-mic fallback returns to the flow
@@ -1103,6 +1111,13 @@ if ( stage && avatarWrap ) {
 
         let wasPlaying = false; // the main avatar video's state before the panel paused it, restored on close
         let recognition = null; // the in-flight SpeechRecognition instance, if any — see startListening()/stopListening()
+        // PR #68 (CodeRabbit) — bumped by every startListening() call and
+        // compared against inside askQuestion()'s response handling, so a
+        // /message request left over from a PRIOR listen cycle (e.g. the
+        // panel was closed and reopened, or the mic was tapped again, while
+        // that request was still in flight) can't write its answer/error
+        // into a panel that's since moved on to a newer question.
+        let askGeneration = 0;
 
         // AC — "microphone permission is requested at that moment and not
         // before": recognition.start() is what actually triggers the
@@ -1113,6 +1128,15 @@ if ( stage && avatarWrap ) {
         // some browsers throw if you .start() one that's already fired
         // 'end' once, rather than letting it be reused.
         function startListening() {
+            // PR #68 (CodeRabbit) — a recognition instance is already active;
+            // starting a second one on top of it (e.g. a fast double-click on
+            // the mic) would orphan the first, and its OWN onend could later
+            // null out the reference to this newer one, breaking
+            // stopListening()'s ability to abort it. Ignore instead.
+            if ( recognition ) {
+                return;
+            }
+            askGeneration++;
             errorEl.textContent = '';
             answerEl.textContent = '';
             if ( ! SpeechRecognitionCtor ) {
@@ -1121,26 +1145,42 @@ if ( stage && avatarWrap ) {
                 statusEl.textContent = "Questions need the microphone for now — this browser doesn't support voice input.";
                 return;
             }
-            recognition = new SpeechRecognitionCtor();
-            recognition.lang = 'en-US'; // Ask Sami is English-only for now — see the 'en' gate above
-            recognition.continuous = false;
-            recognition.interimResults = false;
-            recognition.maxAlternatives = 1;
-            recognition.onstart = function () {
+            const instance = new SpeechRecognitionCtor();
+            recognition = instance;
+            instance.lang = 'en-US'; // Ask Sami is English-only for now — see the 'en' gate above
+            instance.continuous = false;
+            instance.interimResults = false;
+            instance.maxAlternatives = 1;
+            instance.onstart = function () {
                 micBtn.classList.add( 'is-listening' );
                 statusEl.textContent = 'Listening…';
             };
-            recognition.onend = function () {
+            instance.onend = function () {
                 micBtn.classList.remove( 'is-listening' );
-                recognition = null;
-            };
-            recognition.onresult = function ( event ) {
-                const transcript = event.results[ 0 ]?.[ 0 ]?.transcript?.trim();
-                if ( transcript ) {
-                    askQuestion( transcript );
+                // PR #68 (CodeRabbit) — only clear the shared reference if it
+                // still points at THIS instance. stopListening() (an explicit
+                // close) already nulls it and aborts; abort() still fires
+                // 'end' asynchronously afterward, and if the panel was
+                // reopened (a new instance started) before that stale 'end'
+                // arrives, it must not null out the new one out from under it.
+                if ( recognition === instance ) {
+                    recognition = null;
                 }
             };
-            recognition.onerror = function ( event ) {
+            instance.onresult = function ( event ) {
+                const transcript = event.results[ 0 ]?.[ 0 ]?.transcript?.trim();
+                if ( transcript ) {
+                    askQuestion( transcript, askGeneration );
+                }
+            };
+            // PR #68 (CodeRabbit) — an unrecognised utterance is its own
+            // 'nomatch' event, not an onerror with error 'no-match' (that
+            // string is never an actual SpeechRecognitionErrorEvent.error
+            // value per spec) — the old no-match branch below never fired.
+            instance.onnomatch = function () {
+                statusEl.textContent = "Sorry, I didn't catch that — try again.";
+            };
+            instance.onerror = function ( event ) {
                 if ( 'not-allowed' === event.error || 'service-not-allowed' === event.error ) {
                     // AC — permission declined: told plainly, returned to the flow.
                     statusEl.textContent = 'Questions need the microphone for now.';
@@ -1149,19 +1189,20 @@ if ( stage && avatarWrap ) {
                     // recorded; just let the visitor tap the mic again or
                     // close to continue, same as before they opened this.
                     statusEl.textContent = "Didn't hear anything — tap the mic to try again.";
-                } else if ( 'no-match' === event.error ) {
-                    // AC — speech not recognised: ask to repeat, don't guess.
-                    statusEl.textContent = "Sorry, I didn't catch that — try again.";
                 } else {
                     statusEl.textContent = 'Something went wrong — tap the mic to try again.';
                 }
             };
             try {
-                recognition.start();
+                instance.start();
             } catch ( error ) {
-                // start() throws if called while an instance is already
-                // starting/running (e.g. a fast double-click) — harmless,
-                // the in-flight one is still going.
+                // start() threw synchronously — this instance never actually
+                // started (no 'end' coming to clear it), so clear it here or
+                // every future startListening() call would see a truthy
+                // recognition and silently no-op forever.
+                if ( recognition === instance ) {
+                    recognition = null;
+                }
             }
         }
 
@@ -1173,7 +1214,7 @@ if ( stage && avatarWrap ) {
             }
         }
 
-        async function askQuestion( text ) {
+        async function askQuestion( text, generation ) {
             if ( ! text || ! garySessionId ) {
                 return;
             }
@@ -1199,14 +1240,26 @@ if ( stage && avatarWrap ) {
                 if ( ! res.ok || ! data.say?.text ) {
                     throw new Error( data.error || 'Ask Sami request failed.' );
                 }
+                // PR #68 (CodeRabbit) — the panel may have closed and
+                // reopened (or been asked a newer question) while this was
+                // in flight; a stale answer must not overwrite what's on
+                // screen now.
+                if ( generation !== askGeneration ) {
+                    return;
+                }
                 answerEl.textContent = data.say.text;
                 statusEl.textContent = '';
             } catch ( error ) {
+                if ( generation !== askGeneration ) {
+                    return;
+                }
                 console.warn( '[aicoach] Ask Sami request failed:', error );
                 errorEl.textContent = 'Something went wrong — please try again.';
                 statusEl.textContent = '';
             } finally {
-                micBtn.disabled = false;
+                if ( generation === askGeneration ) {
+                    micBtn.disabled = false;
+                }
             }
         }
 
