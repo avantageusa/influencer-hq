@@ -686,6 +686,42 @@ async function loadProgress() {
     }
 }
 
+// PO-3343 — the shared adjustContentPadding() (template-parts/portal-header.php)
+// pads #portal-content to (header bottom + 20px), tuned as breathing room for
+// portal pages generally. This page's own chrome is already stripped down to
+// logo/globe/volume (PO-3062's "hide chrome" work), so that much clearance
+// just pushes the avatar/caption down for no benefit here — mirrors the same
+// bottom-measurement logic with a smaller buffer instead, page-scoped so the
+// shared function (and every other portal page relying on its own 20px) is
+// untouched. Registers its own load/resize listeners after portal-header.php's
+// inline script already has (this module script necessarily runs later), so
+// it always overrides with a freshly-measured value rather than compounding
+// off whatever the previous call left behind.
+function tightenAicoachTopPadding() {
+    const stickyNav = document.querySelector('.sticky-nav');
+    const stickyHeader = document.querySelector('.sticky-header');
+    const content = document.getElementById('portal-content');
+    if ( ! content ) {
+        return;
+    }
+    const navVisible = stickyNav && 'none' !== getComputedStyle( stickyNav ).display;
+    let bottom = 0;
+    if ( navVisible ) {
+        bottom = stickyNav.getBoundingClientRect().bottom;
+    } else if ( stickyHeader ) {
+        bottom = stickyHeader.getBoundingClientRect().bottom;
+    }
+    if ( bottom > 0 ) {
+        content.style.setProperty( 'padding-top', ( bottom + 4 ) + 'px', 'important' );
+    }
+}
+window.addEventListener( 'load', tightenAicoachTopPadding );
+let aicoachPaddingResizeTimer;
+window.addEventListener( 'resize', function () {
+    clearTimeout( aicoachPaddingResizeTimer );
+    aicoachPaddingResizeTimer = window.setTimeout( tightenAicoachTopPadding, 100 );
+} );
+
 const stage = document.getElementById('aicoach-stage');
 const avatarWrap = document.getElementById('aicoach-avatar-wrap');
 const video = document.getElementById('aicoach-avatar-video');
@@ -787,6 +823,14 @@ if ( stage && avatarWrap ) {
             return;
         }
         activeClipRestart( newUrl );
+        // PO-3343 — believe-1's clip restarting from 0 means Sami is about to
+        // re-say the opening line too, in the new language — re-run the same
+        // icons-first intro rather than just patching in the (still-English,
+        // still-opening-included) caption text below.
+        if ( 'believe-1' === screen.panel ) {
+            startBelieveOneIntro();
+            return;
+        }
         // NFR-03 — keep the on-screen caption matching whatever the restarted
         // clip is actually saying, same as the initial-load path in
         // runFallback() above.
@@ -1385,6 +1429,75 @@ if ( stage && avatarWrap ) {
         } );
     }
 
+    // PO-3343 — believe-1 opens on the coin/chart/certificate trio together
+    // (matching Figma "Belief 7"), no caption text yet, then switches to the
+    // normal icon-free caption once the opening line has had time to be said.
+    // Explicitly the "fallback" version Ivan signed off on (2026-09-29): a
+    // fixed dwell instead of syncing to the exact second in we_believe_1.mp4
+    // where Sami's opening line actually ends.
+    //
+    // 7200ms, not a guess — measured directly off the real we_believe_1.mp4
+    // (English) via Web Audio: decoded the clip and scanned RMS volume in
+    // 100ms windows to find the silence gaps between sentences. "Every
+    // successful company begins with a set of beliefs. Here's one of ours."
+    // (the two sentences meant to go with the icons) ends at the pause
+    // starting ~6.0s and finishing ~7.1s, right before "We believe influence
+    // is about..." begins — confirmed independently by word-count proportion
+    // (those two sentences are ~17% of the script's ~76 words, and 17% of
+    // the clip's ~31.8s of actual speech + its 1.8s lead-in silence lands at
+    // the same ~7.2s). The original 3500ms guess cut the sentence off
+    // mid-word (caught live: "quickly switches ... doesn't finish the
+    // opening sentence"). Only measured for English — every other locale's
+    // clip has its own pacing and still uses this same constant, the same
+    // "good enough fallback" gap already true of the rest of this feature.
+    const BELIEVE_1_ICON_PHASE_MS = 7200;
+    // Dejan (2026-09-29): once the opening two sentences have been spoken
+    // during the icon phase, re-showing them in the text-phase caption would
+    // have the visitor reading a line Sami already finished saying several
+    // seconds earlier — the same "caption must match what's actually being
+    // said right now" reasoning NFR-03 already cares about everywhere else.
+    // English-only for the same reason getCaptionScript() itself doesn't
+    // attempt this for translated captions: we don't have per-locale sentence
+    // boundaries, only a single continuous translated string.
+    const BELIEVE_1_OPENING_EN = "Every successful company begins with a set of beliefs. Here's one of ours. ";
+    const believeOneEl = document.getElementById( 'aicoach-believe-1' );
+    let believeOneIntroTimer = null; // the pending icon->text switch, if any
+
+    function startBelieveOneIntro() {
+        if ( ! believeOneEl ) {
+            return;
+        }
+        // A locale switch during the icon phase calls this again (see
+        // restartCurrentClipForLocale()) without sequenceIndex changing, so
+        // the guard below alone can't tell the old timer it's stale — without
+        // clearing it here, BOTH timers fire: whichever was scheduled first
+        // flips to the text phase on the OLD schedule, which no longer
+        // matches the just-restarted (from 0) clip's real timeline.
+        window.clearTimeout( believeOneIntroTimer );
+        const myIndex = sequenceIndex;
+        believeOneEl.classList.remove( 'is-text-phase' );
+        const captionEl = getCaptionEl( 'believe-1' );
+        if ( captionEl ) {
+            captionEl.textContent = '';
+        }
+        believeOneIntroTimer = window.setTimeout( function () {
+            believeOneIntroTimer = null;
+            // A tap-to-skip (or a fresh runFallback() from a locale/tier
+            // change) may have already moved on to a later screen by the time
+            // this fires — applying the text phase to a screen the visitor
+            // isn't on anymore would just leave it in the wrong state for
+            // whenever they come back around to it.
+            if ( sequenceIndex !== myIndex ) {
+                return;
+            }
+            believeOneEl.classList.add( 'is-text-phase' );
+            if ( captionEl ) {
+                const translated = getCaptionScript( 'believe-1', currentLocale );
+                captionEl.textContent = translated || SCREENS[ myIndex ].script.replace( BELIEVE_1_OPENING_EN, '' );
+            }
+        }, BELIEVE_1_ICON_PHASE_MS );
+    }
+
     async function runFallback( keepAvatarLive ) {
         if ( fallbackRunning ) {
             return;
@@ -1395,9 +1508,15 @@ if ( stage && avatarWrap ) {
         }
         for ( ; sequenceIndex < SCREENS.length; sequenceIndex++ ) {
             const screen = SCREENS[ sequenceIndex ];
+            // PO-3343 — believe-1 gets the icons-first opening beat instead of
+            // the normal immediate caption; startBelieveOneIntro() (called
+            // once the panel is actually visible, below) owns setting its
+            // caption text instead of the two spots in this loop that
+            // otherwise do it for every screen.
+            const isBelieveOne = 'believe-1' === screen.panel;
             const panelReady = showPanel( screen.panel );
             const captionEl = getCaptionEl( screen.panel );
-            if ( captionEl ) {
+            if ( captionEl && ! isBelieveOne ) {
                 // NFR-03 — best-effort immediate text so the caption isn't blank
                 // during the fade; re-set below once currentLocale is final for
                 // this screen, same reasoning as the clip URL re-resolve just
@@ -1421,9 +1540,11 @@ if ( stage && avatarWrap ) {
                 // restart) would otherwise still hear this screen start in the
                 // language they just left.
                 const clipUrl = getPrerenderedUrl( screen.panel, currentLocale );
-                // NFR-03 — keep the caption in step with whichever clip just got
-                // (re-)resolved above, for the same reason.
-                if ( captionEl ) {
+                if ( isBelieveOne ) {
+                    startBelieveOneIntro();
+                } else if ( captionEl ) {
+                    // NFR-03 — keep the caption in step with whichever clip just
+                    // got (re-)resolved above, for the same reason.
                     captionEl.textContent = getCaptionScript( screen.panel, currentLocale ) || screen.script;
                 }
                 const played = clipUrl && await playPrerenderedClip( clipUrl );
@@ -1431,6 +1552,16 @@ if ( stage && avatarWrap ) {
                     await waitForReadOrSkip();
                 }
             } else {
+                // PO-3343 — the same icons-first intro applies even in this
+                // no-prerendered-clip fallback (only reachable if believe-1's
+                // segment has no rendered video at all, in any locale —
+                // shouldn't happen in production, but leaving it dark here
+                // would mean icons forever with a blank caption for this
+                // screen's whole dwell instead of transitioning to text).
+                if ( isBelieveOne ) {
+                    await panelReady;
+                    startBelieveOneIntro();
+                }
                 await waitForReadOrSkip();
             }
             if ( sequenceFinished ) {
