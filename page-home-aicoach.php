@@ -1236,6 +1236,13 @@ $aicoach_channels = array(
         50% { box-shadow: 0 0 0 10px rgba(253, 214, 91, 0); }
     }
 
+    @media (prefers-reduced-motion: reduce) {
+        .aicoach-ask-btn.is-inviting {
+            animation: none;
+            box-shadow: 0 0 0 3px rgba(253, 214, 91, .5);
+        }
+    }
+
     .aicoach-ask-panel {
         display: none;
         position: absolute;
