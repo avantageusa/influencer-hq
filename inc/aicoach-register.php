@@ -316,6 +316,10 @@ function ihq_aicoach_handle_create_account( WP_REST_Request $request ) {
 		'comm_methods'   => $payload['comm_methods'],
 		'challenge_type' => 'maybe_later',
 		'country_iso'    => $country_iso,
+		// PO-3106 (FR-15) — passed in rather than set afterward: the shared
+		// function's own Braze sync needs this meta already written when it
+		// runs, and it runs before this call returns.
+		'language'       => $payload['language'],
 	);
 
 	$user_id = ihq_create_influencer_user_from_registration_data( $registration );
@@ -331,9 +335,6 @@ function ihq_aicoach_handle_create_account( WP_REST_Request $request ) {
 
 	ihq_aicoach_apply_portal_username( (int) $user_id, $payload['username'] );
 
-	if ( $payload['language'] !== '' ) {
-		update_user_meta( (int) $user_id, '_ihq_aicoach_language', $payload['language'] );
-	}
 	if ( $payload['duration'] !== '' ) {
 		update_user_meta( (int) $user_id, '_ihq_aicoach_duration', $payload['duration'] );
 	}
@@ -409,3 +410,48 @@ function ihq_aicoach_enqueue_register_event() {
 	wp_enqueue_script( 'ihq-aicoach-events' );
 }
 add_action( 'wp_enqueue_scripts', 'ihq_aicoach_enqueue_register_event', 5 );
+
+/**
+ * PO-3106 (FR-15) — "the IHQ portal opens in that language on arrival".
+ *
+ * No .mo/.po translation files exist for this theme in any language yet
+ * (confirmed — only the English languages/influencer-hq.pot template), so
+ * this deliberately does not attempt to translate any on-screen text; that
+ * depends on real, approved translations landing (NFR-05/PO-3114, a content
+ * gap, not a code one). What this DOES do, honestly, today: makes
+ * header.php's existing language_attributes() call (already used
+ * site-wide) render the correct <html lang="..."> for a visitor with a
+ * saved AI Coach language preference, and wires the one mechanism
+ * (WordPress's own 'locale' filter) that will start actually localizing
+ * on-screen strings the moment real .mo files exist — with no further code
+ * change needed then.
+ *
+ * @param string $locale Locale WordPress was about to use.
+ * @return string
+ */
+function ihq_aicoach_filter_portal_locale( $locale ) {
+	// is_user_logged_in()/get_current_user_id() are safe this early (the
+	// 'locale' filter fires before most conditional tags are reliable, but
+	// auth-cookie resolution already is) — deliberately not gated to a
+	// specific portal page template for that reason; see PO-3106's plan
+	// doc. Harmless on any other page since no translation exists yet.
+	if ( ! is_user_logged_in() ) {
+		return $locale;
+	}
+
+	// AI Coach locale code -> real WordPress locale. yue (Cantonese) has no
+	// dedicated WP locale; zh_HK is the closest existing one (traditional
+	// script, Hong Kong region) and is what WordPress core itself ships.
+	$locale_map = array(
+		'zh'  => 'zh_CN',
+		'yue' => 'zh_HK',
+		'ja'  => 'ja',
+		'ko'  => 'ko_KR',
+		'th'  => 'th',
+		'vi'  => 'vi',
+	);
+
+	$saved = (string) get_user_meta( get_current_user_id(), '_ihq_aicoach_language', true );
+	return isset( $locale_map[ $saved ] ) ? $locale_map[ $saved ] : $locale;
+}
+add_filter( 'locale', 'ihq_aicoach_filter_portal_locale' );

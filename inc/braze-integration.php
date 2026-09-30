@@ -151,6 +151,10 @@ function ihq_send_influencer_to_braze( $user_id ) {
 	if ( $country === '' ) {
 		$country = (string) get_user_meta( $user_id, 'country', true );
 	}
+	// PO-3106 (FR-15) — only the AI Coach flow ever writes this meta; every
+	// other registration path leaves it empty, so language_preference is
+	// simply omitted for them rather than sent as an empty string.
+	$language_preference = (string) get_user_meta( $user_id, '_ihq_aicoach_language', true );
 
 	$braze_user_check   = check_braze_user_exists_influencer( $email );
 	$external_id_to_use = '';
@@ -169,17 +173,20 @@ function ihq_send_influencer_to_braze( $user_id ) {
 
 	update_user_meta( $user_id, 'wp_influencer_guid', $influencer_guid );
 
+	$braze_attributes = array(
+		'external_id'        => $external_id_to_use,
+		'email'              => $email,
+		'first_name'         => $first_name !== '' ? $first_name : $user->display_name,
+		'last_name'          => $last_name,
+		'Language'           => $country,
+		'wp_influencer_guid' => $influencer_guid,
+	);
+	if ( $language_preference !== '' ) {
+		$braze_attributes['language_preference'] = $language_preference;
+	}
+
 	$braze_data = array(
-		'attributes' => array(
-			array(
-				'external_id'        => $external_id_to_use,
-				'email'              => $email,
-				'first_name'         => $first_name !== '' ? $first_name : $user->display_name,
-				'last_name'          => $last_name,
-				'Language'           => $country,
-				'wp_influencer_guid' => $influencer_guid,
-			),
-		),
+		'attributes' => array( $braze_attributes ),
 		'events'     => array(
 			array(
 				'external_id' => $external_id_to_use,
