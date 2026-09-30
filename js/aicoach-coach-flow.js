@@ -32,11 +32,14 @@ import { createClient, AnamEvent } from 'https://cdn.jsdelivr.net/npm/@anam-ai/j
  * screens, then the time-selection pitch — this last one spoken over the
  * existing tier-selection UI rather than a separate screen) is shown as
  * static captions per the gap above. Each screen advances to the next after
- * a reading dwell, or immediately on a visitor tap/click (FR-02's
- * "narration timing or visitor tap/click"); confirming a time tier (FR-03)
- * is the same kind of early-advance, plus it marks the sequence done and
- * starts elapsed-time tracking. Unlike page-portal-poc.php this is NOT
- * tap-to-start — the AC requires the video to begin on load.
+ * its own reading dwell or its clip's natural 'ended' event; confirming a
+ * time tier (FR-03) is its own early-advance, plus it marks the sequence
+ * done and starts elapsed-time tracking. Unlike page-portal-poc.php this is
+ * NOT tap-to-start — the AC requires the video to begin on load. A visitor
+ * tap/click on the stage no longer skips ahead (FR-02's original "narration
+ * timing or visitor tap/click" clause is being removed from that ticket,
+ * product decision, PO-3062 comment 2026-09-30) — see FR-19's tap-to-interrupt
+ * on the stage's click listener, further down this file.
  */
 const FADE_MS = 400;
 const FALLBACK_READ_MS = 9000; // per-screen dwell for the static-text fallback (no speech to sync against)
@@ -832,6 +835,7 @@ if ( stage && avatarWrap ) {
     let askSamiWrap = null; // set once buildAskSami() runs below; selectLocale() toggles its visibility
     let askSamiBtn = null;
     let closeAskSamiPanel = null; // set once buildAskSami() runs below; selectLocale() calls this before hiding the panel
+    let toggleAskSamiPanel = null; // set once buildAskSami() runs below; the stage's tap-to-interrupt listener calls this
 
     function selectLocale( locale ) {
         if ( locale === currentLocale ) {
@@ -1102,8 +1106,8 @@ if ( stage && avatarWrap ) {
         wrap.appendChild( btn );
         wrap.appendChild( panel );
         // Sibling of .aicoach-stage, not inside it — .aicoach-stage's own click
-        // listener (tap-to-skip) would otherwise treat every click in here as
-        // "advance to the next screen".
+        // listener (FR-19 tap-to-interrupt) would otherwise treat every click
+        // in here as its own separate toggle attempt on top of this panel's.
         avatarWrap.insertAdjacentElement( 'afterend', wrap );
 
         askSamiWrap = wrap;
@@ -1318,14 +1322,27 @@ if ( stage && avatarWrap ) {
 
         closeAskSamiPanel = closePanel; // exposed so selectLocale() can close this before hiding it out from under itself
 
-        btn.addEventListener( 'click', function ( event ) {
-            event.stopPropagation();
+        // PO-3346 — shared by the button below and the stage's tap-to-interrupt
+        // listener (FR-19's "an 'Ask Semi' affordance... producing the same
+        // state as the tap"), so both triggers stay identical by construction.
+        // Guards against a disabled/hidden button — the stage listener has no
+        // native disabled-button protection the way a real <button> click does.
+        function togglePanel() {
+            if ( btn.disabled || wrap.hidden ) {
+                return;
+            }
             unmuteOnFirstInteraction(); // see the same note on the language button above
             if ( wrap.classList.contains( 'is-open' ) ) {
                 closePanel();
             } else {
                 openPanel();
             }
+        }
+        toggleAskSamiPanel = togglePanel; // exposed for the stage's tap-to-interrupt listener
+
+        btn.addEventListener( 'click', function ( event ) {
+            event.stopPropagation();
+            togglePanel();
         } );
 
         closeBtn.addEventListener( 'click', function ( event ) {
@@ -1756,11 +1773,12 @@ if ( stage && avatarWrap ) {
         }
         believeOneIntroTimer = window.setTimeout( function () {
             believeOneIntroTimer = null;
-            // A tap-to-skip (or a fresh runFallback() from a locale/tier
-            // change) may have already moved on to a later screen by the time
-            // this fires — applying the text phase to a screen the visitor
-            // isn't on anymore would just leave it in the wrong state for
-            // whenever they come back around to it.
+            // A tier confirmation's own early-advance (or a fresh
+            // runFallback() from a locale/tier change) may have already moved
+            // on to a later screen by the time this fires — applying the
+            // text phase to a screen the visitor isn't on anymore would just
+            // leave it in the wrong state for whenever they come back around
+            // to it.
             if ( sequenceIndex !== myIndex ) {
                 return;
             }
@@ -1847,23 +1865,40 @@ if ( stage && avatarWrap ) {
         finishSequence();
     }
 
-    // Tap/click to skip ahead — FR-02's "narration timing or visitor tap/click",
-    // covers the We Believe screens and the FR-03 time-selection narration (not
-    // the FR-01 intro). Tier clicks have their own handler above and are excluded
-    // here so this listener never double-handles them.
+    // FR-19 (PO-3346) — "Tapping the Coach video pauses her mid-delivery and
+    // opens the voice question state on every screen, in every tier and
+    // language." Replaces the old FR-02 tap-to-skip (PO-3093's "narration
+    // timing or visitor tap/click"): product confirmed (Ivan Vladić,
+    // PO-3062 comment, 2026-09-30) that skipping the flow was never
+    // actually wanted, and FR-02 is being edited to drop that clause.
+    // Screens still advance on their own via each screen's dwell timer or
+    // its clip's natural 'ended' event — nothing here replaces that, this
+    // listener only ever *interrupted* early advance, it never drove normal
+    // advance. Tier clicks have their own handler above and are excluded
+    // here so this listener never double-handles them; same for a click
+    // already inside .aicoach-stage that lands on nothing interactive.
     stage.addEventListener( 'click', function ( event ) {
         if ( isAnimating ) {
             return; // avoid desyncing the caption/panel if tapped mid-fade
         }
         const current = SCREENS[ sequenceIndex ];
-        if ( ! current || current.panel === 'intro' ) {
+        if ( ! current ) {
             return;
         }
         if ( event.target.closest( '.aicoach-tier' ) ) {
             return;
         }
-        if ( skipCurrent ) {
-            skipCurrent();
+        if ( toggleAskSamiPanel ) {
+            // Ask Sami's own document-level "click outside closes the panel"
+            // listener has no target check — without this, opening the panel
+            // from here would have it close again immediately, same click,
+            // once this event finished bubbling up to document.
+            event.stopPropagation();
+            // stopPropagation() above also means this click never reaches
+            // document's unmuteOnFirstInteraction() listener — same reasoning
+            // as the language/Ask Sami buttons already calling it explicitly.
+            unmuteOnFirstInteraction();
+            toggleAskSamiPanel();
         }
     } );
 
