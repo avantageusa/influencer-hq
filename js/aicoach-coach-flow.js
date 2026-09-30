@@ -1115,6 +1115,28 @@ if ( stage && avatarWrap ) {
 
         let wasPlaying = false; // the main avatar video's state before the panel paused it, restored on close
         let recognition = null; // the in-flight SpeechRecognition instance, if any — see startListening()/stopListening()
+        // PO-3346 — spoken video answers (Gary confirmed video/lip-sync is
+        // available on this surface, 2026-09-30). qaClient is reused across
+        // questions in the same visit rather than reconnected each time
+        // (Gary's own guidance — every video session ties up an avatar
+        // seat); it clears itself via CONNECTION_CLOSED whenever Anam ends
+        // it (the 300s cap, or anything else), so the next question just
+        // requests a fresh one. qaAnswering lets closePanel() and
+        // speakAnswerOrFallback() coordinate who restores the shared video
+        // element instead of racing each other — see both below.
+        let qaClient = null;
+        let qaClientReady = false;
+        let qaAnswering = false;
+        // PR #73 (review feedback, Dejan Arsić) — the live MediaStream behind
+        // a ready qaClient, captured once on first connect. Anam 4.27.1's
+        // streamToVideoElement() throws 'Already streaming' on a second call
+        // for the same client (confirmed against the SDK source directly —
+        // AnamClient.ts's _isStreaming only resets inside stopStreaming(),
+        // which a reused client never gets here), so a follow-up question
+        // can't call it again to reattach. Reassigning this cached stream
+        // straight onto video.srcObject is a plain DOM operation that never
+        // touches Anam's internal state, so it can't hit that guard.
+        let qaMediaStream = null;
         // PR #68 (CodeRabbit) — bumped by every startListening() call and
         // compared against inside askQuestion()'s response handling, so a
         // /message request left over from a PRIOR listen cycle (e.g. the
@@ -1239,6 +1261,233 @@ if ( stage && avatarWrap ) {
             }
         }
 
+        // PO-3346 — speaks the answer through the same avatar/video element
+        // visitors already see (AC: "same avatar and voice... no perceptible
+        // change of speaker"), when Gary provides one. Falls back to Gary's
+        // own say.audio when video isn't available (busy avatar seats, etc.
+        // — meta.reason explains why) so the visitor still hears Sami, and
+        // to the text already shown (by the caller) if neither is present.
+        // Never plays say.audio.url alongside video — Gary's own guidance
+        // (2026-09-30): it's a separate recording, won't line up with the
+        // lips.
+        // PR #73 (CodeRabbit) — plays a fallback (non-lip-synced) answer
+        // recording and keeps qaAnswering true for its whole duration, not
+        // just fire-and-forget: without that, closePanel() had no way to
+        // know an answer was still audibly playing and would resume the
+        // original clip's audio right on top of it, and the mic would
+        // re-enable while the recording was still going.
+        function playFallbackAudio( url ) {
+            return new Promise( function ( resolve ) {
+                qaAnswering = true;
+                const audio = new Audio( url );
+                const finish = function () {
+                    audio.removeEventListener( 'ended', finish );
+                    audio.removeEventListener( 'error', finish );
+                    qaAnswering = false;
+                    // Same deferred-resume reasoning as
+                    // speakAnswerOrFallback()'s own finally block below — the
+                    // panel may have closed while this was still playing, in
+                    // which case closePanel() left both the sequence timers
+                    // and the video resume to us.
+                    if ( ! wrap.classList.contains( 'is-open' ) ) {
+                        resumeSequenceTimers();
+                        if ( wasPlaying ) {
+                            video.play().catch( function () {} );
+                        }
+                    }
+                    resolve();
+                };
+                audio.addEventListener( 'ended', finish );
+                audio.addEventListener( 'error', finish );
+                audio.play().catch( finish );
+            } );
+        }
+
+        // PR #73 (CodeRabbit) — stops a client's stream and detaches its
+        // persistent CONNECTION_CLOSED listener before it's discarded, so a
+        // failed/abandoned connection doesn't keep an avatar seat tied up
+        // and can't touch shared state again later.
+        function teardownQaClient( client, persistentCloseHandler ) {
+            if ( ! client ) {
+                return;
+            }
+            if ( persistentCloseHandler ) {
+                client.removeListener( AnamEvent.CONNECTION_CLOSED, persistentCloseHandler );
+            }
+            if ( 'function' === typeof client.stopStreaming ) {
+                try {
+                    client.stopStreaming();
+                } catch ( stopError ) {
+                    console.warn( '[aicoach] qaClient.stopStreaming() failed:', stopError );
+                }
+            }
+        }
+
+        async function speakAnswerOrFallback( data ) {
+            // PR #73 (CodeRabbit) — reopening the panel mid-answer
+            // (startListening() re-enables the mic and bumps askGeneration)
+            // lets a second question reach this function while an earlier
+            // one is still playing. Both calls would otherwise race on the
+            // same video element/qaAnswering flag; refuse the overlap
+            // instead — the visitor can ask again once the current answer
+            // finishes.
+            if ( qaAnswering ) {
+                return;
+            }
+            // A fresh video envelope, OR an already-connected client from an
+            // earlier answer this visit (a follow-up question deliberately
+            // requests want:['text'] only — see askQuestion() — so
+            // data.say.video is null here even though video is exactly what
+            // we're about to reuse).
+            if ( ! data.say?.video && ! qaClientReady ) {
+                if ( data.say?.audio?.url ) {
+                    await playFallbackAudio( data.say.audio.url );
+                }
+                return;
+            }
+            // Captured locally (not a shared module variable) so a future
+            // change can't reintroduce the same cross-call race the
+            // qaAnswering guard above already closes off.
+            const qaVideoSnapshot = { status: avatarWrap.dataset.status, src: video.src, currentTime: video.currentTime };
+            qaAnswering = true;
+            // Captured once and used consistently below instead of
+            // re-reading the shared qaClient throughout — a persistent
+            // CONNECTION_CLOSED listener can null qaClient out from under
+            // this call while it's still in flight (see persistentCloseHandler),
+            // and every operation here (talk, wait, teardown) must stay
+            // pinned to the exact instance THIS call started with.
+            let client = qaClient; // null on first connect, the reused/ready client otherwise
+            let persistentCloseHandler = null;
+            try {
+                if ( ! qaClientReady ) {
+                    client = createClient( data.say.video.session_token, { disableInputAudio: true } );
+                    qaClient = client;
+                    persistentCloseHandler = function () {
+                        // Only clear shared state if this instance is still
+                        // the current one — a stale instance's own late
+                        // CONNECTION_CLOSED must not clobber a newer
+                        // client's state (same fix already applied to the
+                        // SpeechRecognition lifecycle, PR #68).
+                        if ( qaClient === client ) {
+                            qaClientReady = false;
+                            qaClient = null;
+                            qaMediaStream = null;
+                        }
+                    };
+                    client.addListener( AnamEvent.CONNECTION_CLOSED, persistentCloseHandler );
+                    await new Promise( function ( resolve, reject ) {
+                        let settled = false;
+                        let timeoutId;
+                        const onStarted = function () {
+                            if ( settled ) {
+                                return;
+                            }
+                            settled = true;
+                            client.removeListener( AnamEvent.VIDEO_PLAY_STARTED, onStarted );
+                            client.removeListener( AnamEvent.CONNECTION_CLOSED, onClosed );
+                            window.clearTimeout( timeoutId );
+                            qaClientReady = true;
+                            resolve();
+                        };
+                        const onClosed = function () {
+                            if ( settled ) {
+                                return;
+                            }
+                            settled = true;
+                            client.removeListener( AnamEvent.VIDEO_PLAY_STARTED, onStarted );
+                            client.removeListener( AnamEvent.CONNECTION_CLOSED, onClosed );
+                            window.clearTimeout( timeoutId );
+                            reject( new Error( 'Anam connection closed before video playback started.' ) );
+                        };
+                        client.addListener( AnamEvent.VIDEO_PLAY_STARTED, onStarted );
+                        client.addListener( AnamEvent.CONNECTION_CLOSED, onClosed );
+                        // streamToVideoElement() resolves once it STARTS the
+                        // connection, not once video is actually live — a
+                        // connection that fails after that point (but before
+                        // VIDEO_PLAY_STARTED) would otherwise leave this
+                        // promise pending forever, with askQuestion() stuck
+                        // and the mic permanently disabled. Same 25s cap as
+                        // waitForSpeechOrSkip()'s own safety net.
+                        timeoutId = window.setTimeout( onClosed, 25000 );
+                        client.streamToVideoElement( AVATAR_VIDEO_ID ).catch( reject );
+                    } );
+                    // streamToVideoElement() has already set this internally
+                    // by the time VIDEO_PLAY_STARTED fires (confirmed against
+                    // the SDK source) — cache it now, while we still know
+                    // video.srcObject is exactly this client's live stream,
+                    // so a later follow-up question can reattach it directly.
+                    qaMediaStream = video.srcObject;
+                } else {
+                    // Reusing an already-connected client for a follow-up
+                    // question. The previous answer's own cleanup below
+                    // detached the stream from the video element (so the
+                    // interrupted clip could be restored), but calling
+                    // streamToVideoElement() again to reattach it throws
+                    // 'Already streaming' — reassign the cached MediaStream
+                    // directly instead.
+                    if ( ! qaMediaStream ) {
+                        throw new Error( 'qaClientReady but no cached qaMediaStream to reattach.' );
+                    }
+                    video.srcObject = qaMediaStream;
+                }
+                avatarWrap.dataset.status = 'live'; // reveals .aicoach-avatar-video over the static portrait, same CSS state as any other playing video
+                await client.talk( data.say.text );
+                await waitForQaSpeechOrSkip( client, 25000 );
+            } catch ( error ) {
+                console.warn( '[aicoach] Ask Sami video answer failed, falling back to audio/text:', error );
+                teardownQaClient( client, persistentCloseHandler );
+                if ( qaClient === client ) {
+                    qaClientReady = false;
+                    qaClient = null;
+                    qaMediaStream = null;
+                }
+                if ( data.say?.audio?.url ) {
+                    await playFallbackAudio( data.say.audio.url );
+                }
+            } finally {
+                video.srcObject = null;
+                if ( qaVideoSnapshot.src ) {
+                    video.src = qaVideoSnapshot.src;
+                    // Reassigning .src reloads the element and resets
+                    // playback position even for the same URL — restore the
+                    // paused frame the visitor actually left off at once the
+                    // reloaded resource can seek, or the resume below (or
+                    // closePanel()'s own) would restart the clip from 0
+                    // instead of resuming it.
+                    const targetTime = qaVideoSnapshot.currentTime;
+                    video.addEventListener( 'loadedmetadata', function onMeta() {
+                        video.removeEventListener( 'loadedmetadata', onMeta );
+                        video.currentTime = targetTime;
+                    } );
+                    // PR #73 (review feedback, Dejan Arsić) — the element's
+                    // own autoplay attribute otherwise restarts this clip as
+                    // soon as it has enough data, regardless of whether Ask
+                    // Sami is still open. playPrerenderedClip()'s own 'ended'
+                    // listener is still attached the whole time (it never
+                    // fired while paused for the answer), so a clip short
+                    // enough to finish while the panel is still open would
+                    // wake the sequence loop and advance to the next screen
+                    // underneath it. Re-assert paused here — only the
+                    // wasPlaying-gated video.play() below (or closePanel()'s
+                    // own) is allowed to start it again.
+                    video.pause();
+                }
+                avatarWrap.dataset.status = qaVideoSnapshot.status;
+                qaAnswering = false;
+                // The panel may have already been closed while this was
+                // still speaking — closePanel() deliberately left both the
+                // sequence-timer and wasPlaying resume to us in that case
+                // (see its own qaAnswering check) to avoid both of us
+                // touching shared state at once.
+                if ( ! wrap.classList.contains( 'is-open' ) ) {
+                    resumeSequenceTimers();
+                    if ( wasPlaying ) {
+                        video.play().catch( function () {} );
+                    }
+                }
+            }
+        }
+
         async function askQuestion( text, generation ) {
             if ( ! text || ! garySessionId ) {
                 return;
@@ -1251,7 +1500,14 @@ if ( stage && avatarWrap ) {
                 const res = await fetch( garyMessageUrl( garySessionId ), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': cfg.nonce },
-                    body: JSON.stringify( { text: text } ),
+                    body: JSON.stringify( {
+                        text: text,
+                        // PO-3346 — once an avatar is already connected from an
+                        // earlier answer this visit, ask for text only rather
+                        // than tying up another avatar seat for video we
+                        // won't use (Gary's own guidance, 2026-09-30).
+                        want: qaClientReady ? [ 'text' ] : [ 'text', 'audio', 'video' ],
+                    } ),
                 } );
                 // Same "read as text first" reasoning as openGarySession() — a
                 // 502 from Cloudflare/PHP-FPM is an HTML page, not JSON.
@@ -1274,6 +1530,7 @@ if ( stage && avatarWrap ) {
                 }
                 answerEl.textContent = data.say.text;
                 statusEl.textContent = '';
+                await speakAnswerOrFallback( data );
             } catch ( error ) {
                 if ( generation !== askGeneration ) {
                     return;
@@ -1306,8 +1563,17 @@ if ( stage && avatarWrap ) {
             wrap.classList.remove( 'is-open' );
             btn.setAttribute( 'aria-expanded', 'false' );
             stopListening();
-            resumeSequenceTimers();
-            if ( wasPlaying ) {
+            // PR #73 (CodeRabbit) — if a spoken answer (video or fallback
+            // audio) is still in progress, resuming the sequence timers here
+            // could let a pending dwell/safety-cap fire mid-answer and hand
+            // playPrerenderedClip() the shared <video> element out from under
+            // it. playFallbackAudio()/speakAnswerOrFallback()'s own cleanup
+            // owns this resume once they finish (same deferred-ownership
+            // pattern already used below for the wasPlaying video resume).
+            if ( ! qaAnswering ) {
+                resumeSequenceTimers();
+            }
+            if ( ! qaAnswering && wasPlaying ) {
                 video.play().catch( function () {} );
             }
             // PO-3346 (#7) — the time-remaining prompt may have come due
@@ -1639,6 +1905,47 @@ if ( stage && avatarWrap ) {
             client.addListener( AnamEvent.MESSAGE_HISTORY_UPDATED, finish );
             skipCurrent = finish;
             window.setTimeout( finish, capMs );
+        } );
+    }
+
+    // PO-3346 — same shape as waitForSpeechOrSkip() above, for Ask Sami's
+    // spoken video answers. Deliberately NOT wired into the shared
+    // skipCurrent — that's the main sequence loop's state (stage taps, tier
+    // clicks); Ask Sami's Q&A is a self-contained side-flow with nothing in
+    // the sequence to skip to.
+    // PR #73 (CodeRabbit) — also rejects on CONNECTION_CLOSED: without this,
+    // a connection dropping mid-speech (after VIDEO_PLAY_STARTED but before
+    // the answer's MESSAGE_HISTORY_UPDATED) just sat out the full capMs
+    // timeout and then resolved as if the answer had played normally, so the
+    // caller's catch/fallback-to-audio path never ran even though we had a
+    // working say.audio.url to fall back to.
+    function waitForQaSpeechOrSkip( client, capMs ) {
+        return new Promise( ( resolve, reject ) => {
+            let settled = false;
+            let timeoutId;
+            const finish = () => {
+                if ( settled ) {
+                    return;
+                }
+                settled = true;
+                client.removeListener( AnamEvent.MESSAGE_HISTORY_UPDATED, finish );
+                client.removeListener( AnamEvent.CONNECTION_CLOSED, onClosed );
+                window.clearTimeout( timeoutId );
+                resolve();
+            };
+            const onClosed = () => {
+                if ( settled ) {
+                    return;
+                }
+                settled = true;
+                client.removeListener( AnamEvent.MESSAGE_HISTORY_UPDATED, finish );
+                client.removeListener( AnamEvent.CONNECTION_CLOSED, onClosed );
+                window.clearTimeout( timeoutId );
+                reject( new Error( 'Anam connection closed while the answer was still speaking.' ) );
+            };
+            client.addListener( AnamEvent.MESSAGE_HISTORY_UPDATED, finish );
+            client.addListener( AnamEvent.CONNECTION_CLOSED, onClosed );
+            timeoutId = window.setTimeout( finish, capMs );
         } );
     }
 
