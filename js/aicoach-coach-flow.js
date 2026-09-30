@@ -1005,7 +1005,7 @@ if ( stage && avatarWrap ) {
     }() );
 
     // FR-19/PO-3330 — "Ask Sami": lets a visitor interrupt the fixed sequence
-    // and ask a free-text question, answered by Gary's /message endpoint
+    // and ask a question by voice, answered by Gary's /message endpoint
     // (inc/gary-proxy.php's ihq_coach_handle_message()), reusing this visit's
     // already-open garySessionId (stays open for the whole flow — see its
     // declaration below). Confirmed with Gary 2026-09-28: generated answers
@@ -1013,21 +1013,42 @@ if ( stage && avatarWrap ) {
     // 'en' locale (selectLocale() above) rather than shown for a feature that
     // would just return his fixed fallback line.
     //
-    // Text-only for this MVP — deliberately does NOT play back say.audio or
-    // reconnect the avatar for say.video. Confirmed live (2026-09-28):
-    // say.audio is not a playable URL but an object ({ id, url, format,
-    // expires_at, ... }) whose "url" (e.g. "/coach/v1/audio/{id}") is a path
-    // on Gary's own API host, HMAC-signed the same way every other
-    // ihq_coach_request() call is — the visitor's browser can't fetch it
-    // directly, and nothing in inc/gary-proxy.php proxies it live today
-    // (ihq_coach_download() is a build-time, stream-to-disk tool used by the
-    // prerender scripts, not a REST route). Playing the answer back through
-    // Sami (live avatar or plain audio) needs that proxy route built first —
-    // tracked as a real follow-up, not silently attempted here. The main
-    // avatar video is still paused while this panel is open, independent of
-    // that — purely so the visitor isn't reading/typing while the sequence
-    // advances underneath them.
+    // Voice IN, text answer OUT. The question itself never touches OUR
+    // backend as audio — the browser's own SpeechRecognition transcribes it
+    // to text, which then goes through the exact same /message call typing
+    // would have; inc/gary-proxy.php's ihq_coach_handle_message() only ever
+    // accepted a `text` field; there's no server-side speech-to-text route
+    // to build here. That transcription is NOT necessarily on-device,
+    // though — browser speech recognition commonly sends the raw audio to
+    // the browser vendor's own remote service (e.g. Chrome's default
+    // SpeechRecognition does this unless a newer, explicitly-requested
+    // on-device model is used, which this code doesn't request). Flagged in
+    // review (CodeRabbit, PR #68) — worth a privacy-policy check with
+    // product/legal before treating this as settled, tracked as a separate
+    // open question rather than assumed here. An earlier typed-question
+    // build was explicitly
+    // rejected in review (2026-09-29): "ne treba input polje da bude, samo
+    // glasom" (no input field, voice only), which also matches PO-3330's
+    // own AC ("ask by voice", decline-mic fallback returns to the flow
+    // rather than offering to type instead).
+    //
+    // The ANSWER stays text-only for now — deliberately does NOT play back
+    // say.audio or reconnect the avatar for say.video. Confirmed live
+    // (2026-09-28): say.audio is not a playable URL but an object ({ id,
+    // url, format, expires_at, ... }) whose "url" (e.g.
+    // "/coach/v1/audio/{id}") is a path on Gary's own API host, HMAC-signed
+    // the same way every other ihq_coach_request() call is — the visitor's
+    // browser can't fetch it directly, and nothing in inc/gary-proxy.php
+    // proxies it live today (ihq_coach_download() is a build-time,
+    // stream-to-disk tool used by the prerender scripts, not a REST route).
+    // Playing the answer back through Sami (live avatar or plain audio)
+    // needs that proxy route built first — tracked as a real follow-up, not
+    // silently attempted here. The main avatar video is still paused while
+    // this panel is open, independent of that — purely so the visitor isn't
+    // mid-question while the sequence advances underneath them.
     ( function buildAskSami() {
+        const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+
         const wrap = document.createElement( 'div' );
         wrap.className = 'aicoach-ask-wrap';
         wrap.hidden = 'en' !== currentLocale;
@@ -1053,31 +1074,30 @@ if ( stage && avatarWrap ) {
         answerEl.className = 'aicoach-ask-answer';
         answerEl.setAttribute( 'aria-live', 'polite' );
 
-        const form = document.createElement( 'form' );
-        form.className = 'aicoach-ask-form';
+        const voiceRow = document.createElement( 'div' );
+        voiceRow.className = 'aicoach-ask-voice';
 
-        const input = document.createElement( 'input' );
-        input.type = 'text';
-        input.className = 'aicoach-ask-input';
-        input.maxLength = 500;
-        input.autocomplete = 'off';
-        input.placeholder = 'Ask Sami a question…';
-        input.setAttribute( 'aria-label', 'Ask Sami a question' ); // the placeholder alone disappears once the visitor types, leaving no accessible name
+        const micBtn = document.createElement( 'button' );
+        micBtn.type = 'button';
+        micBtn.className = 'aicoach-ask-mic';
+        micBtn.setAttribute( 'aria-label', 'Ask Sami by voice' );
+        micBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>';
 
-        const submitBtn = document.createElement( 'button' );
-        submitBtn.type = 'submit';
-        submitBtn.className = 'aicoach-ask-submit';
-        submitBtn.textContent = 'Ask';
+        // aria-live so screen readers announce state changes without needing
+        // focus to move — same reasoning as answerEl above.
+        const statusEl = document.createElement( 'p' );
+        statusEl.className = 'aicoach-ask-status';
+        statusEl.setAttribute( 'aria-live', 'polite' );
 
         const errorEl = document.createElement( 'p' );
         errorEl.className = 'aicoach-ask-error';
         errorEl.setAttribute( 'role', 'alert' );
 
-        form.appendChild( input );
-        form.appendChild( submitBtn );
+        voiceRow.appendChild( micBtn );
+        voiceRow.appendChild( statusEl );
         panel.appendChild( closeBtn );
         panel.appendChild( answerEl );
-        panel.appendChild( form );
+        panel.appendChild( voiceRow );
         panel.appendChild( errorEl );
         wrap.appendChild( btn );
         wrap.appendChild( panel );
@@ -1090,6 +1110,179 @@ if ( stage && avatarWrap ) {
         askSamiBtn = btn;
 
         let wasPlaying = false; // the main avatar video's state before the panel paused it, restored on close
+        let recognition = null; // the in-flight SpeechRecognition instance, if any — see startListening()/stopListening()
+        // PR #68 (CodeRabbit) — bumped by every startListening() call and
+        // compared against inside askQuestion()'s response handling, so a
+        // /message request left over from a PRIOR listen cycle (e.g. the
+        // panel was closed and reopened, or the mic was tapped again, while
+        // that request was still in flight) can't write its answer/error
+        // into a panel that's since moved on to a newer question.
+        let askGeneration = 0;
+
+        // AC — "microphone permission is requested at that moment and not
+        // before": recognition.start() is what actually triggers the
+        // browser's own permission prompt (the first time; it's remembered
+        // by the browser for every call after that on this origin, so later
+        // questions never re-prompt — nothing here needs to track that
+        // ourselves). A fresh SpeechRecognition instance every call because
+        // some browsers throw if you .start() one that's already fired
+        // 'end' once, rather than letting it be reused.
+        function startListening() {
+            // PR #68 (CodeRabbit) — a recognition instance is already active;
+            // starting a second one on top of it (e.g. a fast double-click on
+            // the mic) would orphan the first, and its OWN onend could later
+            // null out the reference to this newer one, breaking
+            // stopListening()'s ability to abort it. Ignore instead.
+            if ( recognition ) {
+                return;
+            }
+            askGeneration++;
+            // PR #68 (CodeRabbit) — a prior askQuestion() may still be
+            // in-flight and disabled this on its way out; its own finally
+            // block won't re-enable it (the generation check above is
+            // exactly what makes it stale), so this new cycle has to do it
+            // itself or the mic could stay stuck disabled indefinitely.
+            micBtn.disabled = false;
+            errorEl.textContent = '';
+            answerEl.textContent = '';
+            if ( ! SpeechRecognitionCtor ) {
+                // AC — browser blocks it entirely: told plainly, returned to
+                // the flow (the existing close button already does that).
+                statusEl.textContent = "Questions need the microphone for now — this browser doesn't support voice input.";
+                return;
+            }
+            const instance = new SpeechRecognitionCtor();
+            recognition = instance;
+            instance.lang = 'en-US'; // Ask Sami is English-only for now — see the 'en' gate above
+            instance.continuous = false;
+            instance.interimResults = false;
+            instance.maxAlternatives = 1;
+            instance.onstart = function () {
+                micBtn.classList.add( 'is-listening' );
+                statusEl.textContent = 'Listening…';
+            };
+            instance.onend = function () {
+                micBtn.classList.remove( 'is-listening' );
+                // PR #68 (CodeRabbit) — only clear the shared reference if it
+                // still points at THIS instance. stopListening() (an explicit
+                // close) already nulls it and aborts; abort() still fires
+                // 'end' asynchronously afterward, and if the panel was
+                // reopened (a new instance started) before that stale 'end'
+                // arrives, it must not null out the new one out from under it.
+                if ( recognition === instance ) {
+                    recognition = null;
+                }
+            };
+            instance.onresult = function ( event ) {
+                const transcript = event.results[ 0 ]?.[ 0 ]?.transcript?.trim();
+                if ( transcript ) {
+                    askQuestion( transcript, askGeneration );
+                }
+            };
+            // PR #68 (CodeRabbit) — an unrecognised utterance is its own
+            // 'nomatch' event, not an onerror with error 'no-match' (that
+            // string is never an actual SpeechRecognitionErrorEvent.error
+            // value per spec) — the old no-match branch below never fired.
+            instance.onnomatch = function () {
+                statusEl.textContent = "Sorry, I didn't catch that — try again.";
+            };
+            instance.onerror = function ( event ) {
+                if ( 'not-allowed' === event.error || 'service-not-allowed' === event.error ) {
+                    // AC — permission declined: told plainly, returned to the flow.
+                    statusEl.textContent = 'Questions need the microphone for now.';
+                } else if ( 'no-speech' === event.error ) {
+                    // AC — paused and said nothing: no answer, nothing
+                    // recorded; just let the visitor tap the mic again or
+                    // close to continue, same as before they opened this.
+                    statusEl.textContent = "Didn't hear anything — tap the mic to try again.";
+                } else {
+                    statusEl.textContent = 'Something went wrong — tap the mic to try again.';
+                }
+            };
+            try {
+                instance.start();
+            } catch ( error ) {
+                // start() threw synchronously — this instance never actually
+                // started (no 'end' coming to clear it), so clear it here or
+                // every future startListening() call would see a truthy
+                // recognition and silently no-op forever.
+                if ( recognition === instance ) {
+                    recognition = null;
+                }
+            }
+        }
+
+        function stopListening() {
+            if ( recognition ) {
+                // PR #68 (CodeRabbit) — abort() still fires 'error' (aborted)
+                // and 'end' on THIS instance asynchronously afterward. The
+                // recognition === instance identity check inside onend
+                // (above) only protects the shared `recognition` reference;
+                // it doesn't stop those late events from touching the UI —
+                // an 'aborted' onerror or a late onend could still overwrite
+                // a NEWER instance's "Listening…" status or wrongly clear
+                // its is-listening class if the panel is reopened before
+                // they arrive. Detach every handler so a dead instance stays
+                // dead.
+                recognition.onresult = null;
+                recognition.onerror = null;
+                recognition.onnomatch = null;
+                recognition.onstart = null;
+                recognition.onend = null;
+                recognition.abort();
+                recognition = null;
+                micBtn.classList.remove( 'is-listening' );
+            }
+        }
+
+        async function askQuestion( text, generation ) {
+            if ( ! text || ! garySessionId ) {
+                return;
+            }
+            errorEl.textContent = '';
+            answerEl.textContent = '';
+            statusEl.textContent = 'Thinking…';
+            micBtn.disabled = true;
+            try {
+                const res = await fetch( garyMessageUrl( garySessionId ), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': cfg.nonce },
+                    body: JSON.stringify( { text: text } ),
+                } );
+                // Same "read as text first" reasoning as openGarySession() — a
+                // 502 from Cloudflare/PHP-FPM is an HTML page, not JSON.
+                const rawBody = await res.text();
+                let data;
+                try {
+                    data = JSON.parse( rawBody );
+                } catch ( parseError ) {
+                    throw new Error( 'Ask Sami returned a non-JSON response (HTTP ' + res.status + ').' );
+                }
+                if ( ! res.ok || ! data.say?.text ) {
+                    throw new Error( data.error || 'Ask Sami request failed.' );
+                }
+                // PR #68 (CodeRabbit) — the panel may have closed and
+                // reopened (or been asked a newer question) while this was
+                // in flight; a stale answer must not overwrite what's on
+                // screen now.
+                if ( generation !== askGeneration ) {
+                    return;
+                }
+                answerEl.textContent = data.say.text;
+                statusEl.textContent = '';
+            } catch ( error ) {
+                if ( generation !== askGeneration ) {
+                    return;
+                }
+                console.warn( '[aicoach] Ask Sami request failed:', error );
+                errorEl.textContent = 'Something went wrong — please try again.';
+                statusEl.textContent = '';
+            } finally {
+                if ( generation === askGeneration ) {
+                    micBtn.disabled = false;
+                }
+            }
+        }
 
         function openPanel() {
             wrap.classList.add( 'is-open' );
@@ -1102,12 +1295,13 @@ if ( stage && avatarWrap ) {
             // of it. Doesn't cover the live intro's own wait — see the note
             // on pausableSequenceTimers' declaration.
             pauseSequenceTimers();
-            window.setTimeout( function () { input.focus(); }, 0 );
+            startListening();
         }
 
         function closePanel() {
             wrap.classList.remove( 'is-open' );
             btn.setAttribute( 'aria-expanded', 'false' );
+            stopListening();
             resumeSequenceTimers();
             if ( wasPlaying ) {
                 video.play().catch( function () {} );
@@ -1140,7 +1334,7 @@ if ( stage && avatarWrap ) {
         } );
 
         panel.addEventListener( 'click', function ( event ) {
-            event.stopPropagation(); // typing/clicking inside the panel must not trigger the document listener below
+            event.stopPropagation(); // clicking the mic/close inside the panel must not trigger the document listener below
         } );
 
         document.addEventListener( 'click', function () {
@@ -1149,44 +1343,9 @@ if ( stage && avatarWrap ) {
             }
         } );
 
-        form.addEventListener( 'submit', async function ( event ) {
-            event.preventDefault();
-            const text = input.value.trim();
-            if ( ! text || ! garySessionId ) {
-                return;
-            }
-            errorEl.textContent = '';
-            answerEl.textContent = '';
-            input.disabled = true;
-            submitBtn.disabled = true;
-            try {
-                const res = await fetch( garyMessageUrl( garySessionId ), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': cfg.nonce },
-                    body: JSON.stringify( { text: text } ),
-                } );
-                // Same "read as text first" reasoning as openGarySession() — a
-                // 502 from Cloudflare/PHP-FPM is an HTML page, not JSON.
-                const rawBody = await res.text();
-                let data;
-                try {
-                    data = JSON.parse( rawBody );
-                } catch ( parseError ) {
-                    throw new Error( 'Ask Sami returned a non-JSON response (HTTP ' + res.status + ').' );
-                }
-                if ( ! res.ok || ! data.say?.text ) {
-                    throw new Error( data.error || 'Ask Sami request failed.' );
-                }
-                answerEl.textContent = data.say.text;
-                input.value = '';
-            } catch ( error ) {
-                console.warn( '[aicoach] Ask Sami request failed:', error );
-                errorEl.textContent = 'Something went wrong — please try again.';
-            } finally {
-                input.disabled = false;
-                submitBtn.disabled = false;
-                input.focus();
-            }
+        micBtn.addEventListener( 'click', function ( event ) {
+            event.stopPropagation();
+            startListening(); // re-arm for another question, or retry after a no-speech/no-match/error state
         } );
     }() );
 

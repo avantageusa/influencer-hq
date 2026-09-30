@@ -1266,42 +1266,52 @@ $aicoach_channels = array(
         color: #fff;
     }
 
-    .aicoach-ask-form {
+    /* PO-3346 — voice-only replacement for the old text form (review
+    feedback, 2026-09-29: "ne treba input polje da bude, samo glasom" — no
+    input field, voice only). */
+    .aicoach-ask-voice {
         display: flex;
-        gap: 8px;
+        align-items: center;
+        gap: 12px;
     }
 
-    .aicoach-ask-input {
-        flex: 1;
-        padding: 10px 12px;
-        border: 2px solid #3a3b47;
-        border-radius: 8px;
-        background: #12131a;
-        color: #fff;
-        font-size: 0.9rem;
-        font-family: inherit;
-    }
-
-    .aicoach-ask-input:focus {
-        outline: none;
-        border-color: #fdd65b;
-    }
-
-    .aicoach-ask-submit {
-        padding: 10px 16px;
+    .aicoach-ask-mic {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
         border: none;
-        border-radius: 8px;
+        border-radius: 50%;
         background: #fdd65b;
         color: #12131a;
-        font-weight: 700;
-        font-size: 0.9rem;
         cursor: pointer;
     }
 
-    .aicoach-ask-submit:disabled {
+    .aicoach-ask-mic.is-listening {
+        background: #eb0000;
+        color: #fff;
+        animation: aicoach-mic-pulse 1.4s ease-in-out infinite;
+    }
+
+    .aicoach-ask-mic:disabled {
         background: #3a3b47;
         color: #7a7b87;
         cursor: not-allowed;
+        animation: none;
+    }
+
+    @keyframes aicoach-mic-pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(235, 0, 0, .4); }
+        50% { box-shadow: 0 0 0 8px rgba(235, 0, 0, 0); }
+    }
+
+    .aicoach-ask-status {
+        margin: 0;
+        min-height: 1.2em;
+        font-size: 0.9rem;
+        color: #c7c7d1;
     }
 
     .aicoach-ask-error {
