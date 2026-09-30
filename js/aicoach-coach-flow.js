@@ -1874,10 +1874,24 @@ if ( stage && avatarWrap ) {
     // Screens still advance on their own via each screen's dwell timer or
     // its clip's natural 'ended' event — nothing here replaces that, this
     // listener only ever *interrupted* early advance, it never drove normal
-    // advance. Tier clicks have their own handler above and are excluded
-    // here so this listener never double-handles them; same for a click
-    // already inside .aicoach-stage that lands on nothing interactive.
-    stage.addEventListener( 'click', function ( event ) {
+    // advance.
+    // Review feedback (PR #72, Dejan Arsić) — two gaps in the first version:
+    // 1. Tier clicks had their own exclusion, but comm-channels' checkboxes/
+    //    inputs/continue button and the final-continue button did not. Both
+    //    of those screens get pushed onto SCREENS and resume this same
+    //    sequence loop (see the identity/channels form submit handlers), so
+    //    `current` is truthy while they're showing, same as any narration
+    //    screen — a tap meant for a form control was also toggling Ask Sami.
+    //    Excluded the same way now, by matching any interactive control
+    //    rather than one specific class.
+    // 2. This was only ever wired on .aicoach-stage. The avatar video sits
+    //    in its own sibling element (#aicoach-avatar-wrap), so tapping Sami
+    //    herself did nothing but the generic document-level first-interaction
+    //    unmute — never the interrupt the AC's own wording names explicitly
+    //    ("tapping the Coach video"). Wired on both elements now, via one
+    //    shared handler since the state it reads/acts on is identical either
+    //    way.
+    function handleStageTap( event ) {
         if ( isAnimating ) {
             return; // avoid desyncing the caption/panel if tapped mid-fade
         }
@@ -1885,7 +1899,7 @@ if ( stage && avatarWrap ) {
         if ( ! current ) {
             return;
         }
-        if ( event.target.closest( '.aicoach-tier' ) ) {
+        if ( event.target.closest( '.aicoach-tier, input, button, label, select, textarea' ) ) {
             return;
         }
         if ( toggleAskSamiPanel ) {
@@ -1900,7 +1914,9 @@ if ( stage && avatarWrap ) {
             unmuteOnFirstInteraction();
             toggleAskSamiPanel();
         }
-    } );
+    }
+    stage.addEventListener( 'click', handleStageTap );
+    avatarWrap.addEventListener( 'click', handleStageTap );
 
     // Click toggles mute (also opens/closes the slider — see portal-header.php's
     // own handler for that part, unchanged); dragging the slider sets a level
