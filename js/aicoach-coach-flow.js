@@ -1117,13 +1117,12 @@ if ( stage && avatarWrap ) {
         // (Gary's own guidance — every video session ties up an avatar
         // seat); it clears itself via CONNECTION_CLOSED whenever Anam ends
         // it (the 300s cap, or anything else), so the next question just
-        // requests a fresh one. qaAnswering/qaVideoSnapshot let closePanel()
-        // and speakAnswerOrFallback() coordinate who restores the shared
-        // video element instead of racing each other — see both below.
+        // requests a fresh one. qaAnswering lets closePanel() and
+        // speakAnswerOrFallback() coordinate who restores the shared video
+        // element instead of racing each other — see both below.
         let qaClient = null;
         let qaClientReady = false;
         let qaAnswering = false;
-        let qaVideoSnapshot = null;
         // PR #68 (CodeRabbit) — bumped by every startListening() call and
         // compared against inside askQuestion()'s response handling, so a
         // /message request left over from a PRIOR listen cycle (e.g. the
@@ -1306,6 +1305,16 @@ if ( stage && avatarWrap ) {
         }
 
         async function speakAnswerOrFallback( data ) {
+            // PR #73 (CodeRabbit) — reopening the panel mid-answer
+            // (startListening() re-enables the mic and bumps askGeneration)
+            // lets a second question reach this function while an earlier
+            // one is still playing. Both calls would otherwise race on the
+            // same video element/qaAnswering flag; refuse the overlap
+            // instead — the visitor can ask again once the current answer
+            // finishes.
+            if ( qaAnswering ) {
+                return;
+            }
             // A fresh video envelope, OR an already-connected client from an
             // earlier answer this visit (a follow-up question deliberately
             // requests want:['text'] only — see askQuestion() — so
@@ -1317,7 +1326,10 @@ if ( stage && avatarWrap ) {
                 }
                 return;
             }
-            qaVideoSnapshot = { status: avatarWrap.dataset.status, src: video.src, currentTime: video.currentTime };
+            // Captured locally (not a shared module variable) so a future
+            // change can't reintroduce the same cross-call race the
+            // qaAnswering guard above already closes off.
+            const qaVideoSnapshot = { status: avatarWrap.dataset.status, src: video.src, currentTime: video.currentTime };
             qaAnswering = true;
             // Captured once and used consistently below instead of
             // re-reading the shared qaClient throughout — a persistent
@@ -1417,7 +1429,6 @@ if ( stage && avatarWrap ) {
                 }
                 avatarWrap.dataset.status = qaVideoSnapshot.status;
                 qaAnswering = false;
-                qaVideoSnapshot = null;
                 // The panel may have already been closed while this was
                 // still speaking — closePanel() deliberately left the
                 // wasPlaying resume to us in that case (see its own
