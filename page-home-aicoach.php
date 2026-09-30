@@ -1222,6 +1222,20 @@ $aicoach_channels = array(
         cursor: not-allowed;
     }
 
+    /* PO-3346 (FR-19) — the proactive "she invites questions" beats (after
+    the equity example, before identity capture, before comm-channels): a
+    visual nudge toward the existing Ask Sami entry point, not new spoken
+    copy (no approved script exists for this prompt). Same pulse mechanic
+    as .aicoach-ask-mic.is-listening below. */
+    .aicoach-ask-btn.is-inviting {
+        animation: aicoach-ask-invite-pulse 1.4s ease-in-out infinite;
+    }
+
+    @keyframes aicoach-ask-invite-pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(253, 214, 91, .5); }
+        50% { box-shadow: 0 0 0 10px rgba(253, 214, 91, 0); }
+    }
+
     .aicoach-ask-panel {
         display: none;
         position: absolute;

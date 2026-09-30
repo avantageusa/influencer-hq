@@ -1287,6 +1287,11 @@ if ( stage && avatarWrap ) {
         function openPanel() {
             wrap.classList.add( 'is-open' );
             btn.setAttribute( 'aria-expanded', 'true' );
+            // FR-19 — the invite pulse (if one was showing) has done its job
+            // the moment the visitor actually opens the panel; the paused
+            // dwell behind it still ends normally on its own once the panel
+            // closes, via pauseSequenceTimers()/resumeSequenceTimers() below.
+            btn.classList.remove( 'is-inviting' );
             wasPlaying = ! video.paused;
             video.pause();
             // PO-3346 — pausing the video alone left the sequence's own
@@ -1490,7 +1495,35 @@ if ( stage && avatarWrap ) {
     // would incorrectly snap back to 'identity' instead of just stopping.
     let sequenceEndDestination = 'identity';
 
-    function finishSequence() {
+    // FR-19 — "the Coach pauses and invites me to ask anything, and continues
+    // on her own if I do not" at 3 defined beats (after the equity example,
+    // before identity capture, before communication channels — see the 3
+    // call sites). No approved script line exists for this prompt (unlike
+    // every spoken screen in this file), so this is deliberately a UI-level
+    // nudge — highlighting the existing Ask Sami entry point — rather than
+    // invented avatar dialogue. English-only, same as Ask Sami itself
+    // (already hidden outside 'en'; nothing extra to gate here).
+    // createPausableTimeout() is what makes "continues on her own" actually
+    // correct if the visitor opens Ask Sami during the window: pauseSequenceTimers()
+    // (already called by openPanel()) pauses this dwell along with everything
+    // else, so opening the panel doesn't race the invite into finishing under it.
+    const INVITE_DWELL_MS = 6000;
+
+    function inviteQuestionOrSkip() {
+        return new Promise( function ( resolve ) {
+            if ( ! askSamiBtn || askSamiBtn.disabled || ! askSamiWrap || askSamiWrap.hidden ) {
+                resolve();
+                return;
+            }
+            askSamiBtn.classList.add( 'is-inviting' );
+            createPausableTimeout( function () {
+                askSamiBtn.classList.remove( 'is-inviting' );
+                resolve();
+            }, INVITE_DWELL_MS );
+        } );
+    }
+
+    async function finishSequence() {
         if ( sequenceFinished ) {
             return;
         }
@@ -1501,6 +1534,13 @@ if ( stage && avatarWrap ) {
         // whatever's currently queued in SCREENS runs out. Which
         // destination that is changes as later stories queue more content (see
         // sequenceEndDestination); null means nothing built yet, just stop.
+        if ( 'identity' === sequenceEndDestination ) {
+            // FR-19 — "before identity capture" invite beat. Also covers the
+            // 2-minute tier's "after the equity example" beat, which lands
+            // on this exact same moment (no competition screens between
+            // them for that tier) — see the loop's own equity-bts check.
+            await inviteQuestionOrSkip();
+        }
         if ( sequenceEndDestination ) {
             showPanel( sequenceEndDestination );
         }
@@ -1842,6 +1882,15 @@ if ( stage && avatarWrap ) {
                 fallbackRunning = false;
                 return; // a fresh runFallback() call elsewhere already took over
             }
+            // FR-19 — "after the equity example" invite beat. Only when
+            // something else in SCREENS actually follows it (competition
+            // types, 5/10-minute tiers) — for the 2-minute tier, equity-bts
+            // is the last queued screen, so this moment and "before identity
+            // capture" are the same beat; finishSequence()'s own invite
+            // covers it once there instead of twice here.
+            if ( 'equity-bts' === screen.panel && sequenceIndex + 1 < SCREENS.length ) {
+                await inviteQuestionOrSkip();
+            }
         }
         fallbackRunning = false;
         finishSequence();
@@ -2002,6 +2051,9 @@ if ( stage && avatarWrap ) {
             saveProgress( { identity: capturedIdentity } ); // PO-3102
             identityContinueBtn.disabled = true;
             identityContinueBtn.textContent = cfg.i18n?.identitySaved || 'Saved';
+
+            // FR-19 — "before the communication channels screen" invite beat.
+            await inviteQuestionOrSkip();
 
             // FR-08 — queue the comm-channels screen the same way FR-03's tier
             // confirm queues equity/competition screens: push onto SCREENS and
