@@ -1272,9 +1272,14 @@ if ( stage && avatarWrap ) {
                     qaAnswering = false;
                     // Same deferred-resume reasoning as
                     // speakAnswerOrFallback()'s own finally block below — the
-                    // panel may have closed while this was still playing.
-                    if ( ! wrap.classList.contains( 'is-open' ) && wasPlaying ) {
-                        video.play().catch( function () {} );
+                    // panel may have closed while this was still playing, in
+                    // which case closePanel() left both the sequence timers
+                    // and the video resume to us.
+                    if ( ! wrap.classList.contains( 'is-open' ) ) {
+                        resumeSequenceTimers();
+                        if ( wasPlaying ) {
+                            video.play().catch( function () {} );
+                        }
                     }
                     resolve();
                 };
@@ -1430,12 +1435,15 @@ if ( stage && avatarWrap ) {
                 avatarWrap.dataset.status = qaVideoSnapshot.status;
                 qaAnswering = false;
                 // The panel may have already been closed while this was
-                // still speaking — closePanel() deliberately left the
-                // wasPlaying resume to us in that case (see its own
-                // qaAnswering check) to avoid both of us touching the video
-                // element at once.
-                if ( ! wrap.classList.contains( 'is-open' ) && wasPlaying ) {
-                    video.play().catch( function () {} );
+                // still speaking — closePanel() deliberately left both the
+                // sequence-timer and wasPlaying resume to us in that case
+                // (see its own qaAnswering check) to avoid both of us
+                // touching shared state at once.
+                if ( ! wrap.classList.contains( 'is-open' ) ) {
+                    resumeSequenceTimers();
+                    if ( wasPlaying ) {
+                        video.play().catch( function () {} );
+                    }
                 }
             }
         }
@@ -1515,11 +1523,16 @@ if ( stage && avatarWrap ) {
             wrap.classList.remove( 'is-open' );
             btn.setAttribute( 'aria-expanded', 'false' );
             stopListening();
-            resumeSequenceTimers();
-            // PO-3346 — if a spoken video answer is still in progress,
-            // speakAnswerOrFallback()'s own finally block owns restoring the
-            // video element once it finishes (including this same
-            // wasPlaying resume) — doing it here too would race it.
+            // PR #73 (CodeRabbit) — if a spoken answer (video or fallback
+            // audio) is still in progress, resuming the sequence timers here
+            // could let a pending dwell/safety-cap fire mid-answer and hand
+            // playPrerenderedClip() the shared <video> element out from under
+            // it. playFallbackAudio()/speakAnswerOrFallback()'s own cleanup
+            // owns this resume once they finish (same deferred-ownership
+            // pattern already used below for the wasPlaying video resume).
+            if ( ! qaAnswering ) {
+                resumeSequenceTimers();
+            }
             if ( ! qaAnswering && wasPlaying ) {
                 video.play().catch( function () {} );
             }
@@ -1847,19 +1860,39 @@ if ( stage && avatarWrap ) {
     // skipCurrent — that's the main sequence loop's state (stage taps, tier
     // clicks); Ask Sami's Q&A is a self-contained side-flow with nothing in
     // the sequence to skip to.
+    // PR #73 (CodeRabbit) — also rejects on CONNECTION_CLOSED: without this,
+    // a connection dropping mid-speech (after VIDEO_PLAY_STARTED but before
+    // the answer's MESSAGE_HISTORY_UPDATED) just sat out the full capMs
+    // timeout and then resolved as if the answer had played normally, so the
+    // caller's catch/fallback-to-audio path never ran even though we had a
+    // working say.audio.url to fall back to.
     function waitForQaSpeechOrSkip( client, capMs ) {
-        return new Promise( ( resolve ) => {
+        return new Promise( ( resolve, reject ) => {
             let settled = false;
+            let timeoutId;
             const finish = () => {
                 if ( settled ) {
                     return;
                 }
                 settled = true;
                 client.removeListener( AnamEvent.MESSAGE_HISTORY_UPDATED, finish );
+                client.removeListener( AnamEvent.CONNECTION_CLOSED, onClosed );
+                window.clearTimeout( timeoutId );
                 resolve();
             };
+            const onClosed = () => {
+                if ( settled ) {
+                    return;
+                }
+                settled = true;
+                client.removeListener( AnamEvent.MESSAGE_HISTORY_UPDATED, finish );
+                client.removeListener( AnamEvent.CONNECTION_CLOSED, onClosed );
+                window.clearTimeout( timeoutId );
+                reject( new Error( 'Anam connection closed while the answer was still speaking.' ) );
+            };
             client.addListener( AnamEvent.MESSAGE_HISTORY_UPDATED, finish );
-            window.setTimeout( finish, capMs );
+            client.addListener( AnamEvent.CONNECTION_CLOSED, onClosed );
+            timeoutId = window.setTimeout( finish, capMs );
         } );
     }
 
