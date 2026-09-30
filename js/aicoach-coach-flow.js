@@ -1257,44 +1257,163 @@ if ( stage && avatarWrap ) {
         // Never plays say.audio.url alongside video — Gary's own guidance
         // (2026-09-30): it's a separate recording, won't line up with the
         // lips.
+        // PR #73 (CodeRabbit) — plays a fallback (non-lip-synced) answer
+        // recording and keeps qaAnswering true for its whole duration, not
+        // just fire-and-forget: without that, closePanel() had no way to
+        // know an answer was still audibly playing and would resume the
+        // original clip's audio right on top of it, and the mic would
+        // re-enable while the recording was still going.
+        function playFallbackAudio( url ) {
+            return new Promise( function ( resolve ) {
+                qaAnswering = true;
+                const audio = new Audio( url );
+                const finish = function () {
+                    audio.removeEventListener( 'ended', finish );
+                    audio.removeEventListener( 'error', finish );
+                    qaAnswering = false;
+                    // Same deferred-resume reasoning as
+                    // speakAnswerOrFallback()'s own finally block below — the
+                    // panel may have closed while this was still playing.
+                    if ( ! wrap.classList.contains( 'is-open' ) && wasPlaying ) {
+                        video.play().catch( function () {} );
+                    }
+                    resolve();
+                };
+                audio.addEventListener( 'ended', finish );
+                audio.addEventListener( 'error', finish );
+                audio.play().catch( finish );
+            } );
+        }
+
+        // PR #73 (CodeRabbit) — stops a client's stream and detaches its
+        // persistent CONNECTION_CLOSED listener before it's discarded, so a
+        // failed/abandoned connection doesn't keep an avatar seat tied up
+        // and can't touch shared state again later.
+        function teardownQaClient( client, persistentCloseHandler ) {
+            if ( ! client ) {
+                return;
+            }
+            if ( persistentCloseHandler ) {
+                client.removeListener( AnamEvent.CONNECTION_CLOSED, persistentCloseHandler );
+            }
+            if ( 'function' === typeof client.stopStreaming ) {
+                try {
+                    client.stopStreaming();
+                } catch ( stopError ) {
+                    console.warn( '[aicoach] qaClient.stopStreaming() failed:', stopError );
+                }
+            }
+        }
+
         async function speakAnswerOrFallback( data ) {
-            if ( ! data.say?.video ) {
+            // A fresh video envelope, OR an already-connected client from an
+            // earlier answer this visit (a follow-up question deliberately
+            // requests want:['text'] only — see askQuestion() — so
+            // data.say.video is null here even though video is exactly what
+            // we're about to reuse).
+            if ( ! data.say?.video && ! qaClientReady ) {
                 if ( data.say?.audio?.url ) {
-                    new Audio( data.say.audio.url ).play().catch( function () {} );
+                    await playFallbackAudio( data.say.audio.url );
                 }
                 return;
             }
-            qaVideoSnapshot = { status: avatarWrap.dataset.status, src: video.src };
+            qaVideoSnapshot = { status: avatarWrap.dataset.status, src: video.src, currentTime: video.currentTime };
             qaAnswering = true;
+            // Captured once and used consistently below instead of
+            // re-reading the shared qaClient throughout — a persistent
+            // CONNECTION_CLOSED listener can null qaClient out from under
+            // this call while it's still in flight (see persistentCloseHandler),
+            // and every operation here (talk, wait, teardown) must stay
+            // pinned to the exact instance THIS call started with.
+            let client = qaClient; // null on first connect, the reused/ready client otherwise
+            let persistentCloseHandler = null;
             try {
                 if ( ! qaClientReady ) {
-                    qaClient = createClient( data.say.video.session_token, { disableInputAudio: true } );
-                    qaClient.addListener( AnamEvent.CONNECTION_CLOSED, function () {
-                        qaClientReady = false;
-                        qaClient = null;
-                    } );
+                    client = createClient( data.say.video.session_token, { disableInputAudio: true } );
+                    qaClient = client;
+                    persistentCloseHandler = function () {
+                        // Only clear shared state if this instance is still
+                        // the current one — a stale instance's own late
+                        // CONNECTION_CLOSED must not clobber a newer
+                        // client's state (same fix already applied to the
+                        // SpeechRecognition lifecycle, PR #68).
+                        if ( qaClient === client ) {
+                            qaClientReady = false;
+                            qaClient = null;
+                        }
+                    };
+                    client.addListener( AnamEvent.CONNECTION_CLOSED, persistentCloseHandler );
                     await new Promise( function ( resolve, reject ) {
-                        qaClient.addListener( AnamEvent.VIDEO_PLAY_STARTED, function onStarted() {
+                        let settled = false;
+                        let timeoutId;
+                        const onStarted = function () {
+                            if ( settled ) {
+                                return;
+                            }
+                            settled = true;
+                            client.removeListener( AnamEvent.VIDEO_PLAY_STARTED, onStarted );
+                            client.removeListener( AnamEvent.CONNECTION_CLOSED, onClosed );
+                            window.clearTimeout( timeoutId );
                             qaClientReady = true;
                             resolve();
-                        } );
-                        qaClient.streamToVideoElement( AVATAR_VIDEO_ID ).catch( reject );
+                        };
+                        const onClosed = function () {
+                            if ( settled ) {
+                                return;
+                            }
+                            settled = true;
+                            client.removeListener( AnamEvent.VIDEO_PLAY_STARTED, onStarted );
+                            client.removeListener( AnamEvent.CONNECTION_CLOSED, onClosed );
+                            window.clearTimeout( timeoutId );
+                            reject( new Error( 'Anam connection closed before video playback started.' ) );
+                        };
+                        client.addListener( AnamEvent.VIDEO_PLAY_STARTED, onStarted );
+                        client.addListener( AnamEvent.CONNECTION_CLOSED, onClosed );
+                        // streamToVideoElement() resolves once it STARTS the
+                        // connection, not once video is actually live — a
+                        // connection that fails after that point (but before
+                        // VIDEO_PLAY_STARTED) would otherwise leave this
+                        // promise pending forever, with askQuestion() stuck
+                        // and the mic permanently disabled. Same 25s cap as
+                        // waitForSpeechOrSkip()'s own safety net.
+                        timeoutId = window.setTimeout( onClosed, 25000 );
+                        client.streamToVideoElement( AVATAR_VIDEO_ID ).catch( reject );
                     } );
+                } else {
+                    // Reusing an already-connected client for a follow-up
+                    // question — the previous answer's own cleanup below
+                    // detached its stream from the video element; reattach
+                    // it before talking again.
+                    await client.streamToVideoElement( AVATAR_VIDEO_ID );
                 }
                 avatarWrap.dataset.status = 'live'; // reveals .aicoach-avatar-video over the static portrait, same CSS state as any other playing video
-                await qaClient.talk( data.say.text );
-                await waitForQaSpeechOrSkip( qaClient, 25000 );
+                await client.talk( data.say.text );
+                await waitForQaSpeechOrSkip( client, 25000 );
             } catch ( error ) {
                 console.warn( '[aicoach] Ask Sami video answer failed, falling back to audio/text:', error );
-                qaClientReady = false;
-                qaClient = null;
+                teardownQaClient( client, persistentCloseHandler );
+                if ( qaClient === client ) {
+                    qaClientReady = false;
+                    qaClient = null;
+                }
                 if ( data.say?.audio?.url ) {
-                    new Audio( data.say.audio.url ).play().catch( function () {} );
+                    await playFallbackAudio( data.say.audio.url );
                 }
             } finally {
                 video.srcObject = null;
                 if ( qaVideoSnapshot.src ) {
                     video.src = qaVideoSnapshot.src;
+                    // Reassigning .src reloads the element and resets
+                    // playback position even for the same URL — restore the
+                    // paused frame the visitor actually left off at once the
+                    // reloaded resource can seek, or the resume below (or
+                    // closePanel()'s own) would restart the clip from 0
+                    // instead of resuming it.
+                    const targetTime = qaVideoSnapshot.currentTime;
+                    video.addEventListener( 'loadedmetadata', function onMeta() {
+                        video.removeEventListener( 'loadedmetadata', onMeta );
+                        video.currentTime = targetTime;
+                    } );
                 }
                 avatarWrap.dataset.status = qaVideoSnapshot.status;
                 qaAnswering = false;
