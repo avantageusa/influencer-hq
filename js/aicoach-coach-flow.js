@@ -1123,6 +1123,16 @@ if ( stage && avatarWrap ) {
         let qaClient = null;
         let qaClientReady = false;
         let qaAnswering = false;
+        // PR #73 (review feedback, Dejan Arsić) — the live MediaStream behind
+        // a ready qaClient, captured once on first connect. Anam 4.27.1's
+        // streamToVideoElement() throws 'Already streaming' on a second call
+        // for the same client (confirmed against the SDK source directly —
+        // AnamClient.ts's _isStreaming only resets inside stopStreaming(),
+        // which a reused client never gets here), so a follow-up question
+        // can't call it again to reattach. Reassigning this cached stream
+        // straight onto video.srcObject is a plain DOM operation that never
+        // touches Anam's internal state, so it can't hit that guard.
+        let qaMediaStream = null;
         // PR #68 (CodeRabbit) — bumped by every startListening() call and
         // compared against inside askQuestion()'s response handling, so a
         // /message request left over from a PRIOR listen cycle (e.g. the
@@ -1357,6 +1367,7 @@ if ( stage && avatarWrap ) {
                         if ( qaClient === client ) {
                             qaClientReady = false;
                             qaClient = null;
+                            qaMediaStream = null;
                         }
                     };
                     client.addListener( AnamEvent.CONNECTION_CLOSED, persistentCloseHandler );
@@ -1396,12 +1407,24 @@ if ( stage && avatarWrap ) {
                         timeoutId = window.setTimeout( onClosed, 25000 );
                         client.streamToVideoElement( AVATAR_VIDEO_ID ).catch( reject );
                     } );
+                    // streamToVideoElement() has already set this internally
+                    // by the time VIDEO_PLAY_STARTED fires (confirmed against
+                    // the SDK source) — cache it now, while we still know
+                    // video.srcObject is exactly this client's live stream,
+                    // so a later follow-up question can reattach it directly.
+                    qaMediaStream = video.srcObject;
                 } else {
                     // Reusing an already-connected client for a follow-up
-                    // question — the previous answer's own cleanup below
-                    // detached its stream from the video element; reattach
-                    // it before talking again.
-                    await client.streamToVideoElement( AVATAR_VIDEO_ID );
+                    // question. The previous answer's own cleanup below
+                    // detached the stream from the video element (so the
+                    // interrupted clip could be restored), but calling
+                    // streamToVideoElement() again to reattach it throws
+                    // 'Already streaming' — reassign the cached MediaStream
+                    // directly instead.
+                    if ( ! qaMediaStream ) {
+                        throw new Error( 'qaClientReady but no cached qaMediaStream to reattach.' );
+                    }
+                    video.srcObject = qaMediaStream;
                 }
                 avatarWrap.dataset.status = 'live'; // reveals .aicoach-avatar-video over the static portrait, same CSS state as any other playing video
                 await client.talk( data.say.text );
@@ -1412,6 +1435,7 @@ if ( stage && avatarWrap ) {
                 if ( qaClient === client ) {
                     qaClientReady = false;
                     qaClient = null;
+                    qaMediaStream = null;
                 }
                 if ( data.say?.audio?.url ) {
                     await playFallbackAudio( data.say.audio.url );
@@ -1431,6 +1455,18 @@ if ( stage && avatarWrap ) {
                         video.removeEventListener( 'loadedmetadata', onMeta );
                         video.currentTime = targetTime;
                     } );
+                    // PR #73 (review feedback, Dejan Arsić) — the element's
+                    // own autoplay attribute otherwise restarts this clip as
+                    // soon as it has enough data, regardless of whether Ask
+                    // Sami is still open. playPrerenderedClip()'s own 'ended'
+                    // listener is still attached the whole time (it never
+                    // fired while paused for the answer), so a clip short
+                    // enough to finish while the panel is still open would
+                    // wake the sequence loop and advance to the next screen
+                    // underneath it. Re-assert paused here — only the
+                    // wasPlaying-gated video.play() below (or closePanel()'s
+                    // own) is allowed to start it again.
+                    video.pause();
                 }
                 avatarWrap.dataset.status = qaVideoSnapshot.status;
                 qaAnswering = false;
