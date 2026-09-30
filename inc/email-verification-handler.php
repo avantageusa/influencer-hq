@@ -201,7 +201,7 @@ function ihq_user_has_influencer_role( $user ) {
 /**
  * Create influencer user + meta + OAuth from pending registration data.
  *
- * @param array $registration_data Keys: email, password (optional — auto-generated if missing/short), first_name, last_name, platform_handle, comm_methods, social_handles (optional), challenge_type, competition_preferences (optional), country_iso (optional, client ISO 3166-1 alpha-2).
+ * @param array $registration_data Keys: email, password (optional — auto-generated if missing/short), first_name, last_name, platform_handle, comm_methods, social_handles (optional), challenge_type, competition_preferences (optional), country_iso (optional, client ISO 3166-1 alpha-2), language (optional, AI Coach locale code — PO-3106/FR-15).
  * @return int|WP_Error User ID or error.
  */
 function ihq_create_influencer_user_from_registration_data( array $registration_data ) {
@@ -221,6 +221,10 @@ function ihq_create_influencer_user_from_registration_data( array $registration_
         : '';
     $country_iso       = isset( $registration_data['country_iso'] ) ? (string) $registration_data['country_iso'] : '';
     $telegram_user_id  = isset( $registration_data['telegram_user_id'] ) ? (int) $registration_data['telegram_user_id'] : 0;
+    // PO-3106 (FR-15) — the AI Coach flow's language selection, if this
+    // registration came from it. sanitize_key() matches how
+    // inc/aicoach-register.php already sanitizes the same value.
+    $language          = isset( $registration_data['language'] ) ? sanitize_key( (string) $registration_data['language'] ) : '';
 
     if ( ! is_email( $email ) ) {
         return new WP_Error( 'invalid_email', 'Invalid email address' );
@@ -290,6 +294,13 @@ function ihq_create_influencer_user_from_registration_data( array $registration_
         update_user_meta( $user_id, 'ihq_refresh_token', $ihq_oauth_response['RefreshToken'] ?? '' );
         update_user_meta( $user_id, 'ihq_token_type', $ihq_oauth_response['TokenType'] ?? 'Bearer' );
         update_user_meta( $user_id, 'ihq_token_expires', time() + (int) ( $ihq_oauth_response['ExpiresIn'] ?? 3600 ) );
+    }
+
+    // PO-3106 (FR-15) — written BEFORE the Braze sync below, not after: that
+    // sync reads this same meta key to populate language_preference, so the
+    // order here is load-bearing, not cosmetic.
+    if ( $language !== '' ) {
+        update_user_meta( $user_id, '_ihq_aicoach_language', $language );
     }
 
     // Active Braze sync (replaces legacy Genius Referrals → Braze hook in functions.php).
