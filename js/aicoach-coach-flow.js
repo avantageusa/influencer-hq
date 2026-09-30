@@ -1111,6 +1111,19 @@ if ( stage && avatarWrap ) {
 
         let wasPlaying = false; // the main avatar video's state before the panel paused it, restored on close
         let recognition = null; // the in-flight SpeechRecognition instance, if any — see startListening()/stopListening()
+        // PO-3346 — spoken video answers (Gary confirmed video/lip-sync is
+        // available on this surface, 2026-09-30). qaClient is reused across
+        // questions in the same visit rather than reconnected each time
+        // (Gary's own guidance — every video session ties up an avatar
+        // seat); it clears itself via CONNECTION_CLOSED whenever Anam ends
+        // it (the 300s cap, or anything else), so the next question just
+        // requests a fresh one. qaAnswering/qaVideoSnapshot let closePanel()
+        // and speakAnswerOrFallback() coordinate who restores the shared
+        // video element instead of racing each other — see both below.
+        let qaClient = null;
+        let qaClientReady = false;
+        let qaAnswering = false;
+        let qaVideoSnapshot = null;
         // PR #68 (CodeRabbit) — bumped by every startListening() call and
         // compared against inside askQuestion()'s response handling, so a
         // /message request left over from a PRIOR listen cycle (e.g. the
@@ -1235,6 +1248,68 @@ if ( stage && avatarWrap ) {
             }
         }
 
+        // PO-3346 — speaks the answer through the same avatar/video element
+        // visitors already see (AC: "same avatar and voice... no perceptible
+        // change of speaker"), when Gary provides one. Falls back to Gary's
+        // own say.audio when video isn't available (busy avatar seats, etc.
+        // — meta.reason explains why) so the visitor still hears Sami, and
+        // to the text already shown (by the caller) if neither is present.
+        // Never plays say.audio.url alongside video — Gary's own guidance
+        // (2026-09-30): it's a separate recording, won't line up with the
+        // lips.
+        async function speakAnswerOrFallback( data ) {
+            if ( ! data.say?.video ) {
+                if ( data.say?.audio?.url ) {
+                    new Audio( data.say.audio.url ).play().catch( function () {} );
+                }
+                return;
+            }
+            qaVideoSnapshot = { status: avatarWrap.dataset.status, src: video.src };
+            qaAnswering = true;
+            try {
+                if ( ! qaClientReady ) {
+                    qaClient = createClient( data.say.video.session_token, { disableInputAudio: true } );
+                    qaClient.addListener( AnamEvent.CONNECTION_CLOSED, function () {
+                        qaClientReady = false;
+                        qaClient = null;
+                    } );
+                    await new Promise( function ( resolve, reject ) {
+                        qaClient.addListener( AnamEvent.VIDEO_PLAY_STARTED, function onStarted() {
+                            qaClientReady = true;
+                            resolve();
+                        } );
+                        qaClient.streamToVideoElement( AVATAR_VIDEO_ID ).catch( reject );
+                    } );
+                }
+                avatarWrap.dataset.status = 'live'; // reveals .aicoach-avatar-video over the static portrait, same CSS state as any other playing video
+                await qaClient.talk( data.say.text );
+                await waitForQaSpeechOrSkip( qaClient, 25000 );
+            } catch ( error ) {
+                console.warn( '[aicoach] Ask Sami video answer failed, falling back to audio/text:', error );
+                qaClientReady = false;
+                qaClient = null;
+                if ( data.say?.audio?.url ) {
+                    new Audio( data.say.audio.url ).play().catch( function () {} );
+                }
+            } finally {
+                video.srcObject = null;
+                if ( qaVideoSnapshot.src ) {
+                    video.src = qaVideoSnapshot.src;
+                }
+                avatarWrap.dataset.status = qaVideoSnapshot.status;
+                qaAnswering = false;
+                qaVideoSnapshot = null;
+                // The panel may have already been closed while this was
+                // still speaking — closePanel() deliberately left the
+                // wasPlaying resume to us in that case (see its own
+                // qaAnswering check) to avoid both of us touching the video
+                // element at once.
+                if ( ! wrap.classList.contains( 'is-open' ) && wasPlaying ) {
+                    video.play().catch( function () {} );
+                }
+            }
+        }
+
         async function askQuestion( text, generation ) {
             if ( ! text || ! garySessionId ) {
                 return;
@@ -1247,7 +1322,14 @@ if ( stage && avatarWrap ) {
                 const res = await fetch( garyMessageUrl( garySessionId ), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': cfg.nonce },
-                    body: JSON.stringify( { text: text } ),
+                    body: JSON.stringify( {
+                        text: text,
+                        // PO-3346 — once an avatar is already connected from an
+                        // earlier answer this visit, ask for text only rather
+                        // than tying up another avatar seat for video we
+                        // won't use (Gary's own guidance, 2026-09-30).
+                        want: qaClientReady ? [ 'text' ] : [ 'text', 'audio', 'video' ],
+                    } ),
                 } );
                 // Same "read as text first" reasoning as openGarySession() — a
                 // 502 from Cloudflare/PHP-FPM is an HTML page, not JSON.
@@ -1270,6 +1352,7 @@ if ( stage && avatarWrap ) {
                 }
                 answerEl.textContent = data.say.text;
                 statusEl.textContent = '';
+                await speakAnswerOrFallback( data );
             } catch ( error ) {
                 if ( generation !== askGeneration ) {
                     return;
@@ -1303,7 +1386,11 @@ if ( stage && avatarWrap ) {
             btn.setAttribute( 'aria-expanded', 'false' );
             stopListening();
             resumeSequenceTimers();
-            if ( wasPlaying ) {
+            // PO-3346 — if a spoken video answer is still in progress,
+            // speakAnswerOrFallback()'s own finally block owns restoring the
+            // video element once it finishes (including this same
+            // wasPlaying resume) — doing it here too would race it.
+            if ( ! qaAnswering && wasPlaying ) {
                 video.play().catch( function () {} );
             }
             // PO-3346 (#7) — the time-remaining prompt may have come due
@@ -1621,6 +1708,27 @@ if ( stage && avatarWrap ) {
             };
             client.addListener( AnamEvent.MESSAGE_HISTORY_UPDATED, finish );
             skipCurrent = finish;
+            window.setTimeout( finish, capMs );
+        } );
+    }
+
+    // PO-3346 — same shape as waitForSpeechOrSkip() above, for Ask Sami's
+    // spoken video answers. Deliberately NOT wired into the shared
+    // skipCurrent — that's the main sequence loop's state (stage taps, tier
+    // clicks); Ask Sami's Q&A is a self-contained side-flow with nothing in
+    // the sequence to skip to.
+    function waitForQaSpeechOrSkip( client, capMs ) {
+        return new Promise( ( resolve ) => {
+            let settled = false;
+            const finish = () => {
+                if ( settled ) {
+                    return;
+                }
+                settled = true;
+                client.removeListener( AnamEvent.MESSAGE_HISTORY_UPDATED, finish );
+                resolve();
+            };
+            client.addListener( AnamEvent.MESSAGE_HISTORY_UPDATED, finish );
             window.setTimeout( finish, capMs );
         } );
     }

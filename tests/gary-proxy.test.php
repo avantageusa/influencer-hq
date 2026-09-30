@@ -32,6 +32,7 @@ class WP_Error {
 }
 function is_wp_error( $thing ) { return $thing instanceof WP_Error; }
 function sanitize_text_field( $s ) { return trim( (string) $s ); }
+function sanitize_key( $s ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/', '', (string) $s ) ); }
 function wp_check_invalid_utf8( $s, $strip = false ) { return (string) $s; }
 function wp_generate_uuid4() { return '00000000-0000-0000-0000-000000000000'; }
 function wp_json_encode( $data ) { return json_encode( $data ); }
@@ -76,6 +77,21 @@ function wp_remote_request( $url, $args ) {
 		return array(
 			'response' => array( 'code' => 200 ),
 			'body'     => json_encode( array( 'released' => true, 'stage' => $sent['stage'] ) ),
+		);
+	}
+	if ( false !== strpos( $url, '/message' ) ) {
+		$sent = json_decode( $args['body'], true );
+		return array(
+			'response' => array( 'code' => 200 ),
+			'body'     => json_encode( array(
+				'say' => array(
+					'text'  => 'answer for ' . $sent['text'],
+					// A relative path, same shape Gary actually sends — this is
+					// what ihq_coach_handle_message() must rewrite to an
+					// absolute URL on Gary's own host before returning it.
+					'audio' => array( 'id' => 'a1', 'url' => '/coach/v1/audio/a1' ),
+				),
+			) ),
 		);
 	}
 	if ( false !== strpos( $url, '/narrate' ) ) {
@@ -206,6 +222,42 @@ ihq_coach_handle_message( $message_request );
 check( 'message: URL session_id wins over a conflicting body session_id', false !== strpos( $GLOBALS['last_remote_request']['url'], '/coach/v1/session/cs_123/message' ) );
 $message_sent_body = json_decode( $GLOBALS['last_remote_request']['args']['body'], true );
 check( 'message: requests audio and video, not just text (else a generated answer comes back with say.audio/say.video null)', array( 'text', 'audio', 'video' ) === $message_sent_body['want'] );
+
+// PO-3346 — a caller with an already-connected Anam avatar can ask for
+// want: ['text'] only on a follow-up question, instead of tying up another
+// avatar seat for video it won't use.
+$GLOBALS['last_remote_request'] = null;
+$message_want_request = new WP_REST_Request( array( 'text' => 'hello again', 'want' => array( 'text' ) ), array( 'session_id' => 'cs_123' ) );
+ihq_coach_handle_message( $message_want_request );
+$message_want_sent_body = json_decode( $GLOBALS['last_remote_request']['args']['body'], true );
+check( 'message: an explicit want is forwarded as given', array( 'text' ) === $message_want_sent_body['want'] );
+
+// Invalid/unknown values are dropped rather than forwarded verbatim to
+// Gary; an empty result after filtering falls back to the full default
+// set, same as not sending want at all.
+$GLOBALS['last_remote_request'] = null;
+$message_bad_want_request = new WP_REST_Request( array( 'text' => 'hello', 'want' => array( 'text', 'nonsense', 'text' ) ), array( 'session_id' => 'cs_123' ) );
+ihq_coach_handle_message( $message_bad_want_request );
+$message_bad_want_sent_body = json_decode( $GLOBALS['last_remote_request']['args']['body'], true );
+check( 'message: an unknown want value is dropped, duplicates collapsed', array( 'text' ) === $message_bad_want_sent_body['want'] );
+
+$GLOBALS['last_remote_request'] = null;
+$message_empty_want_request = new WP_REST_Request( array( 'text' => 'hello', 'want' => array( 'nonsense' ) ), array( 'session_id' => 'cs_123' ) );
+ihq_coach_handle_message( $message_empty_want_request );
+$message_empty_want_sent_body = json_decode( $GLOBALS['last_remote_request']['args']['body'], true );
+check( 'message: want left with nothing valid falls back to the full default set', array( 'text', 'audio', 'video' ) === $message_empty_want_sent_body['want'] );
+
+// PO-3346 — say.audio.url comes back from Gary as a path relative to
+// Gary's own host, not ours; the browser fetches it directly (confirmed
+// unauthenticated with Gary, 2026-09-30), so it must be rewritten to an
+// absolute URL before this response reaches the browser.
+$GLOBALS['last_remote_request'] = null;
+$message_audio_request  = new WP_REST_Request( array( 'text' => 'hi' ), array( 'session_id' => 'cs_123' ) );
+$message_audio_response = ihq_coach_handle_message( $message_audio_request );
+check(
+	'message: say.audio.url is rewritten to an absolute URL on Gary\'s own host',
+	IHQ_COACH_HOST . '/coach/v1/audio/a1' === $message_audio_response->data['say']['audio']['url']
+);
 
 $GLOBALS['last_remote_request'] = null;
 $close_request = new WP_REST_Request( array( 'session_id' => 'cs_attacker_supplied' ), array( 'session_id' => 'cs_123' ) );

@@ -374,6 +374,27 @@ function ihq_coach_handle_message( WP_REST_Request $request ) {
 		return new WP_REST_Response( array( 'error' => 'session_id and text are required.' ), 400 );
 	}
 
+	// PO-3346 — the caller may already have a live Anam avatar connected from
+	// an earlier answer in this same Q&A session; Gary's own guidance
+	// (2026-09-30) is to send want: ['text'] on a follow-up question rather
+	// than requesting a fresh video session every time (each request ties up
+	// an avatar seat). Defaults to the original hardcoded set — unspecified
+	// or invalid input behaves exactly as before this change.
+	$allowed_want = array( 'text', 'audio', 'video' );
+	$want_param   = $request->get_param( 'want' );
+	$want         = array();
+	if ( is_array( $want_param ) ) {
+		foreach ( $want_param as $w ) {
+			$w = sanitize_key( (string) $w );
+			if ( in_array( $w, $allowed_want, true ) && ! in_array( $w, $want, true ) ) {
+				$want[] = $w;
+			}
+		}
+	}
+	if ( empty( $want ) ) {
+		$want = $allowed_want;
+	}
+
 	$result = ihq_coach_request(
 		'POST',
 		'/coach/v1/session/' . rawurlencode( $session_id ) . '/message',
@@ -383,11 +404,23 @@ function ihq_coach_handle_message( WP_REST_Request $request ) {
 			// and say.video come back null even for a real generated answer
 			// (confirmed with Gary 2026-09-28), leaving no way for Sami to
 			// actually speak the reply.
-			'want' => array( 'text', 'audio', 'video' ),
+			'want' => $want,
 		)
 	);
 	if ( is_wp_error( $result ) ) {
 		return new WP_REST_Response( array( 'error' => $result->get_error_message() ), 502 );
+	}
+
+	// PO-3346 — say.audio.url (e.g. "/coach/v1/audio/{id}") is a path on
+	// Gary's own host, meant to be fetched directly by the browser (confirmed
+	// unauthenticated with Gary, 2026-09-30) — but relative to OUR origin, not
+	// Gary's, so the browser would 404 against our own domain unless this
+	// resolves it to Gary's host first.
+	if ( isset( $result['body']['say']['audio']['url'] ) && is_string( $result['body']['say']['audio']['url'] ) ) {
+		$audio_url = $result['body']['say']['audio']['url'];
+		if ( '' !== $audio_url && '/' === $audio_url[0] ) {
+			$result['body']['say']['audio']['url'] = IHQ_COACH_HOST . $audio_url;
+		}
 	}
 
 	return new WP_REST_Response( $result['body'], $result['status'] );
