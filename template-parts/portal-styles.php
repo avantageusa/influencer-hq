@@ -3796,10 +3796,6 @@
             max-width: 55px;
             flex-shrink: 0;
         }
-
-        body.page-template-page-portal-live-php .live-contest-panel {
-            padding: 20px 10px;
-        }
     }
 
     body.page-template-page-portal-live-php .live-section-heading--banner {
@@ -3878,6 +3874,12 @@
 
     body.page-template-page-portal-live-php .live-contest-panel {
         padding: 20px 100px;
+    }
+
+    @media (max-width: 767px) {
+        body.page-template-page-portal-live-php .live-contest-panel {
+            padding: 20px 10px;
+        }
     }
 
     body.page-template-page-portal-live-php .live-contest-panel ul {
@@ -4114,8 +4116,7 @@
     }
 
     body.page-template-page-portal-live-php .live-form-block > .live-label,
-    body.page-template-page-portal-live-php .live-form-block > .live-label ~ *,
-    body.page-template-page-portal-live-php .live-form-block ~ * {
+    body.page-template-page-portal-live-php .live-form-block > .live-label ~ * {
         display: none;
     }
 

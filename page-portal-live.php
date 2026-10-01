@@ -842,8 +842,12 @@ $_live_nonce = wp_create_nonce( 'request_live_appearance_nonce' );
                     setReferralUrl(res.data.url);
                     return;
                 }
+                if (res.data && res.data.message) {
+                    console.error(res.data.message);
+                }
                 setReferralUrl('');
-            }).catch(function() {
+            }).catch(function(error) {
+                console.error(error);
                 setReferralUrl('');
             });
     })();
