@@ -2501,6 +2501,121 @@
         margin-top:8px;
     }
 
+    body.page-template-page-portal-challenges-php #community-tab .competition-scoring-accordion .accordion-item {
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        overflow: visible;
+        margin-bottom: 24px;
+    }
+
+    body.page-template-page-portal-challenges-php #community-tab .competition-scoring-accordion .accordion-header::before,
+    body.page-template-page-portal-challenges-php #community-tab .competition-scoring-accordion .accordion-header::after {
+        content: '';
+        display: block;
+        height: 2px;
+        width: 100%;
+        background: radial-gradient(ellipse at center, rgba(184, 151, 47, 0.82) 0%, rgba(184, 151, 47, 0) 75%);
+    }
+
+    body.page-template-page-portal-challenges-php #community-tab .competition-scoring-accordion .accordion-button {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 14px 4px;
+        background: transparent;
+        color: #ffffff;
+        border: none;
+        box-shadow: none;
+        font-family: 'Be Vietnam Pro', sans-serif;
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        line-height: 1.2;
+        text-transform: uppercase;
+    }
+
+    body.page-template-page-portal-challenges-php #community-tab .competition-scoring-accordion .accordion-button::before {
+        content: none;
+        display: none;
+    }
+
+    body.page-template-page-portal-challenges-php #community-tab .competition-scoring-accordion .accordion-button::after {
+        display: block;
+        flex-shrink: 0;
+        width: 0;
+        height: 0;
+        margin: 0 0 0 16px;
+        background: none;
+        border-style: solid;
+        border-width: 10px 8px 0;
+        border-color: #b8972f transparent transparent;
+        transform: none;
+        transition: transform 0.2s ease;
+    }
+
+    body.page-template-page-portal-challenges-php #community-tab .competition-scoring-accordion .accordion-button.collapsed::after {
+        transform: rotate(180deg);
+    }
+
+    body.page-template-page-portal-challenges-php #community-tab .competition-scoring-accordion .accordion-button .question-text {
+        text-align: left;
+    }
+
+    body.page-template-page-portal-challenges-php #community-tab .competition-scoring-accordion .accordion-body {
+        padding: 22px 8px 8px;
+        background: transparent;
+        color: #ffffff;
+    }
+
+    body.page-template-page-portal-challenges-php #community-tab .competition-scoring-accordion .competition-rule-note {
+        max-width: 720px;
+        margin: 0 auto;
+        color: #ffffff;
+        font-size: 16px;
+        line-height: 1.5;
+        text-align: center;
+    }
+
+    body.page-template-page-portal-challenges-php #community-tab .competition-score-tables {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 36px;
+        margin-top: 36px;
+    }
+
+    body.page-template-page-portal-challenges-php #community-tab .competition-score-table {
+        display: grid;
+        grid-template-columns: max-content max-content;
+        column-gap: 72px;
+        row-gap: 8px;
+        justify-items: center;
+        font-family: 'Be Vietnam Pro', sans-serif;
+        font-size: 16px;
+        line-height: 1.45;
+        color: #ffffff;
+    }
+
+    body.page-template-page-portal-challenges-php #community-tab .competition-score-head {
+        font-weight: 700;
+        text-transform: uppercase;
+        text-decoration: underline;
+        text-underline-offset: 4px;
+    }
+
+    @media (max-width: 767px) {
+        body.page-template-page-portal-challenges-php #community-tab .competition-scoring-accordion .accordion-button {
+            font-size: 18px;
+        }
+
+        body.page-template-page-portal-challenges-php #community-tab .competition-score-table {
+            column-gap: 28px;
+        }
+    }
+
     @media (min-width:1025px){
         body.page-template-page-portal-challenges-php .community-coach-fab-host,
         body.page-template-page-portal-challenges-php .world-coach-fab-host,

@@ -502,40 +502,6 @@ $portal_embed_urls = [
                                     <span><?php esc_html_e( 'TOTAL: 81', 'influencer-hq' ); ?></span>
                                 </div>
                             </div>
-
-                            <div class="competition-mini-table competition-mini-table--api">
-                                <div class="competition-mini-row competition-mini-row--api-points competition-mini-row--api-header">
-                                    <span>Points from API</span>
-                                    <span>resolvedPoints</span>
-                                </div>
-                                <div class="competition-mini-row competition-mini-row--api-points">
-                                    <span>World</span>
-                                    <span id="comp-points-world">&mdash;</span>
-                                </div>
-                                <div class="competition-mini-row competition-mini-row--api-points">
-                                    <span>Continent</span>
-                                    <span id="comp-points-continent">&mdash;</span>
-                                </div>
-                                <div class="competition-mini-row competition-mini-row--api-points">
-                                    <span>Country</span>
-                                    <span id="comp-points-country">&mdash;</span>
-                                </div>
-                                <div class="competition-mini-row competition-mini-row--api-points">
-                                    <span>Town</span>
-                                    <span id="comp-points-town">&mdash;</span>
-                                </div>
-                            </div>
-
-                            <div class="competition-get-points-wrap">
-                                <button id="comp-get-points-btn" class="competition-btn">Get Points</button>
-                            </div>
-
-                            <div class="competition-debug-block" id="comp-points-debug" style="display:none;">
-                                <div class="competition-debug-label">Call &amp; Payload</div>
-                                <pre id="comp-points-request" class="competition-debug-pre"></pre>
-                                <div class="competition-debug-label" style="margin-top:8px;">Response</div>
-                                <pre id="comp-points-response" class="competition-debug-pre"></pre>
-                            </div>
                         </div>
                     </div>
 
@@ -1063,7 +1029,7 @@ $portal_embed_urls = [
                     </div>
 
                     <div class="accordion custom-accordion competition-scoring-accordion" id="communityScoringAccordion">
-                        <div class="accordion-item mb-3">
+                        <div class="accordion-item">
                             <h2 class="accordion-header" id="headingCommunityScoring">
                                 <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCommunityScoring" aria-expanded="true" aria-controls="collapseCommunityScoring">
                                     <span class="question-text"><?php esc_html_e( 'SCORING SYSTEM', 'influencer-hq' ); ?></span>
@@ -1072,22 +1038,24 @@ $portal_embed_urls = [
                             <div id="collapseCommunityScoring" class="accordion-collapse collapse show" aria-labelledby="headingCommunityScoring" data-bs-parent="#communityScoringAccordion">
                                 <div class="accordion-body">
                                     <p class="competition-rule-note"><?php esc_html_e( 'Points are awarded at the end of each contest. Medals are awarded based on total points at the end of each quarter.', 'influencer-hq' ); ?></p>
-                                    <div class="competition-rule-grid">
-                                        <div>
-                                            <div class="competition-rule-title"><?php esc_html_e( 'Finish', 'influencer-hq' ); ?></div>
-                                            <div class="competition-rule-list">Top 10%<br>11%-20%<br>21%-30%<br>31%-40%<br>41%-50%</div>
+                                    <div class="competition-score-tables">
+                                        <div class="competition-score-table">
+                                            <span class="competition-score-head"><?php esc_html_e( 'Finish', 'influencer-hq' ); ?></span>
+                                            <span class="competition-score-head"><?php esc_html_e( 'Points', 'influencer-hq' ); ?></span>
+                                            <span><?php esc_html_e( 'Top 10%', 'influencer-hq' ); ?></span><span>5</span>
+                                            <span><?php esc_html_e( '11%-20%', 'influencer-hq' ); ?></span><span>4</span>
+                                            <span><?php esc_html_e( '21%-30%', 'influencer-hq' ); ?></span><span>3</span>
+                                            <span><?php esc_html_e( '31%-40%', 'influencer-hq' ); ?></span><span>2</span>
+                                            <span><?php esc_html_e( '41%-50%', 'influencer-hq' ); ?></span><span>1</span>
                                         </div>
-                                        <div>
-                                            <div class="competition-rule-title"><?php esc_html_e( 'Points', 'influencer-hq' ); ?></div>
-                                            <div class="competition-rule-list">5<br>4<br>3<br>2<br>1</div>
-                                        </div>
-                                        <div>
-                                            <div class="competition-rule-title"><?php esc_html_e( 'Total Points', 'influencer-hq' ); ?></div>
-                                            <div class="competition-rule-list">Top 10%<br>11%-20%<br>21%-30%<br>31%-40%</div>
-                                        </div>
-                                        <div>
-                                            <div class="competition-rule-title"><?php esc_html_e( 'Medals', 'influencer-hq' ); ?></div>
-                                            <div class="competition-rule-list">Diamond<br>Gold<br>Silver<br>Bronze</div>
+                                        <div class="competition-score-table">
+                                            <span class="competition-score-head"><?php esc_html_e( 'Total Points', 'influencer-hq' ); ?></span>
+                                            <span class="competition-score-head"><?php esc_html_e( 'Medals', 'influencer-hq' ); ?></span>
+                                            <span><?php esc_html_e( 'Top 10%', 'influencer-hq' ); ?></span><span><?php esc_html_e( 'Diamond', 'influencer-hq' ); ?></span>
+                                            <span><?php esc_html_e( '11%-20%', 'influencer-hq' ); ?></span><span><?php esc_html_e( 'Platinum', 'influencer-hq' ); ?></span>
+                                            <span><?php esc_html_e( '21%-30%', 'influencer-hq' ); ?></span><span><?php esc_html_e( 'Gold', 'influencer-hq' ); ?></span>
+                                            <span><?php esc_html_e( '31%-40%', 'influencer-hq' ); ?></span><span><?php esc_html_e( 'Silver', 'influencer-hq' ); ?></span>
+                                            <span><?php esc_html_e( '41%-50%', 'influencer-hq' ); ?></span><span><?php esc_html_e( 'Bronze', 'influencer-hq' ); ?></span>
                                         </div>
                                     </div>
                                 </div>
@@ -1291,84 +1259,11 @@ $portal_embed_urls = [
 var _ajax            = <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
 var _nonce           = <?php echo wp_json_encode( wp_create_nonce( 'settings_save_nonce' ) ); ?>;
 var _compAjaxUrl      = <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
-var _compPointsNonce  = <?php echo wp_json_encode( wp_create_nonce( 'rankings_summary_for_player_nonce' ) ); ?>;
 var _challengeNonce   = <?php echo wp_json_encode( wp_create_nonce( 'challenge_api_nonce' ) ); ?>;
 </script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // -------------------------------------------------------
-    // Get Points — calls getRankingsSummaryForPlayer via AJAX
-    // -------------------------------------------------------
-    var getPointsBtn  = document.getElementById('comp-get-points-btn');
-    var pointsDebug   = document.getElementById('comp-points-debug');
-    var pointsReqPre  = document.getElementById('comp-points-request');
-    var pointsResPre  = document.getElementById('comp-points-response');
-    var elWorld       = document.getElementById('comp-points-world');
-    var elContinent   = document.getElementById('comp-points-continent');
-    var elCountry     = document.getElementById('comp-points-country');
-    var elTown        = document.getElementById('comp-points-town');
-
-    function extractPts(level, data) {
-        return (data && data[level] && data[level].myRank && data[level].myRank.resolvedPoints !== undefined)
-            ? data[level].myRank.resolvedPoints
-            : '—';
-    }
-
-    if (getPointsBtn) {
-        getPointsBtn.addEventListener('click', function () {
-            getPointsBtn.disabled    = true;
-            getPointsBtn.textContent = 'Calling…';
-            if (pointsDebug) pointsDebug.style.display = 'block';
-            if (pointsReqPre)  pointsReqPre.textContent  = 'Waiting…';
-            if (pointsResPre)  pointsResPre.textContent  = '';
-
-            var payload = {
-                action : 'rankings_summary_for_player',
-                nonce  : _compPointsNonce,
-                week   : new Date().toISOString()
-            };
-
-            if (pointsReqPre) pointsReqPre.textContent =
-                'POST ' + _compAjaxUrl + '\n\n' +
-                JSON.stringify({ action: payload.action, week: payload.week }, null, 2);
-
-            var fd = new FormData();
-            fd.append('action', payload.action);
-            fd.append('nonce',  payload.nonce);
-            fd.append('week',   payload.week);
-
-            fetch(_compAjaxUrl, { method: 'POST', body: fd })
-                .then(function (r) { return r.json(); })
-                .then(function (res) {
-                    var dbg         = res && res.data && res.data._debug ? res.data._debug : null;
-                    var displayData = res && res.data ? Object.assign({}, res.data) : {};
-                    delete displayData._debug;
-
-                    if (pointsReqPre) pointsReqPre.textContent =
-                        'POST ' + _compAjaxUrl + '\n\n' +
-                        JSON.stringify(dbg || { action: payload.action, week: payload.week }, null, 2);
-
-                    if (pointsResPre) pointsResPre.textContent =
-                        JSON.stringify(displayData, null, 2);
-
-                    // Extract resolvedPoints for each geographic level
-                    var d = res.data || {};
-                    if (elWorld)     elWorld.textContent     = extractPts('world',     d);
-                    if (elContinent) elContinent.textContent = extractPts('continent', d);
-                    if (elCountry)   elCountry.textContent   = extractPts('country',   d);
-                    if (elTown)      elTown.textContent      = extractPts('town',      d);
-                })
-                .catch(function (err) {
-                    if (pointsResPre) pointsResPre.textContent = 'Fetch error: ' + (err.message || err);
-                })
-                .finally(function () {
-                    getPointsBtn.disabled    = false;
-                    getPointsBtn.textContent = 'Get Points';
-                });
-        });
-    }
-
     // Competition tabs functionality
     const tabButtons = document.querySelectorAll('.competition-tab-btn');
 
