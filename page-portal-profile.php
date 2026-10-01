@@ -95,15 +95,17 @@ if ( isset( $_POST['ihq_video_action'] ) && is_user_logged_in() ) {
         $redirect( 'removed' );
     }
 
-    $subject = isset( $_POST['ihq_video_subject'] ) ? sanitize_text_field( wp_unslash( $_POST['ihq_video_subject'] ) ) : '';
-    $subject = function_exists( 'mb_substr' )
-        ? mb_substr( $subject, 0, ihq_video_subject_max_length() )
-        : substr( $subject, 0, ihq_video_subject_max_length() );
+    $subject = ihq_sanitize_video_subject( isset( $_POST['ihq_video_subject'] ) ? wp_unslash( $_POST['ihq_video_subject'] ) : '' );
     if ( $subject === '' ) {
         $redirect( 'err_subject' );
     }
 
-    $url = ihq_sanitize_http_media_url( isset( $_POST['ihq_video_url'] ) ? wp_unslash( $_POST['ihq_video_url'] ) : '' );
+    $raw_url = isset( $_POST['ihq_video_url'] ) ? trim( (string) wp_unslash( $_POST['ihq_video_url'] ) ) : '';
+    if ( $raw_url === '' ) {
+        $redirect( 'err_url_required' );
+    }
+
+    $url = ihq_sanitize_http_media_url( $raw_url );
     if ( $url === '' ) {
         $redirect( 'err_url' );
     }
@@ -285,6 +287,18 @@ get_template_part( 'template-parts/portal-styles' );
 }
 #portal-content .sett-gameplay-promo-card {
     padding: 18px 8px 8px;
+}
+#portal-content .ihq-subject-field {
+    flex-direction: column;
+    align-items: stretch;
+}
+#portal-content .ihq-subject-count {
+    align-self: flex-end;
+    margin-top: 4px;
+    font-family: 'Be Vietnam Pro', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: #b8972f;
 }
 #portal-content .ihq-video-item-label {
     margin: 0 20px 12px;
@@ -897,8 +911,9 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                         'removed'  => __( 'Removed. That video is no longer in promotion.', 'influencer-hq' ),
                     );
                     $video_feedback_err = array(
-                        'err_url'     => __( 'Enter a valid http or https link from any video platform.', 'influencer-hq' ),
-                        'err_subject' => __( 'Subject is required (50 characters max).', 'influencer-hq' ),
+                        'err_url'          => __( 'Enter a valid http or https link from any video platform.', 'influencer-hq' ),
+                        'err_url_required' => __( 'Video link is required.', 'influencer-hq' ),
+                        'err_subject'      => __( 'Subject is required (50 characters max).', 'influencer-hq' ),
                         'err_limit'   => __( 'You already have 5 videos. Remove or replace one to add another.', 'influencer-hq' ),
                         'err_missing' => __( 'That video could not be found. Refresh and try again.', 'influencer-hq' ),
                     );
@@ -939,7 +954,7 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                             <?php endif; ?>
                             <div class="sett-row sett-gameplay-promo-row">
                                 <label class="sett-row-lbl" for="ihq-video-subject-<?php echo esc_attr( $submission['id'] ); ?>"><?php esc_html_e( 'Subject', 'influencer-hq' ); ?></label>
-                                <div class="sett-row-val sett-gameplay-promo-input-wrap">
+                                <div class="sett-row-val sett-gameplay-promo-input-wrap ihq-subject-field">
                                     <input
                                         type="text"
                                         id="ihq-video-subject-<?php echo esc_attr( $submission['id'] ); ?>"
@@ -949,6 +964,7 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                                         required
                                         class="hq-game-url-input"
                                     >
+                                    <span class="ihq-subject-count" aria-live="polite"><?php echo esc_html( (string) ( function_exists( 'mb_strlen' ) ? mb_strlen( $submission['subject'] ) : strlen( $submission['subject'] ) ) ); ?>/<?php echo (int) ihq_video_subject_max_length(); ?></span>
                                 </div>
                             </div>
                             <div class="sett-row sett-gameplay-promo-row">
@@ -981,7 +997,7 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                             <p class="ihq-video-item-label"><?php esc_html_e( 'Add a video', 'influencer-hq' ); ?></p>
                             <div class="sett-row sett-gameplay-promo-row">
                                 <label class="sett-row-lbl" for="ihq_video_subject_new"><?php esc_html_e( 'Subject', 'influencer-hq' ); ?></label>
-                                <div class="sett-row-val sett-gameplay-promo-input-wrap">
+                                <div class="sett-row-val sett-gameplay-promo-input-wrap ihq-subject-field">
                                     <input
                                         type="text"
                                         id="ihq_video_subject_new"
@@ -992,6 +1008,7 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                                         class="hq-game-url-input"
                                         placeholder="<?php esc_attr_e( 'What should we promote?', 'influencer-hq' ); ?>"
                                     >
+                                    <span class="ihq-subject-count" aria-live="polite">0/<?php echo (int) ihq_video_subject_max_length(); ?></span>
                                 </div>
                             </div>
                             <div class="sett-row sett-gameplay-promo-row">
@@ -2008,6 +2025,88 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                 }
             });
         }
+    });
+
+    document.querySelectorAll('input[name="ihq_video_subject"]').forEach(function(input) {
+        var maxLength = input.maxLength > 0 ? input.maxLength : <?php echo (int) ihq_video_subject_max_length(); ?>;
+        var counter = input.parentNode ? input.parentNode.querySelector('.ihq-subject-count') : null;
+
+        function syncSubjectField() {
+            var cleaned = input.value.replace(/[^\p{L}\p{N} ]/gu, '');
+            if (cleaned !== input.value) {
+                input.value = cleaned;
+            }
+            var characters = Array.from(input.value);
+            if (characters.length > maxLength) {
+                input.value = characters.slice(0, maxLength).join('');
+                characters = characters.slice(0, maxLength);
+            }
+            if (counter) {
+                counter.textContent = characters.length + '/' + maxLength;
+            }
+        }
+
+        input.addEventListener('input', syncSubjectField);
+        syncSubjectField();
+    });
+
+    var subjectRequiredMessage = <?php echo wp_json_encode( __( 'Subject is required (50 characters max).', 'influencer-hq' ) ); ?>;
+    var urlRequiredMessage = <?php echo wp_json_encode( __( 'Video link is required.', 'influencer-hq' ) ); ?>;
+
+    document.querySelectorAll('.ihq-video-item-form, .ihq-video-add-form').forEach(function(form) {
+        var subjectInput = form.querySelector('input[name="ihq_video_subject"]');
+        var urlInput = form.querySelector('input[name="ihq_video_url"]');
+
+        function markMissing(input, message) {
+            if (!input) {
+                return false;
+            }
+            if (input.value.trim() !== '') {
+                input.setCustomValidity('');
+                return false;
+            }
+            input.setCustomValidity(message);
+            return true;
+        }
+
+        if (subjectInput) {
+            subjectInput.addEventListener('input', function() {
+                subjectInput.setCustomValidity('');
+            });
+        }
+        if (urlInput) {
+            urlInput.addEventListener('input', function() {
+                urlInput.setCustomValidity('');
+            });
+        }
+
+        form.querySelectorAll('button[type="submit"]').forEach(function(button) {
+            button.addEventListener('click', function() {
+                if (button.getAttribute('data-ihq-video-remove') === '1') {
+                    return;
+                }
+                markMissing(subjectInput, subjectRequiredMessage);
+                markMissing(urlInput, urlRequiredMessage);
+            });
+        });
+
+        form.addEventListener('submit', function(event) {
+            var submitter = event.submitter;
+            if (submitter && submitter.getAttribute('data-ihq-video-remove') === '1') {
+                return;
+            }
+            var subjectMissing = markMissing(subjectInput, subjectRequiredMessage);
+            var urlMissing = markMissing(urlInput, urlRequiredMessage);
+            if (!subjectMissing && !urlMissing) {
+                return;
+            }
+            event.preventDefault();
+            if (subjectMissing) {
+                subjectInput.reportValidity();
+                return;
+            }
+            urlInput.reportValidity();
+        });
     });
 
     document.querySelectorAll('[data-ihq-video-remove]').forEach(function(btn){

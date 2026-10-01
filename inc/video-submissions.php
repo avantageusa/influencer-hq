@@ -19,6 +19,24 @@ function ihq_video_subject_max_length() {
 }
 
 /**
+ * Letters, numbers, and spaces only, trimmed to the subject limit.
+ *
+ * @param string $raw Raw subject.
+ */
+function ihq_sanitize_video_subject( $raw ) {
+	$subject = sanitize_text_field( (string) $raw );
+	$cleaned = preg_replace( '/[^\p{L}\p{N} ]/u', '', $subject );
+	if ( ! is_string( $cleaned ) ) {
+		$cleaned = '';
+	}
+	$cleaned = trim( $cleaned );
+	if ( function_exists( 'mb_substr' ) ) {
+		return mb_substr( $cleaned, 0, ihq_video_subject_max_length() );
+	}
+	return substr( $cleaned, 0, ihq_video_subject_max_length() );
+}
+
+/**
  * Default status written on every save. Later approval can use pending / approved / rejected.
  */
 function ihq_video_status_auto_promoted() {
