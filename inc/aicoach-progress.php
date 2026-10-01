@@ -53,6 +53,29 @@ const IHQ_AICOACH_PROGRESS_RATE_LIMIT_WINDOW     = MINUTE_IN_SECONDS;
 const IHQ_AICOACH_PROGRESS_MAX_STAGE_LENGTH = 64;
 const IHQ_AICOACH_PROGRESS_MAX_FIELD_LENGTH = 190;
 const IHQ_AICOACH_PROGRESS_MAX_CHANNELS     = 20;
+// PO-3330 — Q&A history (read-only on resume, per product decision 2026-10-01:
+// "my progress resumes as before and the previous exchanges are available" is
+// scoped to display only, not reopening a live Gary session). Spoken Q&A text
+// runs a full sentence or more, well past IHQ_AICOACH_PROGRESS_MAX_FIELD_LENGTH
+// (sized for short form fields like name/channel value) — a separate, larger
+// cap for this specific field instead of widening the shared one for
+// everything else that uses it.
+const IHQ_AICOACH_PROGRESS_MAX_QA_TEXT_LENGTH = 1000;
+
+/**
+ * Max number of Q&A history entries kept per visitor. A wp_option (with the
+ * prior hardcoded value, 20, as the fallback default) rather than a const —
+ * review feedback, PR #76 (Stefan Vucic/Steve Wolfe, 2026-10-01): "are they
+ * configurable at all?" — so this one can be tuned via WP-CLI/DB without a
+ * code deploy. MAX_QA_TEXT_LENGTH above stays a const; nobody asked for that
+ * one to be runtime-configurable, and widening this file's config surface
+ * further than what was actually requested isn't this change's job.
+ *
+ * @return int
+ */
+function ihq_aicoach_progress_max_qa_history() {
+	return (int) get_option( 'ihq_aicoach_qa_history_max', 20 );
+}
 
 /**
  * Read the visitor's progress ref from the request cookie, or mint and set a new one.
@@ -203,6 +226,24 @@ function ihq_aicoach_progress_sanitize_partial( array $params ) {
 			);
 		}
 		$out['channels'] = $channels;
+	}
+
+	if ( isset( $params['qaHistory'] ) && is_array( $params['qaHistory'] ) ) {
+		$qa_history = array();
+		// The frontend always sends its own full, already-capped array (see
+		// aicoach-coach-flow.js) — array_slice() here is a second,
+		// independent bound against a forged/oversized request, not the
+		// primary trim.
+		foreach ( array_slice( $params['qaHistory'], -ihq_aicoach_progress_max_qa_history() ) as $entry ) {
+			if ( ! is_array( $entry ) || ! isset( $entry['question'] ) || ! isset( $entry['answer'] ) ) {
+				continue;
+			}
+			$qa_history[] = array(
+				'question' => $cap( sanitize_text_field( (string) $entry['question'] ), IHQ_AICOACH_PROGRESS_MAX_QA_TEXT_LENGTH ),
+				'answer'   => $cap( sanitize_text_field( (string) $entry['answer'] ), IHQ_AICOACH_PROGRESS_MAX_QA_TEXT_LENGTH ),
+			);
+		}
+		$out['qaHistory'] = $qa_history;
 	}
 
 	// FR-18 (PO-3109) isn't built yet — no appointment UI exists to populate this from.
