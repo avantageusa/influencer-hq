@@ -197,6 +197,19 @@ get_template_part( 'template-parts/portal-styles' );
     margin: 0;
     text-transform: uppercase;
 }
+@media (max-width: 767px) {
+    #portal-content .sett-header {
+        font-size: clamp(22px, 6.4vw, 48px);
+        gap: 0.25em;
+    }
+    #portal-content .sett-title {
+        font-size: 1em;
+    }
+    #portal-content .sett-header-icon {
+        height: 1em;
+        width: auto;
+    }
+}
 #portal-content .sett-sep {
     height: 9px;
     margin: 8px 0 28px;

@@ -2087,6 +2087,29 @@
         text-transform: uppercase;
     }
 
+    @media (max-width: 767px) {
+        body.page-template-page-portal-equity-php .equity-header-top,
+        body.page-template-page-portal-more-php .equity-header-top,
+        body.page-template-page-portal-challenges-php .competition-header-top {
+            font-size: clamp(22px, 6.4vw, 48px);
+            gap: 0.25em;
+            max-width: 100%;
+        }
+
+        body.page-template-page-portal-equity-php .equity-title,
+        body.page-template-page-portal-more-php .equity-title,
+        body.page-template-page-portal-challenges-php .competition-title {
+            font-size: 1em;
+        }
+
+        body.page-template-page-portal-equity-php .equity-icon,
+        body.page-template-page-portal-more-php .equity-icon,
+        body.page-template-page-portal-challenges-php .competition-icon {
+            height: 1em;
+            width: auto;
+        }
+    }
+
     /* Competition Lead Section */
     body.page-template-page-portal-challenges-php .comp-lead {
         margin-bottom: 16px;
@@ -2333,6 +2356,20 @@
     body.page-template-page-portal-challenges-php .competition-types.is-compact .competition-tab-icon--intro {
         width: 28px;
         height: 28px;
+    }
+
+    @media (max-width: 767px) {
+        body.page-template-page-portal-challenges-php .competition-tab-icon,
+        body.page-template-page-portal-challenges-php .competition-tab-icon--intro {
+            width: clamp(24px, 6.9vw, 52px);
+            height: clamp(24px, 6.9vw, 52px);
+        }
+
+        body.page-template-page-portal-challenges-php .competition-types.is-compact .competition-tab-icon,
+        body.page-template-page-portal-challenges-php .competition-types.is-compact .competition-tab-icon--intro {
+            width: clamp(18px, 4.6vw, 28px);
+            height: clamp(18px, 4.6vw, 28px);
+        }
     }
 
     body.page-template-page-portal-challenges-php .comp-lead-mobile-img {
@@ -3906,10 +3943,21 @@
     }
 
     @media (max-width: 767px) {
+        body.page-template-page-portal-live-php .live-wn-logo {
+            font-size: clamp(22px, 6.4vw, 48px);
+            gap: 0.25em;
+            max-width: 100%;
+        }
+
+        body.page-template-page-portal-live-php .live-wn-logo__camera {
+            width: auto;
+            height: 1.33em;
+        }
+
         body.page-template-page-portal-live-php .live-wn-logo__wordmark {
-            width: 55px;
-            max-width: 55px;
-            flex-shrink: 0;
+            width: auto;
+            max-width: 8.75em;
+            height: auto;
         }
     }
 
