@@ -56,18 +56,24 @@ if ( ! defined( 'ABSPATH' ) ) {
 // /coach/v1/registration/scripts). Kept here, not derived, because the two
 // naming schemes predate each other and don't match everywhere — "home" is
 // the tier-selection panel but Gary calls the same narration
-// "time_selection", and Gary's "competitions" is one combined segment where
-// this page currently shows three separate panels (world/community/private)
-// with no single matching clip; that one is deliberately left OUT of this
-// map until there's a UI-side decision on how to split (or not split) it.
+// "time_selection". Gary's old single combined "competitions" segment (no
+// single clip fit this page's three separate world/community/private
+// panels) is now 'superseded' — confirmed live against GET
+// /coach/v1/registration/scripts — replaced by three separate approved
+// segments ('world', 'community', 'private') that match this page's panels
+// one for one, text verbatim-identical to COMPETITION_SCREENS in
+// js/aicoach-coach-flow.js.
 function ihq_aicoach_prerender_panel_map() {
 	return array(
-		'believe-1'   => 'we_believe_1',
-		'believe-2'   => 'we_believe_2',
-		'home'        => 'time_selection',
-		'equity-magic' => 'magic_johnson',
-		'equity-alix' => 'alix_earle',
-		'equity-bts'  => 'bts',
+		'believe-1'             => 'we_believe_1',
+		'believe-2'             => 'we_believe_2',
+		'home'                  => 'time_selection',
+		'equity-magic'          => 'magic_johnson',
+		'equity-alix'           => 'alix_earle',
+		'equity-bts'            => 'bts',
+		'competition-world'     => 'world',
+		'competition-community' => 'community',
+		'competition-private'   => 'private',
 	);
 }
 

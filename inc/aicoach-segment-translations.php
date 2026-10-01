@@ -92,5 +92,56 @@ function ihq_aicoach_segment_translations() {
 			'vi' => 'Nhóm nhạc quốc tế BTS cũng nhận ra giá trị của việc sở hữu cổ phần. Thay vì chỉ nhận thù lao theo cách truyền thống… họ còn được hưởng giá trị lâu dài từ những gì mình đã góp phần xây dựng. Số cổ phần họ sở hữu sau đó có giá trị lên tới hàng trăm triệu USD. Bài học ở đây không nằm ở bóng rổ… hay mạng xã hội… hay âm nhạc. Mà là biết nhận ra cơ hội sở hữu cổ phần phù hợp khi nó xuất hiện. Đó chính là lý do InfluencerHQ ra đời. Bây giờ… để tôi cho bạn thấy bạn có thể làm được gì chỉ trong vài phút.',
 			'ko' => '세계적인 음악 그룹 BTS 역시 지분의 힘을 인식했습니다. 전통적인 보상 방식에만 의존하는 대신... 그들은 자신들이 구축하는 데 기여한 장기적 가치 창출에 참여했습니다. 그들의 지분 가치는 수억 달러에 이르게 되었습니다. 이 교훈은 농구에 관한 것이 아닙니다... 소셜 미디어에 관한 것도 아닙니다... 또는 음악에 관한 것도 아니죠. 적절한 지분 참여 기회가 왔을 때 이를 알아보는 것에 관한 이야기입니다. 이것이 바로 인플루언서HQ가 탄생한 이유입니다. 이제... 단 몇 분 만에 여러분이 무엇을 성취할 수 있는지 보여드리겠습니다',
 		),
+		// world/community/private (2026-10-01) — Gary's old single combined
+		// "competitions" segment is now 'superseded'; these three replace it,
+		// one per panel, confirmed live against GET
+		// /coach/v1/registration/scripts. Sourced from the sheet's own
+		// World/Community/Private tabs (downloaded as .csv, same
+		// not-hand-transcribed reasoning as the top-of-file note), each
+		// row range reconstructed against and verified to match
+		// COMPETITION_SCREENS in js/aicoach-coach-flow.js exactly. Private's
+		// sheet tab carries two extra trailing rows ("Now that you've seen
+		// all three options... let's choose the one you'd like to start
+		// with.") that are NOT part of Gary's approved text — that's the
+		// old closing line the ticket explicitly removed pending a
+		// replacement (see the NOTE above COMPETITION_SCREENS) — excluded
+		// here same as the English script excludes it.
+		'world' => array(
+			'zh'  => '现在让我们来看许多网红选择开始的第一种方式。 这被称为世界竞赛。 你和你的粉丝一起参与…… 同时与来自世界各地的其他网红及其社群一较高下。 网红总部已经提供了竞赛形式。 你不需要从零开始打磨任何内容。 稍后…… 在你的指导中心里…… 我会详细解释它的运作方式，并协助你决定这是否适合作为你的起点。 现在…… 让我们来看另一个选择。',
+			'yue' => '現在讓我們睇吓好多網紅選擇開始嘅第一種方式。 呢個叫做世界競賽。 你同你嘅粉絲一齊參與…… 同時同來自世界各地嘅其他網紅以及佢哋嘅社群一較高下。 網紅總部已經提供咗競賽模式。 你唔需要從零開始創作任何嘢。 稍後…… 喺你嘅指導中心入面…… 我會詳細解釋佢係點樣運作，並幫你決定呢度係唔係適合你開始嘅地方。 現在…… 讓我們睇吓另一個選擇。',
+			'ja'  => 'それでは、多くのインフルエンサーが最初に選ぶ進め方をご紹介します。 それが、ワールドコンペティションです。 あなたとフォロワーが一緒に参加し、 世界中のインフルエンサーとそのコミュニティを相手に競います。 コンペティション形式は、すでにインフルエンサーHQが用意しています。 ゼロから自分で作る必要はありません。 このあと コーチングセンター内で 具体的な仕組みをご説明し、あなたの最初の一歩として適しているか、一緒に考えていきましょう。 それでは 他の選択肢も見てみましょう。',
+			'th'  => 'ทีนี้ มาดูวิธีเริ่มต้นแบบแรกที่อินฟลูเอนเซอร์หลายคนเลือกกัน นั่นคือ "การแข่งขันระดับโลก" คุณกับผู้ติดตามจะได้เข้าร่วมการแข่งขันด้วยกัน… โดยแข่งกับอินฟลูเอนเซอร์คนอื่นๆ และกลุ่มผู้ติดตามของพวกเขาจากทั่วโลก ศูนย์กลางใหญ่อินฟลูเอนเซอร์เตรียมรูปแบบการแข่งขันไว้ให้แล้ว คุณไม่ต้องทำทุกอย่างขึ้นมาเองตั้งแต่ต้น หลังจากนี้… ในศูนย์ให้คำแนะนำของคุณ… ฉันจะอธิบายให้ฟังอย่างละเอียดว่าแข่งกันยังไง และช่วยคุณตัดสินใจว่านี่เป็นจุดเริ่มต้นที่เหมาะกับคุณมั้ย ทีนี้… มาดูอีกทางเลือกกัน',
+			'vi'  => 'Giờ hãy xem cách đầu tiên mà nhiều influencer chọn để bắt đầu. Đó là Cuộc thi Toàn cầu. Bạn và những người theo dõi bạn cùng tham gia… và thi đấu với các influencer khác cùng cộng đồng của họ trên khắp thế giới. InfluencerHQ đã chuẩn bị sẵn thể thức cuộc thi. Bạn không cần tự tạo mọi thứ từ đầu. Sau đó… trong Trung tâm Hướng dẫn của bạn… tôi sẽ giải thích cụ thể cách cuộc thi diễn ra và giúp bạn quyết định đây có phải là lựa chọn phù hợp để bắt đầu hay không. Bây giờ… hãy cùng xem một lựa chọn khác.',
+			'ko'  => '이제 많은 인플루언서들이 시작하기 위해 선택하는 첫 번째 방법을 살펴보겠습니다. 이것은 세계 대회라고 부릅니다. 당신과 당신의 팔로워들이 함께 참여하며... 전 세계의 다른 인플루언서를 비롯해 그들의 커뮤니티와 대결하게 됩니다. 인플루언서HQ는 이미 이러한 경쟁 방식을 제공하고 있습니다. 처음부터 새로 만들 필요가 없습니다. 나중에... 당신의 코칭센터 내부에서... 이것이 정확히 어떻게 작동하는지 설명해 드리고 이곳이 당신이 시작하기에 적합한 장소인지 결정하도록 도와드리겠습니다. 이제... 또 다른 옵션을 살펴보겠습니다.',
+		),
+		// Mandarin/Cantonese row 14 below both read "嘅" (a Cantonese
+		// possessive particle, not standard Mandarin "的") in the sheet's
+		// own Mandarin column — flagged, not silently corrected, same
+		// as the magic_johnson English typo noted at the top of this
+		// file (that one is Gary's own approved English, a word choice
+		// either way — not ours to second-guess). The Korean "encourage
+		// engagement…" row is different: the sheet has a stray Latin "t"
+		// mid-word ("유도하며t…", review feedback, PR #75/CodeRabbit) with
+		// no plausible alternate reading — this is our own translation
+		// text, not Gary-approved copy, and it feeds straight into paid
+		// TTS rendering, so the stray character is corrected below rather
+		// than carried into a spoken clip. Still worth fixing at the
+		// sheet source too.
+		'community' => array(
+			'zh'  => '许多网红选择从社群竞赛开始。 这是一个简单的方式，将已经支持你的粉丝凝聚在一起。 你的社群保持凝聚力…… 互相鼓励…… 而且很享受作为一个团队一起参与。 同样地…… 网红总部已经提供了竞赛形式。 我会帮你一步一步…… 做好所有设置。 如果先建立你自己嘅社群感觉最合适…… 这里可能就是最完美的起点。 还有一个选择我想展示给你看。',
+			'yue' => '好多網紅選擇從社群競賽開始。 呢個係一個簡單嘅方式，將已經支持你嘅粉絲凝聚埋一齊。 你嘅社群保持凝聚力…… 互相鼓勵…… 而且好享受作為一個團隊一齊參與。 同樣地…… 網紅總部已經提供咗競賽模式。 我會幫你一步一步…… 做好所有設定。 如果先建立你自己嘅社群感覺最合適…… 呢度可能就係最完美嘅起點。 仲有一個選擇我想展示畀你睇。',
+			'ja'  => '多くのインフルエンサーは、コミュニティコンペティションから始めることを選んでいます。 すでにあなたを応援してくれているフォロワー同士が集まれる、シンプルな方法です。 あなたのコミュニティが一致団結し お互いに励まし合い チームとして楽しみながら参加できます。 こちらも コンペティション形式は、すでにインフルエンサーHQが用意しています。 必要な準備は、私がすべてサポートします。 一つひとつ、進めていきましょう。 まずは自分のコミュニティを育てることから始めたいとお考えでしたら 最初の一歩としてぴったりかもしれません。 もうひとつ、ご紹介したい選択肢があります。',
+			'th'  => 'อินฟลูเอนเซอร์หลายคนเลือกเริ่มจากการแข่งขันภายในคอมมูนิตี้ นี่เป็นวิธีง่ายๆ ที่ช่วยให้ผู้ติดตามที่สนับสนุนคุณอยู่แล้วได้มารวมตัวกัน ทุกคนในคอมมูนิตี้จะได้อยู่ด้วยกัน… คอยให้กำลังใจกัน… และสนุกกับการเข้าร่วมแข่งขันเป็นทีม เช่นเดียวกัน… ศูนย์กลางใหญ่อินฟลูเอนเซอร์เตรียมรูปแบบการแข่งขันไว้ให้แล้ว ฉันจะช่วยคุณตั้งค่าทุกอย่างให้พร้อม… ไปทีละขั้นตอน ถ้าคุณอยากเริ่มจากการสร้างคอมมูนิตี้ของตัวเองก่อน… นี่ก็อาจเป็นจุดเริ่มต้นที่เหมาะกับคุณที่สุด ยังมีอีกทางเลือกหนึ่งที่ฉันอยากให้คุณรู้จัก',
+			'vi'  => 'Nhiều influencer chọn bắt đầu bằng Cuộc thi Cộng đồng. Đây là cách đơn giản để kết nối những người theo dõi vốn đã ủng hộ bạn. Cộng đồng của bạn cùng gắn bó… động viên lẫn nhau… và cùng hào hứng khi tham gia như một đội. Một lần nữa… InfluencerHQ đã chuẩn bị sẵn thể thức cuộc thi. Tôi sẽ giúp bạn thiết lập mọi thứ… từng bước một. Nếu bạn thấy nên bắt đầu bằng việc xây dựng cộng đồng của riêng mình… đây có thể là nơi lý tưởng để bắt đầu. Tôi còn một lựa chọn nữa muốn giới thiệu với bạn.',
+			'ko'  => '많은 인플루언서들이 커뮤니티 대회로 시작하는 것을 선택합니다. 이미 당신을 지지하는 팔로워들을 한곳에 모을 수 있는 간단한 방법입니다. 당신의 커뮤니티는 함께 뭉치고... 함께 격려하며... 한 팀으로서 참여하는 것을 즐깁니다. 다시 말하면… 인플루언서HQ는 이미 이러한 대결 방식을 제공하고 있습니다. 모든 것을 설정하도록 제가 도와드리겠습니다. 단계별로 하나씩 자신만의 커뮤니티를 먼저 구축하는 것이 맞다고 느껴진다면 이곳이 시작하기에 완벽한 곳일 수 있습니다. 보여드리고 싶은 옵션이 하나 더 있습니다.',
+		),
+		'private' => array(
+			'zh'  => '第三个选择被称为私人挑战赛。 它可以让你和你的粉丝…… 与另一位网红及其社群一较高下…… 一位你已经认识的朋友。 许多网红都很喜欢私人挑战赛，因为它能营造友好的竞争氛围…… 促进互动…… 还能将两个社群凝聚在一起。 就像网红总部上的每一个竞赛一样…… 形式已经为你准备好。 等我们进入你的指导中心之后…… 我会协助你决定这里是否适合作为你的起点。',
+			'yue' => '第三個選擇叫做私人挑戰賽。 佢可以讓你同你嘅粉絲…… 同另一位網紅以及佢哋嘅社群一較高下…… 一位你已經認識嘅朋友。 好多網紅都好鍾意私人挑戰賽，因為佢可以營造友好嘅競爭氛圍…… 促進互動…… 仲可以將兩個社群凝聚埋一齊。 就像網紅總部上面嘅每一個競賽一樣…… 模式已經為你準備好。 等我哋進入你嘅指導中心之後…… 我會幫你決定呢度係唔係適合你開始嘅地方。',
+			'ja'  => '3つ目の選択肢は、プライベートチャレンジです。 あなたとフォロワーが 別のインフルエンサーとそのコミュニティを相手に競います。 相手は、あなたの知り合いのインフルエンサーです。 プライベートチャレンジは、気軽に競い合えることから、多くのインフルエンサーに楽しまれています。 参加を促し 2つのコミュニティをつなげるきっかけにもなります。 インフルエンサーHQの他のコンペティションと同じく 形式はすでに用意されています。 このあとコーチングセンターに進んだら あなたの最初の選択として適しているか、一緒に考えていきましょう。',
+			'th'  => 'ทางเลือกที่สามเรียกว่า "การแข่งขันส่วนตัว" คุณกับผู้ติดตามจะได้… แข่งกับอินฟลูเอนเซอร์อีกคนและคอมมูนิตี้ของเขา… โดยเลือกแข่งกับคนที่คุณรู้จักอยู่แล้ว อินฟลูเอนเซอร์หลายคนชอบการแข่งขันส่วนตัว เพราะได้แข่งกันแบบเป็นกันเอง… ชวนให้ผู้ติดตามมีส่วนร่วมมากขึ้น… และได้พาสองคอมมูนิตี้มาร่วมสนุกด้วยกัน เหมือนกับการแข่งขันทุกรูปแบบบนศูนย์กลางใหญ่อินฟลูเอนเซอร์… ที่มีรูปแบบเตรียมไว้ให้แล้ว เมื่อเราไปต่อกันในศูนย์ให้คำแนะนำของคุณ… ฉันจะช่วยคุณตัดสินใจว่าควรเริ่มจากการแข่งขันแบบนี้ไหม',
+			'vi'  => 'Lựa chọn thứ ba là Thử thách Riêng. Bạn và những người theo dõi mình có thể… thi đấu với một influencer khác và cộng đồng của họ… đó là người bạn đã quen biết. Nhiều influencer thích Thử thách Riêng vì hình thức này tạo ra một sự cạnh tranh thân thiện… khuyến khích mọi người tương tác… và kết nối hai cộng đồng. Giống như mọi cuộc thi trên InfluencerHQ… thể thức đã được chuẩn bị sẵn. Khi chúng ta tiếp tục trong Trung tâm Hướng dẫn của bạn… tôi sẽ giúp bạn quyết định đây có phải là lựa chọn phù hợp để bắt đầu hay không.',
+			'ko'  => '세 번째 옵션은 비공개 챌린지라고 합니다 이 옵션을 통해 당신과 당신의 팔로워들은... 다른 인플루언서 및 그들의 커뮤니티와 경쟁할 수 있습니다… 이미 알고 있는 누군가와 말이죠 많은 인플루언서들이 비공개 챌린지를 좋아하는 이유는 친선 경쟁을 만들어내고... 참여를 유도하며… 두 커뮤니티를 하나로 모아 주기 때문입니다. 인플루언서HQ의 모든 경쟁과 마찬가지로… 포맷은 이미 제공되어 있습니다. 코칭 센터로 이동하면… 이곳이 시작하기에 적합한 곳인지 결정하는 데 도움을 드리겠습니다.',
+		),
 	);
 }
