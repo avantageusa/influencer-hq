@@ -118,8 +118,15 @@ function ihq_aicoach_segment_translations() {
 		// possessive particle, not standard Mandarin "的") in the sheet's
 		// own Mandarin column — flagged, not silently corrected, same
 		// as the magic_johnson English typo noted at the top of this
-		// file. Korean row "encourage engagement…" also carries a stray
-		// trailing "t" in the sheet ("유도하며t…") — kept verbatim.
+		// file (that one is Gary's own approved English, a word choice
+		// either way — not ours to second-guess). The Korean "encourage
+		// engagement…" row is different: the sheet has a stray Latin "t"
+		// mid-word ("유도하며t…", review feedback, PR #75/CodeRabbit) with
+		// no plausible alternate reading — this is our own translation
+		// text, not Gary-approved copy, and it feeds straight into paid
+		// TTS rendering, so the stray character is corrected below rather
+		// than carried into a spoken clip. Still worth fixing at the
+		// sheet source too.
 		'community' => array(
 			'zh'  => '许多网红选择从社群竞赛开始。 这是一个简单的方式，将已经支持你的粉丝凝聚在一起。 你的社群保持凝聚力…… 互相鼓励…… 而且很享受作为一个团队一起参与。 同样地…… 网红总部已经提供了竞赛形式。 我会帮你一步一步…… 做好所有设置。 如果先建立你自己嘅社群感觉最合适…… 这里可能就是最完美的起点。 还有一个选择我想展示给你看。',
 			'yue' => '好多網紅選擇從社群競賽開始。 呢個係一個簡單嘅方式，將已經支持你嘅粉絲凝聚埋一齊。 你嘅社群保持凝聚力…… 互相鼓勵…… 而且好享受作為一個團隊一齊參與。 同樣地…… 網紅總部已經提供咗競賽模式。 我會幫你一步一步…… 做好所有設定。 如果先建立你自己嘅社群感覺最合適…… 呢度可能就係最完美嘅起點。 仲有一個選擇我想展示畀你睇。',
@@ -134,7 +141,7 @@ function ihq_aicoach_segment_translations() {
 			'ja'  => '3つ目の選択肢は、プライベートチャレンジです。 あなたとフォロワーが 別のインフルエンサーとそのコミュニティを相手に競います。 相手は、あなたの知り合いのインフルエンサーです。 プライベートチャレンジは、気軽に競い合えることから、多くのインフルエンサーに楽しまれています。 参加を促し 2つのコミュニティをつなげるきっかけにもなります。 インフルエンサーHQの他のコンペティションと同じく 形式はすでに用意されています。 このあとコーチングセンターに進んだら あなたの最初の選択として適しているか、一緒に考えていきましょう。',
 			'th'  => 'ทางเลือกที่สามเรียกว่า "การแข่งขันส่วนตัว" คุณกับผู้ติดตามจะได้… แข่งกับอินฟลูเอนเซอร์อีกคนและคอมมูนิตี้ของเขา… โดยเลือกแข่งกับคนที่คุณรู้จักอยู่แล้ว อินฟลูเอนเซอร์หลายคนชอบการแข่งขันส่วนตัว เพราะได้แข่งกันแบบเป็นกันเอง… ชวนให้ผู้ติดตามมีส่วนร่วมมากขึ้น… และได้พาสองคอมมูนิตี้มาร่วมสนุกด้วยกัน เหมือนกับการแข่งขันทุกรูปแบบบนศูนย์กลางใหญ่อินฟลูเอนเซอร์… ที่มีรูปแบบเตรียมไว้ให้แล้ว เมื่อเราไปต่อกันในศูนย์ให้คำแนะนำของคุณ… ฉันจะช่วยคุณตัดสินใจว่าควรเริ่มจากการแข่งขันแบบนี้ไหม',
 			'vi'  => 'Lựa chọn thứ ba là Thử thách Riêng. Bạn và những người theo dõi mình có thể… thi đấu với một influencer khác và cộng đồng của họ… đó là người bạn đã quen biết. Nhiều influencer thích Thử thách Riêng vì hình thức này tạo ra một sự cạnh tranh thân thiện… khuyến khích mọi người tương tác… và kết nối hai cộng đồng. Giống như mọi cuộc thi trên InfluencerHQ… thể thức đã được chuẩn bị sẵn. Khi chúng ta tiếp tục trong Trung tâm Hướng dẫn của bạn… tôi sẽ giúp bạn quyết định đây có phải là lựa chọn phù hợp để bắt đầu hay không.',
-			'ko'  => '세 번째 옵션은 비공개 챌린지라고 합니다 이 옵션을 통해 당신과 당신의 팔로워들은... 다른 인플루언서 및 그들의 커뮤니티와 경쟁할 수 있습니다… 이미 알고 있는 누군가와 말이죠 많은 인플루언서들이 비공개 챌린지를 좋아하는 이유는 친선 경쟁을 만들어내고... 참여를 유도하며t… 두 커뮤니티를 하나로 모아 주기 때문입니다. 인플루언서HQ의 모든 경쟁과 마찬가지로… 포맷은 이미 제공되어 있습니다. 코칭 센터로 이동하면… 이곳이 시작하기에 적합한 곳인지 결정하는 데 도움을 드리겠습니다.',
+			'ko'  => '세 번째 옵션은 비공개 챌린지라고 합니다 이 옵션을 통해 당신과 당신의 팔로워들은... 다른 인플루언서 및 그들의 커뮤니티와 경쟁할 수 있습니다… 이미 알고 있는 누군가와 말이죠 많은 인플루언서들이 비공개 챌린지를 좋아하는 이유는 친선 경쟁을 만들어내고... 참여를 유도하며… 두 커뮤니티를 하나로 모아 주기 때문입니다. 인플루언서HQ의 모든 경쟁과 마찬가지로… 포맷은 이미 제공되어 있습니다. 코칭 센터로 이동하면… 이곳이 시작하기에 적합한 곳인지 결정하는 데 도움을 드리겠습니다.',
 		),
 	);
 }
