@@ -1156,9 +1156,16 @@ if ( stage && avatarWrap ) {
         const QA_HISTORY_MAX = 20;
         let qaHistory = [];
 
-        function renderQaHistory() {
+        // PR #76 (review feedback, Dejan Arsić) — takes the entries to show
+        // explicitly rather than always reading the full qaHistory: the
+        // just-answered pair is already visible in answerEl below, so
+        // askQuestion() passes everything EXCEPT that one to avoid showing
+        // it twice in the same open panel. A resume has no "current answer"
+        // live in answerEl yet, so applyResumedQaHistory() passes the full
+        // array.
+        function renderQaHistory( entries ) {
             historyEl.innerHTML = '';
-            qaHistory.forEach( function ( entry ) {
+            entries.forEach( function ( entry ) {
                 const item = document.createElement( 'div' );
                 item.className = 'aicoach-ask-history-item';
                 const q = document.createElement( 'p' );
@@ -1171,24 +1178,39 @@ if ( stage && avatarWrap ) {
                 item.appendChild( a );
                 historyEl.appendChild( item );
             } );
-            historyEl.hidden = 0 === qaHistory.length;
+            historyEl.hidden = 0 === entries.length;
         }
 
         // PO-3330 — called from init() (below) with a resumed visitor's
         // saved qaHistory, the same "apply saved state the same way a fresh
         // flow would have set it" pattern as applyResumedIdentity()/
         // applyResumedChannels(). Deliberately does NOT touch garySessionId/
-        // qaClientReady/askSamiBtn.disabled — product decided (2026-10-01)
-        // that a resumed visitor sees past exchanges but doesn't get a live
-        // session re-opened for them; Ask Sami becomes askable again the
-        // same way it already does for any resume, once the flow reaches a
-        // point that opens one.
+        // qaClientReady — product decided (2026-10-01) that a resumed
+        // visitor sees past exchanges but doesn't get a live session
+        // re-opened for them.
+        //
+        // Review feedback (PR #76, Dejan Arsić) — askSamiBtn.disabled is
+        // otherwise only ever cleared inside start(), which NONE of
+        // PO-3102's resume paths call (confirmed by tracing init(): only a
+        // genuinely fresh arrival reaches start(); every resume branch —
+        // mid-sequence via runFallback(false), or post-sequence via
+        // showPanel(stageKey) — skips it entirely, and nothing later in
+        // either path ever opens a session either). Without this, the
+        // button — and so the whole panel, history included — would stay
+        // permanently unopenable for every resumed visitor, which is
+        // exactly the audience this feature exists for. Opening the panel
+        // itself needs no live session (it only shows past exchanges);
+        // asking a NEW question still correctly does nothing without one —
+        // askQuestion()'s existing `!garySessionId` guard already no-ops
+        // that silently, the same degrade this app already relies on
+        // elsewhere.
         applyResumedQaHistory = function ( history ) {
             if ( ! Array.isArray( history ) || ! history.length ) {
                 return;
             }
             qaHistory = history.slice( -QA_HISTORY_MAX );
-            renderQaHistory();
+            renderQaHistory( qaHistory );
+            askSamiBtn.disabled = false;
         };
         // PR #68 (CodeRabbit) — bumped by every startListening() call and
         // compared against inside askQuestion()'s response handling, so a
@@ -1593,7 +1615,12 @@ if ( stage && avatarWrap ) {
                 if ( qaHistory.length > QA_HISTORY_MAX ) {
                     qaHistory = qaHistory.slice( -QA_HISTORY_MAX );
                 }
-                renderQaHistory();
+                // Review feedback (PR #76, Dejan Arsić) — the pair just
+                // pushed is already live in answerEl right above this list;
+                // rendering the full qaHistory here showed it a second time.
+                // Excluded from the rendered list, not from what's saved —
+                // saveProgress() below still sends the complete array.
+                renderQaHistory( qaHistory.slice( 0, -1 ) );
                 saveProgress( { qaHistory: qaHistory } );
                 await speakAnswerOrFallback( data );
             } catch ( error ) {
