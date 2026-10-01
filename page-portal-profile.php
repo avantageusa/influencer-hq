@@ -984,7 +984,7 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                             </div>
                             <div class="ihq-video-item-actions">
                                 <button type="submit" name="ihq_video_action" value="replace" class="hq-game-url-save-btn"><?php esc_html_e( 'Replace', 'influencer-hq' ); ?></button>
-                                <button type="submit" name="ihq_video_action" value="remove" class="hq-game-url-save-btn ihq-video-remove-btn" data-ihq-video-remove="1"><?php esc_html_e( 'Remove', 'influencer-hq' ); ?></button>
+                                <button type="submit" name="ihq_video_action" value="remove" formnovalidate class="hq-game-url-save-btn ihq-video-remove-btn" data-ihq-video-remove="1"><?php esc_html_e( 'Remove', 'influencer-hq' ); ?></button>
                             </div>
                         </div>
                     </form>
