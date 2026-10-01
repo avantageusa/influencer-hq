@@ -2087,6 +2087,29 @@
         text-transform: uppercase;
     }
 
+    @media (max-width: 767px) {
+        body.page-template-page-portal-equity-php .equity-header-top,
+        body.page-template-page-portal-more-php .equity-header-top,
+        body.page-template-page-portal-challenges-php .competition-header-top {
+            font-size: clamp(22px, 6.4vw, 48px);
+            gap: 0.25em;
+            max-width: 100%;
+        }
+
+        body.page-template-page-portal-equity-php .equity-title,
+        body.page-template-page-portal-more-php .equity-title,
+        body.page-template-page-portal-challenges-php .competition-title {
+            font-size: 1em;
+        }
+
+        body.page-template-page-portal-equity-php .equity-icon,
+        body.page-template-page-portal-more-php .equity-icon,
+        body.page-template-page-portal-challenges-php .competition-icon {
+            height: 1em;
+            width: auto;
+        }
+    }
+
     /* Competition Lead Section */
     body.page-template-page-portal-challenges-php .comp-lead {
         margin-bottom: 16px;
@@ -2333,6 +2356,20 @@
     body.page-template-page-portal-challenges-php .competition-types.is-compact .competition-tab-icon--intro {
         width: 28px;
         height: 28px;
+    }
+
+    @media (max-width: 767px) {
+        body.page-template-page-portal-challenges-php .competition-tab-icon,
+        body.page-template-page-portal-challenges-php .competition-tab-icon--intro {
+            width: clamp(24px, 6.9vw, 52px);
+            height: clamp(24px, 6.9vw, 52px);
+        }
+
+        body.page-template-page-portal-challenges-php .competition-types.is-compact .competition-tab-icon,
+        body.page-template-page-portal-challenges-php .competition-types.is-compact .competition-tab-icon--intro {
+            width: clamp(18px, 4.6vw, 28px);
+            height: clamp(18px, 4.6vw, 28px);
+        }
     }
 
     body.page-template-page-portal-challenges-php .comp-lead-mobile-img {
@@ -3789,6 +3826,25 @@
         object-fit: contain;
     }
 
+    @media (max-width: 767px) {
+        body.page-template-page-portal-live-php .live-wn-logo {
+            font-size: clamp(22px, 6.4vw, 48px);
+            gap: 0.25em;
+            max-width: 100%;
+        }
+
+        body.page-template-page-portal-live-php .live-wn-logo__camera {
+            width: auto;
+            height: 1.33em;
+        }
+
+        body.page-template-page-portal-live-php .live-wn-logo__wordmark {
+            width: auto;
+            max-width: 8.75em;
+            height: auto;
+        }
+    }
+
     body.page-template-page-portal-live-php .live-section-heading--banner {
         font-family: "Cinzel", serif;
         font-size: 28px;
@@ -3860,6 +3916,16 @@
     body.page-template-page-portal-live-php .live-contest-tab.is-open .live-contest-chevron {
         transform: rotate(90deg);
         filter: invert(22%) sepia(62%) saturate(700%) hue-rotate(6deg) brightness(90%);
+    }
+
+    body.page-template-page-portal-live-php .live-contest-panel {
+        padding: 20px 100px;
+    }
+
+    @media (max-width: 767px) {
+        body.page-template-page-portal-live-php .live-contest-panel {
+            padding: 20px 10px;
+        }
     }
 
     body.page-template-page-portal-live-php .live-contest-panel ul {
