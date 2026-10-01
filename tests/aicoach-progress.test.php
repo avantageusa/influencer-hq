@@ -69,18 +69,36 @@ check(
 // --- sanitize_partial(): an oversized array is capped to the last N entries ---
 
 $many = array();
-for ( $i = 0; $i < IHQ_AICOACH_PROGRESS_MAX_QA_HISTORY + 10; $i++ ) {
+for ( $i = 0; $i < ihq_aicoach_progress_max_qa_history() + 10; $i++ ) {
 	$many[] = array( 'question' => 'q' . $i, 'answer' => 'a' . $i );
 }
 $sanitized_many = ihq_aicoach_progress_sanitize_partial( array( 'qaHistory' => $many ) );
 check(
-	'an oversized qaHistory array is capped to IHQ_AICOACH_PROGRESS_MAX_QA_HISTORY entries',
-	IHQ_AICOACH_PROGRESS_MAX_QA_HISTORY === count( $sanitized_many['qaHistory'] )
+	'an oversized qaHistory array is capped to ihq_aicoach_progress_max_qa_history() entries',
+	ihq_aicoach_progress_max_qa_history() === count( $sanitized_many['qaHistory'] )
 );
 check(
 	'the cap keeps the most RECENT entries (tail), not the oldest',
-	'q' . ( IHQ_AICOACH_PROGRESS_MAX_QA_HISTORY + 9 ) === end( $sanitized_many['qaHistory'] )['question']
+	'q' . ( ihq_aicoach_progress_max_qa_history() + 9 ) === end( $sanitized_many['qaHistory'] )['question']
 );
+
+// --- ihq_aicoach_progress_max_qa_history(): review feedback (PR #76,
+// Stefan Vucic/Steve Wolfe) -- this is a wp_option now, not a const, so it
+// must actually be tunable without a deploy. ---
+
+check( 'defaults to 20 when the option has never been set', 20 === ihq_aicoach_progress_max_qa_history() );
+
+update_option( 'ihq_aicoach_qa_history_max', 3 );
+$few = array();
+for ( $i = 0; $i < 5; $i++ ) {
+	$few[] = array( 'question' => 'q' . $i, 'answer' => 'a' . $i );
+}
+$sanitized_few = ihq_aicoach_progress_sanitize_partial( array( 'qaHistory' => $few ) );
+check(
+	'setting the wp_option to 3 actually changes the applied cap (not a frozen default)',
+	3 === count( $sanitized_few['qaHistory'] )
+);
+delete_option( 'ihq_aicoach_qa_history_max' ); // restore default for any test added after this one
 
 // --- save()/load(): qaHistory persists through the real merge path without
 // clobbering, or being clobbered by, unrelated fields already saved ---
