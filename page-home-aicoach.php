@@ -1279,6 +1279,41 @@ $aicoach_channels = array(
         cursor: pointer;
     }
 
+    /* PO-3330 — past exchanges, read-only, shown above the live answer on a
+    resumed visit (or once this visit's own questions start piling up).
+    Capped height + scroll so a long history can't grow the panel past what
+    .aicoach-ask-panel's own positioning (anchored to the button, not the
+    viewport) can gracefully accommodate. */
+    .aicoach-ask-history {
+        max-height: 180px;
+        overflow-y: auto;
+        margin: 0 28px 12px 0;
+        padding-right: 4px;
+    }
+
+    .aicoach-ask-history-item {
+        padding: 8px 0;
+        border-bottom: 1px solid #2a2b35;
+    }
+
+    .aicoach-ask-history-item:first-child {
+        padding-top: 0;
+    }
+
+    .aicoach-ask-history-q {
+        margin: 0 0 4px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #c7c7d1;
+    }
+
+    .aicoach-ask-history-a {
+        margin: 0;
+        font-size: 0.85rem;
+        line-height: 1.4;
+        color: #a9a9b3;
+    }
+
     .aicoach-ask-answer {
         min-height: 1.4em;
         margin: 0 28px 12px 0;

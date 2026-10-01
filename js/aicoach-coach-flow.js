@@ -836,6 +836,7 @@ if ( stage && avatarWrap ) {
     let askSamiBtn = null;
     let closeAskSamiPanel = null; // set once buildAskSami() runs below; selectLocale() calls this before hiding the panel
     let toggleAskSamiPanel = null; // set once buildAskSami() runs below; the stage's tap-to-interrupt listener calls this
+    let applyResumedQaHistory = null; // set once buildAskSami() runs below; init() calls this with a resumed visitor's saved Q&A pairs
 
     function selectLocale( locale ) {
         if ( locale === currentLocale ) {
@@ -1074,6 +1075,15 @@ if ( stage && avatarWrap ) {
         closeBtn.setAttribute( 'aria-label', 'Close' );
         closeBtn.textContent = '×';
 
+        // PO-3330 — "previous exchanges are available" on a return visit
+        // (product decision, Ivan Vladić, 2026-10-01: read-only display only,
+        // not reopening a live Gary session — see applyResumedQaHistory()
+        // below). Sits above the live answerEl, which keeps showing just the
+        // most recent in-flight exchange exactly as it already did.
+        const historyEl = document.createElement( 'div' );
+        historyEl.className = 'aicoach-ask-history';
+        historyEl.hidden = true;
+
         const answerEl = document.createElement( 'p' );
         answerEl.className = 'aicoach-ask-answer';
         answerEl.setAttribute( 'aria-live', 'polite' );
@@ -1100,6 +1110,7 @@ if ( stage && avatarWrap ) {
         voiceRow.appendChild( micBtn );
         voiceRow.appendChild( statusEl );
         panel.appendChild( closeBtn );
+        panel.appendChild( historyEl );
         panel.appendChild( answerEl );
         panel.appendChild( voiceRow );
         panel.appendChild( errorEl );
@@ -1137,6 +1148,48 @@ if ( stage && avatarWrap ) {
         // straight onto video.srcObject is a plain DOM operation that never
         // touches Anam's internal state, so it can't hit that guard.
         let qaMediaStream = null;
+        // PO-3330 — this visit's Q&A pairs, newest last: whatever resumed
+        // from a prior visit (see applyResumedQaHistory()) plus every
+        // question successfully answered this session (see askQuestion()).
+        // Capped the same way channels/etc already cap what gets saved —
+        // matches IHQ_AICOACH_PROGRESS_MAX_QA_HISTORY server-side.
+        const QA_HISTORY_MAX = 20;
+        let qaHistory = [];
+
+        function renderQaHistory() {
+            historyEl.innerHTML = '';
+            qaHistory.forEach( function ( entry ) {
+                const item = document.createElement( 'div' );
+                item.className = 'aicoach-ask-history-item';
+                const q = document.createElement( 'p' );
+                q.className = 'aicoach-ask-history-q';
+                q.textContent = entry.question;
+                const a = document.createElement( 'p' );
+                a.className = 'aicoach-ask-history-a';
+                a.textContent = entry.answer;
+                item.appendChild( q );
+                item.appendChild( a );
+                historyEl.appendChild( item );
+            } );
+            historyEl.hidden = 0 === qaHistory.length;
+        }
+
+        // PO-3330 — called from init() (below) with a resumed visitor's
+        // saved qaHistory, the same "apply saved state the same way a fresh
+        // flow would have set it" pattern as applyResumedIdentity()/
+        // applyResumedChannels(). Deliberately does NOT touch garySessionId/
+        // qaClientReady/askSamiBtn.disabled — product decided (2026-10-01)
+        // that a resumed visitor sees past exchanges but doesn't get a live
+        // session re-opened for them; Ask Sami becomes askable again the
+        // same way it already does for any resume, once the flow reaches a
+        // point that opens one.
+        applyResumedQaHistory = function ( history ) {
+            if ( ! Array.isArray( history ) || ! history.length ) {
+                return;
+            }
+            qaHistory = history.slice( -QA_HISTORY_MAX );
+            renderQaHistory();
+        };
         // PR #68 (CodeRabbit) — bumped by every startListening() call and
         // compared against inside askQuestion()'s response handling, so a
         // /message request left over from a PRIOR listen cycle (e.g. the
@@ -1530,6 +1583,18 @@ if ( stage && avatarWrap ) {
                 }
                 answerEl.textContent = data.say.text;
                 statusEl.textContent = '';
+                // PO-3330 — record the exchange so it's available on a
+                // return visit (read-only display, per the product decision
+                // above applyResumedQaHistory()). Saved before
+                // speakAnswerOrFallback() rather than after — the Q&A itself
+                // already succeeded at this point; a slow/failed video
+                // answer afterward shouldn't risk losing it.
+                qaHistory.push( { question: text, answer: data.say.text } );
+                if ( qaHistory.length > QA_HISTORY_MAX ) {
+                    qaHistory = qaHistory.slice( -QA_HISTORY_MAX );
+                }
+                renderQaHistory();
+                saveProgress( { qaHistory: qaHistory } );
                 await speakAnswerOrFallback( data );
             } catch ( error ) {
                 if ( generation !== askGeneration ) {
@@ -2916,6 +2981,9 @@ if ( stage && avatarWrap ) {
         }
         if ( progress.channels && progress.channels.length ) {
             applyResumedChannels( progress.channels );
+        }
+        if ( progress.qaHistory && progress.qaHistory.length && applyResumedQaHistory ) {
+            applyResumedQaHistory( progress.qaHistory );
         }
 
         const stageKey = progress.stage;
