@@ -653,10 +653,11 @@ const garyMessageUrl = ( sessionId ) => cfg.identityRestBase + '/coach/' + encod
 // PO-3062 pre-rendered clips — SCREENS panel name -> Gary's own segment key
 // (see inc/aicoach-prerender.php's ihq_aicoach_prerender_panel_map(), kept
 // in sync with this by hand; the two naming schemes predate each other).
-// "competition-world"/"competition-community"/"competition-private" are
-// deliberately not mapped — Gary's script has one combined "competitions"
-// segment where this page shows three separate panels, and there's no
-// single clip that fits all three yet.
+// "competition-world"/"competition-community"/"competition-private" are now
+// mapped — Gary's old single combined "competitions" segment is
+// 'superseded' (confirmed live), replaced by three separate approved
+// segments matching this page's three panels one for one, text
+// verbatim-identical to COMPETITION_SCREENS above.
 const PRERENDERED_PANEL_MAP = {
     'believe-1': 'we_believe_1',
     'believe-2': 'we_believe_2',
@@ -664,6 +665,9 @@ const PRERENDERED_PANEL_MAP = {
     'equity-magic': 'magic_johnson',
     'equity-alix': 'alix_earle',
     'equity-bts': 'bts',
+    'competition-world': 'world',
+    'competition-community': 'community',
+    'competition-private': 'private',
 };
 
 // FR-16 — single avatar/voice for every language (confirmed with product,
