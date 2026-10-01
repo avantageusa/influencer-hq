@@ -3702,7 +3702,8 @@
 
     body.page-template-page-portal-live-php .live-intro-text {
         margin-bottom: 16px;
-        text-align: center;
+        text-align: left;
+        padding: 0 20px;
     }
 
     body.page-template-page-portal-live-php .live-intro-text p {
@@ -3784,9 +3785,17 @@
 
     body.page-template-page-portal-live-php .live-wn-logo__wordmark {
         max-width: 420px;
-        width: 100%;
+        width: 55%;
         height: auto;
         object-fit: contain;
+    }
+
+    @media (max-width: 767px) {
+        body.page-template-page-portal-live-php .live-wn-logo__wordmark {
+            width: 55px;
+            max-width: 55px;
+            flex-shrink: 0;
+        }
     }
 
     body.page-template-page-portal-live-php .live-section-heading--banner {
@@ -3805,7 +3814,7 @@
         margin: 28px auto 18px;
         font-family: "Cinzel", serif;
         font-size: 28px;
-        font-weight: 700;
+        font-weight: 400;
         line-height: 1.25;
         letter-spacing: 0.04em;
         text-transform: uppercase;
@@ -3824,6 +3833,7 @@
         justify-content: center;
         gap: 12px 36px;
         margin-bottom: 18px;
+        padding: 20px 0;
     }
 
     body.page-template-page-portal-live-php .live-contest-tab {
@@ -3860,6 +3870,16 @@
     body.page-template-page-portal-live-php .live-contest-tab.is-open .live-contest-chevron {
         transform: rotate(90deg);
         filter: invert(22%) sepia(62%) saturate(700%) hue-rotate(6deg) brightness(90%);
+    }
+
+    body.page-template-page-portal-live-php .live-contest-panel {
+        padding: 20px 100px;
+    }
+
+    @media (max-width: 767px) {
+        body.page-template-page-portal-live-php .live-contest-panel {
+            padding: 20px 10px;
+        }
     }
 
     body.page-template-page-portal-live-php .live-contest-panel ul {
@@ -3996,7 +4016,7 @@
     body.page-template-page-portal-live-php .live-stream-now {
         display: block;
         width: min(420px, 100%);
-        margin: 36px auto 8px;
+        margin: 36px auto 80px;
         padding: 18px 28px;
         border: 0;
         border-radius: 4px;
@@ -4093,6 +4113,11 @@
         font-size: 18px;
         font-weight: 600;
         color: #fff;
+    }
+
+    body.page-template-page-portal-live-php .live-form-block > .live-label,
+    body.page-template-page-portal-live-php .live-form-block > .live-label ~ * {
+        display: none;
     }
 
     body.page-template-page-portal-live-php .live-label--opponent {
@@ -4372,7 +4397,7 @@
     body.page-template-page-portal-live-php .la-schedule-item:last-child { border-bottom:none; }
     body.page-template-page-portal-live-php .la-schedule-name { color:#ccc; font-size:14px; flex:1; }
     body.page-template-page-portal-live-php .la-schedule-actions { display:flex; gap:8px; }
-    body.page-template-page-portal-live-php .live-calendar-launch-row { display:flex; align-items:center; gap:12px; margin:2px 0 14px; }
+    body.page-template-page-portal-live-php .live-calendar-launch-row { display:none; }
     body.page-template-page-portal-live-php .live-calendar-launch-label { color:#dcdcdc; font-size:16px; }
     body.page-template-page-portal-live-php .live-calendar-open-btn { border:0; background:transparent; cursor:pointer; padding:0; }
     body.page-template-page-portal-live-php .live-calendar-modal { position:fixed; inset:0; z-index:10000; }

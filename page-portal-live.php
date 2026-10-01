@@ -155,10 +155,10 @@ if ( ! empty( $la_calendar_posts ) ) {
                 $la_months    = [ 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December' ];
                 ?>
                 <div class="live-wn-logo">
-                    <img src="<?php echo esc_url( $la_theme_uri ); ?>/images/live/world-network-logo.png" alt="" class="live-wn-logo__camera">
+                    <img src="<?php echo esc_url( $la_theme_uri ); ?>/images/live/live.png" alt="" class="live-wn-logo__camera">
                     <img src="<?php echo esc_url( $la_theme_uri ); ?>/images/live/world-network-wordmark.png" alt="world network live appearance" class="live-wn-logo__wordmark">
                 </div>
-
+                <div class="live-separator"></div>
                 <section class="live-intro-text">
                     <p>We believe live competition creates real connection and lasting influence.</p>
                     <p>Influencers will automatically be eligible to make a live appearance on the World Network.</p>
@@ -842,17 +842,13 @@ $_live_nonce = wp_create_nonce( 'request_live_appearance_nonce' );
                     setReferralUrl(res.data.url);
                     return;
                 }
-                var errMsg = (res.data && res.data.message) ? res.data.message : 'Referral link unavailable.';
+                if (res.data && res.data.message) {
+                    console.error(res.data.message);
+                }
                 setReferralUrl('');
-                var el = document.getElementById('live-url-display');
-                if (el) {
-                    el.textContent = errMsg;
-                }
-            }).catch(function() {
-                var el = document.getElementById('live-url-display');
-                if (el) {
-                    el.textContent = 'Could not load referral link.';
-                }
+            }).catch(function(error) {
+                console.error(error);
+                setReferralUrl('');
             });
     })();
 
