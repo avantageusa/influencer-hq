@@ -963,13 +963,89 @@ $_live_nonce = wp_create_nonce( 'request_live_appearance_nonce' );
     }
 
     // Form submission
+    function liveRequestValue(id) {
+        var el = document.getElementById(id);
+        return el ? el.value.trim() : '';
+    }
+
+    function liveScheduleDateIsReal(monthValue, dayValue) {
+        var month = parseInt(monthValue, 10);
+        var day = parseInt(dayValue, 10);
+        if (!month || !day) {
+            return false;
+        }
+        function isReal(year) {
+            var candidate = new Date(year, month - 1, day, 12, 0, 0);
+            return candidate.getFullYear() === year
+                && candidate.getMonth() === month - 1
+                && candidate.getDate() === day;
+        }
+        var now = new Date();
+        var year = now.getFullYear();
+        var yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+        if (!isReal(year) || new Date(year, month - 1, day, 12, 0, 0) < yesterday) {
+            year += 1;
+        }
+        return isReal(year);
+    }
+
+    function liveRequestValidationMessage() {
+        var missingSchedule = !liveRequestValue('la_choice_1_month')
+            || !liveRequestValue('la_choice_1_day')
+            || !liveRequestValue('la_choice_1_time')
+            || !liveRequestValue('la_choice_1_end_time');
+        var joint = document.querySelector('input[name="la_stream_mode"][value="joint"]');
+        var missingOpponent = !!(joint && joint.checked) && (
+            !liveRequestValue('la_opponent_first_name')
+            || !liveRequestValue('la_opponent_last_name')
+            || !liveRequestValue('la_opponent_email')
+            || !liveRequestValue('la_opponent_handle')
+        );
+        if (missingSchedule && missingOpponent) {
+            return 'Choose a month, day, start time, and end time, and enter the opponent first name, last name, email, and username.';
+        }
+        if (missingSchedule) {
+            return 'Choose a month, day, start time, and end time.';
+        }
+        if (!liveScheduleDateIsReal(liveRequestValue('la_choice_1_month'), liveRequestValue('la_choice_1_day'))) {
+            return 'Choose a real month and day.';
+        }
+        if (missingOpponent) {
+            return 'Enter the opponent first name, last name, email, and username.';
+        }
+        var emailEl = document.getElementById('la_opponent_email');
+        var emailValue = emailEl ? emailEl.value.trim() : '';
+        if (joint && joint.checked && emailValue) {
+            var emailValid = emailEl.type === 'email'
+                ? !emailEl.validity.typeMismatch
+                : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue);
+            if (!emailValid) {
+                return 'Enter a valid opponent email.';
+            }
+        }
+        return '';
+    }
+
     syncLiveStreamMode();
     syncLiveTypeHidden();
+    var opponentEmail = document.getElementById('la_opponent_email');
+    if (opponentEmail) {
+        opponentEmail.addEventListener('invalid', function (event) {
+            event.preventDefault();
+            showMsg('Enter a valid opponent email.', true);
+        });
+    }
+
     if (form) {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             syncLiveTypeHidden();
             syncLiveOpponentComm();
+            var validationMessage = liveRequestValidationMessage();
+            if (validationMessage) {
+                showMsg(validationMessage, true);
+                return;
+            }
             var btn = document.getElementById('live-request-btn');
             if (btn) { btn.disabled = true; btn.textContent = 'SUBMITTING...'; }
             var fd = new FormData(form);

@@ -341,6 +341,56 @@ function request_live_appearance_ajax() {
         $opponent_comm = 'email';
     }
 
+    if ( $stream_mode !== 'individual' ) {
+        $opponent_email_raw = trim( (string) wp_unslash( $_POST['la_opponent_email'] ?? '' ) );
+        if ( $opponent_email_raw !== '' && ! is_email( $opponent_email_raw ) ) {
+            wp_send_json_error( array( 'message' => 'Enter a valid opponent email.' ) );
+        }
+    }
+
+    $schedule_incomplete = sanitize_text_field( wp_unslash( $_POST['la_choice_1_month'] ?? '' ) ) === ''
+        || sanitize_text_field( wp_unslash( $_POST['la_choice_1_day'] ?? '' ) ) === ''
+        || $start_time === ''
+        || $end_time === '';
+    $opponent_incomplete = $stream_mode !== 'individual' && (
+        $opponent_first === ''
+        || $opponent_last === ''
+        || $opponent_email === ''
+        || $opponent === ''
+    );
+    if ( $schedule_incomplete && $opponent_incomplete ) {
+        wp_send_json_error( array(
+            'message' => 'Choose a month, day, start time, and end time, and enter the opponent first name, last name, email, and username.',
+        ) );
+    }
+    if ( $schedule_incomplete ) {
+        wp_send_json_error( array(
+            'message' => 'Choose a month, day, start time, and end time.',
+        ) );
+    }
+    if ( $opponent_incomplete ) {
+        wp_send_json_error( array(
+            'message' => 'Enter the opponent first name, last name, email, and username.',
+        ) );
+    }
+
+    if ( ! $schedule_incomplete ) {
+        $appearance_month = (int) sanitize_text_field( wp_unslash( $_POST['la_choice_1_month'] ?? '' ) );
+        $appearance_day   = (int) sanitize_text_field( wp_unslash( $_POST['la_choice_1_day'] ?? '' ) );
+        $appearance_year  = (int) current_time( 'Y' );
+        if ( checkdate( $appearance_month, $appearance_day, $appearance_year ) ) {
+            $appearance_ts = mktime( 12, 0, 0, $appearance_month, $appearance_day, $appearance_year );
+            if ( $appearance_ts < ( current_time( 'timestamp' ) - DAY_IN_SECONDS ) ) {
+                $appearance_year++;
+            }
+        } else {
+            $appearance_year++;
+        }
+        if ( ! checkdate( $appearance_month, $appearance_day, $appearance_year ) ) {
+            wp_send_json_error( array( 'message' => 'Choose a real month and day.' ) );
+        }
+    }
+
     if ( $url && ! filter_var( $url, FILTER_VALIDATE_URL ) ) {
         wp_send_json_error( array( 'message' => 'Invalid URL provided.' ) );
     }
