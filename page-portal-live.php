@@ -963,13 +963,65 @@ $_live_nonce = wp_create_nonce( 'request_live_appearance_nonce' );
     }
 
     // Form submission
+    function liveRequestValue(id) {
+        var el = document.getElementById(id);
+        return el ? el.value.trim() : '';
+    }
+
+    function liveRequestValidationMessage() {
+        var missingSchedule = !liveRequestValue('la_choice_1_month')
+            || !liveRequestValue('la_choice_1_day')
+            || !liveRequestValue('la_choice_1_time')
+            || !liveRequestValue('la_choice_1_end_time');
+        var joint = document.querySelector('input[name="la_stream_mode"][value="joint"]');
+        var missingOpponent = !!(joint && joint.checked) && (
+            !liveRequestValue('la_opponent_first_name')
+            || !liveRequestValue('la_opponent_last_name')
+            || !liveRequestValue('la_opponent_email')
+            || !liveRequestValue('la_opponent_handle')
+        );
+        if (missingSchedule && missingOpponent) {
+            return 'Choose a month, day, start time, and end time, and enter the opponent first name, last name, email, and username.';
+        }
+        if (missingSchedule) {
+            return 'Choose a month, day, start time, and end time.';
+        }
+        if (missingOpponent) {
+            return 'Enter the opponent first name, last name, email, and username.';
+        }
+        var emailEl = document.getElementById('la_opponent_email');
+        var emailValue = emailEl ? emailEl.value.trim() : '';
+        if (joint && joint.checked && emailValue) {
+            var emailValid = emailEl.type === 'email'
+                ? !emailEl.validity.typeMismatch
+                : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue);
+            if (!emailValid) {
+                return 'Enter a valid opponent email.';
+            }
+        }
+        return '';
+    }
+
     syncLiveStreamMode();
     syncLiveTypeHidden();
+    var opponentEmail = document.getElementById('la_opponent_email');
+    if (opponentEmail) {
+        opponentEmail.addEventListener('invalid', function (event) {
+            event.preventDefault();
+            showMsg('Enter a valid opponent email.', true);
+        });
+    }
+
     if (form) {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             syncLiveTypeHidden();
             syncLiveOpponentComm();
+            var validationMessage = liveRequestValidationMessage();
+            if (validationMessage) {
+                showMsg(validationMessage, true);
+                return;
+            }
             var btn = document.getElementById('live-request-btn');
             if (btn) { btn.disabled = true; btn.textContent = 'SUBMITTING...'; }
             var fd = new FormData(form);
