@@ -374,6 +374,23 @@ function request_live_appearance_ajax() {
         ) );
     }
 
+    if ( ! $schedule_incomplete ) {
+        $appearance_month = (int) sanitize_text_field( wp_unslash( $_POST['la_choice_1_month'] ?? '' ) );
+        $appearance_day   = (int) sanitize_text_field( wp_unslash( $_POST['la_choice_1_day'] ?? '' ) );
+        $appearance_year  = (int) current_time( 'Y' );
+        if ( checkdate( $appearance_month, $appearance_day, $appearance_year ) ) {
+            $appearance_ts = mktime( 12, 0, 0, $appearance_month, $appearance_day, $appearance_year );
+            if ( $appearance_ts < ( current_time( 'timestamp' ) - DAY_IN_SECONDS ) ) {
+                $appearance_year++;
+            }
+        } else {
+            $appearance_year++;
+        }
+        if ( ! checkdate( $appearance_month, $appearance_day, $appearance_year ) ) {
+            wp_send_json_error( array( 'message' => 'Choose a real month and day.' ) );
+        }
+    }
+
     if ( $url && ! filter_var( $url, FILTER_VALIDATE_URL ) ) {
         wp_send_json_error( array( 'message' => 'Invalid URL provided.' ) );
     }

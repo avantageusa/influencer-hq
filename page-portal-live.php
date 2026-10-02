@@ -968,6 +968,27 @@ $_live_nonce = wp_create_nonce( 'request_live_appearance_nonce' );
         return el ? el.value.trim() : '';
     }
 
+    function liveScheduleDateIsReal(monthValue, dayValue) {
+        var month = parseInt(monthValue, 10);
+        var day = parseInt(dayValue, 10);
+        if (!month || !day) {
+            return false;
+        }
+        function isReal(year) {
+            var candidate = new Date(year, month - 1, day, 12, 0, 0);
+            return candidate.getFullYear() === year
+                && candidate.getMonth() === month - 1
+                && candidate.getDate() === day;
+        }
+        var now = new Date();
+        var year = now.getFullYear();
+        var yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+        if (!isReal(year) || new Date(year, month - 1, day, 12, 0, 0) < yesterday) {
+            year += 1;
+        }
+        return isReal(year);
+    }
+
     function liveRequestValidationMessage() {
         var missingSchedule = !liveRequestValue('la_choice_1_month')
             || !liveRequestValue('la_choice_1_day')
@@ -985,6 +1006,9 @@ $_live_nonce = wp_create_nonce( 'request_live_appearance_nonce' );
         }
         if (missingSchedule) {
             return 'Choose a month, day, start time, and end time.';
+        }
+        if (!liveScheduleDateIsReal(liveRequestValue('la_choice_1_month'), liveRequestValue('la_choice_1_day'))) {
+            return 'Choose a real month and day.';
         }
         if (missingOpponent) {
             return 'Enter the opponent first name, last name, email, and username.';
