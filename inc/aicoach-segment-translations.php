@@ -27,12 +27,6 @@
  * language — so there's nothing else per-language to configure here beyond
  * the script text itself.
  *
- * time_selection has no entry: the sheet's "Time Ask" tab turned out to only
- * hold the tier-card UI labels (2/5/10 minutes, step lists — the same
- * strings as I18N_EN's tier-* keys in js/aicoach-coach-flow.js), not the
- * spoken "Now it's your turn…" narration. That translation doesn't exist yet
- * anywhere — not a bug here, a real content gap to flag upstream.
- *
  * A segment with no entry for a given language (or an entry that's just an
  * empty string) simply doesn't get rendered in that language yet —
  * ihq_aicoach_prerender_get_urls() falls back to the English clip, same
@@ -67,7 +61,25 @@ function ihq_aicoach_segment_translations() {
 			'vi' => 'Chúng tôi còn có một niềm tin quan trọng không kém. Chúng tôi tin rằng những người góp phần tạo ra giá trị cũng nên có cơ hội hưởng lợi từ giá trị đó. Không phải chờ đến một ngày nào đó… Mà là ngay từ đầu. Điều đó khác hẳn với cách phần lớn influencer vẫn được trả công. Khi có cơ hội sở hữu một phần công ty thì phần sở hữu ấy có thể đáng giá hơn nhiều so với khoản tiền công chỉ nhận một lần. Đây không chỉ là ý kiến của chúng tôi. Để tôi cho bạn thấy một vài ví dụ thực tế.',
 			'ko' => '마찬가지로 중요한 또 다른 신념이 있습니다. 우리는 가치 창출을 돕는 사람들이 그 가치를 함께 나눌 기회를 가져야 한다고 믿습니다. 언젠가가 아니라... 바로 처음부터 말이죠. 이는 대부분의 인플루언서들이 보상받는 전통적인 방식과는 매우 다릅니다. 의미 있는 지분을 가질 수 있게 되면 일회성 지급액보다 훨씬 더 큰 가치를 지닐 수 있습니다. 이것은 단지 저희만의 의견이 아닙니다. 몇 가지 실제 사례들을 보여드리겠습니다.',
 		),
-		'time_selection' => array(), // see top-of-file note — not in the sheet yet.
+		// time_selection (2026-10-02) — the sheet's "Time Ask" tab was filled in
+		// after this file was first written (confirmed via the PR #76 GitHub
+		// discussion thread); downloaded as .tsv, same not-hand-transcribed
+		// reasoning as the top-of-file note. Rows 1-13 are the tier-card UI
+		// labels (2/5/10 minutes, step lists) already covered by I18N_EN's
+		// tier-* keys in js/aicoach-coach-flow.js; rows 15-26 are the actual
+		// spoken narration, reconstructed here. The English column reconstructs
+		// to exactly Gary's approved string at js/aicoach-coach-flow.js:550
+		// ("Now it's your turn. How much time would you like to spend with me
+		// today?..."), confirming row-range alignment before trusting the other
+		// six languages.
+		'time_selection' => array(
+			'zh'  => '现在轮到你了。 今天你想花多少时间和我一起？ 无论你有两分钟…… 五分钟…… 还是十分钟…… 我都会确保我们共度的时间是值得的。 只需选择最适合你的时间…… 我会亲自指导你的每一步。 请记住…… 如果我们今天没能完成…… 我们只需从停下的地方继续即可。 开始吧……选择适合你的时间。',
+			'yue' => '依家到你啦。 今日你想花幾多時間同我一齊？ 無論你有兩分鐘…… 五分鐘…… 定係十分鐘…… 我都會確保我哋一齊嘅時間係值得嘅。 只要揀最適合你嘅時間…… 我就會親自帶住你行每一步。 仲有記住…… 如果我哋今日未做完…… 我哋只要喺停低嗰度繼續就得。 開始啦……揀個適合你嘅時間。',
+			'ja'  => '今度はあなたの番です。 今日はどのくらいお時間ありますか？ たとえ2分でも 5分でも 10分でも 有意義な時間となるよう、しっかりサポートします。 ご希望の所要時間を選んでください。 私が一つひとつ、丁寧にご案内します。 あらためてお伝えしますが 今日すべて完了しなくとも 次回は、今回の続きから再開することができます。 それでは、ご希望の所要時間を選んでください。',
+			'th'  => 'ทีนี้ตาคุณเลือกบ้าง วันนี้คุณอยากใช้เวลาคุยกับฉันนานแค่ไหน? ไม่ว่าคุณจะมีเวลาแค่ 2 นาที… 5 นาที… หรือ 10 นาที… ฉันจะช่วยให้คุณได้ประโยชน์จากเวลาที่เราคุยกันอย่างคุ้มค่า แค่เลือกระยะเวลาที่คุณสะดวก… แล้วฉันจะคอยแนะนำคุณด้วยตัวเองทุกขั้นตอน อย่าลืมนะ… ถ้าวันนี้เรายังคุยกันไม่จบ… ก็กลับมาคุยต่อจากตรงที่ค้างไว้ได้เลย เลือกเวลาที่สะดวกได้เลย',
+			'vi'  => 'Bây giờ đến lượt bạn. Hôm nay bạn muốn dành bao nhiêu thời gian để đồng hành cùng tôi? Dù bạn chỉ có 2 phút… 5 phút… hay 10 phút… Tôi sẽ đảm bảo khoảng thời gian chúng ta dành cho nhau hôm nay thật sự hữu ích. Chỉ cần chọn khoảng thời gian phù hợp nhất với bạn… và tôi sẽ trực tiếp hướng dẫn bạn từng bước. Và hãy nhớ… nếu hôm nay chúng ta chưa hoàn thành... chúng ta sẽ đơn giản là tiếp tục chính xác từ nơi chúng ta đã dừng lại. Hãy tiếp tục… chọn khoảng thời gian phù hợp nhất với bạn.',
+			'ko'  => '이제 당신 차례입니다. 오늘 저와 얼마나 시간을 함께 보내시겠습니까? 2분 이든… 5분 이든… 10분 이든… 저는 우리가 함께하는 시간을 가치 있게 만들겠습니다. 그저 당신에게 가장 적합한 시간을 선택해 주세요… 그러면 제가 모든 과정을 직접 안내해 드리겠습니다. 그리고 기억해 주세요… 만약 오늘 다 마무리하지 못하더라도… 멈춘 부분에서 바로 이어 나가면 됩니다. 자…당신에게 맞는 시간을 선택해 보세요.',
+		),
 		'magic_johnson'  => array(
 			'zh' => '篮球巨星魔术强森曾获得历史上最伟大的股权持有机会之一。 然而…… 他选择接受了传统的代言方案。 据估计，这个决定让他错失了价值约 54 亿美元的股权收益。 没有人能预测未来。 并不是每一个股权机会都能成功。 但是当正确的股权机会出现时…… 它的价值可能会远远超过眼前的现金报酬。 今天…… 历史上第一次…… 网红们也开始获得类似的股权机会。 让我们一起来看看其中一个例子。',
 			'yue' => '籃球巨星魔術強森曾獲得歷史上最偉大的股權持有機會之一。 然而…… 他選擇接受了傳統的代言方案。 據估計，這個決定讓他錯失了價值約 54 億美元的股權收益。 沒有人能預測未來。 並不是每一個股權機會都能成功。 但是當正確的股權機會出現時…… 它的價值可能會遠遠超過眼前的現金報酬。 今天…… 歷史上第一次…… 網紅們也開始獲得類似的股權機會。 讓我們一起來看看其中一個例子。',
