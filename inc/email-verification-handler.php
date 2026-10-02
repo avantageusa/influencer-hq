@@ -60,6 +60,9 @@ function handle_verification_email() {
         'challenge_type' => $challenge_type,
         'competition_preferences' => $competition_preferences,
         'country_iso' => ihq_normalize_country_iso_alpha2( $country_iso_client ),
+        // ENGR-6966 — kept with the pending record so the emailed link
+        // attributes even when opened in another browser or device.
+        'referrer_code' => ihq_ref_cookie_code(),
         'timestamp' => time(),
         'expires' => time() + (24 * 60 * 60) // 24 hours
     );
@@ -77,6 +80,8 @@ function handle_verification_email() {
         ),
         $hq_url
     );
+    // ENGR-6966 — email the minified link; falls back to the raw one.
+    $verification_link = ihq_minify_url_or_original( $verification_link, INFLUENCER_API_BASE );
     
     // Email subject
     $subject = 'Verify your email - Influencer HQ';
@@ -201,7 +206,7 @@ function ihq_user_has_influencer_role( $user ) {
 /**
  * Create influencer user + meta + OAuth from pending registration data.
  *
- * @param array $registration_data Keys: email, password (optional — auto-generated if missing/short), first_name, last_name, platform_handle, comm_methods, social_handles (optional), challenge_type, competition_preferences (optional), country_iso (optional, client ISO 3166-1 alpha-2), language (optional, AI Coach locale code — PO-3106/FR-15).
+ * @param array $registration_data Keys: email, password (optional — auto-generated if missing/short), first_name, last_name, platform_handle, comm_methods, social_handles (optional), challenge_type, competition_preferences (optional), country_iso (optional, client ISO 3166-1 alpha-2), language (optional, AI Coach locale code — PO-3106/FR-15), referrer_code (optional, ENGR-6966 — wins over the ihq_ref cookie).
  * @return int|WP_Error User ID or error.
  */
 function ihq_create_influencer_user_from_registration_data( array $registration_data ) {
@@ -225,6 +230,7 @@ function ihq_create_influencer_user_from_registration_data( array $registration_
     // registration came from it. sanitize_key() matches how
     // inc/aicoach-register.php already sanitizes the same value.
     $language          = isset( $registration_data['language'] ) ? sanitize_key( (string) $registration_data['language'] ) : '';
+    $referrer_code     = isset( $registration_data['referrer_code'] ) ? (string) $registration_data['referrer_code'] : '';
 
     if ( ! is_email( $email ) ) {
         return new WP_Error( 'invalid_email', 'Invalid email address' );
@@ -287,7 +293,16 @@ function ihq_create_influencer_user_from_registration_data( array $registration_
     update_user_meta( $user_id, 'email_verified', true );
     update_user_meta( $user_id, 'ihq_oauth_country_iso', ihq_normalize_country_iso_alpha2( $country_iso ) );
 
-    $ihq_oauth_response = ihq_register_oauth_user( $user_id, $first_name, $last_name, $email, $country_iso, $comm_methods, $social_handles );
+    $ihq_oauth_response = ihq_register_oauth_user(
+        $user_id,
+        $first_name,
+        $last_name,
+        $email,
+        $country_iso,
+        $comm_methods,
+        $social_handles,
+        array( 'referrer_code' => $referrer_code )
+    );
     if ( $ihq_oauth_response && ! empty( $ihq_oauth_response['AccessToken'] ) ) {
         update_user_meta( $user_id, 'ihq_access_token', $ihq_oauth_response['AccessToken'] );
         update_user_meta( $user_id, 'ihq_id_token', $ihq_oauth_response['IdToken'] );
@@ -1463,6 +1478,7 @@ function handle_email_verification_and_user_creation() {
             'challenge_type'             => $challenge_type,
             'competition_preferences'    => $competition_prefs,
             'country_iso'                => $country_iso,
+            'referrer_code'              => isset( $registration_data['referrer_code'] ) ? (string) $registration_data['referrer_code'] : '',
         )
     );
 
@@ -1660,10 +1676,18 @@ function ihq_save_start_session_response_for_profile( $user_id, $data ) {
  * @param string $country_iso Raw client ISO 3166-1 alpha-2 (typically from browser `country_iso` POST field); sanitized before send.
  * @param array  $comm_methods Modal / cookie comm_methods (key => handle).
  * @param array  $social_handles Modal social grid selections.
+ * @param array  $options {
+ *     Optional.
+ *
+ *     @type string $referrer_code Referrer code that wins over the ihq_ref cookie (ENGR-6966).
+ * }
+ *
+ * Sends `referrerCode` when an explicit code or the ihq_ref cookie is present,
+ * and clears the cookie once a start-session succeeds (ENGR-6966).
  *
  * Returns the parsed `data` object on success, or false on failure.
  */
-function ihq_register_oauth_user( $user_id, $first_name, $last_name, $email, $country_iso = '', array $comm_methods = array(), array $social_handles = array() ) {
+function ihq_register_oauth_user( $user_id, $first_name, $last_name, $email, $country_iso = '', array $comm_methods = array(), array $social_handles = array(), array $options = array() ) {
     $api_url = ihq_get_oauth_start_session_url_for_user( $user_id );
 
     $payload_inner = array(
@@ -1679,6 +1703,12 @@ function ihq_register_oauth_user( $user_id, $first_name, $last_name, $email, $co
             $payload_inner,
             ihq_build_marketing_notifications_payload_from_comm_methods( $comm_methods, $social_handles )
         );
+    }
+
+    // ENGR-6966 — added after the marketing merge so nothing can overwrite it.
+    $referrer_code = ihq_ref_resolve_referrer_code( isset( $options['referrer_code'] ) ? $options['referrer_code'] : '' );
+    if ( $referrer_code !== '' ) {
+        $payload_inner['referrerCode'] = $referrer_code;
     }
 
     $payload = array(
@@ -1716,6 +1746,9 @@ function ihq_register_oauth_user( $user_id, $first_name, $last_name, $email, $co
     }
 
     ihq_save_start_session_response_for_profile( $user_id, $body['data'] );
+
+    // ENGR-6966 — only on success: a failed call keeps the cookie for the retry.
+    ihq_ref_clear_cookie();
 
     return $body['data'];
 }

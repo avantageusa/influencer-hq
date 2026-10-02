@@ -42,6 +42,9 @@ define( 'CF_TURNSTILE_SITE_KEY',    '' );
 define( 'CF_TURNSTILE_SECRET_KEY',  '' );
 define( 'IHQ_ELEVENLABS_API_KEY',   '' );
 define( 'IHQ_GENIUS_REFERRALS_API_TOKEN', '' );   // test-form.php only
+
+// Optional — default applies when absent
+define( 'IHQ_REF_COOKIE_TTL_DAYS',  '90' );   // lifetime of the ihq_ref referral cookie (ENGR-6966)
 ```
 
 `IHQ_API_BASE_URL` and `IHQ_GAME_PORTAL_BASE_URL` must be absolute `https://` URLs; anything else
