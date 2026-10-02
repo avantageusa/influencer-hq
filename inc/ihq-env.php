@@ -21,6 +21,10 @@
  *     define( 'IHQ_ELEVENLABS_API_KEY',   '...' );
  *     define( 'IHQ_GENIUS_REFERRALS_API_TOKEN', '...' );   // test-form.php only
  *
+ * Optional constants with a default:
+ *
+ *     define( 'IHQ_REF_COOKIE_TTL_DAYS',  '90' );    // ihq_ref cookie lifetime (ENGR-6966); a string, like every other key
+ *
  * Resolution order is constant → getenv() → default, the same as
  * inc/anam-proxy.php. Do not add a second mechanism.
  *
@@ -274,4 +278,26 @@ if ( ! defined( 'INFLUENCER_API_BASE' ) ) {
  */
 function ihq_env_name() {
 	return ihq_env_require( 'IHQ_ENVIRONMENT' );
+}
+
+/** Default lifetime of the ihq_ref referral cookie, in days (ENGR-6966). */
+const IHQ_REF_COOKIE_TTL_DEFAULT_DAYS = 90;
+
+/**
+ * Lifetime of the ihq_ref referral cookie in days: IHQ_REF_COOKIE_TTL_DAYS,
+ * default 90. Values that are not a positive whole number of days fall back
+ * to the default rather than setting a cookie that expires at once.
+ *
+ * @return int
+ */
+function ihq_env_ref_cookie_ttl_days() {
+	$raw = ihq_env_get( 'IHQ_REF_COOKIE_TTL_DAYS', (string) IHQ_REF_COOKIE_TTL_DEFAULT_DAYS );
+	if ( ! is_string( $raw ) || ! ctype_digit( $raw ) ) {
+		return IHQ_REF_COOKIE_TTL_DEFAULT_DAYS;
+	}
+	$days = (int) $raw;
+	if ( $days <= 0 ) {
+		return IHQ_REF_COOKIE_TTL_DEFAULT_DAYS;
+	}
+	return $days;
 }
