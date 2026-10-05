@@ -43,6 +43,10 @@ import { createClient, AnamEvent } from 'https://cdn.jsdelivr.net/npm/@anam-ai/j
  */
 const FADE_MS = 400;
 const FALLBACK_READ_MS = 9000; // per-screen dwell for the static-text fallback (no speech to sync against)
+// ENGR-7051 — fallback (audio-only) answers: how long playback may go without
+// any progress before it is treated as finished. A recording that stalls
+// (network hangs, no error) fires neither 'ended' nor 'error'.
+const FALLBACK_AUDIO_STALL_MS = 15000;
 const AVATAR_VIDEO_ID = 'aicoach-avatar-video';
 
 // PO-3346 — Ask Sami's openPanel() previously only paused the <video>
@@ -58,8 +62,11 @@ const AVATAR_VIDEO_ID = 'aicoach-avatar-video';
 // wait) — pausing our local video rendering doesn't pause the real,
 // server-side Gary/Anam conversation, so there's no "resume from where we
 // left off" for that one the way there is for a fixed dwell or a local
-// clip's safety cap. Ask Sami is technically clickable that early (a narrow
-// window), and that gap is unaddressed — tracked, not silently assumed away.
+// clip's safety cap. That wait can therefore still end while the panel is
+// open; ENGR-7051 (review feedback, Dejan Arsić) closes the consequence of
+// that rather than the wait itself — see waitWhileSequenceHeld() below, which
+// runFallback() awaits before starting any screen, so the hand-off to the
+// next clip is held until the panel closes.
 const pausableSequenceTimers = new Set();
 // PR #63 (CodeRabbit) — the language selector stays clickable while Ask
 // Sami's panel is open, and selectLocale() can create a brand-new timer
@@ -117,10 +124,35 @@ function pauseSequenceTimers() {
     } );
 }
 
+// ENGR-7051 (review feedback, Dejan Arsić) — resolvers for everything
+// currently waiting out a hold, released together by resumeSequenceTimers().
+let sequenceHoldWaiters = [];
+
+// Resolves immediately unless the sequence is on hold (Ask Sami's panel is
+// open — sequenceTimersPaused is the existing "on hold" signal). runFallback()
+// awaits it before starting each screen so nothing new — in particular the
+// next pre-rendered clip, which plays with sound — can begin underneath the
+// open panel. The pausable timers already stop a screen from ending while the
+// panel is open; this covers the one thing they cannot, the live intro's own
+// wait finishing server-side and handing off to the first clip.
+function waitWhileSequenceHeld() {
+    if ( ! sequenceTimersPaused ) {
+        return Promise.resolve();
+    }
+    return new Promise( function ( resolve ) {
+        sequenceHoldWaiters.push( resolve );
+    } );
+}
+
 function resumeSequenceTimers() {
     sequenceTimersPaused = false;
     pausableSequenceTimers.forEach( function ( timer ) {
         timer.resume();
+    } );
+    const released = sequenceHoldWaiters;
+    sequenceHoldWaiters = [];
+    released.forEach( function ( release ) {
+        release();
     } );
 }
 
@@ -1142,6 +1174,11 @@ if ( stage && avatarWrap ) {
         let qaClient = null;
         let qaClientReady = false;
         let qaAnswering = false;
+        // ENGR-7051 — true only while a lip-synced answer stream is what the
+        // shared <video> is actually showing (not merely while an answer is
+        // being fetched or played as audio). With the panel being open, this
+        // decides whether Sami shows her idle animation — see syncAvatarIdle().
+        let qaVideoActive = false;
         // PR #73 (review feedback, Dejan Arsić) — the live MediaStream behind
         // a ready qaClient, captured once on first connect. Anam 4.27.1's
         // streamToVideoElement() throws 'Already streaming' on a second call
@@ -1359,9 +1396,34 @@ if ( stage && avatarWrap ) {
             return new Promise( function ( resolve ) {
                 qaAnswering = true;
                 const audio = new Audio( url );
+                let settled = false;
+                let stallTimer = null;
+                // ENGR-7051 (review feedback) — a recording that stalls without
+                // erroring fires neither 'ended' nor 'error', so this promise
+                // never settled: qaAnswering stayed true, closePanel() kept
+                // deferring resumeSequenceTimers() to a finish() that never
+                // came, the mic stayed disabled and the sequence stayed held
+                // until a reload. Every sign of progress ('timeupdate') re-arms
+                // a watchdog; if it fires, playback is abandoned.
+                const armStallTimer = function () {
+                    window.clearTimeout( stallTimer );
+                    stallTimer = window.setTimeout( finish, FALLBACK_AUDIO_STALL_MS );
+                };
                 const finish = function () {
+                    // finish() can be reached more than once: the watchdog fires,
+                    // then the pause() below rejects the pending play() promise
+                    // (an AbortError) whose .catch(finish) calls it again.
+                    if ( settled ) {
+                        return;
+                    }
+                    settled = true;
+                    window.clearTimeout( stallTimer );
                     audio.removeEventListener( 'ended', finish );
                     audio.removeEventListener( 'error', finish );
+                    audio.removeEventListener( 'timeupdate', armStallTimer );
+                    // A stalled recording must not start playing later, over
+                    // whatever the sequence has resumed to by then.
+                    audio.pause();
                     qaAnswering = false;
                     // Same deferred-resume reasoning as
                     // speakAnswerOrFallback()'s own finally block below — the
@@ -1378,6 +1440,8 @@ if ( stage && avatarWrap ) {
                 };
                 audio.addEventListener( 'ended', finish );
                 audio.addEventListener( 'error', finish );
+                audio.addEventListener( 'timeupdate', armStallTimer );
+                armStallTimer(); // also covers a stall before the first byte
                 audio.play().catch( finish );
             } );
         }
@@ -1451,6 +1515,12 @@ if ( stage && avatarWrap ) {
                             qaClientReady = false;
                             qaClient = null;
                             qaMediaStream = null;
+                            // ENGR-7051 (CodeRabbit) — the stream behind
+                            // qaVideoActive is gone with the client; without this
+                            // an open panel kept the dead stream's last frame
+                            // on screen instead of the idle portrait.
+                            qaVideoActive = false;
+                            syncAvatarIdle();
                         }
                     };
                     client.addListener( AnamEvent.CONNECTION_CLOSED, persistentCloseHandler );
@@ -1510,10 +1580,30 @@ if ( stage && avatarWrap ) {
                     video.srcObject = qaMediaStream;
                 }
                 avatarWrap.dataset.status = 'live'; // reveals .aicoach-avatar-video over the static portrait, same CSS state as any other playing video
+                qaVideoActive = true; // the answer stream is on screen now — drop the idle animation so it shows instead
+                syncAvatarIdle();
                 await client.talk( data.say.text );
+                // ENGR-7051 (review feedback) — waitForQaSpeechOrSkip() can only
+                // hear a CONNECTION_CLOSED that arrives after it is called. If the
+                // connection dropped while talk() was still in flight, persistentCloseHandler
+                // has already cleared qaClient and nothing would ever wake the
+                // wait, so it would sit out the full 25 s cap on a dead stream.
+                // Fail into the catch below (fallback audio) straight away. No
+                // await between this check and the call, so there is no window.
+                if ( qaClient !== client ) {
+                    throw new Error( 'Anam connection closed while the answer was being sent.' );
+                }
                 await waitForQaSpeechOrSkip( client, 25000 );
             } catch ( error ) {
                 console.warn( '[aicoach] Ask Sami video answer failed, falling back to audio/text:', error );
+                // ENGR-7051 (CodeRabbit) — the answer stream is gone as of here
+                // (talk() threw, or the connection dropped mid-speech), but
+                // the finally block below is what normally clears
+                // qaVideoActive, and it runs only AFTER the fallback audio
+                // finishes. Without this she would sit on the dead stream's
+                // last frame for that whole time instead of idling.
+                qaVideoActive = false;
+                syncAvatarIdle();
                 teardownQaClient( client, persistentCloseHandler );
                 if ( qaClient === client ) {
                     qaClientReady = false;
@@ -1524,6 +1614,7 @@ if ( stage && avatarWrap ) {
                     await playFallbackAudio( data.say.audio.url );
                 }
             } finally {
+                qaVideoActive = false;
                 video.srcObject = null;
                 if ( qaVideoSnapshot.src ) {
                     video.src = qaVideoSnapshot.src;
@@ -1553,6 +1644,10 @@ if ( stage && avatarWrap ) {
                 }
                 avatarWrap.dataset.status = qaVideoSnapshot.status;
                 qaAnswering = false;
+                // The restored (re-paused) clip frame must not be what a still-open
+                // panel leaves on screen — back to the idle animation, or, if the
+                // panel was closed meanwhile, let the video resume below.
+                syncAvatarIdle();
                 // The panel may have already been closed while this was
                 // still speaking — closePanel() deliberately left both the
                 // sequence-timer and wasPlaying resume to us in that case
@@ -1641,8 +1736,21 @@ if ( stage && avatarWrap ) {
             }
         }
 
+        // ENGR-7051 — openPanel() pauses the shared <video>, which on its own
+        // leaves Sami frozen on whatever frame she was on (often mid-word) for
+        // as long as the panel stays open: while listening, while a question is
+        // in flight, and again after an answer finishes. While the panel is open
+        // and no lip-synced answer is on screen, the avatar wrapper gets
+        // .is-idle and the CSS swaps that frame for her neutral portrait with a
+        // gentle looping animation. Derived from those two facts and recomputed
+        // at every transition, never set ad hoc, so it cannot get stuck on.
+        function syncAvatarIdle() {
+            avatarWrap.classList.toggle( 'is-idle', wrap.classList.contains( 'is-open' ) && ! qaVideoActive );
+        }
+
         function openPanel() {
             wrap.classList.add( 'is-open' );
+            syncAvatarIdle();
             btn.setAttribute( 'aria-expanded', 'true' );
             // FR-19 — the invite pulse (if one was showing) has done its job
             // the moment the visitor actually opens the panel; the paused
@@ -1654,14 +1762,16 @@ if ( stage && avatarWrap ) {
             // PO-3346 — pausing the video alone left the sequence's own
             // dwell/safety timers running, so it could advance to a later
             // screen (or start a new clip) while this panel sat open on top
-            // of it. Doesn't cover the live intro's own wait — see the note
-            // on pausableSequenceTimers' declaration.
+            // of it. The live intro's own wait still ends on its own, but
+            // runFallback() holds the hand-off to the next screen until this
+            // panel closes — see waitWhileSequenceHeld().
             pauseSequenceTimers();
             startListening();
         }
 
         function closePanel() {
             wrap.classList.remove( 'is-open' );
+            syncAvatarIdle();
             btn.setAttribute( 'aria-expanded', 'false' );
             stopListening();
             // PR #73 (CodeRabbit) — if a spoken answer (video or fallback
@@ -2242,6 +2352,9 @@ if ( stage && avatarWrap ) {
             avatarWrap.dataset.status = 'idle';
         }
         for ( ; sequenceIndex < SCREENS.length; sequenceIndex++ ) {
+            // ENGR-7051 — never start a screen (and so a clip, which has sound)
+            // underneath an open Ask Sami panel. A no-op unless the panel is open.
+            await waitWhileSequenceHeld();
             const screen = SCREENS[ sequenceIndex ];
             // PO-3343 — believe-1 gets the icons-first opening beat instead of
             // the normal immediate caption; startBelieveOneIntro() (called
@@ -2267,6 +2380,13 @@ if ( stage && avatarWrap ) {
                 // had to queue behind another in-flight transition (it can
                 // take longer than one FADE_MS in that case; see showPanel()).
                 await panelReady;
+                // ENGR-7051 (CodeRabbit) — the hold at the top of the loop was
+                // checked BEFORE this transition's fade; a visitor can open Ask
+                // Sami during it, and playPrerenderedClip() below would then start
+                // the clip (with sound) under the open panel. Re-check here, and
+                // before the locale re-resolve below so a language picked while
+                // held (which closes the panel) is the one that plays.
+                await waitWhileSequenceHeld();
                 // FR-14/PO-3105 — re-resolve against currentLocale rather than
                 // reusing a URL captured before this await: a visitor who picks
                 // a different language during showPanel()'s ~800ms fade (before
