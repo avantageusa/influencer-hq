@@ -15,7 +15,7 @@ tests = [
     "tests/oauth-start-session-referrer.test.php",
 ]
 handler = "inc/email-verification-handler.php"
-resolve_call = "$first_name = ihq_registration_first_name_or_username( $first_name, $username );"
+resolve_call = "$first_name    = ihq_registration_first_name_or_username( $first_name, $created_login );"
 mutations = [
     # ihq_registration_first_name_or_username()
     (handler, "if ( trim( $given_name ) !== '' ) {", "if ( $given_name !== '' ) {"),
@@ -25,7 +25,10 @@ mutations = [
     (handler, "    $given_name = (string) $first_name;\n    if", "    $given_name = $first_name;\n    if"),
     # ihq_create_influencer_user_from_registration_data()
     (handler, resolve_call, ""),
-    (handler, resolve_call, "$first_name = ihq_registration_first_name_or_username( $first_name, $original_username );"),
+    (handler, resolve_call, "$first_name    = ihq_registration_first_name_or_username( $first_name, $original_username );"),
+    # ENGR-7016 review: the stored (strict-sanitized) login must win over the requested username.
+    (handler, "? $created_user->user_login : $username;", "? $username : $username;"),
+    (handler, "( $created_user && ! empty( $created_user->user_login ) )", "( $created_user )"),
     (handler, "update_user_meta( $user_id, 'first_name', $first_name );", "update_user_meta( $user_id, 'first_name', '' );"),
     (handler, "        $user_id,\n        $first_name,\n", "        $user_id,\n        '',\n"),
 ]

@@ -274,7 +274,12 @@ function ihq_create_influencer_user_from_registration_data( array $registration_
     }
 
     // ENGR-7016 — resolved after wp_create_user() so the de-duplicated username is used.
-    $first_name = ihq_registration_first_name_or_username( $first_name, $username );
+    // wp_insert_user() re-sanitizes the login in strict mode, which drops characters
+    // the non-strict sanitize_user() above keeps (e.g. '+' in plus-addressed emails),
+    // so read back the login WordPress actually stored.
+    $created_user  = get_userdata( $user_id );
+    $created_login = ( $created_user && ! empty( $created_user->user_login ) ) ? $created_user->user_login : $username;
+    $first_name    = ihq_registration_first_name_or_username( $first_name, $created_login );
 
     if ( $first_name ) {
         update_user_meta( $user_id, 'first_name', $first_name );

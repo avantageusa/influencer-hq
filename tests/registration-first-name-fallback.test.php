@@ -41,6 +41,8 @@ function reset_state() {
 	$GLOBALS['user_meta']       = array();
 	$GLOBALS['created_users']   = array();
 	$GLOBALS['taken_usernames'] = array();
+	$GLOBALS['stored_logins']   = array();
+	$GLOBALS['userdata_fails']  = false;
 	$_COOKIE                    = array();
 }
 
@@ -53,13 +55,29 @@ function wp_unslash( $v ) { return stripslashes( $v ); }
 function sanitize_text_field( $s ) { return trim( preg_replace( '/[\r\n\t ]+/', ' ', strip_tags( $s ) ) ); }
 function sanitize_email( $s ) { return trim( $s ); }
 function sanitize_key( $s ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', $s ) ); }
-function sanitize_user( $s ) { return preg_replace( '/[^a-z0-9_.\-]/i', '', $s ); }
+// Mirrors WordPress: non-strict keeps characters such as '+'; strict (what
+// wp_insert_user() applies to the login) reduces to [a-z0-9 _.-@].
+function sanitize_user( $s, $strict = false ) {
+	$s = trim( strip_tags( $s ) );
+	if ( $strict ) {
+		$s = preg_replace( '|[^a-z0-9 _.\-@]|i', '', $s );
+	}
+	return trim( $s );
+}
 function is_email( $s ) { return is_string( $s ) && strpos( $s, '@' ) !== false; }
 function email_exists( $s ) { return false; }
 function username_exists( $s ) { return in_array( $s, $GLOBALS['taken_usernames'], true ); }
 function wp_create_user( $username, $password, $email ) {
 	$GLOBALS['created_users'][] = array( 'username' => $username, 'email' => $email );
+	// Like wp_insert_user(): the stored login is the strict-sanitized username.
+	$GLOBALS['stored_logins'][ NEW_USER_ID ] = sanitize_user( $username, true );
 	return NEW_USER_ID;
+}
+function get_userdata( $id ) {
+	if ( $GLOBALS['userdata_fails'] || ! isset( $GLOBALS['stored_logins'][ $id ] ) ) {
+		return false;
+	}
+	return (object) array( 'user_login' => $GLOBALS['stored_logins'][ $id ] );
 }
 function wp_generate_password( $len = 12 ) { return 'TOKEN123'; }
 function wp_json_encode( $v, $flags = 0 ) { return json_encode( $v, $flags ); }
@@ -164,6 +182,20 @@ create_user( array( 'email' => 'ann.lee@example.test', 'first_name' => '', 'last
 check( 'taken: user created as ann.lee2', $GLOBALS['created_users'][0]['username'], 'ann.lee2' );
 check( 'taken: first_name meta = de-duplicated username', name_meta(), array( 'first_name' => 'ann.lee2', 'last_name' => null ) );
 check( 'taken: start-session sends the de-duplicated username', start_session_payloads(), array( expected_payload( 'ann.lee2', '' ) ) );
+
+// --- Plus-addressed email: WordPress strips '+' from the stored login, so the
+// first name must be the stored login, not the pre-insert username. ---
+reset_state();
+create_user( array( 'email' => 'ann+tag@example.test', 'first_name' => '', 'last_name' => '' ) );
+check( 'plus: requested username keeps the plus (non-strict sanitize)', $GLOBALS['created_users'][0]['username'], 'ann+tag' );
+check( 'plus: first_name meta = stored login without the plus', name_meta(), array( 'first_name' => 'anntag', 'last_name' => null ) );
+check( 'plus: start-session sends the stored login as firstName', start_session_payloads()[0]['firstName'], 'anntag' );
+
+// --- get_userdata() unavailable: falls back to the requested username. ---
+reset_state();
+$GLOBALS['userdata_fails'] = true;
+create_user( array( 'email' => 'ann.lee@example.test', 'first_name' => '', 'last_name' => '' ) );
+check( 'no userdata: first_name meta = requested username', name_meta(), array( 'first_name' => 'ann.lee', 'last_name' => null ) );
 
 // --- Real names: unchanged. ---
 reset_state();
