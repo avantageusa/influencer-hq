@@ -2333,6 +2333,13 @@ if ( stage && avatarWrap ) {
                 // had to queue behind another in-flight transition (it can
                 // take longer than one FADE_MS in that case; see showPanel()).
                 await panelReady;
+                // ENGR-7051 (CodeRabbit) — the hold at the top of the loop was
+                // checked BEFORE this transition's fade; a visitor can open Ask
+                // Sami during it, and playPrerenderedClip() below would then start
+                // the clip (with sound) under the open panel. Re-check here, and
+                // before the locale re-resolve below so a language picked while
+                // held (which closes the panel) is the one that plays.
+                await waitWhileSequenceHeld();
                 // FR-14/PO-3105 — re-resolve against currentLocale rather than
                 // reusing a URL captured before this await: a visitor who picks
                 // a different language during showPanel()'s ~800ms fade (before

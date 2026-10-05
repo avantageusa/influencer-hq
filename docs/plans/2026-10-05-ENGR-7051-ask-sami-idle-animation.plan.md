@@ -89,7 +89,10 @@ must not advance underneath a question), so the fix is to change what is
   covering the video that became audible narration behind a non-speaking face.
   `waitWhileSequenceHeld()` (resolves at once unless `sequenceTimersPaused`,
   the existing "on hold" signal) is awaited at the top of each `runFallback()`
-  iteration, and `resumeSequenceTimers()` releases waiters. No new state: it
+  iteration — and again right after `await panelReady`, because that hold is
+  checked before the screen's 400 ms fade and a visitor can open the panel
+  during it (CodeRabbit finding on the first version of this fix) — and
+  `resumeSequenceTimers()` releases waiters. No new state: it
   reuses the flag the pause/resume pair already maintains, so it follows
   `qaAnswering`'s deferral rules too (nothing starts under an audible answer).
 - **Accessibility.** `prefers-reduced-motion: reduce` keeps the swap to the
@@ -147,6 +150,11 @@ were real:
   started 0.5 s later. A question asked during the intro was answered to the
   end (~19 s of speech) with the panel still on `intro`, nothing overwriting
   the stream; closing afterwards continued to `believe-1`.
+- **The fade-window gap (CodeRabbit):** Ask Sami opened by a MutationObserver
+  at the exact instant a screen transition started (inside the 400 ms fade):
+  9 s later the new panel was active but no clip had loaded — no `loadstart` or
+  `play` events, video still paused at the end of the previous clip; closing
+  the panel started the next clip 0.2 s later.
 - Panel opened mid-clip: the clip stayed paused at the same position for 7 s
   and resumed from there on close, without advancing.
 - Regression, no panel: believe-1 → believe-2 → time selection → tier click
