@@ -1,8 +1,9 @@
 <?php
 /**
- * Unit test for inc/gary-proxy.php's registration-locale clamping
- * (ihq_coach_handle_open_session()). No WordPress bootstrap: stubs the
- * handful of WP functions/classes the function touches, and stubs
+ * Unit test for inc/gary-proxy.php: the registration-locale choice
+ * (ihq_coach_handle_open_session() and the approved-locale lookup behind it,
+ * ENGR-7064) and the other proxy routes. No WordPress bootstrap: stubs the
+ * handful of WP functions/classes the code touches, and stubs
  * wp_remote_request() to capture the outgoing payload instead of making a
  * real network call to Gary, e.g.
  *
@@ -52,18 +53,39 @@ function ihq_env_is_https_url( $url ) {
 	return isset( $parts['scheme'] ) && strtolower( $parts['scheme'] ) === 'https';
 }
 
+// Array-backed stand-ins for the WordPress cache/option APIs, so the approved-
+// locale lookup's caching can be asserted without a database.
+$GLOBALS['wp_transients']     = array();
+$GLOBALS['wp_transient_ttls'] = array();
+$GLOBALS['wp_options']        = array();
+function get_transient( $key ) { return array_key_exists( $key, $GLOBALS['wp_transients'] ) ? $GLOBALS['wp_transients'][ $key ] : false; }
+function set_transient( $key, $value, $ttl = 0 ) { $GLOBALS['wp_transients'][ $key ] = $value; $GLOBALS['wp_transient_ttls'][ $key ] = $ttl; return true; }
+function get_option( $key, $default = false ) { return array_key_exists( $key, $GLOBALS['wp_options'] ) ? $GLOBALS['wp_options'][ $key ] : $default; }
+function update_option( $key, $value, $autoload = null ) { $GLOBALS['wp_options'][ $key ] = $value; return true; }
+
 $GLOBALS['last_remote_request']    = null;
 $GLOBALS['remote_request_error']    = false; // set true to simulate a transport failure
 $GLOBALS['remote_request_conflict'] = false; // set true to simulate advance's 409
+// The registration manifest the stub serves, and how many times / how it was asked for.
+$GLOBALS['scripts_body']            = array( 'version' => 'test-v1', 'segments' => array( 'intro' => array( 'status' => 'approved' ) ) );
+$GLOBALS['scripts_status']          = 200;
+$GLOBALS['scripts_transport_error'] = false; // transport failure for the manifest ONLY (the session POST still works)
+$GLOBALS['scripts_request_count']   = 0;
+$GLOBALS['last_scripts_request']    = null;
 function wp_remote_request( $url, $args ) {
 	$GLOBALS['last_remote_request'] = array( 'url' => $url, 'args' => $args );
 	if ( $GLOBALS['remote_request_error'] ) {
 		return new WP_Error( 'http_request_failed', 'Could not resolve host' );
 	}
 	if ( false !== strpos( $url, '/registration/scripts' ) ) {
+		++$GLOBALS['scripts_request_count'];
+		$GLOBALS['last_scripts_request'] = array( 'url' => $url, 'args' => $args );
+		if ( $GLOBALS['scripts_transport_error'] ) {
+			return new WP_Error( 'http_request_failed', 'Operation timed out' );
+		}
 		return array(
-			'response' => array( 'code' => 200 ),
-			'body'     => json_encode( array( 'version' => 'test-v1', 'segments' => array( 'intro' => array( 'status' => 'approved' ) ) ) ),
+			'response' => array( 'code' => $GLOBALS['scripts_status'] ),
+			'body'     => json_encode( $GLOBALS['scripts_body'] ),
 		);
 	}
 	if ( false !== strpos( $url, '/coach/v1/health' ) ) {
@@ -153,6 +175,201 @@ check( 'empty string falls back to en', 'en' === sent_locale( '' ) );
 check( 'unsupported locale (ja) falls back to en', 'en' === sent_locale( 'ja' ) );
 check( 'unsupported locale (zh) falls back to en', 'en' === sent_locale( 'zh' ) );
 check( 'unsupported locale (fr) falls back to en', 'en' === sent_locale( 'fr' ) );
+
+// --- ENGR-7064: the locale Gary is told follows what Gary reports as approved. ---
+
+function reset_locale_state() {
+	$GLOBALS['wp_transients']           = array();
+	$GLOBALS['wp_transient_ttls']       = array();
+	$GLOBALS['wp_options']              = array();
+	$GLOBALS['scripts_body']            = array( 'version' => 'test-v1', 'segments' => array( 'intro' => array( 'status' => 'approved' ) ) ); // no `locales` key at all
+	$GLOBALS['scripts_status']          = 200;
+	$GLOBALS['scripts_transport_error'] = false;
+	$GLOBALS['scripts_request_count']   = 0;
+	$GLOBALS['last_scripts_request']    = null;
+}
+// What Gary's manifest looks like once it reports approved locales.
+function gary_approves( $registration, $free_text = array( 'en' ) ) {
+	$GLOBALS['scripts_body'] = array( 'version' => 'test-v3', 'mode' => 'approved_content', 'locales' => $registration, 'free_text_locales' => $free_text, 'segments' => array() );
+}
+// A cached read ages out.
+function expire_locale_cache() { unset( $GLOBALS['wp_transients'][ IHQ_COACH_LOCALES_TRANSIENT ] ); }
+
+// Gary today (2026-10-05): approved registration languages are ["en"] only.
+reset_locale_state();
+gary_approves( array( 'en' ) );
+check( 'today (Gary approves en only): ja still opens an en session', 'en' === sent_locale( 'ja' ) );
+check( 'today: zh still opens an en session', 'en' === sent_locale( 'zh' ) );
+check( 'today: en-us still passes through as given (variant of an approved language)', 'en-us' === sent_locale( 'en-us' ) );
+check( 'today: en still passes through', 'en' === sent_locale( 'en' ) );
+
+// The day Gary approves a language, it opens by itself (once the cache window passes).
+reset_locale_state();
+gary_approves( array( 'en', 'ja', 'zh' ) );
+check( 'approved ja opens a ja session', 'ja' === sent_locale( 'ja' ) );
+check( 'approved zh opens a zh session', 'zh' === sent_locale( 'zh' ) );
+check( 'a language Gary has NOT approved (yue) still falls back to en', 'en' === sent_locale( 'yue' ) );
+check( 'ko, not approved, falls back to en', 'en' === sent_locale( 'ko' ) );
+check( 'uppercase JA is normalised to ja', 'ja' === sent_locale( 'JA' ) );
+check( 'a regional variant of an approved language passes through as given (ja-jp)', 'ja-jp' === sent_locale( 'ja-jp' ) );
+check( 'a script + region variant of an approved language passes through as given (ja-latn-jp)', 'ja-latn-jp' === sent_locale( 'ja-latn-jp' ) );
+check( 'a regional variant of an unapproved language falls back to en (ko-kr)', 'en' === sent_locale( 'ko-kr' ) );
+
+// Malformed or hostile locale values never reach Gary, even with ja approved.
+foreach ( array( '', 'e', 'en_US', "ja\nzh", 'ja<script>', 'ja-', '-ja', '123', 'ja--jp', str_repeat( 'x', 40 ), 'ja-' . str_repeat( 'x', 9 ), 'ja-x', 'ja-x-private', 'ja-u-ca-japanese', 'ja-a', 'ja-j-jp' ) as $bad_input ) {
+	check( 'malformed locale ' . json_encode( $bad_input ) . ' becomes en', 'en' === sent_locale( $bad_input ) );
+}
+check( 'null locale becomes en even with ja approved', 'en' === sent_locale( null ) );
+
+// What Gary returns is filtered to the theme's 7 codes, lower-cased, de-duplicated.
+reset_locale_state();
+gary_approves( array( 'en', 'fr', 'JA', 123, null, 'ja', array( 'zh' ), ' ko ' ), array( 'en', 'ZH', 'xx' ) );
+$approved = ihq_coach_approved_locales();
+check( 'registration list: unknown codes, non-strings and duplicates dropped; case and whitespace normalised', array( 'en', 'ja', 'ko' ) === $approved['registration'] );
+check( 'free_text list is read separately from the registration list', array( 'en', 'zh' ) === $approved['free_text'] );
+
+reset_locale_state();
+gary_approves( array( 'en', 'ja' ), array( 'en' ) );
+$approved = ihq_coach_approved_locales();
+check( 'a language can be approved for sessions but not for free-text questions', array( 'en', 'ja' ) === $approved['registration'] && array( 'en' ) === $approved['free_text'] );
+
+reset_locale_state();
+$GLOBALS['scripts_body'] = array( 'locales' => array( 'en', 'ja' ) ); // no free_text_locales key
+check( 'a manifest without free_text_locales yields an empty free-text list', array() === ihq_coach_approved_locales()['free_text'] );
+
+// Caching: one read serves every session in the window, with a short timeout.
+reset_locale_state();
+gary_approves( array( 'en', 'ja' ) );
+sent_locale( 'ja' );
+sent_locale( 'ja' );
+sent_locale( 'zh' );
+check( 'three session opens inside the cache window read Gary once', 1 === $GLOBALS['scripts_request_count'] );
+check( 'the lookup uses the short timeout, not the 15 s default', IHQ_COACH_LOCALES_FETCH_TIMEOUT === $GLOBALS['last_scripts_request']['args']['timeout'] );
+check( 'a successful read is cached for the default 10 minutes', 600 === $GLOBALS['wp_transient_ttls'][ IHQ_COACH_LOCALES_TRANSIENT ] );
+check( 'a successful read is also kept as the last-good copy', array( 'en', 'ja' ) === $GLOBALS['wp_options'][ IHQ_COACH_LOCALES_LAST_GOOD_OPTION ]['registration'] );
+
+// Once the cache window passes, a newly approved language is picked up.
+gary_approves( array( 'en', 'ja', 'ko' ) );
+check( 'before the cache expires the new approval is not seen yet', 'en' === sent_locale( 'ko' ) );
+expire_locale_cache();
+check( 'after expiry the newly approved language opens', 'ko' === sent_locale( 'ko' ) );
+check( 'the expiry caused exactly one more read', 2 === $GLOBALS['scripts_request_count'] );
+
+// The TTL is an option; nonsense falls back to the default.
+reset_locale_state();
+gary_approves( array( 'en' ) );
+$GLOBALS['wp_options'][ IHQ_COACH_LOCALES_TTL_OPTION ] = 120;
+ihq_coach_approved_locales();
+check( 'ihq_coach_locales_cache_ttl overrides the cache lifetime', 120 === $GLOBALS['wp_transient_ttls'][ IHQ_COACH_LOCALES_TRANSIENT ] );
+foreach ( array( 0, -5, 'abc', '' ) as $bad_ttl ) {
+	reset_locale_state();
+	gary_approves( array( 'en' ) );
+	$GLOBALS['wp_options'][ IHQ_COACH_LOCALES_TTL_OPTION ] = $bad_ttl;
+	ihq_coach_approved_locales();
+	check( 'a non-positive/invalid ttl option (' . json_encode( $bad_ttl ) . ') falls back to 600', 600 === $GLOBALS['wp_transient_ttls'][ IHQ_COACH_LOCALES_TRANSIENT ] );
+}
+
+// Gary unreachable, never read before: English only, and the failure is cached briefly.
+reset_locale_state();
+$GLOBALS['scripts_transport_error'] = true;
+check( 'Gary unreachable with no history: ja opens an en session', 'en' === sent_locale( 'ja' ) );
+check( 'that fallback is cached for the short failure window (60 s)', 60 === $GLOBALS['wp_transient_ttls'][ IHQ_COACH_LOCALES_TRANSIENT ] );
+sent_locale( 'ja' );
+sent_locale( 'zh' );
+check( 'an outage costs one attempt per window, not one per visitor', 1 === $GLOBALS['scripts_request_count'] );
+check( 'a failed read is not stored as the last-good copy', ! array_key_exists( IHQ_COACH_LOCALES_LAST_GOOD_OPTION, $GLOBALS['wp_options'] ) );
+
+// Gary goes down after a good read: the last good value keeps working.
+reset_locale_state();
+gary_approves( array( 'en', 'ja' ) );
+sent_locale( 'ja' );
+expire_locale_cache();
+$GLOBALS['scripts_transport_error'] = true;
+check( 'Gary down after a good read: the last good list still opens ja', 'ja' === sent_locale( 'ja' ) );
+check( 'last-good fallback is cached for the short window too', 60 === $GLOBALS['wp_transient_ttls'][ IHQ_COACH_LOCALES_TRANSIENT ] );
+
+// Non-2xx and malformed bodies count as failures, not as "nothing approved".
+foreach ( array( 500, 503, 401, 404 ) as $bad_status ) {
+	reset_locale_state();
+	gary_approves( array( 'en', 'ja' ) );
+	sent_locale( 'ja' );
+	expire_locale_cache();
+	$GLOBALS['scripts_status'] = $bad_status;
+	gary_approves( array( 'en' ) ); // even a body that would narrow the list must be ignored on a non-2xx
+	check( 'HTTP ' . $bad_status . ' from the manifest keeps the last good list', 'ja' === sent_locale( 'ja' ) );
+}
+reset_locale_state();
+gary_approves( array( 'en', 'ja' ) );
+sent_locale( 'ja' );
+expire_locale_cache();
+$GLOBALS['scripts_body'] = array( 'error' => array( 'code' => 'something_else' ) ); // 200, but no `locales`
+check( 'a 200 body with no locales array keeps the last good list', 'ja' === sent_locale( 'ja' ) );
+expire_locale_cache();
+$GLOBALS['scripts_body'] = array( 'locales' => 'ja' ); // locales present but not an array
+check( 'a non-array locales value keeps the last good list', 'ja' === sent_locale( 'ja' ) );
+reset_locale_state();
+gary_approves( array() ); // Gary genuinely approves nothing: a valid, empty answer
+check( 'an empty (but valid) approved list is honoured: everything falls back to en', 'en' === sent_locale( 'ja' ) && 'en' === sent_locale( 'en-us' ) );
+
+// A corrupted last-good option is ignored rather than trusted.
+reset_locale_state();
+$GLOBALS['scripts_transport_error']                       = true;
+$GLOBALS['wp_options'][ IHQ_COACH_LOCALES_LAST_GOOD_OPTION ] = 'garbage';
+check( 'a corrupt last-good value falls back to en only', 'en' === sent_locale( 'ja' ) );
+
+// A JSON *object* where a list is expected is a malformed manifest, not a
+// successful read (ihq_coach_request() decodes objects to PHP arrays too).
+reset_locale_state();
+gary_approves( array( 'en', 'ja' ) );
+sent_locale( 'ja' );
+expire_locale_cache();
+$GLOBALS['scripts_body'] = array( 'locales' => array( 'primary' => 'ja', 'secondary' => 'ko' ) ); // JSON object
+check( 'object-shaped locales keeps the last good list', 'ja' === sent_locale( 'ja' ) && 'en' === sent_locale( 'ko' ) );
+check( 'object-shaped locales does not overwrite the last-good copy', array( 'en', 'ja' ) === $GLOBALS['wp_options'][ IHQ_COACH_LOCALES_LAST_GOOD_OPTION ]['registration'] );
+expire_locale_cache();
+$GLOBALS['scripts_body'] = array( 'locales' => array( 'en', 'ja', 'ko' ), 'free_text_locales' => array( 'primary' => 'en' ) );
+check( 'object-shaped free_text_locales makes the whole manifest malformed: last good kept', 'ja' === sent_locale( 'ja' ) && 'en' === sent_locale( 'ko' ) );
+reset_locale_state();
+$GLOBALS['scripts_body'] = array( 'locales' => array( 'primary' => 'ja' ) );
+check( 'object-shaped locales with no history: en only, nothing stored as last good', 'en' === sent_locale( 'ja' ) && ! array_key_exists( IHQ_COACH_LOCALES_LAST_GOOD_OPTION, $GLOBALS['wp_options'] ) );
+reset_locale_state();
+$GLOBALS['scripts_body'] = array( 'locales' => array() ); // an empty JSON array is a valid, empty list
+check( 'an empty JSON array is a valid list (nothing approved)', array() === ihq_coach_approved_locales()['registration'] );
+
+// Storage is untrusted: a record with the right keys but wrong value types
+// must be ignored, never handed to in_array() (a TypeError on PHP 8).
+reset_locale_state();
+$GLOBALS['wp_transients'][ IHQ_COACH_LOCALES_TRANSIENT ] = array( 'registration' => 'ja', 'free_text' => array( 'en' ) );
+gary_approves( array( 'en', 'ko' ) );
+check( 'cached record with a non-list value is ignored and the manifest is read instead', 'ko' === sent_locale( 'ko' ) );
+reset_locale_state();
+$GLOBALS['scripts_transport_error'] = true;
+$GLOBALS['wp_options'][ IHQ_COACH_LOCALES_LAST_GOOD_OPTION ] = array( 'registration' => 'ja', 'free_text' => 'en' );
+check( 'last-good record with non-list values falls back to en only (no TypeError)', 'en' === sent_locale( 'ja' ) );
+reset_locale_state();
+$GLOBALS['scripts_transport_error'] = true;
+$GLOBALS['wp_options'][ IHQ_COACH_LOCALES_LAST_GOOD_OPTION ] = array( 'registration' => array( 'primary' => 'ja' ), 'free_text' => array( 'en' ) );
+check( 'last-good record whose list is an object falls back to en only', 'en' === sent_locale( 'ja' ) );
+reset_locale_state();
+$GLOBALS['scripts_transport_error'] = true;
+$GLOBALS['wp_options'][ IHQ_COACH_LOCALES_LAST_GOOD_OPTION ] = array( 'registration' => array( 'en', 7, array( 'x' ), 'JA', 'fr', null ), 'free_text' => array( 'EN' ) );
+$stored = ihq_coach_approved_locales();
+check( 'junk inside a stored list is filtered out when it is read back', array( 'en', 'ja' ) === $stored['registration'] && array( 'en' ) === $stored['free_text'] );
+reset_locale_state();
+
+// Only the lookup got the shorter timeout: every other call keeps 15 s.
+reset_locale_state();
+ihq_coach_handle_health();
+check( 'ihq_coach_request() default timeout is unchanged for other callers', 15 === $GLOBALS['last_remote_request']['args']['timeout'] );
+
+// The session payload around the locale is untouched.
+reset_locale_state();
+gary_approves( array( 'en', 'ja' ) );
+ihq_coach_handle_open_session( new WP_REST_Request( array( 'locale' => 'ja' ) ) );
+$session_body = json_decode( $GLOBALS['last_remote_request']['args']['body'], true );
+check( 'session open still sends the pseudonymous player.ref and want set', '00000000-0000-0000-0000-000000000000' === $session_body['player']['ref'] && array( 'text', 'audio', 'video' ) === $session_body['want'] );
+check( 'the session open is the last request (the locale lookup happens before it)', false !== strpos( $GLOBALS['last_remote_request']['url'], '/coach/v1/session' ) );
+reset_locale_state();
 
 // ihq_coach_handle_scripts() — GET /coach/v1/registration/scripts passthrough.
 $GLOBALS['remote_request_error'] = false;

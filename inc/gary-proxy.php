@@ -193,9 +193,12 @@ function ihq_coach_sign_headers( $method, $path, $body_json ) {
  *                                    /coach/v1/videos. Never part of the signature base —
  *                                    confirmed against coach-client.mjs, Gary's own reference
  *                                    signer, which only signs method/path/body.
+ * @param int        $timeout       Seconds before giving up. Defaults to 15, the value every
+ *                                    caller has always had; only a caller sitting on the
+ *                                    visitor-facing path with a cheap fallback passes less.
  * @return array{status:int,body:array}|WP_Error
  */
-function ihq_coach_request( $method, $path, $body_array = null, $extra_headers = array() ) {
+function ihq_coach_request( $method, $path, $body_array = null, $extra_headers = array(), $timeout = 15 ) {
 	// IHQ_COACH_HOST is a trusted admin-defined constant, not user input — but
 	// it's still worth refusing to sign/send anything to it unless it's an
 	// absolute https:// origin, same "never trust a bare constant" discipline
@@ -217,7 +220,7 @@ function ihq_coach_request( $method, $path, $body_array = null, $extra_headers =
 
 	$args = array(
 		'method'      => $method,
-		'timeout'     => 15,
+		'timeout'     => $timeout,
 		// wp_remote_request() follows redirects by default and resends the
 		// same $args — including these signed Coach headers — to wherever the
 		// redirect points. We know Gary's exact host; never follow elsewhere
@@ -304,6 +307,190 @@ function ihq_coach_permission_check( WP_REST_Request $request ) {
 }
 
 /**
+ * The 7 locale codes the AI Coach UI supports — the same codes as
+ * SUPPORTED_LOCALES in js/aicoach-coach-flow.js. Anything else Gary reports
+ * as approved is ignored: this theme has no UI for it.
+ */
+const IHQ_COACH_THEME_LOCALES = array( 'en', 'zh', 'yue', 'ja', 'ko', 'th', 'vi' );
+
+/** Transient holding the approved-locale lists Gary last reported. */
+const IHQ_COACH_LOCALES_TRANSIENT = 'ihq_coach_approved_locales';
+
+/** Non-expiring copy of the last successful read, served while Gary is unreachable. */
+const IHQ_COACH_LOCALES_LAST_GOOD_OPTION = 'ihq_coach_approved_locales_last_good';
+
+/** Option overriding how long (seconds) a successful read is cached. */
+const IHQ_COACH_LOCALES_TTL_OPTION = 'ihq_coach_locales_cache_ttl';
+
+const IHQ_COACH_LOCALES_TTL_DEFAULT = 600;
+
+/** How long a failed read's fallback is cached, so an outage is not retried per visitor. */
+const IHQ_COACH_LOCALES_FAILURE_TTL = 60;
+
+/** The lookup sits on the visitor's session-open path and has a cheap fallback, so it gets less than ihq_coach_request()'s default 15 s. */
+const IHQ_COACH_LOCALES_FETCH_TIMEOUT = 5;
+
+/**
+ * Keep only this theme's supported codes, lower-cased and de-duplicated.
+ *
+ * @param mixed $codes Whatever Gary sent for a locale list.
+ * @return string[]
+ */
+function ihq_coach_filter_theme_locales( $codes ) {
+	if ( ! is_array( $codes ) ) {
+		return array();
+	}
+	$kept = array();
+	foreach ( $codes as $code ) {
+		if ( ! is_string( $code ) ) {
+			continue;
+		}
+		$code = strtolower( trim( $code ) );
+		if ( in_array( $code, IHQ_COACH_THEME_LOCALES, true ) && ! in_array( $code, $kept, true ) ) {
+			$kept[] = $code;
+		}
+	}
+	return $kept;
+}
+
+/**
+ * Whether $value is a JSON array (a list), not a JSON object. ihq_coach_request()
+ * decodes both to PHP arrays, so `{"primary":"ja"}` would otherwise pass an
+ * is_array() check. (array_is_list() needs PHP 8.1.)
+ *
+ * @param mixed $value Decoded JSON value.
+ * @return bool
+ */
+function ihq_coach_is_json_list( $value ) {
+	return is_array( $value ) && ( array() === $value || array_keys( $value ) === range( 0, count( $value ) - 1 ) );
+}
+
+/**
+ * Validate and clean a locale record read back from the cache or the last-good
+ * option: both lists must be arrays, and their contents are re-filtered to the
+ * supported codes. Anything else — a scalar, a missing key, a list that is
+ * not a list — is untrusted storage, not a record, so the caller falls back
+ * instead of handing a string to in_array() (a TypeError on PHP 8).
+ *
+ * @param mixed $record Value from get_transient()/get_option().
+ * @return array{registration:string[],free_text:string[]}|null
+ */
+function ihq_coach_clean_locale_record( $record ) {
+	if ( ! is_array( $record ) || ! isset( $record['registration'], $record['free_text'] )
+		|| ! ihq_coach_is_json_list( $record['registration'] ) || ! ihq_coach_is_json_list( $record['free_text'] ) ) {
+		return null;
+	}
+	return array(
+		'registration' => ihq_coach_filter_theme_locales( $record['registration'] ),
+		'free_text'    => ihq_coach_filter_theme_locales( $record['free_text'] ),
+	);
+}
+
+/**
+ * What is assumed when Gary has never been read successfully: English only,
+ * which is what Gary has accepted since the registration surface existed.
+ *
+ * @return array{registration:string[],free_text:string[]}
+ */
+function ihq_coach_default_approved_locales() {
+	return array(
+		'registration' => array( 'en' ),
+		'free_text'    => array( 'en' ),
+	);
+}
+
+/**
+ * One uncached read of the approved lists from Gary's registration manifest
+ * (GET /coach/v1/registration/scripts: `locales` = accepted for registration
+ * sessions, `free_text_locales` = accepted for free-text questions).
+ *
+ * @return array{registration:string[],free_text:string[]}|null Null on any
+ *         failure — transport error, non-2xx, or a body whose `locales` (or
+ *         `free_text_locales`, when present) is not a JSON list.
+ */
+function ihq_coach_fetch_approved_locales() {
+	$result = ihq_coach_request( 'GET', '/coach/v1/registration/scripts', null, array(), IHQ_COACH_LOCALES_FETCH_TIMEOUT );
+	if ( is_wp_error( $result ) ) {
+		return null;
+	}
+	$status = (int) $result['status'];
+	$body   = $result['body'];
+	if ( $status < 200 || $status >= 300 || ! isset( $body['locales'] ) || ! ihq_coach_is_json_list( $body['locales'] ) ) {
+		return null;
+	}
+	// free_text_locales may be absent, but if Gary sends it, it must be a list
+	// too — a malformed manifest must not replace the last good one.
+	$free_text = isset( $body['free_text_locales'] ) ? $body['free_text_locales'] : array();
+	if ( ! ihq_coach_is_json_list( $free_text ) ) {
+		return null;
+	}
+	return array(
+		'registration' => ihq_coach_filter_theme_locales( $body['locales'] ),
+		'free_text'    => ihq_coach_filter_theme_locales( $free_text ),
+	);
+}
+
+/**
+ * The locales Gary currently accepts, cached. A successful read is cached for
+ * ihq_coach_locales_cache_ttl seconds (default 10 minutes) and also kept as a
+ * last-good copy. When Gary cannot be read, the last-good copy (or English
+ * only if there never was one) is served and that fallback is cached briefly,
+ * so a Gary outage costs one short attempt per minute rather than one per
+ * visitor.
+ *
+ * @return array{registration:string[],free_text:string[]}
+ */
+function ihq_coach_approved_locales() {
+	$cached = ihq_coach_clean_locale_record( get_transient( IHQ_COACH_LOCALES_TRANSIENT ) );
+	if ( null !== $cached ) {
+		return $cached;
+	}
+
+	$fresh = ihq_coach_fetch_approved_locales();
+	if ( null !== $fresh ) {
+		$ttl = (int) get_option( IHQ_COACH_LOCALES_TTL_OPTION, IHQ_COACH_LOCALES_TTL_DEFAULT );
+		set_transient( IHQ_COACH_LOCALES_TRANSIENT, $fresh, $ttl > 0 ? $ttl : IHQ_COACH_LOCALES_TTL_DEFAULT );
+		update_option( IHQ_COACH_LOCALES_LAST_GOOD_OPTION, $fresh, false );
+		return $fresh;
+	}
+
+	$last_good = ihq_coach_clean_locale_record( get_option( IHQ_COACH_LOCALES_LAST_GOOD_OPTION, null ) );
+	$fallback  = null !== $last_good ? $last_good : ihq_coach_default_approved_locales();
+	set_transient( IHQ_COACH_LOCALES_TRANSIENT, $fallback, IHQ_COACH_LOCALES_FAILURE_TTL );
+	return $fallback;
+}
+
+/**
+ * The player.locale to send Gary for a visitor who asked for $requested.
+ *
+ * The requested value, lower-cased, is sent as given when it — or its primary
+ * subtag — is a language Gary currently accepts for registration sessions,
+ * which is exactly how `en-us`/`en-gb` have always passed through; anything
+ * else, or a value that is not a well-formed locale tag, becomes `en`.
+ *
+ * @param string $requested Raw locale from the browser.
+ * @return string
+ */
+function ihq_coach_resolve_registration_locale( $requested ) {
+	$locale = strtolower( trim( (string) $requested ) );
+	// Language plus optional subtags of 2-8 characters (script, region, variant).
+	// No single-character subtag is accepted, which rules out the BCP 47
+	// extension and private-use singletons (`ja-x`, `ja-u-ca-japanese`) that
+	// are only well-formed with further subtags; nothing in this product sends
+	// them, so they fall back to `en` rather than being half-validated.
+	if ( 1 !== preg_match( '/^[a-z]{2,3}(-[a-z0-9]{2,8})*$/', $locale ) ) {
+		return 'en';
+	}
+
+	$primary  = explode( '-', $locale, 2 )[0];
+	$approved = ihq_coach_approved_locales()['registration'];
+	if ( in_array( $locale, $approved, true ) || in_array( $primary, $approved, true ) ) {
+		return $locale;
+	}
+	return 'en';
+}
+
+/**
  * POST /ihq/v1/coach/session — open a session with Sami.
  *
  * The player.ref is a fresh random UUID per session, never tied to any WP user or
@@ -313,17 +500,13 @@ function ihq_coach_permission_check( WP_REST_Request $request ) {
  * @return WP_REST_Response
  */
 function ihq_coach_handle_open_session( WP_REST_Request $request ) {
-	$locale = strtolower( sanitize_text_field( (string) $request->get_param( 'locale' ) ) );
-
-	// Gary's registration surface accepts only reviewed English locale variants
-	// and returns a 422 for anything else (confirmed 2026-09-16) — the visitor
-	// can still see the UI in any of the 7 supported locales (PO-3103/PO-3104),
-	// this only controls what we tell Gary until other translations are
-	// approved and released on their side.
-	$gary_registration_locales = array( 'en', 'en-us', 'en-gb' );
-	if ( ! in_array( $locale, $gary_registration_locales, true ) ) {
-		$locale = 'en';
-	}
+	// Gary's registration surface rejects any locale it has no approved copy for
+	// with a 422 (confirmed 2026-09-16), so what we tell it is limited to what it
+	// reports as approved right now — English only until translated registration
+	// copy is loaded on its side, after which a language opens by itself. The
+	// visitor can see the UI in any of the 7 supported locales regardless
+	// (PO-3103/PO-3104); this only controls what the Gary session is opened in.
+	$locale = ihq_coach_resolve_registration_locale( sanitize_text_field( (string) $request->get_param( 'locale' ) ) );
 
 	$payload = array(
 		'player' => array(
