@@ -378,16 +378,15 @@ function request_live_appearance_ajax() {
         $appearance_month = (int) sanitize_text_field( wp_unslash( $_POST['la_choice_1_month'] ?? '' ) );
         $appearance_day   = (int) sanitize_text_field( wp_unslash( $_POST['la_choice_1_day'] ?? '' ) );
         $appearance_year  = (int) current_time( 'Y' );
-        if ( checkdate( $appearance_month, $appearance_day, $appearance_year ) ) {
-            $appearance_ts = mktime( 12, 0, 0, $appearance_month, $appearance_day, $appearance_year );
-            if ( $appearance_ts < ( current_time( 'timestamp' ) - DAY_IN_SECONDS ) ) {
-                $appearance_year++;
-            }
-        } else {
-            $appearance_year++;
-        }
         if ( ! checkdate( $appearance_month, $appearance_day, $appearance_year ) ) {
             wp_send_json_error( array( 'message' => 'Choose a real month and day.' ) );
+        }
+        $appearance_date = sprintf( '%04d-%02d-%02d', $appearance_year, $appearance_month, $appearance_day );
+        if ( $appearance_date < current_time( 'Y-m-d' ) ) {
+            wp_send_json_error( array( 'message' => 'Choose a date that is not in the past.' ) );
+        }
+        if ( $end_time <= $start_time ) {
+            wp_send_json_error( array( 'message' => 'Choose an end time that is after the start time.' ) );
         }
     }
 
