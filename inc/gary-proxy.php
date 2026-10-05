@@ -354,6 +354,39 @@ function ihq_coach_filter_theme_locales( $codes ) {
 }
 
 /**
+ * Whether $value is a JSON array (a list), not a JSON object. ihq_coach_request()
+ * decodes both to PHP arrays, so `{"primary":"ja"}` would otherwise pass an
+ * is_array() check. (array_is_list() needs PHP 8.1.)
+ *
+ * @param mixed $value Decoded JSON value.
+ * @return bool
+ */
+function ihq_coach_is_json_list( $value ) {
+	return is_array( $value ) && ( array() === $value || array_keys( $value ) === range( 0, count( $value ) - 1 ) );
+}
+
+/**
+ * Validate and clean a locale record read back from the cache or the last-good
+ * option: both lists must be arrays, and their contents are re-filtered to the
+ * supported codes. Anything else — a scalar, a missing key, a list that is
+ * not a list — is untrusted storage, not a record, so the caller falls back
+ * instead of handing a string to in_array() (a TypeError on PHP 8).
+ *
+ * @param mixed $record Value from get_transient()/get_option().
+ * @return array{registration:string[],free_text:string[]}|null
+ */
+function ihq_coach_clean_locale_record( $record ) {
+	if ( ! is_array( $record ) || ! isset( $record['registration'], $record['free_text'] )
+		|| ! ihq_coach_is_json_list( $record['registration'] ) || ! ihq_coach_is_json_list( $record['free_text'] ) ) {
+		return null;
+	}
+	return array(
+		'registration' => ihq_coach_filter_theme_locales( $record['registration'] ),
+		'free_text'    => ihq_coach_filter_theme_locales( $record['free_text'] ),
+	);
+}
+
+/**
  * What is assumed when Gary has never been read successfully: English only,
  * which is what Gary has accepted since the registration surface existed.
  *
@@ -372,7 +405,8 @@ function ihq_coach_default_approved_locales() {
  * sessions, `free_text_locales` = accepted for free-text questions).
  *
  * @return array{registration:string[],free_text:string[]}|null Null on any
- *         failure — transport error, non-2xx, or a body with no `locales` array.
+ *         failure — transport error, non-2xx, or a body whose `locales` (or
+ *         `free_text_locales`, when present) is not a JSON list.
  */
 function ihq_coach_fetch_approved_locales() {
 	$result = ihq_coach_request( 'GET', '/coach/v1/registration/scripts', null, array(), IHQ_COACH_LOCALES_FETCH_TIMEOUT );
@@ -381,12 +415,18 @@ function ihq_coach_fetch_approved_locales() {
 	}
 	$status = (int) $result['status'];
 	$body   = $result['body'];
-	if ( $status < 200 || $status >= 300 || ! isset( $body['locales'] ) || ! is_array( $body['locales'] ) ) {
+	if ( $status < 200 || $status >= 300 || ! isset( $body['locales'] ) || ! ihq_coach_is_json_list( $body['locales'] ) ) {
+		return null;
+	}
+	// free_text_locales may be absent, but if Gary sends it, it must be a list
+	// too — a malformed manifest must not replace the last good one.
+	$free_text = isset( $body['free_text_locales'] ) ? $body['free_text_locales'] : array();
+	if ( ! ihq_coach_is_json_list( $free_text ) ) {
 		return null;
 	}
 	return array(
 		'registration' => ihq_coach_filter_theme_locales( $body['locales'] ),
-		'free_text'    => ihq_coach_filter_theme_locales( isset( $body['free_text_locales'] ) ? $body['free_text_locales'] : array() ),
+		'free_text'    => ihq_coach_filter_theme_locales( $free_text ),
 	);
 }
 
@@ -401,8 +441,8 @@ function ihq_coach_fetch_approved_locales() {
  * @return array{registration:string[],free_text:string[]}
  */
 function ihq_coach_approved_locales() {
-	$cached = get_transient( IHQ_COACH_LOCALES_TRANSIENT );
-	if ( is_array( $cached ) && isset( $cached['registration'], $cached['free_text'] ) ) {
+	$cached = ihq_coach_clean_locale_record( get_transient( IHQ_COACH_LOCALES_TRANSIENT ) );
+	if ( null !== $cached ) {
 		return $cached;
 	}
 
@@ -414,10 +454,8 @@ function ihq_coach_approved_locales() {
 		return $fresh;
 	}
 
-	$last_good = get_option( IHQ_COACH_LOCALES_LAST_GOOD_OPTION, null );
-	$fallback  = ( is_array( $last_good ) && isset( $last_good['registration'], $last_good['free_text'] ) )
-		? $last_good
-		: ihq_coach_default_approved_locales();
+	$last_good = ihq_coach_clean_locale_record( get_option( IHQ_COACH_LOCALES_LAST_GOOD_OPTION, null ) );
+	$fallback  = null !== $last_good ? $last_good : ihq_coach_default_approved_locales();
 	set_transient( IHQ_COACH_LOCALES_TRANSIENT, $fallback, IHQ_COACH_LOCALES_FAILURE_TTL );
 	return $fallback;
 }
@@ -435,7 +473,12 @@ function ihq_coach_approved_locales() {
  */
 function ihq_coach_resolve_registration_locale( $requested ) {
 	$locale = strtolower( trim( (string) $requested ) );
-	if ( 1 !== preg_match( '/^[a-z]{2,3}(-[a-z0-9]{1,8})*$/', $locale ) ) {
+	// Language plus optional subtags of 2-8 characters (script, region, variant).
+	// No single-character subtag is accepted, which rules out the BCP 47
+	// extension and private-use singletons (`ja-x`, `ja-u-ca-japanese`) that
+	// are only well-formed with further subtags; nothing in this product sends
+	// them, so they fall back to `en` rather than being half-validated.
+	if ( 1 !== preg_match( '/^[a-z]{2,3}(-[a-z0-9]{2,8})*$/', $locale ) ) {
 		return 'en';
 	}
 

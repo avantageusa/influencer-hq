@@ -71,6 +71,26 @@ keep sending `en` until someone edits the list and deploys.
   non-English regional variant is unverified; if it does not, the session open
   fails the same way any other Gary failure already does (static fallback).
 
+- **Hardening (CodeRabbit review).** Three malformed-input cases were found,
+  reproduced on PHP 8.3 and fixed:
+  1. `ihq_coach_request()` decodes JSON objects to PHP arrays, so
+     `"locales":{"primary":"ja"}` passed `is_array()` and replaced the cached
+     and last-good lists as if it were a good read. `locales` (and
+     `free_text_locales`, when present) must now be a JSON *list*
+     (`ihq_coach_is_json_list()`, written without `array_is_list()` so it does
+     not need PHP 8.1); anything else is a failed read.
+  2. A cached or stored record with the right keys but the wrong value type
+     (`'registration' => 'ja'`) reached `in_array()`, a `TypeError` on PHP 8
+     that would have broken session opening during a Gary outage. Both stored
+     records now go through `ihq_coach_clean_locale_record()`, which requires
+     two lists and re-filters their contents; anything else is treated as
+     missing.
+  3. The locale format check accepted `ja-x` and `ja-x-private`, which are not
+     well-formed BCP 47 (a singleton needs following subtags). Subtags must now
+     be 2 to 8 characters, which rules out every extension and private-use
+     singleton; nothing in this product sends them, so they fall back to `en`
+     rather than being half-validated.
+
 ## Alternatives considered
 - **Read `registration_languages` from `/health`.** Same data today, but the
   manifest also carries `free_text_locales`, which the Ask Sami follow-up needs.
@@ -94,15 +114,20 @@ outage. `ihq_coach_request()`'s default timeout is unchanged. No frontend,
 REST route, progress-record, or prerender change; no overlap with ENGR-7051.
 
 ## Verification
-- `tests/gary-proxy.test.php`: 110 checks, all pass (Gary stubbed, no network):
+- `tests/gary-proxy.test.php`: 125 checks, all pass (Gary stubbed, no network):
   today's `["en"]` manifest, a newly approved language opening, variants,
   malformed and hostile locale values, filtering to the 7 codes, the separate
   free-text list, cache hit / expiry, the TTL option and invalid values, an
   outage with and without a last-good copy, non-2xx and malformed bodies, a
   corrupt last-good option, and the unchanged 15 s default timeout for every
-  other caller. Seven deliberate mutations of the new code (primary-subtag
-  match, de-duplication, the failure cache, the short timeout, the TTL guard,
-  the last-good write, the locale format check) each made checks fail.
+  other caller, plus the three review cases above (object-shaped lists, stored
+  records with wrong value types, singleton subtags). Against the code before
+  the hardening the new tests fail (9 checks plus the real `TypeError`), and
+  deliberate mutations of the new code (primary-subtag match, de-duplication,
+  the failure cache, the short timeout, the TTL guard, the last-good write,
+  the locale format check, each list check, both stored-record validations,
+  re-filtering of stored lists, `ihq_coach_is_json_list()`) each make checks
+  fail.
 - Every PHP suite in `tests/` passes; `php -l` clean.
 - Live (wp-env, real Gary): the manifest parses to `registration ["en"]`,
   `free_text ["en"]`, the transient and last-good option are written, and

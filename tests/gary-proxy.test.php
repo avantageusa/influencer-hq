@@ -212,10 +212,11 @@ check( 'a language Gary has NOT approved (yue) still falls back to en', 'en' ===
 check( 'ko, not approved, falls back to en', 'en' === sent_locale( 'ko' ) );
 check( 'uppercase JA is normalised to ja', 'ja' === sent_locale( 'JA' ) );
 check( 'a regional variant of an approved language passes through as given (ja-jp)', 'ja-jp' === sent_locale( 'ja-jp' ) );
+check( 'a script + region variant of an approved language passes through as given (ja-latn-jp)', 'ja-latn-jp' === sent_locale( 'ja-latn-jp' ) );
 check( 'a regional variant of an unapproved language falls back to en (ko-kr)', 'en' === sent_locale( 'ko-kr' ) );
 
 // Malformed or hostile locale values never reach Gary, even with ja approved.
-foreach ( array( '', 'e', 'en_US', "ja\nzh", 'ja<script>', 'ja-', '-ja', '123', 'ja--jp', str_repeat( 'x', 40 ), 'ja-' . str_repeat( 'x', 9 ) ) as $bad_input ) {
+foreach ( array( '', 'e', 'en_US', "ja\nzh", 'ja<script>', 'ja-', '-ja', '123', 'ja--jp', str_repeat( 'x', 40 ), 'ja-' . str_repeat( 'x', 9 ), 'ja-x', 'ja-x-private', 'ja-u-ca-japanese', 'ja-a', 'ja-j-jp' ) as $bad_input ) {
 	check( 'malformed locale ' . json_encode( $bad_input ) . ' becomes en', 'en' === sent_locale( $bad_input ) );
 }
 check( 'null locale becomes en even with ja approved', 'en' === sent_locale( null ) );
@@ -315,6 +316,46 @@ reset_locale_state();
 $GLOBALS['scripts_transport_error']                       = true;
 $GLOBALS['wp_options'][ IHQ_COACH_LOCALES_LAST_GOOD_OPTION ] = 'garbage';
 check( 'a corrupt last-good value falls back to en only', 'en' === sent_locale( 'ja' ) );
+
+// A JSON *object* where a list is expected is a malformed manifest, not a
+// successful read (ihq_coach_request() decodes objects to PHP arrays too).
+reset_locale_state();
+gary_approves( array( 'en', 'ja' ) );
+sent_locale( 'ja' );
+expire_locale_cache();
+$GLOBALS['scripts_body'] = array( 'locales' => array( 'primary' => 'ja', 'secondary' => 'ko' ) ); // JSON object
+check( 'object-shaped locales keeps the last good list', 'ja' === sent_locale( 'ja' ) && 'en' === sent_locale( 'ko' ) );
+check( 'object-shaped locales does not overwrite the last-good copy', array( 'en', 'ja' ) === $GLOBALS['wp_options'][ IHQ_COACH_LOCALES_LAST_GOOD_OPTION ]['registration'] );
+expire_locale_cache();
+$GLOBALS['scripts_body'] = array( 'locales' => array( 'en', 'ja', 'ko' ), 'free_text_locales' => array( 'primary' => 'en' ) );
+check( 'object-shaped free_text_locales makes the whole manifest malformed: last good kept', 'ja' === sent_locale( 'ja' ) && 'en' === sent_locale( 'ko' ) );
+reset_locale_state();
+$GLOBALS['scripts_body'] = array( 'locales' => array( 'primary' => 'ja' ) );
+check( 'object-shaped locales with no history: en only, nothing stored as last good', 'en' === sent_locale( 'ja' ) && ! array_key_exists( IHQ_COACH_LOCALES_LAST_GOOD_OPTION, $GLOBALS['wp_options'] ) );
+reset_locale_state();
+$GLOBALS['scripts_body'] = array( 'locales' => array() ); // an empty JSON array is a valid, empty list
+check( 'an empty JSON array is a valid list (nothing approved)', array() === ihq_coach_approved_locales()['registration'] );
+
+// Storage is untrusted: a record with the right keys but wrong value types
+// must be ignored, never handed to in_array() (a TypeError on PHP 8).
+reset_locale_state();
+$GLOBALS['wp_transients'][ IHQ_COACH_LOCALES_TRANSIENT ] = array( 'registration' => 'ja', 'free_text' => array( 'en' ) );
+gary_approves( array( 'en', 'ko' ) );
+check( 'cached record with a non-list value is ignored and the manifest is read instead', 'ko' === sent_locale( 'ko' ) );
+reset_locale_state();
+$GLOBALS['scripts_transport_error'] = true;
+$GLOBALS['wp_options'][ IHQ_COACH_LOCALES_LAST_GOOD_OPTION ] = array( 'registration' => 'ja', 'free_text' => 'en' );
+check( 'last-good record with non-list values falls back to en only (no TypeError)', 'en' === sent_locale( 'ja' ) );
+reset_locale_state();
+$GLOBALS['scripts_transport_error'] = true;
+$GLOBALS['wp_options'][ IHQ_COACH_LOCALES_LAST_GOOD_OPTION ] = array( 'registration' => array( 'primary' => 'ja' ), 'free_text' => array( 'en' ) );
+check( 'last-good record whose list is an object falls back to en only', 'en' === sent_locale( 'ja' ) );
+reset_locale_state();
+$GLOBALS['scripts_transport_error'] = true;
+$GLOBALS['wp_options'][ IHQ_COACH_LOCALES_LAST_GOOD_OPTION ] = array( 'registration' => array( 'en', 7, array( 'x' ), 'JA', 'fr', null ), 'free_text' => array( 'EN' ) );
+$stored = ihq_coach_approved_locales();
+check( 'junk inside a stored list is filtered out when it is read back', array( 'en', 'ja' ) === $stored['registration'] && array( 'en' ) === $stored['free_text'] );
+reset_locale_state();
 
 // Only the lookup got the shorter timeout: every other call keeps 15 s.
 reset_locale_state();
