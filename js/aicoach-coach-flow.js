@@ -1521,6 +1521,14 @@ if ( stage && avatarWrap ) {
                 await waitForQaSpeechOrSkip( client, 25000 );
             } catch ( error ) {
                 console.warn( '[aicoach] Ask Sami video answer failed, falling back to audio/text:', error );
+                // ENGR-7051 (CodeRabbit) — the answer stream is gone as of here
+                // (talk() threw, or the connection dropped mid-speech), but
+                // the finally block below is what normally clears
+                // qaVideoActive, and it runs only AFTER the fallback audio
+                // finishes. Without this she would sit on the dead stream's
+                // last frame for that whole time instead of idling.
+                qaVideoActive = false;
+                syncAvatarIdle();
                 teardownQaClient( client, persistentCloseHandler );
                 if ( qaClient === client ) {
                     qaClientReady = false;

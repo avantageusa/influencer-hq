@@ -22,7 +22,7 @@ todos:
     status: completed
   - id: verify
     content: Exercise every state live (clip, live intro stream, caption-only screen, answer playback, audio-only fallback, close/reopen, language switch) and run lint
-    status: in-progress
+    status: completed
 ---
 
 # [ENGR-7051] Animated idle state for Sami while Ask Sami is open
@@ -61,10 +61,14 @@ must not advance underneath a question), so the fix is to change what is
   being shown (new boolean `qaVideoActive`, true only between "answer stream
   attached" and the `finally` of `speakAnswerOrFallback()`). A single
   `syncAvatarIdle()` recomputes it; it is called from `openPanel()`,
-  `closePanel()`, and the two points in `speakAnswerOrFallback()` where the
-  answer stream starts and ends. Audio-only fallback answers
+  `closePanel()`, and the points in `speakAnswerOrFallback()` where the
+  answer stream starts, fails and ends. Audio-only fallback answers
   (`playFallbackAudio()`) deliberately keep her idle — there is no lip-synced
-  video to show.
+  video to show. This includes the failure case: if `talk()` throws or the
+  connection drops mid-speech (`waitForQaSpeechOrSkip()` rejects on purpose),
+  the `catch` clears `qaVideoActive` and re-syncs *before* awaiting the
+  fallback audio, because the `finally` that normally clears it only runs
+  after that audio ends (found by CodeRabbit on review).
 - **Visuals (`page-home-aicoach.php`).** While `is-idle`, the video fades out
   and the existing neutral portrait (`coach-portrait.webp`, already
   extracted from her real rendered video so the face matches) shows instead,
@@ -103,32 +107,51 @@ derived from state and recomputed at every transition rather than toggled
 ad hoc.
 
 ## Verification (wp-env, real Gary session)
-Exercised live: the live intro stream interrupted by Ask Sami (idle class on,
-video hidden, portrait animating continuously, scale 1.001–1.029); close via
-the × button, the button's second click and an outside click (idle off, video
-back and playing); a full question/answer round trip with the panel open
-(idle during the ~13 s of thinking and avatar connecting, off exactly when the
-answer stream starts with a clean crossfade, back on when it ends while the
-panel is still open); the audio-only fallback (idle stays on for the whole
-answer). `php -l` and a module syntax check pass.
+Exercised live, in a visible browser so video playback and CSS transitions
+were real:
+- A pre-rendered clip interrupted by Ask Sami: before, the clip was playing
+  (video opacity 1, portrait 0); after the click the video is paused and
+  hidden and the portrait is opaque with the breathing animation running
+  (scale oscillating 1.001–1.029).
+- The live intro stream interrupted by Ask Sami: same result.
+- Closing via the × button, the button's second click and an outside click:
+  idle clears, the video is back and playing.
+- A full question and answer with the panel open: idle during the ~13 s of
+  thinking and avatar connecting, off exactly when the answer stream starts
+  (clean ~0.4 s crossfade), back on when it ends while the panel is still open.
+- **Closing the panel while the lip-synced answer is still speaking:** idle
+  stays off and the video stays visible until the answer finishes; once the
+  stream ends the clip resumes and nothing is left stuck.
+- The audio-only fallback (video stripped from the `/message` response): idle
+  stays on for the whole answer and clears on close.
+
+`php -l`, a module syntax check and the existing PHP suites (`gary-proxy`,
+`aicoach-progress`, `aicoach-language-braze`) pass.
 
 **Not exercised, called out rather than assumed:**
-- Closing the panel while a lip-synced answer is still on screen — covered by
-  the derived state (the panel-closed input flips immediately, the `finally`
-  recomputes again) but not driven live.
-- `prefers-reduced-motion: reduce` — the rule is the same selector as the
+- The `catch` fix for a video answer that fails *after* the stream started
+  (`talk()` throws, or the connection drops mid-speech) was verified by
+  tracing the code, not driven live. A live attempt (capturing Anam's
+  `RTCPeerConnection` and closing it mid-answer) could not be completed: the
+  Anam account's concurrent-session limit kept refusing new streams.
+- `prefers-reduced-motion: reduce` — the rule uses the same selector as the
   animation rule so it cannot lose on specificity, but the media query itself
   was not emulated.
-- The pre-rendered-clip case visually (the baseline freeze was reproduced
-  before the change; after it, only the class/CSS state was checked). During
-  the later runs the Browser pane was hidden, which stops video playback and
-  CSS transitions, so frame-level visuals could not be re-checked then.
 - No ESLint run: dependencies are not installed in this checkout.
 
 ## Notes
+- Two pre-existing issues surfaced while testing; neither is caused by this
+  change and neither is fixed here. (1) The live intro's Anam client
+  (`activeClient`) is never stopped, so it keeps holding a concurrent avatar
+  seat for its lifetime; combined with the account's concurrency limit
+  ("Concurrency limit reached"), the first Ask Sami video answer falls back to
+  audio/text whenever seats are busy. (2) Opening Ask Sami during the live
+  intro lets the intro finish server-side and the sequence start the next clip
+  under the open panel, overwriting the answer stream on the shared `<video>`
+  (the gap already documented next to `pausableSequenceTimers`).
 - The same "frozen" look exists briefly elsewhere: after a clip ends the last
   frame stays on screen for the identity / channels / final screens. Not part
   of this ticket — flagged for a follow-up decision rather than widened here.
-- The microphone is blocked inside the Browser pane used for verification, so
-  speech recognition cannot be driven for real; the answer path is exercised by
-  feeding a transcript to the page's own recognition handler.
+- Speech recognition is not driven for real during verification (the
+  microphone is blocked in the embedded browser); the answer path is
+  exercised by feeding a transcript to the page's own recognition handler.
