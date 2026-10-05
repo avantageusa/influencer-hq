@@ -67,6 +67,8 @@ function is_email( $s ) { return strpos( $s, '@' ) !== false; }
 function email_exists( $s ) { return false; }
 function username_exists( $s ) { return false; }
 function wp_create_user( $u, $p, $e ) { return 77; }
+// ENGR-7016 reads the stored login back after creation; false keeps this test on the requested username.
+function get_userdata( $id ) { return false; }
 function wp_generate_password( $len = 12 ) { return 'TOKEN123'; }
 function wp_verify_nonce( $n, $a ) { return $n === 'good'; }
 function wp_json_encode( $v, $flags = 0 ) { return json_encode( $v, $flags ); }

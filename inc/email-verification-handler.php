@@ -204,6 +204,26 @@ function ihq_user_has_influencer_role( $user ) {
 }
 
 /**
+ * First name to store and send on start-session for a new registration.
+ *
+ * ENGR-7016 — referral will not provision a player with an empty first name,
+ * and some registration paths (visitor-intent) collect no name at all. Those
+ * fall back to the WordPress username, which is already what the Profile shows
+ * as the influencer's name. A real first name is returned untouched.
+ *
+ * @param mixed  $first_name First name from the registration data.
+ * @param string $username   The WordPress username just created for the user.
+ * @return string
+ */
+function ihq_registration_first_name_or_username( $first_name, $username ) {
+    $given_name = (string) $first_name;
+    if ( trim( $given_name ) !== '' ) {
+        return $given_name;
+    }
+    return $username;
+}
+
+/**
  * Create influencer user + meta + OAuth from pending registration data.
  *
  * @param array $registration_data Keys: email, password (optional — auto-generated if missing/short), first_name, last_name, platform_handle, comm_methods, social_handles (optional), challenge_type, competition_preferences (optional), country_iso (optional, client ISO 3166-1 alpha-2), language (optional, AI Coach locale code — PO-3106/FR-15), referrer_code (optional, ENGR-6966 — wins over the ihq_ref cookie).
@@ -252,6 +272,14 @@ function ihq_create_influencer_user_from_registration_data( array $registration_
     if ( is_wp_error( $user_id ) ) {
         return $user_id;
     }
+
+    // ENGR-7016 — resolved after wp_create_user() so the de-duplicated username is used.
+    // wp_insert_user() re-sanitizes the login in strict mode, which drops characters
+    // the non-strict sanitize_user() above keeps (e.g. '+' in plus-addressed emails),
+    // so read back the login WordPress actually stored.
+    $created_user  = get_userdata( $user_id );
+    $created_login = ( $created_user && ! empty( $created_user->user_login ) ) ? $created_user->user_login : $username;
+    $first_name    = ihq_registration_first_name_or_username( $first_name, $created_login );
 
     if ( $first_name ) {
         update_user_meta( $user_id, 'first_name', $first_name );
