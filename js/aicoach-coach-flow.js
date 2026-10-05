@@ -1142,6 +1142,11 @@ if ( stage && avatarWrap ) {
         let qaClient = null;
         let qaClientReady = false;
         let qaAnswering = false;
+        // ENGR-7051 — true only while a lip-synced answer stream is what the
+        // shared <video> is actually showing (not merely while an answer is
+        // being fetched or played as audio). With the panel being open, this
+        // decides whether Sami shows her idle animation — see syncAvatarIdle().
+        let qaVideoActive = false;
         // PR #73 (review feedback, Dejan Arsić) — the live MediaStream behind
         // a ready qaClient, captured once on first connect. Anam 4.27.1's
         // streamToVideoElement() throws 'Already streaming' on a second call
@@ -1510,6 +1515,8 @@ if ( stage && avatarWrap ) {
                     video.srcObject = qaMediaStream;
                 }
                 avatarWrap.dataset.status = 'live'; // reveals .aicoach-avatar-video over the static portrait, same CSS state as any other playing video
+                qaVideoActive = true; // the answer stream is on screen now — drop the idle animation so it shows instead
+                syncAvatarIdle();
                 await client.talk( data.say.text );
                 await waitForQaSpeechOrSkip( client, 25000 );
             } catch ( error ) {
@@ -1524,6 +1531,7 @@ if ( stage && avatarWrap ) {
                     await playFallbackAudio( data.say.audio.url );
                 }
             } finally {
+                qaVideoActive = false;
                 video.srcObject = null;
                 if ( qaVideoSnapshot.src ) {
                     video.src = qaVideoSnapshot.src;
@@ -1553,6 +1561,10 @@ if ( stage && avatarWrap ) {
                 }
                 avatarWrap.dataset.status = qaVideoSnapshot.status;
                 qaAnswering = false;
+                // The restored (re-paused) clip frame must not be what a still-open
+                // panel leaves on screen — back to the idle animation, or, if the
+                // panel was closed meanwhile, let the video resume below.
+                syncAvatarIdle();
                 // The panel may have already been closed while this was
                 // still speaking — closePanel() deliberately left both the
                 // sequence-timer and wasPlaying resume to us in that case
@@ -1641,8 +1653,21 @@ if ( stage && avatarWrap ) {
             }
         }
 
+        // ENGR-7051 — openPanel() pauses the shared <video>, which on its own
+        // leaves Sami frozen on whatever frame she was on (often mid-word) for
+        // as long as the panel stays open: while listening, while a question is
+        // in flight, and again after an answer finishes. While the panel is open
+        // and no lip-synced answer is on screen, the avatar wrapper gets
+        // .is-idle and the CSS swaps that frame for her neutral portrait with a
+        // gentle looping animation. Derived from those two facts and recomputed
+        // at every transition, never set ad hoc, so it cannot get stuck on.
+        function syncAvatarIdle() {
+            avatarWrap.classList.toggle( 'is-idle', wrap.classList.contains( 'is-open' ) && ! qaVideoActive );
+        }
+
         function openPanel() {
             wrap.classList.add( 'is-open' );
+            syncAvatarIdle();
             btn.setAttribute( 'aria-expanded', 'true' );
             // FR-19 — the invite pulse (if one was showing) has done its job
             // the moment the visitor actually opens the panel; the paused
@@ -1662,6 +1687,7 @@ if ( stage && avatarWrap ) {
 
         function closePanel() {
             wrap.classList.remove( 'is-open' );
+            syncAvatarIdle();
             btn.setAttribute( 'aria-expanded', 'false' );
             stopListening();
             // PR #73 (CodeRabbit) — if a spoken answer (video or fallback

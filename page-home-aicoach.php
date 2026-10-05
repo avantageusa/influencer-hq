@@ -513,6 +513,37 @@ $aicoach_channels = array(
     .aicoach-avatar-wrap[data-status="live"] .aicoach-portrait { opacity: 0; }
     .aicoach-avatar-wrap[data-status="connecting"] .aicoach-portrait { opacity: .4; filter: brightness(.55) blur(1px); }
 
+    /* ENGR-7051 — while Ask Sami's panel is open the shared <video> is paused
+    (js/aicoach-coach-flow.js, syncAvatarIdle()), which on its own leaves her
+    frozen on whatever frame she was on. .is-idle swaps that frame for her
+    neutral portrait with a slow "breathing" loop. The portrait is made opaque
+    instantly (transition: none) so the video fades out over it rather than
+    both layers dipping through the dark background. Skipped while connecting —
+    the loading overlay owns that state. transform-only, inside this wrapper's
+    circular overflow mask, so layout and the circle's size never change. */
+    .aicoach-avatar-wrap.is-idle:not([data-status="connecting"]) .aicoach-avatar-video { opacity: 0; }
+
+    .aicoach-avatar-wrap.is-idle:not([data-status="connecting"]) .aicoach-portrait {
+        opacity: 1;
+        filter: none;
+        transition: none;
+        transform-origin: 50% 35%;
+        will-change: transform;
+        animation: aicoach-idle-breathe 5.5s ease-in-out infinite;
+    }
+
+    @keyframes aicoach-idle-breathe {
+        0%, 100% { transform: scale(1) translateY(0); }
+        50% { transform: scale(1.03) translateY(-1%); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .aicoach-avatar-wrap.is-idle:not([data-status="connecting"]) .aicoach-portrait {
+            animation: none;
+            will-change: auto;
+        }
+    }
+
     .aicoach-avatar-loading {
         position: absolute;
         inset: 0;
