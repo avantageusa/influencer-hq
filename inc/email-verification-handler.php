@@ -1138,15 +1138,16 @@ function ihq_get_cloudflare_country_iso_alpha2() {
  *
  * @param int    $user_id WordPress user ID.
  * @param string $country_iso Raw client ISO 3166-1 alpha-2 (normalized in {@see ihq_register_oauth_user}).
+ * @return bool True when start-session returned tokens and they were stored (ENGR-7017).
  */
 function ihq_refresh_influencer_oauth_tokens( $user_id, $country_iso = '' ) {
     $user_id = (int) $user_id;
     if ( $user_id <= 0 ) {
-        return;
+        return false;
     }
     $user = get_user_by( 'id', $user_id );
     if ( ! $user ) {
-        return;
+        return false;
     }
     $first_name = get_user_meta( $user_id, 'first_name', true );
     $last_name  = get_user_meta( $user_id, 'last_name', true );
@@ -1159,14 +1160,16 @@ function ihq_refresh_influencer_oauth_tokens( $user_id, $country_iso = '' ) {
         $social_handles = array();
     }
     $ihq_data   = ihq_register_oauth_user( $user_id, $first_name, $last_name, $user->user_email, $country_iso, $comm_methods, $social_handles );
-    if ( $ihq_data && ! empty( $ihq_data['AccessToken'] ) ) {
-        update_user_meta( $user_id, 'ihq_oauth_country_iso', ihq_normalize_country_iso_alpha2( $country_iso ) );
-        update_user_meta( $user_id, 'ihq_access_token', $ihq_data['AccessToken'] );
-        update_user_meta( $user_id, 'ihq_id_token', $ihq_data['IdToken'] );
-        update_user_meta( $user_id, 'ihq_refresh_token', $ihq_data['RefreshToken'] ?? '' );
-        update_user_meta( $user_id, 'ihq_token_type', $ihq_data['TokenType'] ?? 'Bearer' );
-        update_user_meta( $user_id, 'ihq_token_expires', time() + (int) ( $ihq_data['ExpiresIn'] ?? 3600 ) );
+    if ( ! $ihq_data || empty( $ihq_data['AccessToken'] ) ) {
+        return false;
     }
+    update_user_meta( $user_id, 'ihq_oauth_country_iso', ihq_normalize_country_iso_alpha2( $country_iso ) );
+    update_user_meta( $user_id, 'ihq_access_token', $ihq_data['AccessToken'] );
+    update_user_meta( $user_id, 'ihq_id_token', $ihq_data['IdToken'] );
+    update_user_meta( $user_id, 'ihq_refresh_token', $ihq_data['RefreshToken'] ?? '' );
+    update_user_meta( $user_id, 'ihq_token_type', $ihq_data['TokenType'] ?? 'Bearer' );
+    update_user_meta( $user_id, 'ihq_token_expires', time() + (int) ( $ihq_data['ExpiresIn'] ?? 3600 ) );
+    return true;
 }
 
 /**

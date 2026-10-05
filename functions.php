@@ -425,7 +425,9 @@ require_once get_template_directory() . '/inc/portal-username.php';
 
 /**
  * API AJAX Calls (equity chart data, etc.)
+ * ihq-platform-token.php refreshes the platform ID token they send (ENGR-7017).
  */
+require_once get_template_directory() . '/inc/ihq-platform-token.php';
 require_once get_template_directory() . '/inc/api-ajax-calls.php';
 require_once get_template_directory() . '/inc/video-submissions.php';
 
