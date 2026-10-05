@@ -23,6 +23,12 @@ todos:
   - id: hold-sequence
     content: Review feedback — hold the sequence loop while the panel is open so the live intro's hand-off cannot start the next clip (with sound) underneath it
     status: completed
+  - id: close-during-talk
+    content: Review follow-up — clear the answer-stream flag when the answer connection closes while talk() is still being sent, and stop waiting on a client that is already gone
+    status: completed
+  - id: fallback-stall
+    content: Review follow-up — give playFallbackAudio a progress-based stall watchdog so a stalled recording cannot hold the sequence forever
+    status: completed
   - id: verify
     content: Exercise every state live (clip, live intro stream, caption-only screen, answer playback, audio-only fallback, close/reopen, language switch) and run lint
     status: completed
@@ -95,6 +101,28 @@ must not advance underneath a question), so the fix is to change what is
   `resumeSequenceTimers()` releases waiters. No new state: it
   reuses the flag the pause/resume pair already maintains, so it follows
   `qaAnswering`'s deferral rules too (nothing starts under an audible answer).
+- **Connection closed during `talk()` (review follow-up, Dejan Arsić; also
+  CodeRabbit).** The persistent `CONNECTION_CLOSED` handler now clears
+  `qaVideoActive` and re-syncs idle, like the `catch` does. Without that, a close
+  that lands while `talk()` is still being sent leaves the flag set with the
+  handler's own teardown already done, so Sami stays on a dead frame until the
+  25 s cap in `waitForQaSpeechOrSkip()` runs out. `speakAnswerOrFallback()` also
+  throws right after `talk()` if `qaClient !== client`, so a client that closed
+  in that window goes straight to the fallback audio instead of waiting out the
+  cap (the wait only listens for events from after it attaches, so it could
+  never see the close).
+- **Stalled fallback audio (review follow-up, Dejan Arsić).** The sequence hold
+  that `runFallback()` takes is released from `playFallbackAudio().finish()`. The
+  audio element only resolved on `ended`/`error`, so a recording that stalls
+  (no more data, no error) never released the hold and the sequence stayed
+  stopped for the rest of the visit. `FALLBACK_AUDIO_STALL_MS` (15 s) is a
+  watchdog that is re-armed on every `timeupdate`, so it measures *no progress*
+  rather than total length and cannot cut off a long answer that is playing.
+  `finish()` is now idempotent: `audio.pause()` makes the pending `play()`
+  reject with `AbortError`, whose `.catch(finish)` would otherwise run it twice.
+  The problem pre-dates this ticket (it came with the audio fallback in PR #73);
+  it is fixed here because this ticket's hold made a stalled recording more
+  costly.
 - **Accessibility.** `prefers-reduced-motion: reduce` keeps the swap to the
   neutral portrait but drops the animation.
 - **Untouched on purpose:** the `connecting` state, the sequence/timer pause
@@ -164,7 +192,17 @@ were real:
 `php -l`, a module syntax check and the existing PHP suites (`gary-proxy`,
 `aicoach-progress`, `aicoach-language-braze`) pass.
 
+- **Stalled fallback audio (follow-up).** Audio-only answer with `Audio.play()`
+  stubbed to a recording whose progress stops at 12.9 s: with the watchdog the
+  sequence was released 15.6 s after the last progress (`believe-1` playing,
+  mic enabled, `audio.pause()` called once). Same scenario with the fix
+  stashed: 33 s after the stall the page was still on `intro`, mic disabled,
+  `pause()` never called.
+
 **Not exercised, called out rather than assumed:**
+- The connection-closed-during-`talk()` fix is verified by tracing the code, not
+  driven live: `talk()` resolves almost instantly, so the window in which the
+  close can land is a few milliseconds and could not be hit on demand.
 - The `catch` fix for a video answer that fails *after* the stream started
   (`talk()` throws, or the connection drops mid-speech) was verified by
   tracing the code, not driven live. A live attempt (capturing Anam's

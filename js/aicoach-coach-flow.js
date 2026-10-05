@@ -43,6 +43,10 @@ import { createClient, AnamEvent } from 'https://cdn.jsdelivr.net/npm/@anam-ai/j
  */
 const FADE_MS = 400;
 const FALLBACK_READ_MS = 9000; // per-screen dwell for the static-text fallback (no speech to sync against)
+// ENGR-7051 — fallback (audio-only) answers: how long playback may go without
+// any progress before it is treated as finished. A recording that stalls
+// (network hangs, no error) fires neither 'ended' nor 'error'.
+const FALLBACK_AUDIO_STALL_MS = 15000;
 const AVATAR_VIDEO_ID = 'aicoach-avatar-video';
 
 // PO-3346 — Ask Sami's openPanel() previously only paused the <video>
@@ -1392,9 +1396,34 @@ if ( stage && avatarWrap ) {
             return new Promise( function ( resolve ) {
                 qaAnswering = true;
                 const audio = new Audio( url );
+                let settled = false;
+                let stallTimer = null;
+                // ENGR-7051 (review feedback) — a recording that stalls without
+                // erroring fires neither 'ended' nor 'error', so this promise
+                // never settled: qaAnswering stayed true, closePanel() kept
+                // deferring resumeSequenceTimers() to a finish() that never
+                // came, the mic stayed disabled and the sequence stayed held
+                // until a reload. Every sign of progress ('timeupdate') re-arms
+                // a watchdog; if it fires, playback is abandoned.
+                const armStallTimer = function () {
+                    window.clearTimeout( stallTimer );
+                    stallTimer = window.setTimeout( finish, FALLBACK_AUDIO_STALL_MS );
+                };
                 const finish = function () {
+                    // finish() can be reached more than once: the watchdog fires,
+                    // then the pause() below rejects the pending play() promise
+                    // (an AbortError) whose .catch(finish) calls it again.
+                    if ( settled ) {
+                        return;
+                    }
+                    settled = true;
+                    window.clearTimeout( stallTimer );
                     audio.removeEventListener( 'ended', finish );
                     audio.removeEventListener( 'error', finish );
+                    audio.removeEventListener( 'timeupdate', armStallTimer );
+                    // A stalled recording must not start playing later, over
+                    // whatever the sequence has resumed to by then.
+                    audio.pause();
                     qaAnswering = false;
                     // Same deferred-resume reasoning as
                     // speakAnswerOrFallback()'s own finally block below — the
@@ -1411,6 +1440,8 @@ if ( stage && avatarWrap ) {
                 };
                 audio.addEventListener( 'ended', finish );
                 audio.addEventListener( 'error', finish );
+                audio.addEventListener( 'timeupdate', armStallTimer );
+                armStallTimer(); // also covers a stall before the first byte
                 audio.play().catch( finish );
             } );
         }
@@ -1484,6 +1515,12 @@ if ( stage && avatarWrap ) {
                             qaClientReady = false;
                             qaClient = null;
                             qaMediaStream = null;
+                            // ENGR-7051 (CodeRabbit) — the stream behind
+                            // qaVideoActive is gone with the client; without this
+                            // an open panel kept the dead stream's last frame
+                            // on screen instead of the idle portrait.
+                            qaVideoActive = false;
+                            syncAvatarIdle();
                         }
                     };
                     client.addListener( AnamEvent.CONNECTION_CLOSED, persistentCloseHandler );
@@ -1546,6 +1583,16 @@ if ( stage && avatarWrap ) {
                 qaVideoActive = true; // the answer stream is on screen now — drop the idle animation so it shows instead
                 syncAvatarIdle();
                 await client.talk( data.say.text );
+                // ENGR-7051 (review feedback) — waitForQaSpeechOrSkip() can only
+                // hear a CONNECTION_CLOSED that arrives after it is called. If the
+                // connection dropped while talk() was still in flight, persistentCloseHandler
+                // has already cleared qaClient and nothing would ever wake the
+                // wait, so it would sit out the full 25 s cap on a dead stream.
+                // Fail into the catch below (fallback audio) straight away. No
+                // await between this check and the call, so there is no window.
+                if ( qaClient !== client ) {
+                    throw new Error( 'Anam connection closed while the answer was being sent.' );
+                }
                 await waitForQaSpeechOrSkip( client, 25000 );
             } catch ( error ) {
                 console.warn( '[aicoach] Ask Sami video answer failed, falling back to audio/text:', error );
