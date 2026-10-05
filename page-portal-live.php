@@ -968,25 +968,27 @@ $_live_nonce = wp_create_nonce( 'request_live_appearance_nonce' );
         return el ? el.value.trim() : '';
     }
 
-    function liveScheduleDateIsReal(monthValue, dayValue) {
+    function liveScheduleProblem(monthValue, dayValue, startTime, endTime) {
         var month = parseInt(monthValue, 10);
         var day = parseInt(dayValue, 10);
-        if (!month || !day) {
-            return false;
-        }
-        function isReal(year) {
-            var candidate = new Date(year, month - 1, day, 12, 0, 0);
-            return candidate.getFullYear() === year
-                && candidate.getMonth() === month - 1
-                && candidate.getDate() === day;
-        }
         var now = new Date();
         var year = now.getFullYear();
-        var yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-        if (!isReal(year) || new Date(year, month - 1, day, 12, 0, 0) < yesterday) {
-            year += 1;
+        var candidate = new Date(year, month - 1, day, 12, 0, 0);
+        var real = candidate.getFullYear() === year
+            && candidate.getMonth() === month - 1
+            && candidate.getDate() === day;
+        if (!real) {
+            return 'Choose a real month and day.';
         }
-        return isReal(year);
+        var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        var chosen = new Date(year, month - 1, day);
+        if (chosen < today) {
+            return 'Choose a date that is not in the past.';
+        }
+        if (!startTime || !endTime || endTime <= startTime) {
+            return 'Choose an end time that is after the start time.';
+        }
+        return '';
     }
 
     function liveRequestValidationMessage() {
@@ -1007,8 +1009,14 @@ $_live_nonce = wp_create_nonce( 'request_live_appearance_nonce' );
         if (missingSchedule) {
             return 'Choose a month, day, start time, and end time.';
         }
-        if (!liveScheduleDateIsReal(liveRequestValue('la_choice_1_month'), liveRequestValue('la_choice_1_day'))) {
-            return 'Choose a real month and day.';
+        var scheduleProblem = liveScheduleProblem(
+            liveRequestValue('la_choice_1_month'),
+            liveRequestValue('la_choice_1_day'),
+            liveRequestValue('la_choice_1_time'),
+            liveRequestValue('la_choice_1_end_time')
+        );
+        if (scheduleProblem) {
+            return scheduleProblem;
         }
         if (missingOpponent) {
             return 'Enter the opponent first name, last name, email, and username.';
