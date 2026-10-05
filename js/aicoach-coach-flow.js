@@ -58,8 +58,11 @@ const AVATAR_VIDEO_ID = 'aicoach-avatar-video';
 // wait) — pausing our local video rendering doesn't pause the real,
 // server-side Gary/Anam conversation, so there's no "resume from where we
 // left off" for that one the way there is for a fixed dwell or a local
-// clip's safety cap. Ask Sami is technically clickable that early (a narrow
-// window), and that gap is unaddressed — tracked, not silently assumed away.
+// clip's safety cap. That wait can therefore still end while the panel is
+// open; ENGR-7051 (review feedback, Dejan Arsić) closes the consequence of
+// that rather than the wait itself — see waitWhileSequenceHeld() below, which
+// runFallback() awaits before starting any screen, so the hand-off to the
+// next clip is held until the panel closes.
 const pausableSequenceTimers = new Set();
 // PR #63 (CodeRabbit) — the language selector stays clickable while Ask
 // Sami's panel is open, and selectLocale() can create a brand-new timer
@@ -117,10 +120,35 @@ function pauseSequenceTimers() {
     } );
 }
 
+// ENGR-7051 (review feedback, Dejan Arsić) — resolvers for everything
+// currently waiting out a hold, released together by resumeSequenceTimers().
+let sequenceHoldWaiters = [];
+
+// Resolves immediately unless the sequence is on hold (Ask Sami's panel is
+// open — sequenceTimersPaused is the existing "on hold" signal). runFallback()
+// awaits it before starting each screen so nothing new — in particular the
+// next pre-rendered clip, which plays with sound — can begin underneath the
+// open panel. The pausable timers already stop a screen from ending while the
+// panel is open; this covers the one thing they cannot, the live intro's own
+// wait finishing server-side and handing off to the first clip.
+function waitWhileSequenceHeld() {
+    if ( ! sequenceTimersPaused ) {
+        return Promise.resolve();
+    }
+    return new Promise( function ( resolve ) {
+        sequenceHoldWaiters.push( resolve );
+    } );
+}
+
 function resumeSequenceTimers() {
     sequenceTimersPaused = false;
     pausableSequenceTimers.forEach( function ( timer ) {
         timer.resume();
+    } );
+    const released = sequenceHoldWaiters;
+    sequenceHoldWaiters = [];
+    released.forEach( function ( release ) {
+        release();
     } );
 }
 
@@ -1687,8 +1715,9 @@ if ( stage && avatarWrap ) {
             // PO-3346 — pausing the video alone left the sequence's own
             // dwell/safety timers running, so it could advance to a later
             // screen (or start a new clip) while this panel sat open on top
-            // of it. Doesn't cover the live intro's own wait — see the note
-            // on pausableSequenceTimers' declaration.
+            // of it. The live intro's own wait still ends on its own, but
+            // runFallback() holds the hand-off to the next screen until this
+            // panel closes — see waitWhileSequenceHeld().
             pauseSequenceTimers();
             startListening();
         }
@@ -2276,6 +2305,9 @@ if ( stage && avatarWrap ) {
             avatarWrap.dataset.status = 'idle';
         }
         for ( ; sequenceIndex < SCREENS.length; sequenceIndex++ ) {
+            // ENGR-7051 — never start a screen (and so a clip, which has sound)
+            // underneath an open Ask Sami panel. A no-op unless the panel is open.
+            await waitWhileSequenceHeld();
             const screen = SCREENS[ sequenceIndex ];
             // PO-3343 — believe-1 gets the icons-first opening beat instead of
             // the normal immediate caption; startBelieveOneIntro() (called

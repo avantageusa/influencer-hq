@@ -20,6 +20,9 @@ todos:
   - id: idle-css
     content: Crossfade from the paused video to the neutral portrait and animate the portrait with a breathing loop; honour prefers-reduced-motion
     status: completed
+  - id: hold-sequence
+    content: Review feedback — hold the sequence loop while the panel is open so the live intro's hand-off cannot start the next clip (with sound) underneath it
+    status: completed
   - id: verify
     content: Exercise every state live (clip, live intro stream, caption-only screen, answer playback, audio-only fallback, close/reopen, language switch) and run lint
     status: completed
@@ -78,6 +81,17 @@ must not advance underneath a question), so the fix is to change what is
   animation is transform-only (compositor-friendly) and is inside the
   avatar's existing circular `overflow: hidden` mask, so it never changes
   layout or the circle's size.
+- **Hold the sequence while the panel is open (review feedback, Dejan Arsić).**
+  The pausable timers stop a screen from *ending* under the panel, but the live
+  intro's own wait (`waitForSpeechOrSkip`) cannot be paused — it finishes
+  server-side — so opening the panel during the intro let the hand-off start
+  the next pre-rendered clip underneath, with sound. With the idle portrait now
+  covering the video that became audible narration behind a non-speaking face.
+  `waitWhileSequenceHeld()` (resolves at once unless `sequenceTimersPaused`,
+  the existing "on hold" signal) is awaited at the top of each `runFallback()`
+  iteration, and `resumeSequenceTimers()` releases waiters. No new state: it
+  reuses the flag the pause/resume pair already maintains, so it follows
+  `qaAnswering`'s deferral rules too (nothing starts under an audible answer).
 - **Accessibility.** `prefers-reduced-motion: reduce` keeps the swap to the
   neutral portrait but drops the animation.
 - **Untouched on purpose:** the `connecting` state, the sequence/timer pause
@@ -99,12 +113,14 @@ must not advance underneath a question), so the fix is to change what is
 
 ## Blast radius
 Only while the Ask Sami panel is open. Touches the avatar wrapper's classes
-(CSS + `js/aicoach-coach-flow.js` inside `buildAskSami()`); no backend, REST,
-or progress-record change. Visitors who never open Ask Sami see no
-difference. Risk is in the open/close/answer ordering (a stuck `is-idle`
-would leave the video hidden after the panel closes), which is why it is
-derived from state and recomputed at every transition rather than toggled
-ad hoc.
+(CSS + `js/aicoach-coach-flow.js` inside `buildAskSami()`) and adds one
+`await` at the top of the `runFallback()` loop, which is a no-op unless the
+panel is open; no backend, REST, or progress-record change. Visitors who never
+open Ask Sami see no difference. Risks: a stuck `is-idle` would leave the video
+hidden after the panel closes (hence derived and recomputed at every
+transition), and a held loop that is never released would stall the sequence
+(hence it is released by the same `resumeSequenceTimers()` call that already
+un-pauses every timer, including the deferred-resume paths).
 
 ## Verification (wp-env, real Gary session)
 Exercised live, in a visible browser so video playback and CSS transitions
@@ -124,6 +140,18 @@ were real:
   stream ends the clip resumes and nothing is left stuck.
 - The audio-only fallback (video stripped from the `/message` response): idle
   stays on for the whole answer and clears on close.
+- **The sequence hold (review feedback):** panel opened in the first second of
+  the live intro — 36.8 s later (the intro's own 25 s cap long past) the page
+  was still on `intro` with no clip loaded and the video paused (before the
+  fix the next clip started within ~8–14 s); on close `we_believe_1.mp4`
+  started 0.5 s later. A question asked during the intro was answered to the
+  end (~19 s of speech) with the panel still on `intro`, nothing overwriting
+  the stream; closing afterwards continued to `believe-1`.
+- Panel opened mid-clip: the clip stayed paused at the same position for 7 s
+  and resumed from there on close, without advancing.
+- Regression, no panel: believe-1 → believe-2 → time selection → tier click
+  → equity → identity → comm-channels, every hand-off immediate (the new
+  `await` is a no-op while the panel is closed).
 
 `php -l`, a module syntax check and the existing PHP suites (`gary-proxy`,
 `aicoach-progress`, `aicoach-language-braze`) pass.
@@ -140,15 +168,17 @@ were real:
 - No ESLint run: dependencies are not installed in this checkout.
 
 ## Notes
-- Two pre-existing issues surfaced while testing; neither is caused by this
-  change and neither is fixed here. (1) The live intro's Anam client
-  (`activeClient`) is never stopped, so it keeps holding a concurrent avatar
-  seat for its lifetime; combined with the account's concurrency limit
-  ("Concurrency limit reached"), the first Ask Sami video answer falls back to
-  audio/text whenever seats are busy. (2) Opening Ask Sami during the live
-  intro lets the intro finish server-side and the sequence start the next clip
-  under the open panel, overwriting the answer stream on the shared `<video>`
-  (the gap already documented next to `pausableSequenceTimers`).
+- A pre-existing issue surfaced while testing and is not fixed here: the live
+  intro's Anam client (`activeClient`) is never stopped, so it keeps holding a
+  concurrent avatar seat for its lifetime; combined with the account's
+  concurrency limit ("Concurrency limit reached"), the first Ask Sami video
+  answer falls back to audio/text whenever seats are busy. (The other gap seen
+  while testing — a clip starting under the open panel during the live intro —
+  is fixed in this change, see "Hold the sequence" above.)
+- While the panel is held open during the intro, the intro's own speech
+  continues server-side and is lost to the visitor (the video is paused); the
+  sequence then picks up at the next screen. Accepted: the alternative was the
+  next clip narrating underneath the panel.
 - The same "frozen" look exists briefly elsewhere: after a clip ends the last
   frame stays on screen for the identity / channels / final screens. Not part
   of this ticket — flagged for a follow-up decision rather than widened here.
