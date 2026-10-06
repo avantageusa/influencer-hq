@@ -4,12 +4,14 @@ overview: >
   The repo has no .gitignore, so .wp-env.json (real Gary and Anam keys),
   vendor/ and composer.lock show up as untracked in every git status and one
   `git add -A` would commit them. This adds a .gitignore, a
-  .wp-env.example.json with placeholders and a short README section.
-  composer.lock was meant to be tracked too but was taken out again after
-  review (see Approach): it would pin a dependency with a known advisory that
-  cannot be upgraded today, so it is ignored until that is resolved. Out of
-  scope: rotating the keys (they were never committed), changing
-  composer.json, and the wpcs advisory itself.
+  .wp-env.example.json with placeholders and a short README section, tracks
+  package-lock.json (as the team's other repos do) and allows the phpcs
+  installer plugin in composer.json so `composer install` works
+  non-interactively. composer.lock was meant to be tracked too but was taken
+  out again after review (see Approach): it would pin a dependency with a
+  known advisory that cannot be upgraded today, so it is ignored until that is
+  resolved. Out of scope: rotating the keys (they were never committed) and
+  the wpcs and npm advisories themselves.
 todos:
   - id: gitignore
     content: Add .gitignore for .wp-env.json, .wp-env.override.json, .claude/settings.local.json, vendor/, node_modules/, .DS_Store
@@ -22,6 +24,12 @@ todos:
     status: blocked
   - id: readme
     content: Document the wp-env setup in the README
+    status: completed
+  - id: npm-lock
+    content: Generate and track package-lock.json (review feedback - the other repos track theirs and a clean git status after npm install is an acceptance criterion)
+    status: completed
+  - id: allow-plugins
+    content: Add config.allow-plugins for dealerdirect/phpcodesniffer-composer-installer to composer.json (review feedback - non-interactive composer install fails without it)
     status: completed
   - id: verify
     content: Run tests, lint, and CI gate before merge
@@ -63,6 +71,27 @@ committed.
   package is a dependency. Tracking a lock would deliberately bless it, so the
   lock is removed from this change and `/composer.lock` is ignored, with a
   comment saying why and when to drop the line.
+- **`package-lock.json` is tracked (review feedback, Dejan Arsic).** The
+  ticket's first acceptance criterion is a clean `git status` after
+  `composer install` and `npm install`; without a tracked or ignored lock,
+  `npm install` leaves an untracked `package-lock.json`. The five other repos
+  checked (`game-portal-client`, `account-client`, `shared-client-components`,
+  `rankings-client`, `competition-client`) all track theirs. Generated with
+  `npm install --package-lock-only --ignore-scripts` (lockfileVersion 3, 1,658
+  packages). Unlike the Composer case, npm has no install-time advisory
+  blocking and a fresh `npm install` resolves the same in-range versions
+  today, so the lock pins what everyone gets anyway. `npm audit` still reports
+  111 advisories (3 critical, 68 high), all in dev tooling (`@wordpress/scripts`
+  19, `node-sass` 7 and their trees): existing tech debt, noted below, not
+  fixed here.
+- **`composer.json`: `config.allow-plugins` (review feedback, CodeRabbit).**
+  Composer 2.2+ refuses to run an unlisted plugin non-interactively. Verified in
+  a scratch directory: with the committed `composer.json`,
+  `COMPOSER_NO_INTERACTION=1 composer install` exits 1 (plugin blocked by the
+  allow-plugins config); with `dealerdirect/phpcodesniffer-composer-installer`
+  allowed it exits 0 and the plugin registers the phpcs standards paths
+  (`installed_paths`), which `lint:wpcs` needs. `allow-plugins` is not part of
+  the lock content-hash.
 - **README**: a short "Local development with wp-env" section (copy the
   example, fill the keys, start wp-env, restore dependencies).
 
@@ -77,7 +106,7 @@ committed.
   from review; only the per-developer settings file is ignored.
 
 ## Blast radius
-Files only: no code, no runtime change. A developer who has an ignored path
+Files only: no theme code or runtime change; `composer.json` gains a `config` key that only affects dev installs. A developer who has an ignored path
 tracked would see it still tracked (none do: `git ls-files -ci` is empty).
 `.claude/skills/crfix/` and the 7066 plan stay untracked on purpose; they are
 not part of this change. A developer's local `composer.lock` stays on disk
@@ -91,9 +120,12 @@ but is ignored, so `composer install` still works as before.
   CodeRabbit; the local 2.7.1 could not confirm it) block affected packages
   when resolving without a lock, so a fresh `composer install` may already
   fail there until this is fixed.
-- `composer install` under the committed `composer.json` blocks the
-  `dealerdirect/phpcodesniffer-composer-installer` plugin unless
-  `config.allow-plugins` allows it (Composer 2.2+); that is a local-only edit
-  today. Left alone here; worth its own small fix.
+- **Follow-up (npm):** `npm audit` on the new lock reports 111 advisories
+  (3 critical, 68 high) in dev tooling. Fixing them means upgrading
+  `@wordpress/scripts` (a breaking jump; `npm audit fix --force` proposes 35.x)
+  and replacing the deprecated `node-sass`, which may also not build on current
+  Node. Its own ticket and plan.
+- Not verified: a real `npm install` (not just `--package-lock-only`), because
+  `node-sass` 7 is unlikely to build on the Node 24 used here.
 - If the keys in `.wp-env.json` are shared by several developers they are
   worth rotating separately; they were never committed.
