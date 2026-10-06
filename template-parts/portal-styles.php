@@ -3989,13 +3989,67 @@
         margin: 8px 0 12px;
     }
 
+    body.page-template-page-portal-live-php .live-contest-tabs-row {
+        position: relative;
+        width: fit-content;
+        margin: 0 auto 18px;
+    }
+
+    body.page-template-page-portal-live-php .live-wn-round {
+        position: absolute;
+        right: calc(100% + 80px);
+        top: 50%;
+        z-index: 2;
+        display: block;
+        width: 221px;
+        height: 221px;
+        transform: translateY(-50%);
+        color: #000;
+        text-decoration: none;
+    }
+
+    body.page-template-page-portal-live-php .live-wn-round__shape {
+        display: block;
+    }
+
+    body.page-template-page-portal-live-php .live-wn-round__label {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 178px;
+        transform: translate(-50%, -50%);
+        color: #000;
+        font-family: "Be Vietnam Pro", sans-serif;
+        font-size: 20px;
+        font-weight: 600;
+        line-height: 22px;
+        text-align: center;
+        text-transform: uppercase;
+        pointer-events: none;
+    }
+
+    body.page-template-page-portal-live-php .live-wn-round__kicker {
+        line-height: 32px;
+    }
+
+    @media (max-width: 767px) {
+        body.page-template-page-portal-live-php .live-wn-round {
+            display: none;
+        }
+    }
+
     body.page-template-page-portal-live-php .live-contest-tabs {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
         justify-content: center;
         gap: 12px 36px;
-        margin-bottom: 18px;
+        margin-bottom: 0;
         padding: 20px 0;
     }
 
@@ -4279,7 +4333,8 @@
     }
 
     body.page-template-page-portal-live-php .live-form-block > .live-label,
-    body.page-template-page-portal-live-php .live-form-block > .live-label ~ * {
+    body.page-template-page-portal-live-php .live-form-block > .live-label ~ *,
+    body.page-template-page-portal-live-php .live-below-stream {
         display: none;
     }
 

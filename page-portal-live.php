@@ -169,6 +169,15 @@ if ( ! empty( $la_calendar_posts ) ) {
                     <div class="live-separator"></div>
 
                     <div class="live-contest-info" data-live-contest-info>
+                        <div class="live-contest-tabs-row">
+                        <a class="live-wn-round" href="#live-request">
+                            <img src="<?php echo esc_url( $la_theme_uri ); ?>/images/live/wn-round-button.svg" alt="" class="live-wn-round__shape" width="221" height="221">
+                            <span class="live-wn-round__label">
+                                <span class="live-wn-round__kicker">CLICK HERE</span>
+                                <span class="live-wn-round__line">LIVE<br>APPEARANCE</span>
+                                <span class="live-wn-round__line">WORLD<br>NETWORK</span>
+                            </span>
+                        </a>
                         <div class="live-contest-tabs" role="tablist">
                             <button type="button" class="live-contest-tab is-open" role="tab" aria-selected="true" data-contest-panel="classic">
                                 <span>CLASSIC</span>
@@ -182,6 +191,7 @@ if ( ! empty( $la_calendar_posts ) ) {
                                 <span>WORLD CHAMPIONSHIP</span>
                                 <img src="<?php echo esc_url( $la_theme_uri ); ?>/images/live/chevron-right.svg" alt="" class="live-contest-chevron" aria-hidden="true">
                             </button>
+                        </div>
                         </div>
                         <div class="live-contest-panel is-open" id="live-contest-panel-classic" data-contest-panel="classic" role="tabpanel">
                             <ul>
@@ -407,6 +417,7 @@ if ( ! empty( $la_calendar_posts ) ) {
                         ),
                     ) );
                     ?>
+                    <div class="live-below-stream">
                     <div class="live-separator"></div>
                     <h2 class="live-section-heading">LIVE APPEARANCE SCHEDULE</h2>
                     <div class="live-separator"></div>
@@ -488,6 +499,7 @@ if ( ! empty( $la_calendar_posts ) ) {
                             <?php endforeach; ?>
                             <?php endif; ?>
                         </div>
+                    </div>
                     </div>
 
 
