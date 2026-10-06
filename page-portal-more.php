@@ -305,7 +305,7 @@ get_template_part( 'template-parts/portal-styles' );
                                             </button>
                                         </h2>
                                         <div id="collapseMustPlay" class="accordion-collapse collapse" aria-labelledby="headingMustPlay">
-                                            <div class="accordion-body"><p>You don&#039;t have to play, but two things to weigh: your followers will notice when you&#039;re not in the game, and you won&#039;t earn equity on your own play (equity attributes to whoever recruited you, not yourself). Leading from the front keeps your community invested and stacks Live bonuses on top of your network attribution.</p></div>
+                                            <div class="accordion-body"><p>You don&#039;t have to play, but two things to weigh: your followers will notice when you&#039;re not in the game, and you&#039;ll miss the 1% equity you earn on your own real-money play. Leading from the front keeps your community invested and stacks Live bonuses on top of your network attribution.</p></div>
                                         </div>
                                     </div>
 
