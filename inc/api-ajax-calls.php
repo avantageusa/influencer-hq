@@ -690,13 +690,21 @@ function ihq_extract_referral_urls_from_api_body( $body ) {
 	);
 }
 
+/** The referral service's answer for a user it has no referral record for yet (not provisioned). */
+const IHQ_REFERRAL_HTTP_NOT_FOUND = 404;
+
 /**
  * Re-run oauth/start-session so the IHQ backend can finish Genius / referral provisioning.
  *
- * @param int $wp_user_id WordPress user ID.
+ * @param int    $wp_user_id        WordPress user ID.
+ * @param string $previous_id_token The token the first fetch was sent with.
+ * @return bool True when start-session ran and stored a new token. False when it was skipped (backoff after a
+ *              failure, or another request holds the refresh lock and has no new token yet) or failed: then
+ *              the referral user may still not exist.
  */
-function ihq_retry_referral_link_after_oauth_refresh( $wp_user_id ) {
-	ihq_refresh_platform_id_token( (int) $wp_user_id );
+function ihq_retry_referral_link_after_oauth_refresh( $wp_user_id, $previous_id_token ) {
+	$fresh = ihq_refresh_platform_id_token( (int) $wp_user_id );
+	return '' !== $fresh && $fresh !== $previous_id_token;
 }
 
 /**
@@ -793,14 +801,26 @@ function get_referral_link_ajax() {
 	// Genius account is created by IHQ on start-session; after fresh registration retry once.
 	// This retry also covers a 401 from a token that was still unexpired at the start.
 	// Skipped when start-session already ran above: one refresh per request, never a loop.
+	$provisioning_skipped = false;
 	if ( ( $status !== 200 || $url === '' ) && ! $session['refreshed'] ) {
-		ihq_retry_referral_link_after_oauth_refresh( $user_id );
-		$retry = ihq_fetch_referral_link_from_api( $user_id );
+		$provisioning_skipped = ! ihq_retry_referral_link_after_oauth_refresh( $user_id, $session['id_token'] );
+		$retry                = ihq_fetch_referral_link_from_api( $user_id );
 		if ( ! is_wp_error( $retry ) ) {
 			$url    = $retry['url'];
 			$status = $retry['status'];
 			$result = $retry;
 		}
+	}
+
+	// Without start-session a new influencer's referral user may not exist yet, so this 404 is not final:
+	// the backoff ends or the other request's refresh finishes, and a later load gets the link.
+	if ( $provisioning_skipped && IHQ_REFERRAL_HTTP_NOT_FOUND === (int) $status ) {
+		wp_send_json_error(
+			array(
+				'message'   => 'Referral link not available yet, please try again in a moment.',
+				'retryable' => true,
+			)
+		);
 	}
 
 	if ( $status !== 200 ) {

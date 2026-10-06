@@ -55,6 +55,14 @@ mutations = [
     # get_referral_link_ajax()
     (ajax, "&& ! $session['refreshed'] ) {", ") {"),
     (ajax, "$session = ihq_platform_session_begin( $user_id );", "$session = array( 'refreshed' => false );"),
+    # get_referral_link_ajax(): a provisioning 404 without start-session is retryable, not final
+    (ajax, "return '' !== $fresh && $fresh !== $previous_id_token;", "return '' !== $fresh;"),
+    (ajax, "return '' !== $fresh && $fresh !== $previous_id_token;", "return $fresh !== $previous_id_token;"),
+    (ajax, "return '' !== $fresh && $fresh !== $previous_id_token;", "return false;"),
+    (ajax, "if ( $provisioning_skipped && IHQ_REFERRAL_HTTP_NOT_FOUND === (int) $status ) {", "if ( false ) {"),
+    (ajax, "if ( $provisioning_skipped && IHQ_REFERRAL_HTTP_NOT_FOUND === (int) $status ) {", "if ( $provisioning_skipped ) {"),
+    (ajax, "if ( $provisioning_skipped && IHQ_REFERRAL_HTTP_NOT_FOUND === (int) $status ) {", "if ( IHQ_REFERRAL_HTTP_NOT_FOUND === (int) $status ) {"),
+    (ajax, "$provisioning_skipped = ! ihq_retry_referral_link_after_oauth_refresh(", "$provisioning_skipped = ihq_retry_referral_link_after_oauth_refresh("),
     # handlers use the session token, not the stored meta
     (ajax, "$session      = ihq_platform_session_begin( $wp_user_id );", "$session      = array( 'user_id' => $wp_user_id, 'id_token' => get_user_meta( $wp_user_id, 'ihq_id_token', true ), 'refreshed' => false );"),
     # ihq_refresh_influencer_oauth_tokens() reports success

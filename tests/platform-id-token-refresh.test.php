@@ -597,6 +597,71 @@ respond( LINK_URL_WPU, 200, $link_ok );
 check( 'link 401: link shown after retry', run_handler( 'get_referral_link_ajax' ), $link_found );
 check( 'link 401: one start-session, retry with the new token', array_slice( request_log(), 3 ), array( session_line(), 'GET ' . LINK_URL_WPU . ' new' ) );
 
+// New influencer whose start-session is skipped or fails: the provisioning 404 is reported as retryable.
+$link_retryable = array( 'success' => false, 'data' => array( 'message' => 'Referral link not available yet, please try again in a moment.', 'retryable' => true ) );
+$six_old_404s   = array(
+	'GET ' . LINK_URL_WPU . ' old',
+	'GET ' . LINK_URL_SUB . ' old',
+	'GET ' . LINK_URL_SHORT . ' old',
+	'GET ' . LINK_URL_WPU . ' old',
+	'GET ' . LINK_URL_SUB . ' old',
+	'GET ' . LINK_URL_SHORT . ' old',
+);
+
+reset_state();
+given_user( valid() );
+$GLOBALS['transients'][ BACKOFF ] = array( 'value' => time(), 'ttl' => 60 );
+all_candidates_404();
+all_candidates_404();
+check( 'link 404 in backoff: retryable, not final', run_handler( 'get_referral_link_ajax' ), $link_retryable );
+check( 'link 404 in backoff: no start-session', request_log(), $six_old_404s );
+
+reset_state();
+given_user( valid() );
+$other_lock                    = (string) time();
+$GLOBALS['wpdb']->rows[ LOCK ] = $other_lock;
+all_candidates_404();
+all_candidates_404();
+check( 'link 404 while another request refreshes: retryable, not final', run_handler( 'get_referral_link_ajax' ), $link_retryable );
+check( 'link 404 while another request refreshes: no start-session', request_log(), $six_old_404s );
+check( 'link 404 while another request refreshes: its lock untouched', $GLOBALS['wpdb']->rows, array( LOCK => $other_lock ) );
+
+reset_state();
+given_user( valid() );
+all_candidates_404();
+respond( START_SESSION_URL, 500, SESSION_FAIL );
+all_candidates_404();
+check( 'link 404 + start-session fails: retryable, not final', run_handler( 'get_referral_link_ajax' ), $link_retryable );
+check( 'link 404 + start-session fails: backoff set', array_keys( $GLOBALS['transients'] ), array( BACKOFF ) );
+
+reset_state();
+given_user( valid() );
+all_candidates_404();
+respond( START_SESSION_URL, 200, SESSION_OK );
+respond( LINK_URL_WPU, 404, '{"message":"not found"}' );
+respond( LINK_URL_SUB, 404, '{"message":"not found"}' );
+respond( LINK_URL_SHORT, 404, '{"message":"not found"}' );
+check(
+	'link 404 after start-session ran: today\'s error',
+	run_handler( 'get_referral_link_ajax' ),
+	array( 'success' => false, 'data' => array( 'message' => 'API returned HTTP 404', 'body' => array( 'message' => 'not found' ) ) )
+);
+check( 'link 404 after start-session ran: retried with the new token', array_slice( request_log(), 3 ), array( session_line(), 'GET ' . LINK_URL_WPU . ' new', 'GET ' . LINK_URL_SUB . ' new', 'GET ' . LINK_URL_SHORT . ' new' ) );
+
+reset_state();
+given_user( valid() );
+$GLOBALS['transients'][ BACKOFF ] = array( 'value' => time(), 'ttl' => 60 );
+for ( $round = 0; $round < 2; $round++ ) {
+	respond( LINK_URL_WPU, 401, '{}' );
+	respond( LINK_URL_SUB, 401, '{}' );
+	respond( LINK_URL_SHORT, 401, '{"message":"Unauthorized"}' );
+}
+check(
+	'link 401 in backoff: today\'s error, not the retryable one',
+	run_handler( 'get_referral_link_ajax' ),
+	array( 'success' => false, 'data' => array( 'message' => 'API returned HTTP 401', 'body' => array( 'message' => 'Unauthorized' ) ) )
+);
+
 reset_state();
 given_user( valid() );
 respond( LINK_URL_WPU, 200, $link_ok );
