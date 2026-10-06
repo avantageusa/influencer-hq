@@ -4,10 +4,12 @@ overview: >
   The repo has no .gitignore, so .wp-env.json (real Gary and Anam keys),
   vendor/ and composer.lock show up as untracked in every git status and one
   `git add -A` would commit them. This adds a .gitignore, a
-  .wp-env.example.json with placeholders, a short README section, and tracks
-  composer.lock (refreshed, because the untracked one was stale). Out of
+  .wp-env.example.json with placeholders and a short README section.
+  composer.lock was meant to be tracked too but was taken out again after
+  review (see Approach): it would pin a dependency with a known advisory that
+  cannot be upgraded today, so it is ignored until that is resolved. Out of
   scope: rotating the keys (they were never committed), changing
-  composer.json, and the wpcs security advisory noted below.
+  composer.json, and the wpcs advisory itself.
 todos:
   - id: gitignore
     content: Add .gitignore for .wp-env.json, .wp-env.override.json, .claude/settings.local.json, vendor/, node_modules/, .DS_Store
@@ -16,8 +18,8 @@ todos:
     content: Add .wp-env.example.json generated from the real file with every secret replaced by a placeholder
     status: completed
   - id: lock
-    content: Refresh composer.lock to composer.json without upgrading anything and track it
-    status: completed
+    content: Track composer.lock - reverted after review; ignored instead until the wpcs advisory is resolved in a separate change
+    status: blocked
   - id: readme
     content: Document the wp-env setup in the README
     status: completed
@@ -50,21 +52,25 @@ committed.
   `GARY_COACH_SECRET`, `COACH_REGISTRATION_SECRET`, `ANAM_API_KEY`,
   `IHQ_INFLUENCER_API_KEY`) become `<placeholders>`. The two base URLs stay as
   they are: they are already published in the README instance table.
-- **`composer.lock` is tracked** (decision by the dev on 2026-10-06; same
-  reproducibility reasoning as for `composer.json`). The untracked file was
-  stale: `composer validate --check-lock` reported it out of date with
-  `composer.json` (the `php` requirement changed to `>=7.3` in cca10f0 after
-  the lock was generated). It was refreshed with
-  `composer update --lock --no-plugins`, which rewrites the lock metadata only;
-  the resolved version of every package is identical (checked by diffing
-  name/version before and after) and `composer validate --check-lock` now
-  passes.
+- **`composer.lock` is not tracked (decision revised after review).** The first
+  version of this change tracked it (refreshed with
+  `composer update --lock --no-plugins`, package versions unchanged).
+  CodeRabbit pointed out that the lock pins `wp-coding-standards/wpcs` 2.3.0,
+  affected by CVE-2026-45293 (`<3.4.1`, arbitrary code execution through a
+  crafted argument when linting an untrusted checkout). Verified: the fixed
+  3.4.1 cannot be installed because `wptrt/wpthemereview` (latest 0.2.1)
+  requires `wpcs ^2.2.0`, so the vulnerable version is unavoidable while that
+  package is a dependency. Tracking a lock would deliberately bless it, so the
+  lock is removed from this change and `/composer.lock` is ignored, with a
+  comment saying why and when to drop the line.
 - **README**: a short "Local development with wp-env" section (copy the
   example, fill the keys, start wp-env, restore dependencies).
 
 ## Alternatives considered
-- **Ignore `composer.lock`**: rejected by the dev; a tracked lock gives
-  everyone the same dev-tool versions.
+- **Track `composer.lock`** (the original plan): same versions for everyone,
+  but it pins the vulnerable wpcs; deferred until the dependency is fixed.
+- **Replace `wptrt/wpthemereview` here**: the real fix, but it changes
+  `composer.json` and the lint rules, so it needs its own plan.
 - **Commit `.wp-env.json` with env-var references instead of values**: wp-env
   has no variable expansion in this file, so it would need a wrapper script.
 - **Ignore all of `.claude/`**: would hide the tracked hooks, rules and skills
@@ -72,17 +78,19 @@ committed.
 
 ## Blast radius
 Files only: no code, no runtime change. A developer who has an ignored path
-tracked would see it still tracked (none do: `git ls-files -ci` is empty). The
-tracked lock changes nothing for the deployed site (dev dependencies only).
+tracked would see it still tracked (none do: `git ls-files -ci` is empty).
 `.claude/skills/crfix/` and the 7066 plan stay untracked on purpose; they are
-not part of this change.
+not part of this change. A developer's local `composer.lock` stays on disk
+but is ignored, so `composer install` still works as before.
 
 ## Notes
-- **Not part of this change:** `composer audit` reports one high-severity
-  advisory in a dev dependency, `wp-coding-standards/wpcs` 2.3.0
-  (CVE-2026-45293, affected `<3.4.1`). Tracking the lock does not introduce it
-  (it is what is installed today) but it becomes visible in review; it needs
-  its own decision because a major wpcs upgrade changes the lint rules.
+- **Follow-up needed (not part of this change):** replace or drop
+  `wptrt/wpthemereview` so `wp-coding-standards/wpcs` can move to 3.4.1 or
+  later (CVE-2026-45293); then introduce `composer.lock` and delete the
+  `/composer.lock` line from `.gitignore`. Newer Composer versions (2.9+, per
+  CodeRabbit; the local 2.7.1 could not confirm it) block affected packages
+  when resolving without a lock, so a fresh `composer install` may already
+  fail there until this is fixed.
 - `composer install` under the committed `composer.json` blocks the
   `dealerdirect/phpcodesniffer-composer-installer` plugin unless
   `config.allow-plugins` allows it (Composer 2.2+); that is a local-only edit

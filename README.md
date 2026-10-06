@@ -69,7 +69,7 @@ must be on the widget's allowed-domain list or the challenge fails.
 cp .wp-env.example.json .wp-env.json
 ```
 
-Then replace each `<placeholder>` with the real value (ask a teammate or see the instance table above for where each key lives) and run `npx @wordpress/env start`. The site is served on `http://localhost:8888`. `vendor/` and `node_modules/` are restored with `composer install` and `npm install`; `composer.lock` is tracked, so everyone gets the same versions.
+Then replace each `<placeholder>` with the real value (ask a teammate or see the instance table above for where each key lives) and run `npx @wordpress/env start`. The site is served on `http://localhost:8888`. `vendor/` and `node_modules/` are restored with `composer install` and `npm install`.
 
 Installation
 ---------------

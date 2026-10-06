@@ -10,5 +10,11 @@
 /vendor/
 /node_modules/
 
+# composer.lock is deliberately not tracked yet: it would pin
+# wp-coding-standards/wpcs 2.3.0, which has a known advisory (CVE-2026-45293)
+# that wptrt/wpthemereview's constraint (^2.2.0) prevents upgrading. Remove
+# this line when the lock is introduced together with that dependency fix.
+/composer.lock
+
 # OS files
 .DS_Store
