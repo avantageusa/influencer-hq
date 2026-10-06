@@ -116,13 +116,13 @@ function request_log() {
 	foreach ( $GLOBALS['requests'] as $request ) {
 		$line = $request['method'] . ' ' . $request['url'];
 		if ( $request['url'] !== START_SESSION_URL ) {
-			$line .= ' ' . token_name( $request['auth'] );
+			$line .= ' ' . auth_token_label( $request['auth'] );
 		}
 		$lines[] = $line;
 	}
 	return $lines;
 }
-function token_name( $auth ) {
+function auth_token_label( $auth ) {
 	if ( $auth === 'Bearer ' . OLD_TOKEN ) {
 		return 'old';
 	}
