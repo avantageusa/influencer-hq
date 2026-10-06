@@ -1974,7 +1974,9 @@ if ( stage && avatarWrap ) {
     // set by start() once that client exists, a no-op until then and after the
     // first call. The intro connection used to stay open for the rest of the
     // visit, which counts against the account's concurrent-session limit and
-    // left no seat for Ask Sami's own video answers.
+    // left no seat for Ask Sami's own video answers. Called when the first
+    // pre-rendered clip replaces the intro stream, when start() fails, and on
+    // pagehide.
     let releaseIntroClient = function () {};
     let garySessionId = null;  // this visit's Gary coach session id, for the close() call on completion
     let avatarIsLive = false;  // true once Gary's session connected and video started — keeps the avatar
@@ -2246,6 +2248,11 @@ if ( stage && avatarWrap ) {
                 // src in the video element — clear it first or a plain MP4 src
                 // silently never plays.
                 video.srcObject = null;
+                // ENGR-7098 — the intro's stream is off the element now, so its
+                // avatar seat can be freed without leaving a dead stream on
+                // screen. A no-op after the first call and when there is no
+                // intro client (resume, failed start).
+                releaseIntroClient();
                 video.currentTime = 0;
                 video.src = clipUrl;
                 avatarWrap.dataset.status = 'live'; // same CSS state that reveals .aicoach-avatar-video over the static portrait
@@ -3012,9 +3019,10 @@ if ( stage && avatarWrap ) {
                     await waitForReadOrSkip();
                 }
                 sequenceIndex = 1;
-                // The live content is over — every screen from here on is a
-                // pre-rendered clip or static, so free the intro's avatar seat.
-                releaseIntroClient();
+                // The intro's avatar seat is freed once a clip actually replaces
+                // its stream (playPrerenderedClip()), not here: with no clip
+                // rendered the intro stream stays on screen for the static
+                // captions, and a stopped stream renders empty.
                 runFallback( true );
             } );
             const introCloseHandler = function ( event ) {

@@ -67,12 +67,18 @@ connection; it never touches the `<video>` element's `srcObject`.
   itself first) so the hand-off and `pagehide` can both call it. It replaces the
   dead `activeClient` variable. `stopStreaming()` is wrapped in try/catch with
   a warning like `teardownQaClient()`.
-- **When.** Immediately after `waitForSpeechOrSkip()` / `waitForReadOrSkip()`
-  and before `runFallback( true )`, i.e. as soon as the live content is over.
-  `playPrerenderedClip()` replaces `video.srcObject` itself, so nothing
-  depends on the intro stream afterwards. With Ask Sami open at that moment
-  (the sequence is held by ENGR-7051) the video element keeps a stopped
-  stream, which is hidden behind the idle portrait anyway.
+- **When (revised after review, Dejan Arsic).** In `playPrerenderedClip()`'s
+  `load()`, right after `video.srcObject = null`, i.e. when a clip actually
+  replaces the intro stream. The first version released at the hand-off, before
+  `runFallback( true )`. That is wrong when no clip is rendered for the first
+  screen (`getPrerenderedUrl()` returns `null`; a supported degrade path):
+  `runFallback()` then never touches the `<video>`, `data-status` stays `live`,
+  and a stopped stream renders empty in Chrome and Safari, so Sami would be a
+  dark circle for the whole static flow instead of the live idle avatar she is
+  today. Releasing at replacement time keeps the happy path identical (tracks
+  `ended` when the clip starts) and leaves the no-clip case exactly as before
+  (the intro client stays open, no regression). With Ask Sami open at the
+  hand-off the stream stays until the panel closes and the first clip starts.
 - **`pagehide`.** Best-effort: a closing tab drops the peer connection
   regardless, but an explicit stop lets Anam end the session without waiting
   for the connection to time out.
@@ -84,7 +90,7 @@ connection; it never touches the `<video>` element's `srcObject`.
   client exists). An earlier version of this plan wrongly said no client
   exists in this `catch`.
 - **Untouched:** the Q&A client, `waitForSpeechOrSkip()`, resume-from-progress
-  (no intro client is created there).
+  (no intro client is created there), the hand-off itself.
 
 ## Alternatives considered
 - **Stop the intro client when it finishes speaking** (`MESSAGE_HISTORY_UPDATED`)
@@ -114,10 +120,20 @@ anyway. No backend, REST or progress change.
 - Ask Sami after the hand-off: question asked on `believe-1`, answer stream
   attached about 9 s later (visible, idle off), ended about 20 s later, idle
   back on with the panel open.
-- Ask Sami opened during the intro (ENGR-7051 hold): the intro client was
-  released at the hand-off (tracks `ended`), the page stayed on `intro` with
-  no clip loaded and idle on for 36 s; closing the panel started
-  `we_believe_1.mp4` within 1 s.
+- Ask Sami opened during the intro (ENGR-7051 hold): with the release in
+  `playPrerenderedClip()` the intro tracks stay `live` while the panel is open
+  (30 s on `intro`, no clip, idle on), and are `ended` once the panel is closed
+  and `we_believe_1.mp4` starts (checked 1-3 s after close).
+- **No rendered clips (review, Dejan Arsic):** with `manifest.json` moved away
+  in the wp-env container (`prerenderedVideos` empty, 0 segments), the first
+  version of this change (release at the hand-off) left the intro tracks
+  `ended` while `data-status` stayed `live`: the circle was black (average
+  frame brightness 0, screenshot confirmed) through believe-1, believe-2 and the
+  rest of the static flow. With the release moved into `load()` the same
+  scenario keeps the intro stream `live` and rendering (`videoWidth` 1152, the
+  avatar visible next to the static captions) through `intro`, `believe-1`,
+  `believe-2` and `home`; the intro client is simply not released there, as
+  before. The manifest was restored and verified identical to a backup.
 - Returning visitor resuming at `identity`: no intro client, `status: idle`,
   a manual `pagehide` event does nothing and throws nothing.
 - `node --check` on a module copy passes; `php tests/aicoach-progress.test.php`
