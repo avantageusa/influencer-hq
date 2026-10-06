@@ -1,0 +1,14 @@
+# Local wp-env configuration. It holds real API keys and secrets: copy
+# .wp-env.example.json to .wp-env.json and fill in the values. Never commit it.
+/.wp-env.json
+/.wp-env.override.json
+
+# Per-developer Claude Code settings (see .claude/settings.local.json.example)
+/.claude/settings.local.json
+
+# Installed dependencies (restored by `composer install` / `npm install`)
+/vendor/
+/node_modules/
+
+# OS files
+.DS_Store

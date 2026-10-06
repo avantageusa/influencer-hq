@@ -61,6 +61,16 @@ the existing `ANAM_API_KEY` block, before the `ABSPATH` define.
 directly. The Turnstile keys are shared across instances; each instance's hostname
 must be on the widget's allowed-domain list or the challenge fails.
 
+### Local development with wp-env
+
+`.wp-env.json` holds the Gary and Anam keys the AI Coach needs and is git-ignored, so it is never committed. To set it up:
+
+```
+cp .wp-env.example.json .wp-env.json
+```
+
+Then replace each `<placeholder>` with the real value (ask a teammate or see the instance table above for where each key lives) and run `npx @wordpress/env start`. The site is served on `http://localhost:8888`. `vendor/` and `node_modules/` are restored with `composer install` and `npm install`; `composer.lock` is tracked, so everyone gets the same versions.
+
 Installation
 ---------------
 
