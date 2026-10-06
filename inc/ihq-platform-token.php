@@ -17,7 +17,9 @@
  * The refresh re-runs start-session through ihq_refresh_influencer_oauth_tokens()
  * (inc/email-verification-handler.php), the same call login and the share-link
  * retry already make. A request refreshes at most once; a failed refresh keeps
- * the stored token, so the handler returns the error it returns today.
+ * the stored token, so the handler returns the error it returns today. Per user,
+ * one request refreshes at a time (lock), and after a failure none does for a
+ * minute (backoff).
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -29,6 +31,18 @@ const IHQ_PLATFORM_ID_TOKEN_EXPIRY_MARGIN_SECONDS = 60;
 
 /** The only status that triggers a refresh-and-retry: the authorizer's answer to an expired token. */
 const IHQ_PLATFORM_HTTP_UNAUTHORIZED = 401;
+
+/**
+ * A refresh lock older than this belongs to a request that died mid-refresh; the next request takes it over.
+ * start-session times out after 30 s, so a live refresh never holds the lock longer.
+ */
+const IHQ_PLATFORM_REFRESH_LOCK_TTL_SECONDS = 30;
+
+/** After a failed refresh, skip refreshing for this long, so a start-session outage isn't hit by every request. */
+const IHQ_PLATFORM_REFRESH_BACKOFF_SECONDS = 60;
+
+const IHQ_PLATFORM_REFRESH_LOCK_OPTION_PREFIX = 'ihq_platform_refresh_lock_';
+const IHQ_PLATFORM_REFRESH_BACKOFF_PREFIX     = 'ihq_platform_refresh_backoff_';
 
 /**
  * Whether a stored expiry has passed (or is within the margin).
@@ -48,19 +62,92 @@ function ihq_platform_id_token_is_expired( $expires_at, $now ) {
 }
 
 /**
- * Re-run start-session for the user with their stored country and return the new ID token.
+ * Take the user's refresh lock, so concurrent requests (the profile page loads several at once) run one
+ * start-session between them instead of one each.
+ *
+ * INSERT IGNORE on wp_options is atomic through its unique option_name key; add_option() is not (it
+ * checks a cache, then upserts). A lock older than the TTL is taken over.
  *
  * @param int $wp_user_id WordPress user ID.
- * @return string New ID token, or '' when the refresh failed.
+ * @param int $now        Current Unix time; stored as the lock value.
+ * @return bool True when this request now holds the lock.
  */
-function ihq_refresh_platform_id_token( $wp_user_id ) {
+function ihq_platform_refresh_lock_acquire( $wp_user_id, $now ) {
+	global $wpdb;
+	$name   = IHQ_PLATFORM_REFRESH_LOCK_OPTION_PREFIX . (int) $wp_user_id;
+	$insert = "INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'no')";
+	if ( 1 === (int) $wpdb->query( $wpdb->prepare( $insert, $name, (string) $now ) ) ) {
+		return true;
+	}
+	$stale_before = (int) $now - IHQ_PLATFORM_REFRESH_LOCK_TTL_SECONDS;
+	$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name = %s AND option_value < %d", $name, $stale_before ) );
+	return 1 === (int) $wpdb->query( $wpdb->prepare( $insert, $name, (string) $now ) );
+}
+
+/**
+ * Release the user's refresh lock, but only the one this request took (matched by its timestamp), never a
+ * lock another request has taken over since.
+ *
+ * @param int $wp_user_id WordPress user ID.
+ * @param int $locked_at  The value ihq_platform_refresh_lock_acquire() stored.
+ */
+function ihq_platform_refresh_lock_release( $wp_user_id, $locked_at ) {
+	global $wpdb;
+	$name = IHQ_PLATFORM_REFRESH_LOCK_OPTION_PREFIX . (int) $wp_user_id;
+	$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name = %s AND option_value = %s", $name, (string) $locked_at ) );
+}
+
+/**
+ * The stored ID token when it is still valid, else ''. Used when another request holds the refresh lock:
+ * if that refresh already finished, its token is used; if not, this request keeps today's behaviour.
+ *
+ * @param int $wp_user_id WordPress user ID.
+ * @param int $now        Current Unix time.
+ * @return string
+ */
+function ihq_platform_valid_stored_token( $wp_user_id, $now ) {
+	$id_token = get_user_meta( $wp_user_id, 'ihq_id_token', true );
+	if ( ! is_string( $id_token ) ) {
+		return '';
+	}
+	if ( ihq_platform_id_token_is_expired( get_user_meta( $wp_user_id, 'ihq_token_expires', true ), $now ) ) {
+		return '';
+	}
+	return $id_token;
+}
+
+/**
+ * Re-run start-session for the user with their stored country and return the new ID token.
+ *
+ * At most one request per user refreshes at a time (lock), and after a failure no request refreshes for
+ * IHQ_PLATFORM_REFRESH_BACKOFF_SECONDS (backoff).
+ *
+ * @param int      $wp_user_id WordPress user ID.
+ * @param int|null $now        Current Unix time; defaults to time().
+ * @return string New ID token, or '' when no refresh happened or it failed.
+ */
+function ihq_refresh_platform_id_token( $wp_user_id, $now = null ) {
 	$wp_user_id = (int) $wp_user_id;
+	$now        = null === $now ? time() : (int) $now;
 	if ( ! function_exists( 'ihq_refresh_influencer_oauth_tokens' ) ) {
 		return '';
 	}
-	$country   = get_user_meta( $wp_user_id, 'ihq_oauth_country_iso', true );
-	$refreshed = ihq_refresh_influencer_oauth_tokens( $wp_user_id, is_string( $country ) ? $country : '' );
+	$backoff_key = IHQ_PLATFORM_REFRESH_BACKOFF_PREFIX . $wp_user_id;
+	if ( false !== get_transient( $backoff_key ) ) {
+		return '';
+	}
+	if ( ! ihq_platform_refresh_lock_acquire( $wp_user_id, $now ) ) {
+		return ihq_platform_valid_stored_token( $wp_user_id, $now );
+	}
+
+	try {
+		$country   = get_user_meta( $wp_user_id, 'ihq_oauth_country_iso', true );
+		$refreshed = ihq_refresh_influencer_oauth_tokens( $wp_user_id, is_string( $country ) ? $country : '' );
+	} finally {
+		ihq_platform_refresh_lock_release( $wp_user_id, $now );
+	}
 	if ( true !== $refreshed ) {
+		set_transient( $backoff_key, $now, IHQ_PLATFORM_REFRESH_BACKOFF_SECONDS );
 		return '';
 	}
 	$id_token = get_user_meta( $wp_user_id, 'ihq_id_token', true );
@@ -95,7 +182,7 @@ function ihq_platform_session_begin( $wp_user_id, $now = null ) {
 	}
 
 	$session['refreshed'] = true;
-	$fresh                = ihq_refresh_platform_id_token( $wp_user_id );
+	$fresh                = ihq_refresh_platform_id_token( $wp_user_id, $now );
 	if ( '' !== $fresh ) {
 		$session['id_token'] = $fresh;
 	}
@@ -126,7 +213,8 @@ function ihq_platform_send_with_401_retry( array $session, callable $send ) {
 	}
 
 	$fresh = ihq_refresh_platform_id_token( $session['user_id'] );
-	if ( '' === $fresh ) {
+	// The same token back means another request holds the lock and nothing new exists yet: resending would 401 again.
+	if ( '' === $fresh || $fresh === $session['id_token'] ) {
 		return $response;
 	}
 	return $send( $fresh );

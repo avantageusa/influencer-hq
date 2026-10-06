@@ -22,6 +22,9 @@ todos:
   - id: tests
     content: tests/platform-id-token-refresh.test.php + scripts/test-platform-token-mutations.py
     status: completed
+  - id: lock-backoff
+    content: Per-user refresh lock (INSERT IGNORE on wp_options; add_option() is not atomic; 30 s stale takeover; release only our own lock) so concurrent requests run one start-session; 60 s transient backoff after a failed refresh so a start-session outage isn't hit by every request; a 401 is not resent with the same token (Steve, 2026-10-06)
+    status: completed
   - id: verify
     content: Run every tests/*.test.php, php -l on touched files, the mutation scripts; QA on dev IHQ per the ticket
     status: pending
@@ -30,7 +33,7 @@ todos:
 # [ENGR-7017] Refresh the platform ID token when it expires
 
 **Ticket:** https://avantageusa.atlassian.net/browse/ENGR-7017
-**Related:** ENGR-7004 (influencerhq-api authorizer), ENGR-7016 (start-session first name), ENGR-7033 (refresh token handling in account-api)
+**Related:** ENGR-7004 (influencerhq-api authorizer), ENGR-7016 (start-session first name), ENGR-7033 (SSO session codes are reusable for 24 h and store the full token set)
 **Drafted by:** Claude Code (claude-opus-5-5)
 
 ## Problem

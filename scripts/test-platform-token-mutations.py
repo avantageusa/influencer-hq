@@ -27,6 +27,20 @@ mutations = [
     (token, "if ( ! is_numeric( $expires_at ) ) {\n\t\treturn false;", "if ( ! is_numeric( $expires_at ) ) {\n\t\treturn true;"),
     # ihq_refresh_platform_id_token()
     (token, "if ( true !== $refreshed ) {", "if ( false ) {"),
+    # ihq_refresh_platform_id_token(): backoff and lock
+    (token, "if ( false !== get_transient( $backoff_key ) ) {", "if ( false ) {"),
+    (token, "if ( ! ihq_platform_refresh_lock_acquire( $wp_user_id, $now ) ) {", "if ( false ) {"),
+    (token, "return ihq_platform_valid_stored_token( $wp_user_id, $now );", "return '';"),
+    (token, "set_transient( $backoff_key, $now, IHQ_PLATFORM_REFRESH_BACKOFF_SECONDS );", ""),
+    (token, "\t\tihq_platform_refresh_lock_release( $wp_user_id, $now );\n", "\n"),
+    # ihq_platform_refresh_lock_acquire() / _release()
+    (token, "if ( 1 === (int) $wpdb->query( $wpdb->prepare( $insert, $name, (string) $now ) ) ) {", "if ( false ) {"),
+    (token, "$stale_before = (int) $now - IHQ_PLATFORM_REFRESH_LOCK_TTL_SECONDS;", "$stale_before = (int) $now;"),
+    (token, "$stale_before = (int) $now - IHQ_PLATFORM_REFRESH_LOCK_TTL_SECONDS;", "$stale_before = (int) $now - IHQ_PLATFORM_REFRESH_LOCK_TTL_SECONDS + 1;"),
+    (token, "AND option_value = %s\", $name, (string) $locked_at", "AND option_value < %d\", $name, PHP_INT_MAX"),
+    # ihq_platform_valid_stored_token()
+    (token, "if ( ! is_string( $id_token ) ) {\n\t\treturn '';\n\t}\n\tif ( ihq_platform_id_token_is_expired(", "if ( false ) {\n\t\treturn '';\n\t}\n\tif ( ihq_platform_id_token_is_expired("),
+    (token, "if ( ihq_platform_id_token_is_expired( get_user_meta( $wp_user_id, 'ihq_token_expires', true ), $now ) ) {", "if ( false ) {"),
     # ihq_platform_session_begin()
     (token, "\t$session['refreshed'] = true;\n", "\n"),
     (token, "if ( '' !== $fresh ) {", "if ( false ) {"),
@@ -35,7 +49,8 @@ mutations = [
     (token, status_guard, "if ( 200 === (int) wp_remote_retrieve_response_code( $response ) ) {"),
     (token, status_guard, "if ( false ) {"),
     (token, "if ( ! empty( $session['refreshed'] ) ) {", "if ( false ) {"),
-    (token, "if ( '' === $fresh ) {", "if ( false ) {"),
+    (token, "if ( '' === $fresh || $fresh === $session['id_token'] ) {", "if ( '' === $fresh ) {"),
+    (token, "if ( '' === $fresh || $fresh === $session['id_token'] ) {", "if ( $fresh === $session['id_token'] ) {"),
     (token, "return $send( $fresh );", "return $send( $session['id_token'] );"),
     # get_referral_link_ajax()
     (ajax, "&& ! $session['refreshed'] ) {", ") {"),

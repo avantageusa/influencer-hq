@@ -59,11 +59,46 @@ class WP_User {
 }
 class StopRequest extends Exception {}
 
+/**
+ * wp_options as the refresh lock uses it: INSERT IGNORE (1 row if new, 0 if the name exists) and the two
+ * DELETEs (stale lock, own lock). prepare() hands the query and its arguments through unformatted.
+ */
+class FakeWpdb {
+	public $options = 'wp_options';
+	public $rows    = array();
+	public $queries = array();
+	public function prepare( $query, ...$args ) { return array( $query, $args ); }
+	public function query( $prepared ) {
+		list( $query, $args ) = $prepared;
+		$this->queries[]      = strtok( $query, ' ' ) . ' ' . $args[0];
+		$name                 = $args[0];
+		if ( 0 === strpos( $query, 'INSERT IGNORE' ) ) {
+			if ( array_key_exists( $name, $this->rows ) ) {
+				return 0;
+			}
+			$this->rows[ $name ] = $args[1];
+			return 1;
+		}
+		if ( ! array_key_exists( $name, $this->rows ) ) {
+			return 0;
+		}
+		$stored  = $this->rows[ $name ];
+		$matches = false !== strpos( $query, 'option_value < %d' ) ? (int) $stored < $args[1] : $stored === $args[1];
+		if ( ! $matches ) {
+			return 0;
+		}
+		unset( $this->rows[ $name ] );
+		return 1;
+	}
+}
+
 function reset_state() {
 	$GLOBALS['requests']  = array();
 	$GLOBALS['responses'] = array();
 	$GLOBALS['user_meta'] = array();
 	$GLOBALS['json']      = null;
+	$GLOBALS['wpdb']      = new FakeWpdb();
+	$GLOBALS['transients'] = array();
 	$_COOKIE              = array();
 	$_POST                = array();
 }
@@ -85,6 +120,8 @@ function get_user_by( $field, $id ) { return new WP_User( $id ); }
 function get_userdata( $id ) { return new WP_User( $id ); }
 function get_user_meta( $id, $key, $single = false ) { return $GLOBALS['user_meta'][ $id ][ $key ] ?? ''; }
 function update_user_meta( $id, $key, $value ) { $GLOBALS['user_meta'][ $id ][ $key ] = $value; return true; }
+function get_transient( $key ) { return $GLOBALS['transients'][ $key ]['value'] ?? false; }
+function set_transient( $key, $value, $ttl ) { $GLOBALS['transients'][ $key ] = array( 'value' => $value, 'ttl' => $ttl ); return true; }
 function wp_send_json_success( $data = null ) { $GLOBALS['json'] = array( 'success' => true, 'data' => $data ); throw new StopRequest( 'json' ); }
 function wp_send_json_error( $data = null ) { $GLOBALS['json'] = array( 'success' => false, 'data' => $data ); throw new StopRequest( 'json' ); }
 
@@ -238,6 +275,90 @@ check( 'begin: no stored expiry, no refresh', ihq_platform_session_begin( USER_I
 
 reset_state();
 check( 'begin: no token, no refresh', ihq_platform_session_begin( USER_ID, 2000 ), array( 'user_id' => USER_ID, 'id_token' => '', 'refreshed' => false ) );
+
+// --- Refresh lock: one start-session per user at a time; a lock older than 30 s is taken over. ---
+const LOCK = 'ihq_platform_refresh_lock_42';
+const BACKOFF = 'ihq_platform_refresh_backoff_42';
+
+reset_state();
+check( 'lock: free lock is taken', ihq_platform_refresh_lock_acquire( USER_ID, 5000 ), true );
+check( 'lock: stores the time it was taken', $GLOBALS['wpdb']->rows, array( LOCK => '5000' ) );
+check( 'lock: a held lock is not taken again', ihq_platform_refresh_lock_acquire( USER_ID, 5010 ), false );
+check( 'lock: held lock unchanged', $GLOBALS['wpdb']->rows, array( LOCK => '5000' ) );
+
+reset_state();
+$GLOBALS['wpdb']->rows[ LOCK ] = '4970';
+check( 'lock: a lock exactly 30 s old is still held', ihq_platform_refresh_lock_acquire( USER_ID, 5000 ), false );
+$GLOBALS['wpdb']->rows[ LOCK ] = '4969';
+check( 'lock: a lock older than 30 s is taken over', ihq_platform_refresh_lock_acquire( USER_ID, 5000 ), true );
+check( 'lock: taken-over lock has the new time', $GLOBALS['wpdb']->rows, array( LOCK => '5000' ) );
+
+reset_state();
+$GLOBALS['wpdb']->rows[ LOCK ] = '5000';
+ihq_platform_refresh_lock_release( USER_ID, 4000 );
+check( 'lock: release leaves another request\'s lock alone', $GLOBALS['wpdb']->rows, array( LOCK => '5000' ) );
+ihq_platform_refresh_lock_release( USER_ID, 5000 );
+check( 'lock: release removes this request\'s lock', $GLOBALS['wpdb']->rows, array() );
+
+reset_state();
+given_user( 1000 );
+respond( START_SESSION_URL, 200, SESSION_OK );
+check( 'locked refresh: success returns the new token', ihq_refresh_platform_id_token( USER_ID, 2000 ), NEW_TOKEN );
+check( 'locked refresh: lock released after success', $GLOBALS['wpdb']->rows, array() );
+check( 'locked refresh: lock taken and released around start-session', $GLOBALS['wpdb']->queries, array( 'INSERT ' . LOCK, 'DELETE ' . LOCK ) );
+check( 'locked refresh: no backoff after success', $GLOBALS['transients'], array() );
+
+reset_state();
+given_user( 1000 );
+respond( START_SESSION_URL, 500, SESSION_FAIL );
+check( 'failed refresh: returns ""', ihq_refresh_platform_id_token( USER_ID, 2000 ), '' );
+check( 'failed refresh: lock released', $GLOBALS['wpdb']->rows, array() );
+check( 'failed refresh: 60 s backoff set', $GLOBALS['transients'], array( BACKOFF => array( 'value' => 2000, 'ttl' => 60 ) ) );
+
+reset_state();
+given_user( 1000 );
+$GLOBALS['transients'][ BACKOFF ] = array( 'value' => 1990, 'ttl' => 60 );
+check( 'backoff: no refresh while it lasts', ihq_refresh_platform_id_token( USER_ID, 2000 ), '' );
+check( 'backoff: no start-session, no lock', array( $GLOBALS['requests'], $GLOBALS['wpdb']->queries ), array( array(), array() ) );
+
+reset_state();
+given_user( 1000 );
+$GLOBALS['transients'][ BACKOFF ] = array( 'value' => 1990, 'ttl' => 60 );
+check( 'backoff: begin keeps the old token, marks attempted', ihq_platform_session_begin( USER_ID, 2000 ), array( 'user_id' => USER_ID, 'id_token' => OLD_TOKEN, 'refreshed' => true ) );
+
+reset_state();
+given_user( 1000 );
+$GLOBALS['wpdb']->rows[ LOCK ] = '1995';
+check( 'lock held, refresh not finished: returns ""', ihq_refresh_platform_id_token( USER_ID, 2000 ), '' );
+check( 'lock held: no start-session', $GLOBALS['requests'], array() );
+check( 'lock held: other request\'s lock untouched', $GLOBALS['wpdb']->rows, array( LOCK => '1995' ) );
+
+reset_state();
+given_user( 5000 );
+$GLOBALS['user_meta'][ USER_ID ]['ihq_id_token'] = NEW_TOKEN;
+$GLOBALS['wpdb']->rows[ LOCK ] = '1995';
+check( 'lock held, refresh already finished: returns the stored new token', ihq_refresh_platform_id_token( USER_ID, 2000 ), NEW_TOKEN );
+
+reset_state();
+given_user( 5000 );
+$GLOBALS['wpdb']->rows[ LOCK ] = '1995';
+$GLOBALS['user_meta'][ USER_ID ]['ihq_id_token'] = array( 'not-a-token' );
+check( 'lock held, unexpired but malformed stored token: returns ""', ihq_refresh_platform_id_token( USER_ID, 2000 ), '' );
+
+reset_state();
+given_user( valid() );
+$GLOBALS['wpdb']->rows[ LOCK ] = (string) time();
+$sent    = array();
+$session = ihq_platform_session_begin( USER_ID );
+$result  = ihq_platform_send_with_401_retry(
+	$session,
+	function ( $token ) use ( &$sent ) {
+		$sent[] = auth_token_label( 'Bearer ' . $token );
+		return array( 'status' => 401, 'body' => '{}' );
+	}
+);
+check( '401 while another request refreshes: first response returned', $result, array( 'status' => 401, 'body' => '{}' ) );
+check( '401 while another request refreshes: not resent with the same token', $sent, array( 'old' ) );
 check( 'begin: no token, no request', $GLOBALS['requests'], array() );
 
 // --- Profile: GET /account/players/me. ---
