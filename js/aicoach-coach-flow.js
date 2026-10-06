@@ -3044,6 +3044,11 @@ if ( stage && avatarWrap ) {
             await client.streamToVideoElement( AVATAR_VIDEO_ID );
         } catch ( error ) {
             console.warn( '[aicoach] falling back to static intro text:', error );
+            // ENGR-7098 (CodeRabbit) — if streamToVideoElement() is what rejected,
+            // the client already exists and may hold a half-open connection;
+            // free it before the static fallback takes over. A no-op when the
+            // failure came earlier (openGarySession() — no client yet).
+            releaseIntroClient();
             // openGarySession() may have succeeded (garySessionId set) even though
             // a later step here failed — best-effort close so that session doesn't
             // stay open on Gary's side for no reason. Token-validation failures

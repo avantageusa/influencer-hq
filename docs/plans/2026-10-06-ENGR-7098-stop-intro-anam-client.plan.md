@@ -76,8 +76,15 @@ connection; it never touches the `<video>` element's `srcObject`.
 - **`pagehide`.** Best-effort: a closing tab drops the peer connection
   regardless, but an explicit stop lets Anam end the session without waiting
   for the connection to time out.
-- **Untouched:** the Q&A client, `waitForSpeechOrSkip()`, the failure path in
-  `start()`'s `catch`, resume-from-progress (no intro client is created there).
+- **Failure path (CodeRabbit).** `releaseIntroClient` is assigned before
+  `await client.streamToVideoElement()`, so if that call rejects the client
+  exists and `start()`'s `catch` used to start the static fallback without
+  stopping it. The `catch` now calls `releaseIntroClient()` first; it is a
+  no-op when the failure came earlier (`openGarySession()` rejects before any
+  client exists). An earlier version of this plan wrongly said no client
+  exists in this `catch`.
+- **Untouched:** the Q&A client, `waitForSpeechOrSkip()`, resume-from-progress
+  (no intro client is created there).
 
 ## Alternatives considered
 - **Stop the intro client when it finishes speaking** (`MESSAGE_HISTORY_UPDATED`)
@@ -119,8 +126,12 @@ anyway. No backend, REST or progress change.
 **Not verified, called out rather than assumed:**
 - The concurrency limit itself (would need an exhausted account) — and so
   whether Anam stops counting the session the moment the stream ends.
-- The failure path in `start()`'s `catch` (no client exists there, so the
-  release is a no-op; not driven live).
+- The `catch` fix (CodeRabbit): a `streamToVideoElement()` rejection could not
+  be forced live (the stream attached before a renamed video element could
+  make the call fail), so it was verified by tracing the code and a syntax
+  check only. `releaseIntroClient()` is idempotent and `stopStreaming()` is a
+  no-op without a streaming client, so the call is safe on every path into
+  the `catch`.
 - `pagehide` on a real tab close: only a dispatched event was tried.
 
 ## Notes
