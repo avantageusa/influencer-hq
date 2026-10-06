@@ -130,7 +130,8 @@ function create_challenge_ajax() {
         wp_send_json_error( 'Security check failed.', 403 );
     }
     $wp_user_id = get_current_user_id();
-    $id_token   = get_user_meta( $wp_user_id, 'ihq_id_token', true );
+    $session    = ihq_platform_session_begin( $wp_user_id );
+    $id_token   = $session['id_token'];
     if ( empty( $id_token ) ) {
         wp_send_json_error( 'No IHQ session token.' );
     }
@@ -164,12 +165,14 @@ function create_challenge_ajax() {
     );
 
     $api_url  = INFLUENCER_API_BASE . '/rankings/createChallenge';
-    $response = wp_remote_post( $api_url, array(
-        'timeout'   => 15,
-        'sslverify' => true,
-        'headers'   => array( 'Content-Type' => 'application/json', 'Authorization' => 'Bearer ' . $id_token ),
-        'body'      => wp_json_encode( $request_body ),
-    ) );
+    $response = ihq_platform_send_with_401_retry( $session, function ( $token ) use ( $api_url, $request_body ) {
+        return wp_remote_post( $api_url, array(
+            'timeout'   => 15,
+            'sslverify' => true,
+            'headers'   => array( 'Content-Type' => 'application/json', 'Authorization' => 'Bearer ' . $token ),
+            'body'      => wp_json_encode( $request_body ),
+        ) );
+    } );
 
     _challenge_send_response( $response, array(
         'url'        => 'POST ' . $api_url,
@@ -184,7 +187,8 @@ function get_challenges_for_player_ajax() {
         wp_send_json_error( 'Security check failed.', 403 );
     }
     $wp_user_id = get_current_user_id();
-    $id_token   = get_user_meta( $wp_user_id, 'ihq_id_token', true );
+    $session    = ihq_platform_session_begin( $wp_user_id );
+    $id_token   = $session['id_token'];
     if ( empty( $id_token ) ) {
         wp_send_json_error( 'No IHQ session token.' );
     }
@@ -202,11 +206,13 @@ function get_challenges_for_player_ajax() {
     if ( $last_days > 0 ) $query['lastDaysFilter'] = $last_days;
 
     $api_url  = INFLUENCER_API_BASE . '/rankings/getChallengesForPlayer?' . http_build_query( $query );
-    $response = wp_remote_get( $api_url, array(
-        'timeout'   => 15,
-        'sslverify' => true,
-        'headers'   => array( 'Authorization' => 'Bearer ' . $id_token ),
-    ) );
+    $response = ihq_platform_send_with_401_retry( $session, function ( $token ) use ( $api_url ) {
+        return wp_remote_get( $api_url, array(
+            'timeout'   => 15,
+            'sslverify' => true,
+            'headers'   => array( 'Authorization' => 'Bearer ' . $token ),
+        ) );
+    } );
 
     _challenge_send_response( $response, array(
         'url'         => 'GET ' . $api_url,
@@ -221,17 +227,20 @@ function get_challenge_details_ajax() {
         wp_send_json_error( 'Security check failed.', 403 );
     }
     $wp_user_id   = get_current_user_id();
-    $id_token     = get_user_meta( $wp_user_id, 'ihq_id_token', true );
+    $session      = ihq_platform_session_begin( $wp_user_id );
+    $id_token     = $session['id_token'];
     $challenge_id = sanitize_text_field( $_POST['challengeId'] ?? '' );
     if ( empty( $id_token ) ) { wp_send_json_error( 'No IHQ session token.' ); }
     if ( empty( $challenge_id ) ) { wp_send_json_error( 'challengeId is required.' ); }
 
     $api_url  = INFLUENCER_API_BASE . '/rankings/getChallengeDetails/' . rawurlencode( $challenge_id );
-    $response = wp_remote_get( $api_url, array(
-        'timeout'   => 15,
-        'sslverify' => true,
-        'headers'   => array( 'Authorization' => 'Bearer ' . $id_token ),
-    ) );
+    $response = ihq_platform_send_with_401_retry( $session, function ( $token ) use ( $api_url ) {
+        return wp_remote_get( $api_url, array(
+            'timeout'   => 15,
+            'sslverify' => true,
+            'headers'   => array( 'Authorization' => 'Bearer ' . $token ),
+        ) );
+    } );
 
     _challenge_send_response( $response, array(
         'url'         => 'GET ' . $api_url,
@@ -245,7 +254,8 @@ function join_challenges_ajax() {
         wp_send_json_error( 'Security check failed.', 403 );
     }
     $wp_user_id = get_current_user_id();
-    $id_token   = get_user_meta( $wp_user_id, 'ihq_id_token', true );
+    $session    = ihq_platform_session_begin( $wp_user_id );
+    $id_token   = $session['id_token'];
     if ( empty( $id_token ) ) {
         wp_send_json_error( 'No IHQ session token.' );
     }
@@ -268,12 +278,14 @@ function join_challenges_ajax() {
     );
 
     $api_url  = INFLUENCER_API_BASE . '/rankings/joinChallenges';
-    $response = wp_remote_post( $api_url, array(
-        'timeout'   => 15,
-        'sslverify' => true,
-        'headers'   => array( 'Content-Type' => 'application/json', 'Authorization' => 'Bearer ' . $id_token ),
-        'body'      => wp_json_encode( $request_body ),
-    ) );
+    $response = ihq_platform_send_with_401_retry( $session, function ( $token ) use ( $api_url, $request_body ) {
+        return wp_remote_post( $api_url, array(
+            'timeout'   => 15,
+            'sslverify' => true,
+            'headers'   => array( 'Content-Type' => 'application/json', 'Authorization' => 'Bearer ' . $token ),
+            'body'      => wp_json_encode( $request_body ),
+        ) );
+    } );
 
     _challenge_send_response( $response, array(
         'url'        => 'POST ' . $api_url,
@@ -678,17 +690,21 @@ function ihq_extract_referral_urls_from_api_body( $body ) {
 	);
 }
 
+/** The referral service's answer for a user it has no referral record for yet (not provisioned). */
+const IHQ_REFERRAL_HTTP_NOT_FOUND = 404;
+
 /**
  * Re-run oauth/start-session so the IHQ backend can finish Genius / referral provisioning.
  *
- * @param int $wp_user_id WordPress user ID.
+ * @param int    $wp_user_id        WordPress user ID.
+ * @param string $previous_id_token The token the first fetch was sent with.
+ * @return bool True when start-session ran and stored a new token. False when it was skipped (backoff after a
+ *              failure, or another request holds the refresh lock and has no new token yet) or failed: then
+ *              the referral user may still not exist.
  */
-function ihq_retry_referral_link_after_oauth_refresh( $wp_user_id ) {
-	if ( ! function_exists( 'ihq_refresh_influencer_oauth_tokens' ) ) {
-		return;
-	}
-	$country = get_user_meta( (int) $wp_user_id, 'ihq_oauth_country_iso', true );
-	ihq_refresh_influencer_oauth_tokens( (int) $wp_user_id, is_string( $country ) ? $country : '' );
+function ihq_retry_referral_link_after_oauth_refresh( $wp_user_id, $previous_id_token ) {
+	$fresh = ihq_refresh_platform_id_token( (int) $wp_user_id );
+	return '' !== $fresh && $fresh !== $previous_id_token;
 }
 
 /**
@@ -770,6 +786,10 @@ function get_referral_link_ajax() {
 		wp_send_json_error( array( 'message' => 'Not logged in.' ), 403 );
 	}
 
+	// ENGR-7017: an expired token is refreshed (start-session re-run) before the fetch,
+	// which reads the refreshed token from user meta.
+	$session = ihq_platform_session_begin( $user_id );
+
 	$result = ihq_fetch_referral_link_from_api( $user_id );
 	if ( is_wp_error( $result ) ) {
 		wp_send_json_error( array( 'message' => $result->get_error_message() ) );
@@ -779,14 +799,28 @@ function get_referral_link_ajax() {
 	$status = $result['status'];
 
 	// Genius account is created by IHQ on start-session; after fresh registration retry once.
-	if ( $status !== 200 || $url === '' ) {
-		ihq_retry_referral_link_after_oauth_refresh( $user_id );
-		$retry = ihq_fetch_referral_link_from_api( $user_id );
+	// This retry also covers a 401 from a token that was still unexpired at the start.
+	// Skipped when start-session already ran above: one refresh per request, never a loop.
+	$provisioning_skipped = false;
+	if ( ( $status !== 200 || $url === '' ) && ! $session['refreshed'] ) {
+		$provisioning_skipped = ! ihq_retry_referral_link_after_oauth_refresh( $user_id, $session['id_token'] );
+		$retry                = ihq_fetch_referral_link_from_api( $user_id );
 		if ( ! is_wp_error( $retry ) ) {
 			$url    = $retry['url'];
 			$status = $retry['status'];
 			$result = $retry;
 		}
+	}
+
+	// Without start-session a new influencer's referral user may not exist yet, so this 404 is not final:
+	// the backoff ends or the other request's refresh finishes, and a later load gets the link.
+	if ( $provisioning_skipped && IHQ_REFERRAL_HTTP_NOT_FOUND === (int) $status ) {
+		wp_send_json_error(
+			array(
+				'message'   => 'Referral link not available yet, please try again in a moment.',
+				'retryable' => true,
+			)
+		);
 	}
 
 	if ( $status !== 200 ) {
@@ -983,7 +1017,8 @@ function ihq_get_player_me_ajax() {
     }
 
     $wp_user_id = get_current_user_id();
-    $id_token   = get_user_meta( $wp_user_id, 'ihq_id_token', true );
+    $session    = ihq_platform_session_begin( $wp_user_id );
+    $id_token   = $session['id_token'];
     if ( empty( $id_token ) ) {
         wp_send_json_error( [ 'message' => 'No IHQ session token — run SSO first.' ] );
         return;
@@ -997,15 +1032,17 @@ function ihq_get_player_me_ajax() {
     $sub = $decoded['sub'];
 
     $api_url  = INFLUENCER_API_BASE . '/account/players/me';
-    $response = wp_remote_get( $api_url, array(
-        'timeout'   => 10,
-        'sslverify' => true,
-        'headers'   => array(
-            'Accept'        => 'application/json',
-            'Authorization' => 'Bearer ' . $id_token,
-            'username'      => $sub,
-        ),
-    ) );
+    $response = ihq_platform_send_with_401_retry( $session, function ( $token ) use ( $api_url, $sub ) {
+        return wp_remote_get( $api_url, array(
+            'timeout'   => 10,
+            'sslverify' => true,
+            'headers'   => array(
+                'Accept'        => 'application/json',
+                'Authorization' => 'Bearer ' . $token,
+                'username'      => $sub,
+            ),
+        ) );
+    } );
 
     if ( is_wp_error( $response ) ) {
         wp_send_json_error( array( 'message' => $response->get_error_message() ) );
@@ -1034,7 +1071,8 @@ function ihq_update_fullname_ajax() {
     }
 
     $wp_user_id = get_current_user_id();
-    $id_token   = get_user_meta( $wp_user_id, 'ihq_id_token', true );
+    $session    = ihq_platform_session_begin( $wp_user_id );
+    $id_token   = $session['id_token'];
     if ( empty( $id_token ) ) {
         wp_send_json_error( array( 'message' => 'No IHQ session token — run SSO first.' ) );
         return;
@@ -1051,20 +1089,22 @@ function ihq_update_fullname_ajax() {
     $last_name  = sanitize_text_field( wp_unslash( $_POST['lastName']  ?? '' ) );
 
     $api_url  = INFLUENCER_API_BASE . '/account/players/fullname';
-    $response = wp_remote_request( $api_url, array(
-        'method'    => 'PATCH',
-        'timeout'   => 10,
-        'sslverify' => true,
-        'headers'   => array(
-            'Content-Type'  => 'application/json',
-            'Authorization' => 'Bearer ' . $id_token,
-            'username'      => $sub,
-        ),
-        'body' => wp_json_encode( array(
-            'firstName' => $first_name,
-            'lastName'  => $last_name,
-        ) ),
-    ) );
+    $response = ihq_platform_send_with_401_retry( $session, function ( $token ) use ( $api_url, $sub, $first_name, $last_name ) {
+        return wp_remote_request( $api_url, array(
+            'method'    => 'PATCH',
+            'timeout'   => 10,
+            'sslverify' => true,
+            'headers'   => array(
+                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer ' . $token,
+                'username'      => $sub,
+            ),
+            'body' => wp_json_encode( array(
+                'firstName' => $first_name,
+                'lastName'  => $last_name,
+            ) ),
+        ) );
+    } );
 
     if ( is_wp_error( $response ) ) {
         wp_send_json_error( array( 'message' => $response->get_error_message() ) );
