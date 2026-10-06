@@ -1970,7 +1970,12 @@ if ( stage && avatarWrap ) {
     let elapsedStartedAt = null;
     let selectedTierMinutes = null;
     let tierConfirmed = false; // FR-03 confirm is one-time; ignore further tier clicks after that
-    let activeClient = null;   // the connected Anam client (via Gary's session_token), once one exists
+    // ENGR-7098 — stops the live intro's Anam client and frees its avatar seat;
+    // set by start() once that client exists, a no-op until then and after the
+    // first call. The intro connection used to stay open for the rest of the
+    // visit, which counts against the account's concurrent-session limit and
+    // left no seat for Ask Sami's own video answers.
+    let releaseIntroClient = function () {};
     let garySessionId = null;  // this visit's Gary coach session id, for the close() call on completion
     let avatarIsLive = false;  // true once Gary's session connected and video started — keeps the avatar
                                 // visible (not the idle portrait) through runFallback()'s static captions
@@ -2928,6 +2933,13 @@ if ( stage && avatarWrap ) {
         return data;
     }
 
+    // ENGR-7098 — a closing tab drops the peer connection anyway, but an
+    // explicit stop lets Anam end the session without waiting for it to time
+    // out. Wrapped because releaseIntroClient is reassigned by start().
+    window.addEventListener( 'pagehide', function () {
+        releaseIntroClient();
+    } );
+
     // Auto-start on arrival — no tap required (unlike page-portal-poc.php), for a
     // fresh visitor. A returning visitor with saved progress (PO-3102) skips this
     // entirely — see init() below, which decides whether to call start() at all.
@@ -2947,7 +2959,6 @@ if ( stage && avatarWrap ) {
             // dismissing that prompt left the stream connected but silent
             // forever, since data-status never reached "live".
             const client = createClient( gary.say.video.session_token, { disableInputAudio: true } );
-            activeClient = client;
             let handledClose = false;
             let videoStarted = false; // VIDEO_PLAY_STARTED has been observed firing more than
                                        // once per session (a WebRTC renegotiation, not a real
@@ -3001,9 +3012,12 @@ if ( stage && avatarWrap ) {
                     await waitForReadOrSkip();
                 }
                 sequenceIndex = 1;
+                // The live content is over — every screen from here on is a
+                // pre-rendered clip or static, so free the intro's avatar seat.
+                releaseIntroClient();
                 runFallback( true );
             } );
-            client.addListener( AnamEvent.CONNECTION_CLOSED, function ( event ) {
+            const introCloseHandler = function ( event ) {
                 if ( handledClose || sequenceFinished ) {
                     return;
                 }
@@ -3011,7 +3025,21 @@ if ( stage && avatarWrap ) {
                 avatarIsLive = false;
                 console.warn( '[aicoach] Sami CONNECTION_CLOSED before sequence finished', event );
                 runFallback();
-            } );
+            };
+            client.addListener( AnamEvent.CONNECTION_CLOSED, introCloseHandler );
+            releaseIntroClient = function () {
+                releaseIntroClient = function () {};
+                // stopStreaming() emits CONNECTION_CLOSED before it stops the
+                // connection; detach the handler first so a release we asked for
+                // is not mistaken for a dropped connection (same order as
+                // teardownQaClient()).
+                client.removeListener( AnamEvent.CONNECTION_CLOSED, introCloseHandler );
+                try {
+                    client.stopStreaming();
+                } catch ( stopError ) {
+                    console.warn( '[aicoach] intro client stopStreaming() failed:', stopError );
+                }
+            };
 
             await client.streamToVideoElement( AVATAR_VIDEO_ID );
         } catch ( error ) {

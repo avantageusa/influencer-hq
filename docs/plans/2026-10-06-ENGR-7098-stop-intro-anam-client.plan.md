@@ -1,0 +1,131 @@
+---
+name: Stop the live intro's Anam client once the intro has handed off
+overview: >
+  start() opens an Anam client for the live intro, stores it in `activeClient`
+  and never touches it again, so its WebRTC connection stays open for the rest
+  of the visit and appears to keep one of the account's concurrent avatar seats
+  while the visitor watches pre-rendered clips. The Ask Sami video answer needs
+  a seat of its own and falls back to audio/text when none is free. The fix
+  releases the intro client right after the hand-off to the first clip and on
+  pagehide, with the intro's CONNECTION_CLOSED handler detached first so the
+  release is not mistaken for a dropped connection. Out of scope: the case of
+  a visitor asking a question while the intro is still speaking (both clients
+  exist for a moment), and any change to the Q&A client's lifecycle.
+todos:
+  - id: reproduce
+    content: Confirm that the intro stream's tracks are still live after the first clip is playing
+    status: completed
+  - id: release-helper
+    content: Add an idempotent releaseIntroClient() that detaches the intro CONNECTION_CLOSED handler, then calls stopStreaming(), and replace the unused activeClient
+    status: completed
+  - id: wire
+    content: Call it right after the intro hand-off (before runFallback( true )) and on pagehide
+    status: completed
+  - id: verify
+    content: Run tests, lint, and CI gate before merge
+    status: pending
+---
+
+# [ENGR-7098] Stop the live intro Anam client after hand-off
+
+**Ticket:** https://avantageusa.atlassian.net/browse/ENGR-7098
+**Drafted by:** Claude (claude-sonnet-5-5)
+
+## Problem
+The live intro's Anam client is created in `start()` (`js/aicoach-coach-flow.js`)
+and assigned to `activeClient`, which is never read again. Nothing calls
+`stopStreaming()` on it and there is no `pagehide` handling; only the Ask Sami
+client (`qaClient`) is torn down. After the hand-off to the pre-rendered clips
+the intro connection stays open. During ENGR-7051 testing the account hit
+"Concurrency limit reached" and the first Ask Sami video answer fell back to
+audio/text.
+
+## Reproduction
+1. Load the AI Coach page as a fresh visitor, keep a reference to
+   `video.srcObject` while the intro plays (the Browser pane has to be
+   visible, otherwise the intro never reaches `live`).
+2. Let the intro hand off to `believe-1`.
+3. Before the fix (wp-env, change stashed): the captured stream's tracks are
+   `live` at the clip start and still `live` 12 s later (`active: true`).
+   After the fix they are `ended` at the clip start.
+
+How long Anam keeps a session counted after the page stops using it is not
+verified; stale sessions did expire by themselves during earlier testing.
+
+## Approach
+Read from the Anam SDK 4.27.1 bundle the page loads (jsdelivr `+esm`):
+`stopStreaming()` first **emits `CONNECTION_CLOSED`** and only then stops the
+connection; it never touches the `<video>` element's `srcObject`.
+
+- **Detach before stopping.** The intro's `CONNECTION_CLOSED` handler treats a
+  close as a dropped connection (`avatarIsLive = false`, `runFallback()`).
+  A release we trigger ourselves must not run that, so the handler is removed
+  before `stopStreaming()` is called — the same order `teardownQaClient()`
+  already uses for the Q&A client.
+- **`releaseIntroClient()`**, module-level next to `activeClient`, assigned
+  inside `start()` where the client and its handler exist. Idempotent (clears
+  itself first) so the hand-off and `pagehide` can both call it. It replaces the
+  dead `activeClient` variable. `stopStreaming()` is wrapped in try/catch with
+  a warning like `teardownQaClient()`.
+- **When.** Immediately after `waitForSpeechOrSkip()` / `waitForReadOrSkip()`
+  and before `runFallback( true )`, i.e. as soon as the live content is over.
+  `playPrerenderedClip()` replaces `video.srcObject` itself, so nothing
+  depends on the intro stream afterwards. With Ask Sami open at that moment
+  (the sequence is held by ENGR-7051) the video element keeps a stopped
+  stream, which is hidden behind the idle portrait anyway.
+- **`pagehide`.** Best-effort: a closing tab drops the peer connection
+  regardless, but an explicit stop lets Anam end the session without waiting
+  for the connection to time out.
+- **Untouched:** the Q&A client, `waitForSpeechOrSkip()`, the failure path in
+  `start()`'s `catch`, resume-from-progress (no intro client is created there).
+
+## Alternatives considered
+- **Stop the intro client when it finishes speaking** (`MESSAGE_HISTORY_UPDATED`)
+  instead of at the hand-off: earlier release, but the hand-off point is where
+  the sequence already waits for the same event or its 25 s cap, so the gain is
+  nil and the extra timing path is one more thing to get wrong.
+- **Reuse the intro client for Ask Sami answers** (one seat for the whole
+  visit): attractive, but the intro session is a Gary-owned conversation with
+  its own persona/session token; reusing it would change what Ask Sami says
+  and is a design question for Gary/Anam, not a cleanup.
+- **Leave it and raise the Anam limit:** costs money and hides the leak.
+
+## Blast radius
+Only the intro path of `js/aicoach-coach-flow.js`. Risks: (1) stopping emits
+`CONNECTION_CLOSED` — mitigated by detaching the handler first; (2) a stopped
+stream left on the `<video>` while Ask Sami is open during the hand-off —
+hidden by the idle portrait, replaced by the first clip on close; (3) `pagehide`
+fires on bfcache navigations too, but the flow cannot resume a live intro
+anyway. No backend, REST or progress change.
+
+## Verification (wp-env, visible Browser pane, real Gary/Anam session)
+- Intro stream tracks `live,live` during the intro and `ended,ended` when
+  `believe-1` starts (before the fix: `live,live` still 12 s into the clip).
+  The clip starts normally and plays on (t advancing), panel `believe-1`.
+- No `[aicoach] Sami CONNECTION_CLOSED before sequence finished` warning and
+  no second `runFallback()` in any run.
+- Ask Sami after the hand-off: question asked on `believe-1`, answer stream
+  attached about 9 s later (visible, idle off), ended about 20 s later, idle
+  back on with the panel open.
+- Ask Sami opened during the intro (ENGR-7051 hold): the intro client was
+  released at the hand-off (tracks `ended`), the page stayed on `intro` with
+  no clip loaded and idle on for 36 s; closing the panel started
+  `we_believe_1.mp4` within 1 s.
+- Returning visitor resuming at `identity`: no intro client, `status: idle`,
+  a manual `pagehide` event does nothing and throws nothing.
+- `node --check` on a module copy passes; `php tests/aicoach-progress.test.php`
+  passes. No ESLint run (dependencies are not installed in this checkout).
+
+**Not verified, called out rather than assumed:**
+- The concurrency limit itself (would need an exhausted account) — and so
+  whether Anam stops counting the session the moment the stream ends.
+- The failure path in `start()`'s `catch` (no client exists there, so the
+  release is a no-op; not driven live).
+- `pagehide` on a real tab close: only a dispatched event was tried.
+
+## Notes
+- Open question on the ticket: whether Anam counts an idle, connected session
+  against the limit, and whether the limit is per environment. Worth asking
+  Anam; the change is correct hygiene either way.
+- Related: `2026-10-05-ENGR-7051-ask-sami-idle-animation.plan.md` (where this
+  surfaced).
