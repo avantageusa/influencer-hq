@@ -1970,7 +1970,14 @@ if ( stage && avatarWrap ) {
     let elapsedStartedAt = null;
     let selectedTierMinutes = null;
     let tierConfirmed = false; // FR-03 confirm is one-time; ignore further tier clicks after that
-    let activeClient = null;   // the connected Anam client (via Gary's session_token), once one exists
+    // ENGR-7098 — stops the live intro's Anam client and frees its avatar seat;
+    // set by start() once that client exists, a no-op until then and after the
+    // first call. The intro connection used to stay open for the rest of the
+    // visit, which counts against the account's concurrent-session limit and
+    // left no seat for Ask Sami's own video answers. Called when the first
+    // pre-rendered clip replaces the intro stream, when start() fails, and on
+    // pagehide.
+    let releaseIntroClient = function () {};
     let garySessionId = null;  // this visit's Gary coach session id, for the close() call on completion
     let avatarIsLive = false;  // true once Gary's session connected and video started — keeps the avatar
                                 // visible (not the idle portrait) through runFallback()'s static captions
@@ -2241,6 +2248,11 @@ if ( stage && avatarWrap ) {
                 // src in the video element — clear it first or a plain MP4 src
                 // silently never plays.
                 video.srcObject = null;
+                // ENGR-7098 — the intro's stream is off the element now, so its
+                // avatar seat can be freed without leaving a dead stream on
+                // screen. A no-op after the first call and when there is no
+                // intro client (resume, failed start).
+                releaseIntroClient();
                 video.currentTime = 0;
                 video.src = clipUrl;
                 avatarWrap.dataset.status = 'live'; // same CSS state that reveals .aicoach-avatar-video over the static portrait
@@ -2928,6 +2940,13 @@ if ( stage && avatarWrap ) {
         return data;
     }
 
+    // ENGR-7098 — a closing tab drops the peer connection anyway, but an
+    // explicit stop lets Anam end the session without waiting for it to time
+    // out. Wrapped because releaseIntroClient is reassigned by start().
+    window.addEventListener( 'pagehide', function () {
+        releaseIntroClient();
+    } );
+
     // Auto-start on arrival — no tap required (unlike page-portal-poc.php), for a
     // fresh visitor. A returning visitor with saved progress (PO-3102) skips this
     // entirely — see init() below, which decides whether to call start() at all.
@@ -2947,7 +2966,6 @@ if ( stage && avatarWrap ) {
             // dismissing that prompt left the stream connected but silent
             // forever, since data-status never reached "live".
             const client = createClient( gary.say.video.session_token, { disableInputAudio: true } );
-            activeClient = client;
             let handledClose = false;
             let videoStarted = false; // VIDEO_PLAY_STARTED has been observed firing more than
                                        // once per session (a WebRTC renegotiation, not a real
@@ -3001,9 +3019,13 @@ if ( stage && avatarWrap ) {
                     await waitForReadOrSkip();
                 }
                 sequenceIndex = 1;
+                // The intro's avatar seat is freed once a clip actually replaces
+                // its stream (playPrerenderedClip()), not here: with no clip
+                // rendered the intro stream stays on screen for the static
+                // captions, and a stopped stream renders empty.
                 runFallback( true );
             } );
-            client.addListener( AnamEvent.CONNECTION_CLOSED, function ( event ) {
+            const introCloseHandler = function ( event ) {
                 if ( handledClose || sequenceFinished ) {
                     return;
                 }
@@ -3011,11 +3033,30 @@ if ( stage && avatarWrap ) {
                 avatarIsLive = false;
                 console.warn( '[aicoach] Sami CONNECTION_CLOSED before sequence finished', event );
                 runFallback();
-            } );
+            };
+            client.addListener( AnamEvent.CONNECTION_CLOSED, introCloseHandler );
+            releaseIntroClient = function () {
+                releaseIntroClient = function () {};
+                // stopStreaming() emits CONNECTION_CLOSED before it stops the
+                // connection; detach the handler first so a release we asked for
+                // is not mistaken for a dropped connection (same order as
+                // teardownQaClient()).
+                client.removeListener( AnamEvent.CONNECTION_CLOSED, introCloseHandler );
+                try {
+                    client.stopStreaming();
+                } catch ( stopError ) {
+                    console.warn( '[aicoach] intro client stopStreaming() failed:', stopError );
+                }
+            };
 
             await client.streamToVideoElement( AVATAR_VIDEO_ID );
         } catch ( error ) {
             console.warn( '[aicoach] falling back to static intro text:', error );
+            // ENGR-7098 (CodeRabbit) — if streamToVideoElement() is what rejected,
+            // the client already exists and may hold a half-open connection;
+            // free it before the static fallback takes over. A no-op when the
+            // failure came earlier (openGarySession() — no client yet).
+            releaseIntroClient();
             // openGarySession() may have succeeded (garySessionId set) even though
             // a later step here failed — best-effort close so that session doesn't
             // stay open on Gary's side for no reason. Token-validation failures
