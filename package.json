@@ -40,7 +40,9 @@
     "compile:css": "node-sass sass/ -o ./ && stylelint '*.css' --fix || true && stylelint '*.css' --fix",
     "compile:rtl": "rtlcss style.css style-rtl.css",
     "lint:scss": "wp-scripts lint-style 'sass/**/*.scss'",
-    "lint:js": "wp-scripts lint-js 'js/*.js'",
-    "bundle": "dir-archiver --src . --dest ../_s.zip --exclude .DS_Store .stylelintrc.json .eslintrc .git .gitattributes .github .gitignore README.md composer.json composer.lock node_modules vendor package-lock.json package.json .travis.yml phpcs.xml.dist sass style.css.map yarn.lock"
+    "lint:js": "wp-scripts lint-js 'js/*.js' 'js/aicoach/*.js'",
+    "bundle": "dir-archiver --src . --dest ../_s.zip --exclude .DS_Store .stylelintrc.json .eslintrc .git .gitattributes .github .gitignore README.md composer.json composer.lock node_modules vendor package-lock.json package.json .travis.yml phpcs.xml.dist sass style.css.map yarn.lock",
+    "test:js": "node --test js/aicoach/*.test.js",
+    "test:php": "for f in tests/*.test.php; do php \"$f\" || exit 1; done"
   }
 }

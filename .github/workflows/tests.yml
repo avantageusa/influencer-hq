@@ -1,0 +1,30 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  js:
+    name: JS tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # node:test needs no install; the tests have no dependencies.
+      - run: npm run test:js
+
+  php:
+    name: PHP tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: php --version
+      # Standalone suites with stubbed WordPress functions (see tests/).
+      - run: npm run test:php

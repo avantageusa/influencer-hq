@@ -435,6 +435,7 @@ require_once get_template_directory() . '/inc/video-submissions.php';
  * Ask Sami — Anam real-time avatar proxy + POC-page concierge suppression (ENGR-5831).
  */
 require_once get_template_directory() . '/inc/anam-proxy.php';
+require_once get_template_directory() . '/inc/aicoach-modules.php';
 require_once get_template_directory() . '/inc/luna-users-rest.php';
 
 /**

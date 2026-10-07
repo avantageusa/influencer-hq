@@ -3,6 +3,13 @@
  * Config expected on window.AICOACH_SAMI (see inc/anam-proxy.php enqueue).
  */
 import { createClient, AnamEvent } from 'https://cdn.jsdelivr.net/npm/@anam-ai/js-sdk@4/+esm';
+// ENGR-7066 — timing/state logic that used to live in this file, extracted so it
+// can be tested without a browser (js/aicoach/*.test.js). The bare specifiers
+// are mapped to versioned URLs by the import map WordPress prints for the
+// script modules registered in inc/aicoach-modules.php.
+import { createSequenceHold } from '@ihq/aicoach/sequence-hold';
+import { createStallWatchdog, once } from '@ihq/aicoach/stall-watchdog';
+import { isAvatarIdle } from '@ihq/aicoach/idle-state';
 
 /*
  * PO-3062 avatar connection — as of 2026-09-15, the avatar/video is opened via
@@ -64,97 +71,29 @@ const AVATAR_VIDEO_ID = 'aicoach-avatar-video';
 // left off" for that one the way there is for a fixed dwell or a local
 // clip's safety cap. That wait can therefore still end while the panel is
 // open; ENGR-7051 (review feedback, Dejan Arsić) closes the consequence of
-// that rather than the wait itself — see waitWhileSequenceHeld() below, which
+// that rather than the wait itself — see waitWhileSequenceHeld(), which
 // runFallback() awaits before starting any screen, so the hand-off to the
 // next clip is held until the panel closes.
-const pausableSequenceTimers = new Set();
-// PR #63 (CodeRabbit) — the language selector stays clickable while Ask
-// Sami's panel is open, and selectLocale() can create a brand-new timer
-// mid-panel (restartCurrentClipForLocale() -> playPrerenderedClip()'s
-// load() -> a fresh 60s safety cap). Without this flag, createPausableTimeout()
-// unconditionally armed every new timer on creation, so that new cap started
-// counting down live even though the panel was still open — the exact bug
-// pauseSequenceTimers()/resumeSequenceTimers() exist to prevent for timers
-// that already existed before the panel opened.
-let sequenceTimersPaused = false;
-
-function createPausableTimeout( callback, ms ) {
-    let remaining = ms;
-    let timerId = null;
-    let armedAt = null;
-    const handle = {
-        pause() {
-            if ( null === timerId ) {
-                return;
-            }
-            window.clearTimeout( timerId );
-            timerId = null;
-            remaining = Math.max( 0, remaining - ( Date.now() - armedAt ) );
-        },
-        resume() {
-            if ( null !== timerId ) {
-                return; // already running — pause()/resume() calls aren't expected to nest
-            }
-            armedAt = Date.now();
-            timerId = window.setTimeout( function () {
-                timerId = null;
-                pausableSequenceTimers.delete( handle );
-                callback();
-            }, remaining );
-        },
-        cancel() {
-            if ( null !== timerId ) {
-                window.clearTimeout( timerId );
-                timerId = null;
-            }
-            pausableSequenceTimers.delete( handle );
-        },
-    };
-    pausableSequenceTimers.add( handle );
-    if ( ! sequenceTimersPaused ) {
-        handle.resume();
-    }
-    return handle;
-}
-
-function pauseSequenceTimers() {
-    sequenceTimersPaused = true;
-    pausableSequenceTimers.forEach( function ( timer ) {
-        timer.pause();
-    } );
-}
-
-// ENGR-7051 (review feedback, Dejan Arsić) — resolvers for everything
-// currently waiting out a hold, released together by resumeSequenceTimers().
-let sequenceHoldWaiters = [];
-
-// Resolves immediately unless the sequence is on hold (Ask Sami's panel is
-// open — sequenceTimersPaused is the existing "on hold" signal). runFallback()
-// awaits it before starting each screen so nothing new — in particular the
-// next pre-rendered clip, which plays with sound — can begin underneath the
-// open panel. The pausable timers already stop a screen from ending while the
-// panel is open; this covers the one thing they cannot, the live intro's own
-// wait finishing server-side and handing off to the first clip.
-function waitWhileSequenceHeld() {
-    if ( ! sequenceTimersPaused ) {
-        return Promise.resolve();
-    }
-    return new Promise( function ( resolve ) {
-        sequenceHoldWaiters.push( resolve );
-    } );
-}
-
-function resumeSequenceTimers() {
-    sequenceTimersPaused = false;
-    pausableSequenceTimers.forEach( function ( timer ) {
-        timer.resume();
-    } );
-    const released = sequenceHoldWaiters;
-    sequenceHoldWaiters = [];
-    released.forEach( function ( release ) {
-        release();
-    } );
-}
+// ENGR-7066 — the pausable timers and the sequence hold are js/aicoach/sequence-hold.js
+// now (with the PR #63 rule that a timer created while the hold is on does not
+// start counting, and the ENGR-7051 waiters released by resume). The local
+// names below keep every call site in this file as it was.
+const BROWSER_TIMERS = {
+    setTimeout: function ( callback, ms ) {
+        return window.setTimeout( callback, ms );
+    },
+    clearTimeout: function ( timerId ) {
+        window.clearTimeout( timerId );
+    },
+    now: function () {
+        return Date.now();
+    },
+};
+const sequenceHold = createSequenceHold( BROWSER_TIMERS );
+const createPausableTimeout = sequenceHold.createPausableTimeout;
+const pauseSequenceTimers = sequenceHold.pause;
+const resumeSequenceTimers = sequenceHold.resume;
+const waitWhileSequenceHeld = sequenceHold.waitWhileHeld;
 
 // FR-17 — trigger the time-remaining check once this proportion of the
 // selected tier's total duration has elapsed. The ticket explicitly says the
@@ -1396,31 +1335,30 @@ if ( stage && avatarWrap ) {
             return new Promise( function ( resolve ) {
                 qaAnswering = true;
                 const audio = new Audio( url );
-                let settled = false;
-                let stallTimer = null;
                 // ENGR-7051 (review feedback) — a recording that stalls without
                 // erroring fires neither 'ended' nor 'error', so this promise
                 // never settled: qaAnswering stayed true, closePanel() kept
                 // deferring resumeSequenceTimers() to a finish() that never
                 // came, the mic stayed disabled and the sequence stayed held
                 // until a reload. Every sign of progress ('timeupdate') re-arms
-                // a watchdog; if it fires, playback is abandoned.
-                const armStallTimer = function () {
-                    window.clearTimeout( stallTimer );
-                    stallTimer = window.setTimeout( finish, FALLBACK_AUDIO_STALL_MS );
-                };
-                const finish = function () {
-                    // finish() can be reached more than once: the watchdog fires,
-                    // then the pause() below rejects the pending play() promise
-                    // (an AbortError) whose .catch(finish) calls it again.
-                    if ( settled ) {
-                        return;
-                    }
-                    settled = true;
-                    window.clearTimeout( stallTimer );
+                // a watchdog; if it fires, playback is abandoned. The watchdog
+                // and the call-once guard are js/aicoach/stall-watchdog.js.
+                const stallWatchdog = createStallWatchdog( {
+                    stallMs: FALLBACK_AUDIO_STALL_MS,
+                    onStall: function () {
+                        finish();
+                    },
+                    setTimeout: BROWSER_TIMERS.setTimeout,
+                    clearTimeout: BROWSER_TIMERS.clearTimeout,
+                } );
+                // finish() can be reached more than once: the watchdog fires,
+                // then the pause() below rejects the pending play() promise
+                // (an AbortError) whose .catch(finish) calls it again.
+                const finish = once( function () {
+                    stallWatchdog.disarm();
                     audio.removeEventListener( 'ended', finish );
                     audio.removeEventListener( 'error', finish );
-                    audio.removeEventListener( 'timeupdate', armStallTimer );
+                    audio.removeEventListener( 'timeupdate', stallWatchdog.arm );
                     // A stalled recording must not start playing later, over
                     // whatever the sequence has resumed to by then.
                     audio.pause();
@@ -1437,11 +1375,11 @@ if ( stage && avatarWrap ) {
                         }
                     }
                     resolve();
-                };
+                } );
                 audio.addEventListener( 'ended', finish );
                 audio.addEventListener( 'error', finish );
-                audio.addEventListener( 'timeupdate', armStallTimer );
-                armStallTimer(); // also covers a stall before the first byte
+                audio.addEventListener( 'timeupdate', stallWatchdog.arm );
+                stallWatchdog.arm(); // also covers a stall before the first byte
                 audio.play().catch( finish );
             } );
         }
@@ -1745,7 +1683,10 @@ if ( stage && avatarWrap ) {
         // gentle looping animation. Derived from those two facts and recomputed
         // at every transition, never set ad hoc, so it cannot get stuck on.
         function syncAvatarIdle() {
-            avatarWrap.classList.toggle( 'is-idle', wrap.classList.contains( 'is-open' ) && ! qaVideoActive );
+            avatarWrap.classList.toggle( 'is-idle', isAvatarIdle( {
+                panelOpen: wrap.classList.contains( 'is-open' ),
+                answerVideoActive: qaVideoActive,
+            } ) );
         }
 
         function openPanel() {
