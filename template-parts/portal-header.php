@@ -112,6 +112,8 @@ if ( ! defined( 'ABSPATH' ) ) {
                 <span class="nav-separator">|</span>
                 <a href="<?php echo home_url('/portal/challenges'); ?>" class="nav-link-inline <?php echo (is_page('portal/challenges')) ? 'active' : ''; ?>">Competition</a>
                 <span class="nav-separator">|</span>
+                <a href="<?php echo home_url('/portal/post/'); ?>" class="nav-link-inline <?php echo (is_page('portal/post')) ? 'active' : ''; ?>">Post</a>
+                <span class="nav-separator">|</span>
                 <a href="<?php echo home_url('/portal/live'); ?>" class="nav-link-inline <?php echo (is_page('portal/live')) ? 'active' : ''; ?>">Live Appearance</a>
                 <span class="nav-separator">|</span>
                 <a href="<?php echo home_url('/portal/account'); ?>" class="nav-link-inline <?php echo (is_page('portal/account')) ? 'active' : ''; ?>">Profile</a>
@@ -198,6 +200,13 @@ $hm_ch = function ( $tab, $hash = '' ) {
                     <a href="<?php echo $hm_ch( 'leagues', 'leagues-results' ); ?>" class="hm-link hm-icon-row hm-indent-2"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-leaderboard.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Standings & Scores', 'influencer-hq' ); ?></a>
                 </div>
             </section>
+
+            <div class="hm-top-link-wrap">
+                <a href="<?php echo esc_url( home_url( '/portal/post/' ) ); ?>" class="hm-top-link <?php echo ( is_page( 'portal/post' ) ) ? 'is-active' : ''; ?>">
+                    <img class="hm-ico-img" src="<?php echo esc_url( get_template_directory_uri() . '/images/post-arrow.png' ); ?>" width="19" height="19" alt="">
+                    <span><?php esc_html_e( 'Post', 'influencer-hq' ); ?></span>
+                </a>
+            </div>
 
             <section class="hm-section">
                 <a href="<?php echo esc_url( home_url( '/portal/live' ) ); ?>" class="hm-sum">

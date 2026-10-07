@@ -75,7 +75,7 @@
     }
 
     /* This row wraps onto 3 lines on narrow screens at the desktop font
-    size/padding (6 items, "Live Appearance" alone is the longest), pushing
+    size/padding (7 items, "Live Appearance" alone is the longest), pushing
     page content — e.g. the AI Coach intro — below the fold. The hamburger
     drawer already repeats every one of these links, so nothing here is only
     reachable through this row; shrinking it is purely a spacing fix, not a
@@ -1310,13 +1310,15 @@
     }
 
     body.page-template-page-portal-equity-php .equity-header,
-    body.page-template-page-portal-more-php .equity-header {
+    body.page-template-page-portal-more-php .equity-header,
+    body.page-template-page-portal-post-php .equity-header {
         text-align: center;
         margin-bottom: 18px;
     }
 
     body.page-template-page-portal-equity-php .equity-header-top,
-    body.page-template-page-portal-more-php .equity-header-top {
+    body.page-template-page-portal-more-php .equity-header-top,
+    body.page-template-page-portal-post-php .equity-header-top {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1325,13 +1327,15 @@
     }
 
     body.page-template-page-portal-equity-php .equity-icon,
-    body.page-template-page-portal-more-php .equity-icon {
+    body.page-template-page-portal-more-php .equity-icon,
+    body.page-template-page-portal-post-php .equity-icon {
         width: 59px;
         height: 48px;
     }
 
     body.page-template-page-portal-equity-php .equity-title,
-    body.page-template-page-portal-more-php .equity-title {
+    body.page-template-page-portal-more-php .equity-title,
+    body.page-template-page-portal-post-php .equity-title {
         color: #b8972f;
         font-family: 'Cinzel', serif;
         font-size: 28px;
@@ -1341,17 +1345,20 @@
         text-transform: uppercase;
     }
 
-    body.page-template-page-portal-equity-php .equity-header-top {
+    body.page-template-page-portal-equity-php .equity-header-top,
+    body.page-template-page-portal-post-php .equity-header-top {
         align-items: center;
     }
 
-    body.page-template-page-portal-equity-php .equity-icon {
+    body.page-template-page-portal-equity-php .equity-icon,
+    body.page-template-page-portal-post-php .equity-icon {
         width: auto;
         height: 48px;
         object-fit: contain;
     }
 
-    body.page-template-page-portal-equity-php .equity-title {
+    body.page-template-page-portal-equity-php .equity-title,
+    body.page-template-page-portal-post-php .equity-title {
         color: #ffffff;
         font-size: 48px;
         line-height: 1;
@@ -2090,7 +2097,8 @@
     @media (max-width: 767px) {
         body.page-template-page-portal-equity-php .equity-header-top,
         body.page-template-page-portal-more-php .equity-header-top,
-        body.page-template-page-portal-challenges-php .competition-header-top {
+        body.page-template-page-portal-challenges-php .competition-header-top,
+        body.page-template-page-portal-post-php .equity-header-top {
             font-size: clamp(22px, 6.4vw, 48px);
             gap: 0.25em;
             max-width: 100%;
@@ -2098,15 +2106,153 @@
 
         body.page-template-page-portal-equity-php .equity-title,
         body.page-template-page-portal-more-php .equity-title,
-        body.page-template-page-portal-challenges-php .competition-title {
+        body.page-template-page-portal-challenges-php .competition-title,
+        body.page-template-page-portal-post-php .equity-title {
             font-size: 1em;
         }
 
         body.page-template-page-portal-equity-php .equity-icon,
         body.page-template-page-portal-more-php .equity-icon,
-        body.page-template-page-portal-challenges-php .competition-icon {
+        body.page-template-page-portal-challenges-php .competition-icon,
+        body.page-template-page-portal-post-php .equity-icon {
             height: 1em;
             width: auto;
+        }
+    }
+
+    body.page-template-page-portal-post-php .post-intro {
+        margin: 8px auto 36px;
+        max-width: 820px;
+        color: #fff;
+        font-family: "Be Vietnam Pro", sans-serif;
+        font-size: 24px;
+        font-weight: 600;
+        line-height: 1.35;
+        text-align: center;
+    }
+
+    body.page-template-page-portal-post-php .post-panel {
+        margin: 0 0 36px;
+    }
+
+    body.page-template-page-portal-post-php .post-panel-draft {
+        display: flex;
+        align-items: center;
+        min-height: 180px;
+        padding: 28px 32px;
+        border: 4px solid #fff;
+        border-radius: 11px;
+        color: #fff;
+        font-family: Inter, sans-serif;
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
+    }
+
+    body.page-template-page-portal-post-php .post-panel-meta {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-top: 14px;
+    }
+
+    body.page-template-page-portal-post-php .post-panel-date {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 168px;
+        height: 40px;
+        padding: 0 16px;
+        border: 1px solid #fdd65b;
+        border-radius: 8px;
+        color: #fff;
+        font-family: Inter, sans-serif;
+        font-size: 22px;
+        font-weight: 600;
+        line-height: 1;
+    }
+
+    body.page-template-page-portal-post-php .post-panel-posting {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0 auto;
+        color: #fff;
+        font-family: "Be Vietnam Pro", sans-serif;
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    body.page-template-page-portal-post-php .post-panel-check {
+        width: 36px;
+        height: 36px;
+        margin: 0;
+        border: 4px solid #fdd65b;
+        border-radius: 8px;
+        background: transparent;
+        appearance: none;
+        pointer-events: none;
+        flex-shrink: 0;
+    }
+
+    body.page-template-page-portal-post-php .post-panel-check:checked {
+        background: #fdd65b;
+    }
+
+    body.page-template-page-portal-post-php .post-panel-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+    }
+
+    body.page-template-page-portal-post-php .post-panel-copy,
+    body.page-template-page-portal-post-php .post-panel-share {
+        border: 0;
+        background: transparent;
+        padding: 0;
+        color: #fff;
+        cursor: default;
+    }
+
+    body.page-template-page-portal-post-php .post-panel-copy {
+        font-family: Inter, sans-serif;
+        font-size: 18px;
+        font-weight: 600;
+        line-height: 1;
+    }
+
+    body.page-template-page-portal-post-php .post-panel-share img {
+        display: block;
+        width: 48px;
+        height: 48px;
+        object-fit: contain;
+    }
+
+    @media (max-width: 767px) {
+        body.page-template-page-portal-post-php .post-intro {
+            font-size: 18px;
+        }
+
+        body.page-template-page-portal-post-php .post-panel-draft {
+            min-height: 120px;
+            padding: 20px;
+            font-size: 20px;
+        }
+
+        body.page-template-page-portal-post-php .post-panel-meta {
+            flex-wrap: wrap;
+        }
+
+        body.page-template-page-portal-post-php .post-panel-posting {
+            margin: 0;
+        }
+
+        body.page-template-page-portal-post-php .post-panel-date,
+        body.page-template-page-portal-post-php .post-panel-posting {
+            font-size: 16px;
         }
     }
 
