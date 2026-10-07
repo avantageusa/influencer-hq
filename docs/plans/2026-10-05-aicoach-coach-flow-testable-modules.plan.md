@@ -224,9 +224,10 @@ deploy step that copies only `js/*.js` (not subdirectories) need checking.
   was not added: without the import map the entry script cannot load its
   imports, so the page would not work either way. This supersedes the
   "`wp_enqueue_script_module()` risks assuming a WP core version" alternative
-  in `2026-08-28-extract-aicoach-coach-flow-js.plan.md`; `Tested up to` is left
-  as it is (stale at 5.4) because nobody has re-verified it for the whole
-  theme.
+  in `2026-08-28-extract-aicoach-coach-flow-js.plan.md`. `Tested up to` was
+  5.4 (also a starter leftover), which left the minimum above the tested
+  version; it is now 7.1, the version production and dev run the whole theme
+  on (7.1.2), as decided by the dev on 2026-10-07.
 - Suggested split: PR 1 = runner + loader + three modules; PR 2 = data
   modules; a later plan = `buildAskSami()`.
 - **CI findings (checked 2026-10-06):** the only GitHub Actions workflow in the
