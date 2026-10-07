@@ -3,7 +3,7 @@
 Contributors: automattic
 Tags: custom-background, custom-logo, custom-menu, featured-images, threaded-comments, translation-ready
 
-Requires at least: 4.5
+Requires at least: 6.5
 Tested up to: 5.4
 Requires PHP: 7.3
 Stable tag: 1.0.0

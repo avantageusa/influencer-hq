@@ -99,8 +99,10 @@ no-op.
    The carrier must not import the modules itself (a relative import would
    load unversioned duplicates). No PHP-printed import map was needed. The PHP
    side has `tests/aicoach-modules.test.php`.
-2. **Test runner, no new dependency.** `"test:js": "node --test js/aicoach/"`
-   using `node:test` and `mock.timers` (fake `setTimeout` and `Date`). The
+2. **Test runner, no new dependency.** `"test:js": "node --test js/aicoach/*.test.js"`
+   using `node:test`; the tests inject timers and the clock into the modules,
+   so they use their own deterministic `js/aicoach/fake-clock.js` (time moves
+   only on `tick()`) instead of `mock.timers`. The
    extracted files stay `.js` so the browser serves them with the right MIME
    type; a `js/aicoach/package.json` containing `{ "type": "module" }` makes
    Node load them as ESM on every Node version without touching the root
@@ -215,6 +217,16 @@ deploy step that copies only `js/*.js` (not subdirectories) need checking.
   (2) ~~GitHub Action for the JS and PHP tests~~ approved by Steve on the ticket
   (2026-10-06); (3) ~~Stryker~~ deferred by Steve (manual mutation checks until
   then).
+- **Minimum WordPress version (review, CodeRabbit).** Script modules need
+  WordPress 6.5+; the theme declared `Requires at least: 4.5` (a leftover from
+  the underscores starter) and production runs 7.1.2. `readme.txt` and
+  `style.css` now declare `Requires at least: 6.5`. A `function_exists()` guard
+  was not added: without the import map the entry script cannot load its
+  imports, so the page would not work either way. This supersedes the
+  "`wp_enqueue_script_module()` risks assuming a WP core version" alternative
+  in `2026-08-28-extract-aicoach-coach-flow-js.plan.md`; `Tested up to` is left
+  as it is (stale at 5.4) because nobody has re-verified it for the whole
+  theme.
 - Suggested split: PR 1 = runner + loader + three modules; PR 2 = data
   modules; a later plan = `buildAskSami()`.
 - **CI findings (checked 2026-10-06):** the only GitHub Actions workflow in the
