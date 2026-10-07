@@ -42,7 +42,7 @@ todos:
     status: completed
   - id: split-data
     content: Second PR - move SUPPORTED_LOCALES / I18N_TRANSLATIONS / t() and the SCREENS / EQUITY / COMPETITION / CHANNELS definitions into their own modules; no behaviour change
-    status: pending
+    status: completed
   - id: mutation-gate
     content: Stryker is deferred (Steve, 2026-10-06); until then manual mutation checks on the extracted modules, recorded in the PR
     status: blocked
@@ -211,6 +211,54 @@ deploy step that copies only `js/*.js` (not subdirectories) need checking.
   itself (YAML parsed and `npm run test:js` / `test:php` run locally, but not
   executed on GitHub); a cold-cache load and a reload after touching one module
   (only the first load was checked); real Safari/Firefox with the import map.
+
+## PR 2 (data modules) - done on branch feat/ENGR-7066-coach_flow_data_modules
+Stacked on PR 1 (#98), which provides the runner, the loader and the carrier
+module. `js/aicoach-coach-flow.js` goes from 3,185 to 2,689 lines.
+- **`js/aicoach/locales.js`**: `SUPPORTED_LOCALES`, `I18N_EN`,
+  `I18N_TRANSLATIONS` and `t()`, moved verbatim (a pure move: the 4-space
+  indentation of the original is kept so the diff stays a move), plus
+  `detectLocale( browserTags )`: the matching half of `detectInitialLocale()`,
+  which used to read `navigator` itself. The flow keeps a six-line
+  `detectInitialLocale()` that reads `navigator.languages` and calls it.
+  `applyLocale()` stays in the flow (DOM).
+- **`js/aicoach/screens.js`**: `SCREENS` (exported as the same array the flow
+  appends to with `SCREENS.push`), `EQUITY_SCREENS`, `COMPETITION_SCREENS`,
+  `COMM_CHANNELS_SCREEN`, `FINAL_SCREEN`, `CHANNELS`, `isValidPhoneNumber` and the
+  two `get*ScreensForTier()` getters, moved verbatim.
+- **Registration**: `locales` and `screens` added to
+  `ihq_aicoach_script_module_names()`; `tests/aicoach-modules.test.php` updated
+  (it also still checks that the entry imports exactly the registered modules).
+- **Tests (49 new, 73 in all)**: language list and labels; every table belongs
+  to a supported language and no table has a key English lacks (catches a typo
+  in a key name); `t()` fallbacks; `detectLocale()` over 23 browser-tag cases
+  including `zh-HK`/`zh-MO`/`zh-Hant-HK` to Cantonese; tier-to-screens selection
+  and ordering, fresh arrays per call; E.164 phone boundaries, e-mail, Line ID
+  and the four TBD channels.
+- **Finding: the translations are far from complete.** The planned check, "every
+  language has every key English has", cannot pass today: each of the six other
+  languages lacks 30 to 32 of English's 65 keys (Japanese also `belief` and
+  `weBelieve`; Korean also `firstName` and `lastName`, deliberately held back
+  per the comment in the file), and `t()` shows English for them. Inventing
+  copy is not an option, so the test pins the exact known gaps per language: a
+  new gap, or a gap that gets filled, changes the test and cannot go unnoticed.
+  The gaps themselves are a product/translation question.
+- **Mutation checks** (Stryker deferred): 24 mutations across the two modules
+  (fallbacks in `t()`, each branch of `detectLocale()`, tier comparisons and
+  ordering, phone/e-mail/Line patterns and bounds, TBD channels, a removed
+  locale), 23 killed. The survivor, "yue primary", is an equivalent mutant: the
+  early `yue` return is redundant with the supported-language check that
+  follows it.
+- **Live (wp-env, resume at `home`)**: import map lists the five modules, each
+  requested once with its versioned URL, no console errors; the selector shows
+  the seven languages; switching to Mandarin translates static text
+  (`2 分钟`) and falls back to English for a missing key (`Yes`), and back to
+  English restores it; the 5-minute tier queues `equity-bts` then
+  `competition-world`, `competition-community`, `competition-private` in order.
+- **Not verified**: ESLint (not installed), automatic language detection in a
+  real browser with a non-English language setting (covered by the unit tests
+  only), the identity/channels/final screens after the queue (not walked
+  through), and a cold-cache reload.
 
 ## Notes
 - **Open questions for the dev:** (1) ~~production WordPress version~~ answered: 7.1.2;
