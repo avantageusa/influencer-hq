@@ -1566,52 +1566,18 @@ function ihq_oauth_start_session_default_url() {
 }
 
 /**
- * User meta key for per-user OAuth start-session URL override.
+ * Start-session URL for this instance.
  *
- * @return string
- */
-function ihq_oauth_start_session_url_meta_key() {
-	return 'ihq_oauth_start_session_url';
-}
-
-/**
- * Resolved start-session URL for a user (meta override or default).
+ * Was a per-user override (user meta `ihq_oauth_start_session_url`); the environment
+ * is now a property of the instance, so this resolves to the configured endpoint.
+ * Retired in PO-3073.
  *
- * The request built from this URL carries the instance API key, so a
- * user-stored override is honoured only when it stays on the configured
- * API origin. Anything else falls back to the default and is logged; the
- * override UI itself is retired in PO-3073.
- *
- * @param int $user_id WordPress user ID.
+ * @param int $user_id Unused; kept so existing call sites need no change.
  * @return string
  */
 function ihq_get_oauth_start_session_url_for_user( $user_id ) {
-	$user_id = (int) $user_id;
-	$default = ihq_oauth_start_session_default_url();
-
-	if ( $user_id <= 0 ) {
-		return $default;
-	}
-
-	$stored = get_user_meta( $user_id, ihq_oauth_start_session_url_meta_key(), true );
-	if ( ! is_string( $stored ) || $stored === '' ) {
-		return $default;
-	}
-
-	$url = esc_url_raw( $stored );
-	if ( $url === '' ) {
-		return $default;
-	}
-
-	if ( ! ihq_env_url_matches_api_origin( $url, INFLUENCER_API_BASE ) ) {
-		error_log( sprintf(
-			'[ihq-env] ignoring start-session URL override for user %d: not on the configured API origin',
-			$user_id
-		) );
-		return $default;
-	}
-
-	return $url;
+	unset( $user_id );
+	return ihq_oauth_start_session_default_url();
 }
 
 /**
