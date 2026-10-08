@@ -208,63 +208,6 @@ function ihq_render_concierge_fab() {
 }
 add_action( 'wp_footer', 'ihq_render_concierge_fab', 15 );
 
-/**
- * Game Portal URL — user profile field
- * Stored in user meta as 'hq_game_url'.
- * Leave blank to use the theme default URL.
- */
-function influencer_hq_game_url_profile_field( $user ) {
-	$value          = get_user_meta( $user->ID, 'hq_game_url', true );
-	$default_portal = ihq_env_require_url( 'IHQ_GAME_PORTAL_BASE_URL' );
-	?>
-	<h3><?php esc_html_e( 'Game Portal Settings', 'influencer-hq' ); ?></h3>
-	<table class="form-table">
-		<tr>
-			<th><label for="hq_game_url"><?php esc_html_e( 'Game Portal URL', 'influencer-hq' ); ?></label></th>
-			<td>
-				<input type="url" name="hq_game_url" id="hq_game_url"
-					value="<?php echo esc_attr( $value ); ?>"
-					class="regular-text" />
-				<p class="description">
-					<?php
-					echo esc_html(
-						sprintf(
-							/* translators: %s: IHQ_GAME_PORTAL_BASE_URL from wp-config.php */
-							__( 'Override the base game portal URL for this user. Leave blank to use %s.', 'influencer-hq' ),
-							$default_portal
-						)
-					);
-					?>
-				</p>
-			</td>
-		</tr>
-	</table>
-	<?php
-}
-add_action( 'show_user_profile', 'influencer_hq_game_url_profile_field' );
-add_action( 'edit_user_profile', 'influencer_hq_game_url_profile_field' );
-
-function influencer_hq_save_game_url_profile_field( $user_id ) {
-	if ( ! current_user_can( 'edit_user', $user_id ) ) {
-		return;
-	}
-	$url = isset( $_POST['hq_game_url'] ) ? esc_url_raw( wp_unslash( $_POST['hq_game_url'] ) ) : '';
-	update_user_meta( $user_id, 'hq_game_url', $url );
-}
-add_action( 'personal_options_update',  'influencer_hq_save_game_url_profile_field' );
-add_action( 'edit_user_profile_update', 'influencer_hq_save_game_url_profile_field' );
-
-function avantage_save_hq_game_url() {
-	check_ajax_referer( 'settings_save_nonce', 'nonce' );
-	$user_id = get_current_user_id();
-	if ( ! $user_id ) {
-		wp_send_json_error( array( 'message' => 'Not logged in.' ) );
-	}
-	$url = isset( $_POST['value'] ) ? esc_url_raw( wp_unslash( $_POST['value'] ) ) : '';
-	update_user_meta( $user_id, 'hq_game_url', $url );
-	wp_send_json_success();
-}
-add_action( 'wp_ajax_save_hq_game_url', 'avantage_save_hq_game_url' );
 
 /**
  * Per-instance environment configuration (wp-config constants). Must load
@@ -319,25 +262,17 @@ require_once get_template_directory() . '/inc/email-verification-handler.php';
 require_once get_template_directory() . '/inc/harness-auth-bridge.php';
 
 /**
- * Game portal base URL (profile meta override, else this instance's configured portal).
+ * Game portal base URL for this instance.
  *
- * @param int $user_id WordPress user ID; 0 uses current user.
+ * The environment is a property of the instance (wp-config IHQ_GAME_PORTAL_BASE_URL),
+ * not of the user. The per-user override this used to honour was retired in PO-3073.
+ *
+ * @param int $user_id Unused; kept so existing call sites need no change.
  * @return string Untrailingslashit URL.
  */
 function ihq_get_hq_game_portal_base_url( $user_id = 0 ) {
-	$default = ihq_env_require_url( 'IHQ_GAME_PORTAL_BASE_URL' );
-	$user_id = $user_id > 0 ? (int) $user_id : (int) get_current_user_id();
-	$base    = '';
-
-	if ( $user_id > 0 ) {
-		$base = get_user_meta( $user_id, 'hq_game_url', true );
-	}
-
-	if ( ! is_string( $base ) || $base === '' ) {
-		$base = $default;
-	}
-
-	return untrailingslashit( esc_url_raw( $base ) );
+	unset( $user_id );
+	return ihq_env_require_url( 'IHQ_GAME_PORTAL_BASE_URL' );
 }
 
 /**
