@@ -304,6 +304,7 @@ function ihq_aicoach_enqueue_coach_flow() {
 		)
 	);
 	wp_enqueue_script( 'ihq-aicoach-coach-flow' );
+	ihq_aicoach_register_script_modules();
 }
 add_action( 'wp_enqueue_scripts', 'ihq_aicoach_enqueue_coach_flow' );
 
