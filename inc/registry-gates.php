@@ -98,7 +98,8 @@ function ihq_enqueue_registry_gates_assets() {
 		. 'body.page-template-page-portal-equity-php .equity-card.ihq-gate-collapsed .equity-card-header{margin-bottom:0;}'
 		. 'body.page-template-page-portal-challenges-php .competition-dropdown-header{cursor:pointer;}'
 		. 'body.page-template-page-portal-equity-php .equity-card-header{cursor:pointer;}'
-		. 'body.page-template-page-portal-challenges-php .cpc-accordion-header{cursor:pointer;}'
+		. 'body.page-template-page-portal-challenges-php #cpcAccordion1 .accordion-button,'
+		. 'body.page-template-page-portal-challenges-php #cpcAccordion2 .accordion-button{cursor:pointer;}'
 	);
 }
 add_action( 'wp_enqueue_scripts', 'ihq_enqueue_registry_gates_assets', 30 );

@@ -313,7 +313,7 @@
   }
 
   function disableGuestBootstrapCollapseTriggers() {
-    document.querySelectorAll('#cpcAccordion1 > .cpc-accordion-header, #cpcAccordion2 > .cpc-accordion-header').forEach(function (header) {
+    document.querySelectorAll('#cpcAccordion1 .accordion-button, #cpcAccordion2 .accordion-button').forEach(function (header) {
       if (header.getAttribute('data-bs-toggle')) {
         header.setAttribute('data-ihq-bs-toggle', header.getAttribute('data-bs-toggle'));
         header.removeAttribute('data-bs-toggle');
@@ -428,12 +428,12 @@
     panel.classList.add('ihq-gate-force-hidden');
     panel.style.display = 'none';
 
-    var accordion = panel.closest('.cpc-accordion');
+    var accordion = panel.closest('.accordion-item');
     if (!accordion) {
       return;
     }
 
-    var header = accordion.querySelector('.cpc-accordion-header');
+    var header = accordion.querySelector('.accordion-button');
     if (header) {
       header.classList.add('collapsed');
       header.setAttribute('aria-expanded', 'false');
@@ -465,8 +465,8 @@
   function registerGates() {
     bindGate('equity_attribution', '.equity-card .equity-card-header');
 
-    bindGate('private_see_current_challenge', '#cpcAccordion1 > .cpc-accordion-header');
-    bindGate('private_create_new_challenge', '#cpcAccordion2 > .cpc-accordion-header');
+    bindGate('private_see_current_challenge', '#cpcAccordion1 .accordion-button');
+    bindGate('private_create_new_challenge', '#cpcAccordion2 .accordion-button');
 
     bindGate('world_see_my_results', '#world-leaderboards .competition-dropdown-header');
     bindGate(

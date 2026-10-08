@@ -770,34 +770,39 @@ $portal_embed_urls = [
                         ?>
 
                         <!-- Accordion 1: Instructions -->
-                        <div class="cpc-accordion" id="cpcAccordionInstructions">
-                            <div class="cpc-accordion-header collapsed" data-bs-toggle="collapse" data-bs-target="#cpcCollapseInstructions" aria-expanded="false" aria-controls="cpcCollapseInstructions">
-                                <svg class="cpc-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b8972f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                                <span class="competition-block-title" style="margin:0;"><?php esc_html_e( 'Instructions to Create Private Challenges', 'influencer-hq' ); ?></span>
-                            </div>
-                            <div id="cpcCollapseInstructions" class="collapse">
-                                <div class="cpc-accordion-body">
+                        <div class="accordion custom-accordion" id="cpcAccordionInstructions">
+                            <div class="accordion-item mb-3">
+                            <h2 class="accordion-header" id="headingCpcInstructions">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cpcCollapseInstructions" aria-expanded="false" aria-controls="cpcCollapseInstructions">
+                                    <span class="question-text"><?php esc_html_e( 'Instructions to Create Private Challenges', 'influencer-hq' ); ?></span>
+                                </button>
+                            </h2>
+                            <div id="cpcCollapseInstructions" class="accordion-collapse collapse" aria-labelledby="headingCpcInstructions">
+                                <div class="accordion-body">
                                     <p class="cpc-instructions-lead"><?php esc_html_e( 'Each day, you can originate and accept one private challenge which includes both influencers and their followers.', 'influencer-hq' ); ?></p>
                                     <p class="cpc-instructions-lead"><?php esc_html_e( 'Private challenges run from midnight to midnight, Hong Kong Time.', 'influencer-hq' ); ?></p>
-                                    <ol class="cpc-instructions-steps">
+                                    <ul class="cpc-instructions-steps">
                                         <li><?php esc_html_e( 'Reach out by any method to the Influencer you want to challenge.', 'influencer-hq' ); ?></li>
                                         <li><?php esc_html_e( 'Don\'t officially create a challenge until you receive yes from the challenged influencer.', 'influencer-hq' ); ?></li>
                                         <li><?php esc_html_e( 'Record the challenge in the form below AFTER you receive YES.', 'influencer-hq' ); ?></li>
                                         <li><?php esc_html_e( 'We will generate challenge link that you should share with your influencer opponent.', 'influencer-hq' ); ?></li>
-                                    </ol>
+                                    </ul>
                                 </div>
+                            </div>
                             </div>
                         </div>
 
                         <!-- Accordion 2: Create New Private Challenges -->
-                        <div class="cpc-accordion" id="cpcAccordion2">
-                            <div class="cpc-accordion-header collapsed" data-bs-toggle="collapse" data-bs-target="#cpcCollapse2" aria-expanded="false" aria-controls="cpcCollapse2">
-                                <svg class="cpc-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b8972f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                                <span class="competition-block-title" style="margin:0;"><?php esc_html_e( 'Create New Private Challenges', 'influencer-hq' ); ?></span>
-                            </div>
-                            <div id="cpcCollapse2" class="collapse">
-                                <div class="cpc-accordion-body">
-                                    <div class="competition-block-title"><?php esc_html_e( 'Influencer', 'influencer-hq' ); ?></div>
+                        <div class="accordion custom-accordion" id="cpcAccordion2">
+                            <div class="accordion-item mb-3">
+                            <h2 class="accordion-header" id="headingCpcCreate">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cpcCollapse2" aria-expanded="false" aria-controls="cpcCollapse2">
+                                    <span class="question-text"><?php esc_html_e( 'Create New Private Challenges', 'influencer-hq' ); ?></span>
+                                </button>
+                            </h2>
+                            <div id="cpcCollapse2" class="accordion-collapse collapse" aria-labelledby="headingCpcCreate">
+                                <div class="accordion-body">
+                                    <div class="cpc-label"><?php esc_html_e( 'Influencer', 'influencer-hq' ); ?></div>
                                     <div class="cpc-search-wrap">
                                         <input class="cpc-input" id="cpc-username-search" type="text" placeholder="<?php esc_attr_e( 'username', 'influencer-hq' ); ?>" autocomplete="off">
                                         <div class="cpc-search-results" id="cpc-search-results" hidden></div>
@@ -805,21 +810,23 @@ $portal_embed_urls = [
                                     <input type="hidden" id="cpc-invitee-user-id" value="">
                                     <input type="hidden" id="cpc-username" value="">
 
-                                    <div class="competition-block-title"><?php esc_html_e( 'Challenge Date', 'influencer-hq' ); ?></div>
+                                    <div class="cpc-label"><?php esc_html_e( 'Challenge Date', 'influencer-hq' ); ?></div>
+                                    <div class="cpc-date-row">
                                     <input class="cpc-input cpc-date-input" id="cpc-date" type="date" min="<?php echo esc_attr( date( 'Y-m-d' ) ); ?>" max="<?php echo esc_attr( date( 'Y-m-d', strtotime( '+2 years' ) ) ); ?>">
 
-                                    <div class="cpc-row-controls" style="margin-top:10px;">
+                                    <div class="cpc-row-controls">
                                         <span class="cpc-info-icon" title="<?php esc_attr_e( 'Start time and end time for all Private Challenges are 00:01 HK time (24 clock) through midnight each night.', 'influencer-hq' ); ?>">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="#b8972f" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"/><text x="12" y="16" text-anchor="middle" font-size="13" font-family="serif" fill="#000">i</text></svg>
                                         </span>
                                         <button id="cpc-create-btn" type="button" class="cpc-btn-create"><?php esc_html_e( 'Create Challenge Links', 'influencer-hq' ); ?></button>
                                     </div>
+                                    </div>
 
                                     <div id="cpc-form-msg" style="display:none;font-family:'Be Vietnam Pro',sans-serif;font-size:13px;margin-bottom:6px;"></div>
 
-                                    <div class="competition-block-title" style="margin-top:14px;"><?php esc_html_e( 'My Shareable Link', 'influencer-hq' ); ?></div>
+                                    <div class="cpc-label"><?php esc_html_e( 'My Shareable Link', 'influencer-hq' ); ?></div>
                                     <div class="cpc-share-row">
-                                        <input class="cpc-input cpc-input-muted" id="cpc-share-link" type="text" placeholder="<?php esc_attr_e( '(Shareable challenge URL appears here)', 'influencer-hq' ); ?>" readonly>
+                                        <input class="cpc-input cpc-input-muted" id="cpc-share-link" type="text" placeholder="<?php esc_attr_e( 'share this link with your Influencer opponent.', 'influencer-hq' ); ?>" readonly>
                                         <button type="button" class="cpc-icon-btn" id="cpc-copy-link" aria-label="<?php esc_attr_e( 'Copy link', 'influencer-hq' ); ?>" title="<?php esc_attr_e( 'Copy', 'influencer-hq' ); ?>">
                                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b8972f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                                         </button>
@@ -830,24 +837,25 @@ $portal_embed_urls = [
                                     <p class="cpc-share-help"><?php esc_html_e( 'Share this link with your influencer opponent so he/she can accept the challenge.', 'influencer-hq' ); ?></p>
                                 </div>
                             </div>
+                            </div>
                         </div>
 
                         <!-- Accordion 3: See Current Challenges -->
-                        <div class="cpc-accordion" id="cpcAccordion1">
-                            <div class="cpc-accordion-header collapsed" data-bs-toggle="collapse" data-bs-target="#cpcCollapse1" aria-expanded="false" aria-controls="cpcCollapse1">
-                                <svg class="cpc-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b8972f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                                <span class="competition-block-title" style="margin:0;"><?php esc_html_e( 'See Current Challenges', 'influencer-hq' ); ?></span>
-                            </div>
-                            <div id="cpcCollapse1" class="collapse">
-                                <div class="cpc-accordion-body">
+                        <div class="accordion custom-accordion" id="cpcAccordion1">
+                            <div class="accordion-item mb-3">
+                            <h2 class="accordion-header" id="headingCpcCurrent">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cpcCollapse1" aria-expanded="false" aria-controls="cpcCollapse1">
+                                    <span class="question-text"><?php esc_html_e( 'See Your Current Private Challenges', 'influencer-hq' ); ?></span>
+                                </button>
+                            </h2>
+                            <div id="cpcCollapse1" class="accordion-collapse collapse" aria-labelledby="headingCpcCurrent">
+                                <div class="accordion-body">
 
-                                    <div class="competition-block-title"><?php esc_html_e( 'Private Challenges You\'ve Created That Have Been Accepted', 'influencer-hq' ); ?></div>
-                                    <div class="cpc-divider-thin"></div>
+                                    <div class="cpc-list-heading"><?php esc_html_e( 'Private Challenges You\'ve Created That Have Been Accepted', 'influencer-hq' ); ?></div>
                                     <div class="cpc-table">
                                         <div class="cpc-table-head">
                                             <span class="cpc-col-date"><?php esc_html_e( 'Challenge Date', 'influencer-hq' ); ?></span>
-                                            <span class="cpc-col-user"><?php esc_html_e( 'Challenged Person\'s Username', 'influencer-hq' ); ?></span>
-                                            <span class="cpc-col-link"><?php esc_html_e( 'Link', 'influencer-hq' ); ?></span>
+                                            <span class="cpc-col-user"><?php esc_html_e( 'Challenged Person\'s Username (email)', 'influencer-hq' ); ?></span>
                                         </div>
                                         <div class="cpc-divider-thin"></div>
                                         <?php if ( empty( $cpc_issued_accepted ) ) : ?>
@@ -869,28 +877,26 @@ $portal_embed_urls = [
                                                 ? ihq_challenge_invite_link( $ci->ID )
                                                 : '';
                                         ?>
-                                        <div class="cpc-table-row">
-                                            <span class="cpc-col-date"><?php echo esc_html( date( 'M j, Y', strtotime( $ci_date ) ) ); ?></span>
-                                            <span class="cpc-col-user"><?php echo esc_html( $ci_username !== '' ? $ci_username : '—' ); ?></span>
-                                            <span class="cpc-col-link">
-                                                <?php if ( $ci_link !== '' ) : ?>
+                                        <div class="cpc-challenge">
+                                            <div class="cpc-challenge-top">
+                                                <span class="cpc-col-date"><?php echo esc_html( date( 'm.d', strtotime( $ci_date ) ) ); ?></span>
+                                                <span class="cpc-col-user"><?php echo esc_html( $ci_username !== '' ? $ci_username : '—' ); ?></span>
+                                            </div>
+                                            <?php if ( $ci_link !== '' ) : ?>
+                                            <div class="cpc-challenge-link">
                                                 <input class="cpc-link-input" type="text" readonly value="<?php echo esc_attr( $ci_link ); ?>" onclick="this.select();">
-                                                <?php else : ?>
-                                                —
-                                                <?php endif; ?>
-                                            </span>
+                                            </div>
+                                            <?php endif; ?>
                                         </div>
                                         <?php endforeach; endif; ?>
                                     </div>
                                     <a class="cpc-table-more" href="#private-leaderboards"><?php esc_html_e( 'more >', 'influencer-hq' ); ?></a>
 
-                                    <div class="competition-block-title" style="margin-top:18px;"><?php esc_html_e( 'Private Challenges You\'ve Received', 'influencer-hq' ); ?></div>
-                                    <div class="cpc-divider-thin"></div>
+                                    <div class="cpc-list-heading"><?php esc_html_e( 'Private Challenges You\'ve Received', 'influencer-hq' ); ?></div>
                                     <div class="cpc-table">
                                         <div class="cpc-table-head">
                                             <span class="cpc-col-date"><?php esc_html_e( 'Challenge Date', 'influencer-hq' ); ?></span>
-                                            <span class="cpc-col-user"><?php esc_html_e( 'Challenger\'s Username', 'influencer-hq' ); ?></span>
-                                            <span class="cpc-col-link"><?php esc_html_e( 'Link', 'influencer-hq' ); ?></span>
+                                            <span class="cpc-col-user"><?php esc_html_e( 'Challenger\'s Username (email)', 'influencer-hq' ); ?></span>
                                         </div>
                                         <div class="cpc-divider-thin"></div>
                                         <?php if ( empty( $cpc_received ) ) : ?>
@@ -905,22 +911,23 @@ $portal_embed_urls = [
                                                 ? ihq_challenge_invite_link( $cr->ID )
                                                 : '';
                                         ?>
-                                        <div class="cpc-table-row">
-                                            <span class="cpc-col-date"><?php echo esc_html( date( 'M j, Y', strtotime( $cr_date ) ) ); ?></span>
-                                            <span class="cpc-col-user"><?php echo esc_html( $cr_username !== '' ? $cr_username : '—' ); ?></span>
-                                            <span class="cpc-col-link">
-                                                <?php if ( $cr_link !== '' ) : ?>
+                                        <div class="cpc-challenge">
+                                            <div class="cpc-challenge-top">
+                                                <span class="cpc-col-date"><?php echo esc_html( date( 'm.d', strtotime( $cr_date ) ) ); ?></span>
+                                                <span class="cpc-col-user"><?php echo esc_html( $cr_username !== '' ? $cr_username : '—' ); ?></span>
+                                            </div>
+                                            <?php if ( $cr_link !== '' ) : ?>
+                                            <div class="cpc-challenge-link">
                                                 <input class="cpc-link-input" type="text" readonly value="<?php echo esc_attr( $cr_link ); ?>" onclick="this.select();">
-                                                <?php else : ?>
-                                                —
-                                                <?php endif; ?>
-                                            </span>
+                                            </div>
+                                            <?php endif; ?>
                                         </div>
                                         <?php endforeach; endif; ?>
                                     </div>
                                     <a class="cpc-table-more" href="#private-leaderboards"><?php esc_html_e( 'more >', 'influencer-hq' ); ?></a>
 
                                 </div>
+                            </div>
                             </div>
                         </div>
 
