@@ -429,30 +429,25 @@ $aicoach_channels = array(
                         </div>
                     </div>
 
-                </div>
-
-                <!--
-                FR-17 — time-remaining check. Overlays whichever screen is
-                currently active rather than being one of the aicoach-panel
-                screens, since it can interrupt any of them. Copy and the
-                trigger threshold are both explicitly marked as pending
-                approval/confirmation in the ticket — placeholder text below,
-                see js/aicoach-coach-flow.js for the threshold constant.
-                -->
-                <div class="aicoach-time-check" id="aicoach-time-check" aria-hidden="true" role="dialog" aria-modal="true">
-                    <div class="aicoach-time-check-box">
-                        <p class="aicoach-time-check-text" data-i18n="timeCheckText">
-                            <?php esc_html_e( "Looks like your selected time is almost up. Do you have a few more minutes to finish?", 'influencer-hq' ); ?>
-                        </p>
-                        <div class="aicoach-time-check-actions">
-                            <button type="button" class="aicoach-time-check-btn aicoach-time-check-yes" id="aicoach-time-check-yes" data-i18n="yes">
-                                <?php esc_html_e( 'Yes', 'influencer-hq' ); ?>
-                            </button>
-                            <button type="button" class="aicoach-time-check-btn aicoach-time-check-no" id="aicoach-time-check-no" data-i18n="no">
-                                <?php esc_html_e( 'No', 'influencer-hq' ); ?>
-                            </button>
+                    <?php /* PO-3109 — FR-17's time-remaining check, now the "Time is up?" screen. Takes the stage from whichever screen is showing (js/aicoach-coach-flow.js, openTimeUp()) and gives it back; transient, never saved as the visitor's stage. */ ?>
+                    <div class="aicoach-panel" data-panel="time-up" aria-hidden="true">
+                        <div class="aicoach-timeup">
+                            <h2 class="aicoach-timeup-title" id="aicoach-timeup-title" data-i18n="timeUpTitle"><?php esc_html_e( 'Time is up?', 'influencer-hq' ); ?></h2>
+                            <div class="aicoach-timeup-choices" role="radiogroup" aria-labelledby="aicoach-timeup-title">
+                                <label class="aicoach-timeup-choice">
+                                    <input class="aicoach-timeup-check" type="radio" name="aicoach_time_up" value="keep">
+                                    <span class="aicoach-timeup-box" aria-hidden="true"></span>
+                                    <span class="aicoach-timeup-label" data-i18n="timeUpKeepTalking"><?php esc_html_e( 'Keep Talking Now', 'influencer-hq' ); ?></span>
+                                </label>
+                                <label class="aicoach-timeup-choice">
+                                    <input class="aicoach-timeup-check" type="radio" name="aicoach_time_up" value="appointment">
+                                    <span class="aicoach-timeup-box" aria-hidden="true"></span>
+                                    <span class="aicoach-timeup-label" data-i18n="timeUpSetAppointment"><?php esc_html_e( 'Set an Appointment', 'influencer-hq' ); ?></span>
+                                </label>
+                            </div>
                         </div>
                     </div>
+
                 </div>
 
             </section>
@@ -872,63 +867,66 @@ $aicoach_channels = array(
         color: #eb0000;
     }
 
-    .aicoach-time-check {
-        display: none;
-        position: fixed;
-        inset: 0;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        background: rgba(11, 12, 16, .8);
-        backdrop-filter: blur(4px);
-        z-index: 10040;
-    }
-
-    .aicoach-time-check.is-visible {
-        display: flex;
-    }
-
-    .aicoach-time-check-box {
-        max-width: 380px;
-        width: 100%;
-        padding: 28px 24px;
-        border: 2px solid #fdd65b;
-        border-radius: 12px;
-        background: #1b1c24;
+    /* PO-3109 — "Time is up?" screen (design: Keep Talking Now / Set an
+    Appointment). White heading, white-outlined boxes, green when chosen. */
+    .aicoach-timeup {
+        padding: 8px 0 24px;
         text-align: center;
     }
 
-    .aicoach-time-check-text {
-        margin: 0 0 24px;
+    .aicoach-timeup-title {
+        margin: 0 0 22px;
         font-weight: 700;
-        font-size: 1.05rem;
-        line-height: 1.4;
+        font-size: clamp(1.9rem, 8.5vw, 2.4rem);
+        line-height: 1.15;
         color: #fff;
     }
 
-    .aicoach-time-check-actions {
+    .aicoach-timeup-choices {
+        display: grid;
+        gap: 14px;
+        width: fit-content;
+        margin: 0 auto;
+        text-align: left;
+    }
+
+    .aicoach-timeup-choice {
         display: flex;
-        gap: 12px;
-    }
-
-    .aicoach-time-check-btn {
-        flex: 1;
-        padding: 12px;
-        border: none;
-        border-radius: 8px;
-        font-weight: 800;
-        font-size: 1rem;
+        align-items: center;
+        gap: 14px;
         cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
     }
 
-    .aicoach-time-check-yes {
-        background: #fdd65b;
-        color: #12131a;
+    .aicoach-timeup-check {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
     }
 
-    .aicoach-time-check-no {
+    .aicoach-timeup-box {
+        flex-shrink: 0;
+        width: 28px;
+        height: 28px;
+        border: 2px solid #fff;
+        border-radius: 3px;
         background: transparent;
-        border: 2px solid #3a3b47;
+        box-sizing: border-box;
+    }
+
+    .aicoach-timeup-choice:has(.aicoach-timeup-check:checked) .aicoach-timeup-box {
+        background: #148942;
+    }
+
+    .aicoach-timeup-choice:has(.aicoach-timeup-check:focus-visible) .aicoach-timeup-box {
+        outline: 3px solid #fdd65b;
+        outline-offset: 2px;
+    }
+
+    .aicoach-timeup-label {
+        font-weight: 600;
+        font-size: clamp(1.4rem, 6.3vw, 1.75rem);
+        line-height: 1.2;
         color: #fff;
     }
 
@@ -1286,10 +1284,9 @@ $aicoach_channels = array(
         border-radius: 12px;
         background: #1b1c24;
         box-shadow: 0 12px 28px rgba(0, 0, 0, .4);
-        /* Below .aicoach-time-check's 10040 (not above it like
-        .aicoach-lang-dropdown's 10050) — that modal is a full-screen
-        inset:0 overlay meant to force a yes/no decision, and a visitor
-        must not be able to keep typing into this panel through it. */
+        /* Below .aicoach-lang-dropdown's 10050. The Ask Sami button is disabled
+        while the Time is up screen is showing (see openTimeUp() in
+        js/aicoach-coach-flow.js), so this panel cannot be opened over it. */
         z-index: 10030;
         text-align: left;
     }

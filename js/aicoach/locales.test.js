@@ -18,9 +18,9 @@ const GAPS_IN_EVERY_LANGUAGE = [
 	'privateChallengeName',
 	'friendFollowers',
 	'channelsHint',
-	'timeCheckText',
-	'yes',
-	'no',
+	'timeUpTitle',
+	'timeUpKeepTalking',
+	'timeUpSetAppointment',
 	...CHANNEL_KEYS.map( ( key ) => 'channel-' + key + '-inputLabel' ),
 	...CHANNEL_KEYS.map( ( key ) => 'channel-' + key + '-placeholder' ),
 ];
@@ -99,7 +99,7 @@ test( 't returns the language\'s own copy when it has one', () => {
 } );
 
 test( 't falls back to English for a key the language lacks', () => {
-	assert.equal( t( 'zh', 'yes' ), I18N_EN.yes );
+	assert.equal( t( 'zh', 'timeUpTitle' ), I18N_EN.timeUpTitle );
 	assert.equal( t( 'ja', 'belief' ), I18N_EN.belief );
 	assert.equal( t( 'ko', 'firstName' ), I18N_EN.firstName );
 } );

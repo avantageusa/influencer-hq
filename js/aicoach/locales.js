@@ -66,9 +66,11 @@ export const I18N_EN = {
     continue: 'Continue',
     channelsHint: 'Please select at least one communication method.',
     letsContinue: "Let's Continue",
-    timeCheckText: "Looks like your selected time is almost up. Do you have a few more minutes to finish?",
-    yes: 'Yes',
-    no: 'No',
+    // PO-3109 — the "Time is up?" screen that replaced FR-17's Yes/No prompt.
+    // English only until approved translations exist, like every other new string.
+    timeUpTitle: 'Time is up?',
+    timeUpKeepTalking: 'Keep Talking Now',
+    timeUpSetAppointment: 'Set an Appointment',
     // Mirrors $aicoach_channels in page-home-aicoach.php — kept in sync by hand,
     // there's no single shared source between PHP and this file for it.
     'channel-email-label': 'Email',
@@ -106,7 +108,8 @@ export const I18N_EN = {
 // English for any key a locale's table doesn't have, so every gap here is a
 // deliberate omission, not a bug:
 //   - Not in the sheet at all yet: tierGroupLabel, channelsHint,
-//     timeCheckText, yes, no, and all 8 channel-*-inputLabel /
+//     timeUpTitle, timeUpKeepTalking, timeUpSetAppointment (PO-3109), and all 8
+//     channel-*-inputLabel /
 //     5 channel-*-placeholder keys (the sheet only has the channel NAMES,
 //     e.g. "Email", not the input-field copy, e.g. "Email address").
 //   - In the sheet but structured differently than this file's keys, so not

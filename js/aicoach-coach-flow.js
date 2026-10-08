@@ -103,6 +103,8 @@ const createPausableTimeout = sequenceHold.createPausableTimeout;
 const pauseSequenceTimers = sequenceHold.pause;
 const resumeSequenceTimers = sequenceHold.resume;
 const waitWhileSequenceHeld = sequenceHold.waitWhileHeld;
+const setSequenceExternalHold = sequenceHold.setExternalHold;
+const waitWhileSequenceExternallyHeld = sequenceHold.waitWhileExternallyHeld;
 
 // FR-17 — trigger the time-remaining check once this proportion of the
 // selected tier's total duration has elapsed. The ticket explicitly says the
@@ -330,6 +332,9 @@ if ( stage && avatarWrap ) {
     let currentLocale = detectInitialLocale();
     let askSamiWrap = null; // set once buildAskSami() runs below; selectLocale() toggles its visibility
     let askSamiBtn = null;
+    let isAnswerPending = function () {
+        return false;
+    }; // set by buildAskSami(): a question is in flight or its answer is still playing, even with the panel closed
     let closeAskSamiPanel = null; // set once buildAskSami() runs below; selectLocale() calls this before hiding the panel
     let toggleAskSamiPanel = null; // set once buildAskSami() runs below; the stage's tap-to-interrupt listener calls this
     let applyResumedQaHistory = null; // set once buildAskSami() runs below; init() calls this with a resumed visitor's saved Q&A pairs
@@ -395,10 +400,20 @@ if ( stage && avatarWrap ) {
     // flight, or when video.srcObject is set (the live Gary/Anam WebRTC stream
     // for the "intro" screen — reconnecting that is a separate, bigger piece
     // of work, see selectLocale()'s own note above).
+    // Returns true when it restarted the clip, which then plays; false when there
+    // was nothing to restart (or the restart was deferred, see below), so the caller
+    // knows the clip it paused is still paused (PO-3109, CodeRabbit).
     function restartCurrentClipForLocale( locale ) {
+        // PO-3109 (review, Dejan Arsić) — restarting plays the clip, which must not
+        // happen under the Time is up screen. Remember it; closeTimeUp() restarts
+        // the clip in the new language once the previous screen is back.
+        if ( timeUpOpen ) {
+            timeUpClipRestartPending = true;
+            return false;
+        }
         const screen = SCREENS[ sequenceIndex ];
         if ( ! screen || video.srcObject || ! activeClipRestart ) {
-            return;
+            return false;
         }
         const newUrl = getPrerenderedUrl( screen.panel, locale );
         // getPrerenderedUrl() falls back to the English clip when the newly
@@ -412,7 +427,7 @@ if ( stage && avatarWrap ) {
         // and the new one falls back to English — that genuinely is a
         // different source, not a no-op.
         if ( ! newUrl || newUrl === video.currentSrc ) {
-            return;
+            return false;
         }
         activeClipRestart( newUrl );
         // PO-3343 — believe-1's clip restarting from 0 means Sami is about to
@@ -421,7 +436,7 @@ if ( stage && avatarWrap ) {
         // still-opening-included) caption text below.
         if ( 'believe-1' === screen.panel ) {
             startBelieveOneIntro();
-            return;
+            return true;
         }
         // NFR-03 — keep the on-screen caption matching whatever the restarted
         // clip is actually saying, same as the initial-load path in
@@ -430,6 +445,7 @@ if ( stage && avatarWrap ) {
         if ( captionEl ) {
             captionEl.textContent = getCaptionScript( screen.panel, locale ) || screen.script;
         }
+        return true;
     }
 
     ( function buildLanguageSelector() {
@@ -633,6 +649,10 @@ if ( stage && avatarWrap ) {
         // element instead of racing each other — see both below.
         let qaClient = null;
         let qaClientReady = false;
+        // PO-3109 (review, Dejan Arsić) — questions sent whose answer has not arrived
+        // yet. Closing the panel does not cancel one (only reopening it does), so
+        // its answer can still land later, with qaAnswering false until it does.
+        let qaQuestionsInFlight = 0;
         let qaAnswering = false;
         // ENGR-7051 — true only while a lip-synced answer stream is what the
         // shared <video> is actually showing (not merely while an answer is
@@ -936,6 +956,11 @@ if ( stage && avatarWrap ) {
             if ( qaAnswering ) {
                 return;
             }
+            // PO-3109 — never speak an answer under the Time is up screen. The time
+            // check waits for a question in flight, so this is only a safety net.
+            if ( timeUpOpen ) {
+                return;
+            }
             // A fresh video envelope, OR an already-connected client from an
             // earlier answer this visit (a follow-up question deliberately
             // requests want:['text'] only — see askQuestion() — so
@@ -1129,6 +1154,7 @@ if ( stage && avatarWrap ) {
             answerEl.textContent = '';
             statusEl.textContent = 'Thinking…';
             micBtn.disabled = true;
+            qaQuestionsInFlight++;
             try {
                 const res = await fetch( garyMessageUrl( garySessionId ), {
                     method: 'POST',
@@ -1189,6 +1215,7 @@ if ( stage && avatarWrap ) {
                 errorEl.textContent = 'Something went wrong — please try again.';
                 statusEl.textContent = '';
             } finally {
+                qaQuestionsInFlight--;
                 if ( generation === askGeneration ) {
                     micBtn.disabled = false;
                 }
@@ -1259,6 +1286,9 @@ if ( stage && avatarWrap ) {
             }
         }
 
+        isAnswerPending = function () {
+            return qaAnswering || qaQuestionsInFlight > 0;
+        };
         closeAskSamiPanel = closePanel; // exposed so selectLocale() can close this before hiding it out from under itself
 
         // PO-3346 — shared by the button below and the stage's tap-to-interrupt
@@ -1318,6 +1348,10 @@ if ( stage && avatarWrap ) {
         } );
     }
 
+    // PO-3109 — panels that interrupt a screen and give it back, so they are never
+    // saved as the visitor's stage.
+    const TRANSIENT_PANEL_KEYS = [ 'time-up' ];
+
     function getActivePanel() {
         return stage.querySelector( '.aicoach-panel.is-active' );
     }
@@ -1361,8 +1395,12 @@ if ( stage && avatarWrap ) {
         }
 
         // PO-3102 — every real panel transition is "current stage" for Scenario
-        // 20's continuous save, not just the 3 form-submit checkpoints.
-        saveProgress( { stage: panelKey } );
+        // 20's continuous save, not just the 3 form-submit checkpoints. A
+        // transient panel (Time is up) is never a place to resume into, so it is
+        // not saved: the stage stays the screen the visitor came from.
+        if ( TRANSIENT_PANEL_KEYS.indexOf( panelKey ) === -1 ) {
+            saveProgress( { stage: panelKey } );
+        }
 
         hydratePanelImages( next );
 
@@ -1499,6 +1537,10 @@ if ( stage && avatarWrap ) {
             // them for that tier) — see the loop's own equity-bts check.
             await inviteQuestionOrSkip();
         }
+        // PO-3109 (review, Dejan Arsić) — the end destination must not replace the
+        // Time is up screen: its external hold would then never be released and
+        // the form's Continue would wait on it forever.
+        await waitWhileSequenceExternallyHeld();
         if ( sequenceEndDestination ) {
             showPanel( sequenceEndDestination );
         }
@@ -2298,21 +2340,21 @@ if ( stage && avatarWrap ) {
         }
     } );
 
-    // FR-17 — time-remaining check (Scenario 29/30). Overlays whichever screen
-    // is currently showing (it isn't one of the SCREENS/aicoach-panel entries,
-    // since it can interrupt any of them) once the visitor has used up
-    // TIME_REMAINING_THRESHOLD_RATIO of their selected tier. Fires once per
-    // session (Scenario 30's "does not fire again"); if the visitor has
-    // already completed registration by then, the page has already navigated
-    // away to the portal (PO-3100's redirect) and this timer is moot — no
-    // extra guard needed for that case.
-    //
-    // "No" is meant to trigger FR-18's appointment scheduling (PO-3109, a
-    // separate story, not built yet) — for now it just dismisses; wire the
-    // real scheduling flow in here once that story exists.
-    const timeCheckOverlay = document.getElementById( 'aicoach-time-check' );
-    const timeCheckYesBtn = document.getElementById( 'aicoach-time-check-yes' );
-    const timeCheckNoBtn = document.getElementById( 'aicoach-time-check-no' );
+    // FR-17 — time-remaining check (Scenario 29/30) and the entry to FR-18's
+    // appointment scheduling. Once the visitor has used up
+    // TIME_REMAINING_THRESHOLD_RATIO of their selected tier, the "Time is up?"
+    // panel (PO-3109) takes the stage from whichever screen is showing, with two
+    // choices: Keep Talking Now carries on exactly where they were, Set an
+    // Appointment goes to scheduling. It is not one of SCREENS (it can interrupt any
+    // of them) and is never saved as the visitor's stage (TRANSIENT_PANEL_KEYS).
+    // Fires once per session (Scenario 30's "does not fire again"); if the visitor
+    // has already completed registration by then, the page has already navigated
+    // away to the portal (PO-3100's redirect) and this timer is moot.
+    const TIME_UP_PANEL_KEY = 'time-up';
+    const TIME_UP_RETRY_MS = 150;
+    const TIME_UP_ANSWER_POLL_MS = 1000;
+    const timeUpPanel = stage.querySelector( '.aicoach-panel[data-panel="' + TIME_UP_PANEL_KEY + '"]' );
+    const timeUpChoices = timeUpPanel ? timeUpPanel.querySelectorAll( '.aicoach-timeup-check' ) : [];
     let timeRemainingPromptShown = false;
     let timeRemainingTimer = null;
     // PO-3330's own AC pulls in two different directions here: elapsed-time
@@ -2323,10 +2365,76 @@ if ( stage && avatarWrap ) {
     // wait for an open Q&A to finish before it's shown on top of it. This
     // flag defers just the SHOWING, not the counting.
     let timeRemainingCheckPending = false;
+    let timeUpOpen = false;
+    let timeUpReturnPanelKey = null;
+    let timeUpWasPlaying = false;
+    let timeUpClipRestartPending = false; // a language pick arrived while the screen showed
+    let timeUpAskSamiWasDisabled = false;
 
-    function hideTimeRemainingCheck() {
-        timeCheckOverlay?.classList.remove( 'is-visible' );
-        timeCheckOverlay?.setAttribute( 'aria-hidden', 'true' );
+    function openTimeUp() {
+        const current = getActivePanel();
+        if ( isAnimating || ! current ) {
+            // Mid-transition there is no active panel to come back to; try again
+            // once it has settled.
+            window.setTimeout( openTimeUp, TIME_UP_RETRY_MS );
+            return;
+        }
+        timeUpOpen = true;
+        timeUpReturnPanelKey = current.getAttribute( 'data-panel' );
+        timeUpWasPlaying = ! video.paused;
+        video.pause();
+        // Nothing may advance underneath: the timers stop, and the screen loop
+        // waits (external hold) until this panel gives the stage back, even if
+        // something else resumes the timers in the meantime.
+        pauseSequenceTimers();
+        setSequenceExternalHold( true );
+        // The paused clip would otherwise sit on whatever frame it was on (see
+        // ENGR-7051); show her neutral portrait instead.
+        avatarWrap.classList.add( 'is-idle' );
+        // The Ask Sami panel must not open on top of a decision (the old modal
+        // blocked it by z-index).
+        if ( askSamiBtn ) {
+            timeUpAskSamiWasDisabled = askSamiBtn.disabled;
+            askSamiBtn.disabled = true;
+        }
+        timeUpChoices.forEach( function ( choice ) {
+            choice.checked = false;
+        } );
+        showPanel( TIME_UP_PANEL_KEY );
+    }
+
+    // Gives the stage back to the screen the visitor was on and lets the
+    // sequence carry on. Everything that makes the page move again waits until
+    // that screen is actually back: showPanel() is queued while the Time is up
+    // screen is still fading in, and a clip resumed before then would play (with
+    // sound) under this screen (CodeRabbit).
+    async function closeTimeUp() {
+        // Reset first, so a second choice during the fade does nothing.
+        timeUpOpen = false;
+        const returnPanelKey = timeUpReturnPanelKey;
+        timeUpReturnPanelKey = null;
+        if ( returnPanelKey ) {
+            await showPanel( returnPanelKey );
+        }
+        avatarWrap.classList.remove( 'is-idle' );
+        if ( askSamiBtn ) {
+            askSamiBtn.disabled = timeUpAskSamiWasDisabled;
+        }
+        resumeSequenceTimers();
+        setSequenceExternalHold( false );
+        // The visitor may have picked another language meanwhile: restart the clip in
+        // it (restartCurrentClipForLocale() also plays it and fixes the caption). If
+        // there is nothing to restart (the new language resolves to the clip already
+        // loaded, or the screen is the live stream), the clip this screen paused must
+        // simply carry on (CodeRabbit).
+        let restarted = false;
+        if ( timeUpClipRestartPending ) {
+            timeUpClipRestartPending = false;
+            restarted = restartCurrentClipForLocale( currentLocale );
+        }
+        if ( ! restarted && timeUpWasPlaying ) {
+            video.play().catch( function () {} );
+        }
     }
 
     function maybeShowTimeRemainingCheck() {
@@ -2339,9 +2447,15 @@ if ( stage && avatarWrap ) {
             timeRemainingCheckPending = true;
             return;
         }
+        // A question can outlast its closed panel: while it is in flight, and while
+        // its answer is spoken, its own cleanup resumes the clip it interrupted,
+        // which must not happen under this screen. Wait for it to finish.
+        if ( isAnswerPending() ) {
+            window.setTimeout( maybeShowTimeRemainingCheck, TIME_UP_ANSWER_POLL_MS );
+            return;
+        }
         timeRemainingPromptShown = true;
-        timeCheckOverlay?.classList.add( 'is-visible' );
-        timeCheckOverlay?.setAttribute( 'aria-hidden', 'false' );
+        openTimeUp();
     }
 
     function scheduleTimeRemainingCheck( tierMinutes ) {
@@ -2353,15 +2467,25 @@ if ( stage && avatarWrap ) {
         timeRemainingTimer = window.setTimeout( maybeShowTimeRemainingCheck, totalMs * TIME_REMAINING_THRESHOLD_RATIO );
     }
 
-    timeCheckYesBtn?.addEventListener( 'click', function () {
-        // Scenario 30 — continue from the current screen with no loss; the
-        // overlay was layered on top of it, so there's nothing to resume.
-        hideTimeRemainingCheck();
-    } );
+    // FR-18 isn't built yet (PO-3109, later steps): until the scheduling screen
+    // exists, Set an Appointment carries on like Keep Talking Now so the visitor is
+    // never stuck on this panel. Replace the body with the scheduling entry.
+    function startAppointmentScheduling() {
+        closeTimeUp();
+    }
 
-    timeCheckNoBtn?.addEventListener( 'click', function () {
-        hideTimeRemainingCheck();
-        // FR-18 isn't built yet — nothing further happens until it exists.
+    timeUpChoices.forEach( function ( choice ) {
+        choice.addEventListener( 'change', function () {
+            if ( ! timeUpOpen || ! choice.checked ) {
+                return;
+            }
+            if ( 'appointment' === choice.value ) {
+                startAppointmentScheduling();
+                return;
+            }
+            // Scenario 30 — continue from the current screen with no loss.
+            closeTimeUp();
+        } );
     } );
 
     // Open a Gary Coach API session (inc/gary-proxy.php) and return its parsed
