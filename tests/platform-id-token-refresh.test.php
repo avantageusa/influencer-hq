@@ -4,9 +4,10 @@
  * influencerhq-api handlers in inc/api-ajax-calls.php: an expired platform ID
  * token is refreshed (start-session re-run) before the call, a 401 refreshes
  * once and retries once, a request never refreshes twice, a failed refresh
- * returns today's error, and the share link keeps its new-influencer
- * 404 -> start-session -> retry path. No WordPress bootstrap and no live
- * requests:
+ * returns today's error, the share link keeps its new-influencer
+ * 404 -> start-session -> retry path, and a request that finds another one
+ * refreshing waits for it and uses its token. No WordPress bootstrap and no
+ * live requests:
  *
  *     docker run -v "$PWD":/t -w /t php:8.2-cli php tests/platform-id-token-refresh.test.php
  *
@@ -60,14 +61,20 @@ class WP_User {
 class StopRequest extends Exception {}
 
 /**
- * wp_options as the refresh lock uses it: INSERT IGNORE (1 row if new, 0 if the name exists) and the two
- * DELETEs (stale lock, own lock). prepare() hands the query and its arguments through unformatted.
+ * wp_options as the refresh lock uses it: INSERT IGNORE (1 row if new, 0 if the name exists), the two
+ * DELETEs (stale lock, own lock) and the SELECT that checks the lock. prepare() hands the query and its
+ * arguments through unformatted.
  */
 class FakeWpdb {
 	public $options = 'wp_options';
 	public $rows    = array();
 	public $queries = array();
 	public function prepare( $query, ...$args ) { return array( $query, $args ); }
+	public function get_var( $prepared ) {
+		list( $query, $args ) = $prepared;
+		$this->queries[]      = strtok( $query, ' ' ) . ' ' . $args[0];
+		return $this->rows[ $args[0] ] ?? null;
+	}
 	public function query( $prepared ) {
 		list( $query, $args ) = $prepared;
 		$this->queries[]      = strtok( $query, ' ' ) . ' ' . $args[0];
@@ -96,6 +103,10 @@ function reset_state() {
 	$GLOBALS['requests']  = array();
 	$GLOBALS['responses'] = array();
 	$GLOBALS['user_meta'] = array();
+	$GLOBALS['meta_cache'] = array();
+	$GLOBALS['cache_deletes'] = array();
+	$GLOBALS['pauses']    = array();
+	$GLOBALS['on_pause']  = null;
 	$GLOBALS['json']      = null;
 	$GLOBALS['wpdb']      = new FakeWpdb();
 	$GLOBALS['transients'] = array();
@@ -118,8 +129,38 @@ function check_ajax_referer( ...$args ) { return true; }
 function get_current_user_id() { return USER_ID; }
 function get_user_by( $field, $id ) { return new WP_User( $id ); }
 function get_userdata( $id ) { return new WP_User( $id ); }
-function get_user_meta( $id, $key, $single = false ) { return $GLOBALS['user_meta'][ $id ][ $key ] ?? ''; }
-function update_user_meta( $id, $key, $value ) { $GLOBALS['user_meta'][ $id ][ $key ] = $value; return true; }
+/**
+ * User meta as WordPress serves it: $GLOBALS['user_meta'] is the table, shared by every request; the first
+ * read loads the user's rows into this request's cache, and later reads come from the cache until
+ * wp_cache_delete( $id, 'user_meta' ). Writes go to both.
+ */
+function get_user_meta( $id, $key, $single = false ) {
+	if ( ! isset( $GLOBALS['meta_cache'][ $id ] ) ) {
+		$GLOBALS['meta_cache'][ $id ] = $GLOBALS['user_meta'][ $id ] ?? array();
+	}
+	return $GLOBALS['meta_cache'][ $id ][ $key ] ?? '';
+}
+function update_user_meta( $id, $key, $value ) {
+	$GLOBALS['user_meta'][ $id ][ $key ] = $value;
+	if ( isset( $GLOBALS['meta_cache'][ $id ] ) ) {
+		$GLOBALS['meta_cache'][ $id ][ $key ] = $value;
+	}
+	return true;
+}
+function wp_cache_delete( $key, $group ) {
+	$GLOBALS['cache_deletes'][] = array( $key, $group );
+	if ( 'user_meta' === $group ) {
+		unset( $GLOBALS['meta_cache'][ $key ] );
+	}
+	return true;
+}
+/** Records each poll's sleep; $GLOBALS['on_pause'] plays the other request (called with the poll count). */
+function ihq_platform_refresh_pause( $milliseconds ) {
+	$GLOBALS['pauses'][] = $milliseconds;
+	if ( null !== $GLOBALS['on_pause'] ) {
+		( $GLOBALS['on_pause'] )( count( $GLOBALS['pauses'] ) );
+	}
+}
 function get_transient( $key ) { return $GLOBALS['transients'][ $key ]['value'] ?? false; }
 function set_transient( $key, $value, $ttl ) { $GLOBALS['transients'][ $key ] = array( 'value' => $value, 'ttl' => $ttl ); return true; }
 function wp_send_json_success( $data = null ) { $GLOBALS['json'] = array( 'success' => true, 'data' => $data ); throw new StopRequest( 'json' ); }
@@ -360,6 +401,77 @@ $result  = ihq_platform_send_with_401_retry(
 check( '401 while another request refreshes: first response returned', $result, array( 'status' => 401, 'body' => '{}' ) );
 check( '401 while another request refreshes: not resent with the same token', $sent, array( 'old' ) );
 check( 'begin: no token, no request', $GLOBALS['requests'], array() );
+
+// --- Waiting for another request's refresh (QA reopen, 2026-10-08): the profile page loads the share link
+// and the player at once; the request that finds the lock taken waits and uses the new token. ---
+
+/** Another request holds the lock; at poll $poll it finishes: stores the new token, or fails and backs off. */
+function other_request_refreshing( $finishes_at_poll, $succeeds = true ) {
+	$GLOBALS['wpdb']->rows[ LOCK ] = (string) time();
+	$GLOBALS['on_pause']           = function ( $poll ) use ( $finishes_at_poll, $succeeds ) {
+		if ( $poll !== $finishes_at_poll ) {
+			return;
+		}
+		unset( $GLOBALS['wpdb']->rows[ LOCK ] );
+		if ( ! $succeeds ) {
+			$GLOBALS['transients'][ BACKOFF ] = array( 'value' => time(), 'ttl' => 60 );
+			return;
+		}
+		$GLOBALS['user_meta'][ USER_ID ]['ihq_id_token']      = NEW_TOKEN;
+		$GLOBALS['user_meta'][ USER_ID ]['ihq_token_expires'] = time() + 3600;
+	};
+}
+const SELECT_LOCK = 'SELECT ' . LOCK;
+const TRY_LOCK    = array( 'INSERT ' . LOCK, 'DELETE ' . LOCK, 'INSERT ' . LOCK );
+
+reset_state();
+given_user( expired() );
+get_user_meta( USER_ID, 'ihq_id_token' );
+other_request_refreshing( 3 );
+check( 'wait: returns the other request\'s new token', ihq_refresh_platform_id_token( USER_ID ), NEW_TOKEN );
+check( 'wait: no start-session of its own', $GLOBALS['requests'], array() );
+check( 'wait: polls until the lock is released', $GLOBALS['wpdb']->queries, array_merge( TRY_LOCK, array( SELECT_LOCK, SELECT_LOCK, SELECT_LOCK, SELECT_LOCK ) ) );
+check( 'wait: 250 ms between polls', $GLOBALS['pauses'], array( 250, 250, 250 ) );
+check( 'wait: drops the cached user meta before reading the new token', $GLOBALS['cache_deletes'], array( array( USER_ID, 'user_meta' ) ) );
+check( 'wait: no backoff', $GLOBALS['transients'], array() );
+
+reset_state();
+given_user( expired() );
+other_request_refreshing( 0 );
+check( 'wait, refresh never finishes: returns ""', ihq_refresh_platform_id_token( USER_ID ), '' );
+check( 'wait, refresh never finishes: gives up after 40 polls (10 s)', $GLOBALS['pauses'], array_fill( 0, 40, 250 ) );
+check( 'wait, refresh never finishes: 40 lock checks, no start-session', array( count( $GLOBALS['wpdb']->queries ), $GLOBALS['requests'] ), array( 43, array() ) );
+check( 'wait, refresh never finishes: other request\'s lock untouched', array_keys( $GLOBALS['wpdb']->rows ), array( LOCK ) );
+
+reset_state();
+given_user( expired() );
+other_request_refreshing( 2, false );
+check( 'wait, other refresh fails: returns ""', ihq_refresh_platform_id_token( USER_ID ), '' );
+check( 'wait, other refresh fails: stops polling when the lock is released', $GLOBALS['pauses'], array( 250, 250 ) );
+check( 'wait, other refresh fails: no start-session of its own', $GLOBALS['requests'], array() );
+
+reset_state();
+given_user( expired() );
+other_request_refreshing( 1 );
+check(
+	'wait: begin uses the other request\'s token',
+	ihq_platform_session_begin( USER_ID ),
+	array( 'user_id' => USER_ID, 'id_token' => NEW_TOKEN, 'refreshed' => true )
+);
+
+reset_state();
+given_user( valid() );
+other_request_refreshing( 2 );
+$sent    = array();
+$session = ihq_platform_session_begin( USER_ID );
+$result  = ihq_platform_send_with_401_retry(
+	$session,
+	function ( $token ) use ( &$sent ) {
+		$sent[] = auth_token_label( 'Bearer ' . $token );
+		return array( 'status' => 'new' === end( $sent ) ? 200 : 401, 'body' => '{}' );
+	}
+);
+check( '401 while another request refreshes: resent once with its new token', array( $sent, $result['status'] ), array( array( 'old', 'new' ), 200 ) );
 
 // --- Profile: GET /account/players/me. ---
 $player = '{"firstName":"Ann","lastName":"Lee"}';
@@ -667,6 +779,58 @@ given_user( valid() );
 respond( LINK_URL_WPU, 200, $link_ok );
 check( 'link valid: link shown', run_handler( 'get_referral_link_ajax' ), $link_found );
 check( 'link valid: no start-session', request_log(), array( 'GET ' . LINK_URL_WPU . ' old' ) );
+
+// --- QA reopen (2026-10-08): a fresh login over a stale stored token (any login that does not run
+// start-session), then Profile, whose share link and player load at once. One request refreshes; the other
+// waits for it. Before the fix the waiting one sent the expired token and both links showed HTTP 401. ---
+reset_state();
+given_user( expired() );
+other_request_refreshing( 2 );
+respond( LINK_URL_WPU, 200, $link_ok );
+check( 'reopen, link waits for the player\'s refresh: link shown', run_handler( 'get_referral_link_ajax' ), $link_found );
+check( 'reopen, link waits for the player\'s refresh: fetched with the new token, no start-session', request_log(), array( 'GET ' . LINK_URL_WPU . ' new' ) );
+
+reset_state();
+given_user( expired() );
+other_request_refreshing( 2 );
+respond( PLAYER_ME_URL, 200, $player );
+check( 'reopen, player waits for the link\'s refresh: success', run_handler( 'ihq_get_player_me_ajax' ), array( 'success' => true, 'data' => array( 'firstName' => 'Ann', 'lastName' => 'Lee' ) ) );
+check( 'reopen, player waits for the link\'s refresh: called with the new token', request_log(), array( 'GET ' . PLAYER_ME_URL . ' new' ) );
+
+reset_state();
+given_user( valid() );
+other_request_refreshing( 1 );
+respond( LINK_URL_WPU, 401, '{}' );
+respond( LINK_URL_SUB, 401, '{}' );
+respond( LINK_URL_SHORT, 401, '{}' );
+respond( LINK_URL_WPU, 200, $link_ok );
+check( 'reopen, link 401 while the player refreshes: link shown', run_handler( 'get_referral_link_ajax' ), $link_found );
+check( 'reopen, link 401 while the player refreshes: retried with its new token', array_slice( request_log(), 3 ), array( 'GET ' . LINK_URL_WPU . ' new' ) );
+
+reset_state();
+given_user( expired() );
+other_request_refreshing( 2, false );
+respond( LINK_URL_WPU, 401, '{}' );
+respond( LINK_URL_SUB, 401, '{}' );
+respond( LINK_URL_SHORT, 401, '{"message":"Unauthorized"}' );
+check(
+	'reopen, the other refresh fails: today\'s error',
+	run_handler( 'get_referral_link_ajax' ),
+	array( 'success' => false, 'data' => array( 'message' => 'API returned HTTP 401', 'body' => array( 'message' => 'Unauthorized' ) ) )
+);
+check( 'reopen, the other refresh fails: no start-session, no second round', count( request_log() ), 3 );
+
+// The stored Cognito refresh token plays no part: the refresh is a new start-session, so an expired or
+// invalid refresh token cannot block it.
+reset_state();
+given_user( expired() );
+$GLOBALS['user_meta'][ USER_ID ]['ihq_refresh_token'] = 'rt-expired-or-revoked';
+respond( START_SESSION_URL, 200, SESSION_OK );
+respond( LINK_URL_WPU, 200, $link_ok );
+check( 'expired id + bad refresh token: link shown', run_handler( 'get_referral_link_ajax' ), $link_found );
+check( 'expired id + bad refresh token: start-session, then the new token', request_log(), array( session_line(), 'GET ' . LINK_URL_WPU . ' new' ) );
+check( 'expired id + bad refresh token: refresh token not sent', strpos( $GLOBALS['requests'][0]['body'], 'rt-expired' ), false );
+check( 'expired id + bad refresh token: replaced by the new one', get_user_meta( USER_ID, 'ihq_refresh_token' ), 'rt-new' );
 
 ob_end_clean();
 echo implode( "\n", $out ) . "\n";

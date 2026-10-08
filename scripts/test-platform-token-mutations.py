@@ -33,6 +33,16 @@ mutations = [
     (token, "return ihq_platform_valid_stored_token( $wp_user_id, $now );", "return '';"),
     (token, "set_transient( $backoff_key, $now, IHQ_PLATFORM_REFRESH_BACKOFF_SECONDS );", ""),
     (token, "\t\tihq_platform_refresh_lock_release( $wp_user_id, $now );\n", "\n"),
+    # ihq_platform_wait_for_other_refresh(): wait for the lock holder, then read its token past the cache
+    (token, "return ihq_platform_wait_for_other_refresh( $wp_user_id, $now );", "return ihq_platform_valid_stored_token( $wp_user_id, $now );"),
+    (token, "if ( ! ihq_platform_refresh_lock_is_held( $wp_user_id ) ) {", "if ( false ) {"),
+    (token, "if ( ! ihq_platform_refresh_lock_is_held( $wp_user_id ) ) {", "if ( true ) {"),
+    (token, "$poll < IHQ_PLATFORM_REFRESH_WAIT_POLLS;", "$poll <= IHQ_PLATFORM_REFRESH_WAIT_POLLS;"),
+    (token, "ihq_platform_refresh_pause( IHQ_PLATFORM_REFRESH_WAIT_POLL_MS );", "ihq_platform_refresh_pause( 0 );"),
+    (token, "\twp_cache_delete( (int) $wp_user_id, 'user_meta' );\n", "\n"),
+    (token, "return null !== $wpdb->get_var(", "return null === $wpdb->get_var("),
+    (token, "const IHQ_PLATFORM_REFRESH_WAIT_POLLS  = 40;", "const IHQ_PLATFORM_REFRESH_WAIT_POLLS  = 39;"),
+    (token, "const IHQ_PLATFORM_REFRESH_WAIT_POLL_MS = 250;", "const IHQ_PLATFORM_REFRESH_WAIT_POLL_MS = 249;"),
     # ihq_platform_refresh_lock_acquire() / _release()
     (token, "if ( 1 === (int) $wpdb->query( $wpdb->prepare( $insert, $name, (string) $now ) ) ) {", "if ( false ) {"),
     (token, "$stale_before = (int) $now - IHQ_PLATFORM_REFRESH_LOCK_TTL_SECONDS;", "$stale_before = (int) $now;"),

@@ -19,7 +19,9 @@
  * retry already make. A request refreshes at most once; a failed refresh keeps
  * the stored token, so the handler returns the error it returns today. Per user,
  * one request refreshes at a time (lock), and after a failure none does for a
- * minute (backoff).
+ * minute (backoff). A request that finds the lock taken waits for that refresh
+ * and uses its token: the profile page loads the share link and the player at
+ * once, and the one that lost the lock used to send the expired token.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -40,6 +42,13 @@ const IHQ_PLATFORM_REFRESH_LOCK_TTL_SECONDS = 30;
 
 /** After a failed refresh, skip refreshing for this long, so a start-session outage isn't hit by every request. */
 const IHQ_PLATFORM_REFRESH_BACKOFF_SECONDS = 60;
+
+/**
+ * How long a request waits for another request's refresh: 40 polls of 250 ms, 10 s in all. start-session
+ * normally takes about a second; a refresh still running after 10 s is treated as failed for this request.
+ */
+const IHQ_PLATFORM_REFRESH_WAIT_POLLS  = 40;
+const IHQ_PLATFORM_REFRESH_WAIT_POLL_MS = 250;
 
 const IHQ_PLATFORM_REFRESH_LOCK_OPTION_PREFIX = 'ihq_platform_refresh_lock_';
 const IHQ_PLATFORM_REFRESH_BACKOFF_PREFIX     = 'ihq_platform_refresh_backoff_';
@@ -98,8 +107,52 @@ function ihq_platform_refresh_lock_release( $wp_user_id, $locked_at ) {
 }
 
 /**
- * The stored ID token when it is still valid, else ''. Used when another request holds the refresh lock:
- * if that refresh already finished, its token is used; if not, this request keeps today's behaviour.
+ * Whether any request holds the user's refresh lock. Read from the table, not the options cache, so a lock
+ * another request released is seen as gone.
+ *
+ * @param int $wp_user_id WordPress user ID.
+ * @return bool
+ */
+function ihq_platform_refresh_lock_is_held( $wp_user_id ) {
+	global $wpdb;
+	$name = IHQ_PLATFORM_REFRESH_LOCK_OPTION_PREFIX . (int) $wp_user_id;
+	return null !== $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", $name ) );
+}
+
+if ( ! function_exists( 'ihq_platform_refresh_pause' ) ) {
+	/**
+	 * Sleep between lock polls. Defined only when missing, so the tests can poll without sleeping.
+	 *
+	 * @param int $milliseconds How long to sleep.
+	 */
+	function ihq_platform_refresh_pause( $milliseconds ) {
+		usleep( (int) $milliseconds * 1000 );
+	}
+}
+
+/**
+ * Wait until the request that holds the refresh lock releases it (at most IHQ_PLATFORM_REFRESH_WAIT_POLLS
+ * polls), then return the token it stored, or '' when its refresh failed or is still running.
+ *
+ * @param int $wp_user_id WordPress user ID.
+ * @param int $now        Current Unix time.
+ * @return string
+ */
+function ihq_platform_wait_for_other_refresh( $wp_user_id, $now ) {
+	for ( $poll = 0; $poll < IHQ_PLATFORM_REFRESH_WAIT_POLLS; $poll++ ) {
+		if ( ! ihq_platform_refresh_lock_is_held( $wp_user_id ) ) {
+			break;
+		}
+		ihq_platform_refresh_pause( IHQ_PLATFORM_REFRESH_WAIT_POLL_MS );
+	}
+	// The other request stored its token in its own process; this request's user-meta cache still holds the
+	// token read when it started, so drop it before reading.
+	wp_cache_delete( (int) $wp_user_id, 'user_meta' );
+	return ihq_platform_valid_stored_token( $wp_user_id, $now );
+}
+
+/**
+ * The stored ID token when it is still valid, else ''.
  *
  * @param int $wp_user_id WordPress user ID.
  * @param int $now        Current Unix time.
@@ -119,8 +172,8 @@ function ihq_platform_valid_stored_token( $wp_user_id, $now ) {
 /**
  * Re-run start-session for the user with their stored country and return the new ID token.
  *
- * At most one request per user refreshes at a time (lock), and after a failure no request refreshes for
- * IHQ_PLATFORM_REFRESH_BACKOFF_SECONDS (backoff).
+ * At most one request per user refreshes at a time (lock); a request that finds the lock taken waits for that
+ * refresh instead. After a failure no request refreshes for IHQ_PLATFORM_REFRESH_BACKOFF_SECONDS (backoff).
  *
  * @param int      $wp_user_id WordPress user ID.
  * @param int|null $now        Current Unix time; defaults to time().
@@ -137,7 +190,7 @@ function ihq_refresh_platform_id_token( $wp_user_id, $now = null ) {
 		return '';
 	}
 	if ( ! ihq_platform_refresh_lock_acquire( $wp_user_id, $now ) ) {
-		return ihq_platform_valid_stored_token( $wp_user_id, $now );
+		return ihq_platform_wait_for_other_refresh( $wp_user_id, $now );
 	}
 
 	try {
