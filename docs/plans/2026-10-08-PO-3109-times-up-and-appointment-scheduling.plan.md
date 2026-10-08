@@ -19,7 +19,7 @@ todos:
     status: pending
   - id: appointment-logic
     content: Pure module js/aicoach/appointment.js (choice to start time, required fields, past-time check, time zone handling) with tests
-    status: pending
+    status: completed
   - id: scheduling-panel
     content: Set your appointment panel, validation messages, copy to clipboard with confirmation and the 4 second move to the final screen
     status: pending
@@ -91,6 +91,22 @@ Steps, each its own PR where it makes sense:
    instant), lists missing fields, and rejects a time in the past. Time zones come
    from the browser (`Intl.supportedValuesOf( 'timeZone' )`) with the visitor's
    own zone preselected. Table-driven tests including DST edges.
+   **Done in step 2** (`js/aicoach/appointment.js`, not yet imported by the page, so
+   not yet registered in `inc/aicoach-modules.php`; step 3 wires and registers it):
+   `validateAppointment( selection, now )` returns `{ ok, errors, startsAt,
+   startsAtIso }`; `errors` are codes (`choice-missing`, `date-missing`,
+   `time-zone-missing`, `time-missing`, `date-invalid`, `time-invalid`,
+   `time-zone-invalid`, `time-does-not-exist`, `time-in-past`) that the screen maps
+   to text. `zonedDateTimeToInstant()` turns a wall-clock date, time and IANA zone into
+   one instant: the skipped hour when clocks go forward is refused
+   (`time-does-not-exist`), and the repeated hour when they go back resolves to the
+   first occurrence. Also `buildTimeSlots()` (every 30 minutes, 00:00 to 23:30),
+   `listTimeZones()` (browser list, sorted, UTC always present), `getDefaultTimeZone()`
+   and `isValidTimeZone()`. Assumptions the ticket leaves open, each a one-line
+   change: "In 30 minutes" and "In an hour" count from the moment `now` is taken
+   (the screen takes it when the visitor copies); a time equal to `now` is in the
+   past; a missing field is reported before anything else is checked; no rule for
+   an appointment under 5 minutes away, since the ticket does not define one.
 3. **Scheduling panel.** Three radio options (one choice, drawn round), the Other
    fields, the three correction messages, copy to clipboard with a visible
    confirmation, the 4 second move. Before it opens, if no contact method has been
@@ -203,6 +219,25 @@ appointment; nothing is deployed until those are agreed.
   or an answer playing at the moment the time is up (written to wait, not driven),
   a language change while the screen is showing, translations (English only),
   and a narrow-phone layout.
+
+## Verification, step 2
+- `npm run test:js`: 127 tests, 46 of them new in `appointment.test.js`. They cover the
+  three choices, every missing-field combination and its order, the past rule at the
+  exact boundary, invalid dates, times and zones, zones with no daylight saving,
+  half-hour and negative offsets, summer and winter, the skipped hour when clocks go
+  forward (New York, Belgrade), the repeated hour when they go back, the
+  slots, and the zone list with a replaced `Intl`.
+- Manual mutation checks (Stryker is deferred): 26 mutations (comparison and
+  boundary flips, the two durations, offset sign and side, earliest versus latest
+  occurrence, the skipped-hour check, the 23/59 limits, blank handling, inherited
+  object keys, slot size and step, sorting, the UTC guarantee, field order), 23
+  killed. The three that survive are equivalent: removing either the month or the day
+  check of the rollover test changes nothing because each catches what the other
+  would (the year check covers the rest), and dropping the milliseconds in the offset
+  calculation only matters for a fractional instant, which no caller produces.
+- Not verified: the module in a real browser (it is not imported by the page yet),
+  and behaviour on a browser without `Intl.supportedValuesOf` (covered by a replaced
+  `Intl` only).
 
 ## Notes
 - The three scheduling options are a radio group (one choice) drawn round, per
