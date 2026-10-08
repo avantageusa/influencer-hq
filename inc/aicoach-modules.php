@@ -29,7 +29,7 @@ const IHQ_AICOACH_MODULE_ID_PREFIX = '@ihq/aicoach/';
  * @return string[]
  */
 function ihq_aicoach_script_module_names() {
-	return array( 'sequence-hold', 'stall-watchdog', 'idle-state' );
+	return array( 'sequence-hold', 'stall-watchdog', 'idle-state', 'locales', 'screens' );
 }
 
 /**
