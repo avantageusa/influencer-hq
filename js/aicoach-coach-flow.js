@@ -400,17 +400,20 @@ if ( stage && avatarWrap ) {
     // flight, or when video.srcObject is set (the live Gary/Anam WebRTC stream
     // for the "intro" screen — reconnecting that is a separate, bigger piece
     // of work, see selectLocale()'s own note above).
+    // Returns true when it restarted the clip, which then plays; false when there
+    // was nothing to restart (or the restart was deferred, see below), so the caller
+    // knows the clip it paused is still paused (PO-3109, CodeRabbit).
     function restartCurrentClipForLocale( locale ) {
         // PO-3109 (review, Dejan Arsić) — restarting plays the clip, which must not
         // happen under the Time is up screen. Remember it; closeTimeUp() restarts
         // the clip in the new language once the previous screen is back.
         if ( timeUpOpen ) {
             timeUpClipRestartPending = true;
-            return;
+            return false;
         }
         const screen = SCREENS[ sequenceIndex ];
         if ( ! screen || video.srcObject || ! activeClipRestart ) {
-            return;
+            return false;
         }
         const newUrl = getPrerenderedUrl( screen.panel, locale );
         // getPrerenderedUrl() falls back to the English clip when the newly
@@ -424,7 +427,7 @@ if ( stage && avatarWrap ) {
         // and the new one falls back to English — that genuinely is a
         // different source, not a no-op.
         if ( ! newUrl || newUrl === video.currentSrc ) {
-            return;
+            return false;
         }
         activeClipRestart( newUrl );
         // PO-3343 — believe-1's clip restarting from 0 means Sami is about to
@@ -433,7 +436,7 @@ if ( stage && avatarWrap ) {
         // still-opening-included) caption text below.
         if ( 'believe-1' === screen.panel ) {
             startBelieveOneIntro();
-            return;
+            return true;
         }
         // NFR-03 — keep the on-screen caption matching whatever the restarted
         // clip is actually saying, same as the initial-load path in
@@ -442,6 +445,7 @@ if ( stage && avatarWrap ) {
         if ( captionEl ) {
             captionEl.textContent = getCaptionScript( screen.panel, locale ) || screen.script;
         }
+        return true;
     }
 
     ( function buildLanguageSelector() {
@@ -2418,12 +2422,17 @@ if ( stage && avatarWrap ) {
         }
         resumeSequenceTimers();
         setSequenceExternalHold( false );
+        // The visitor may have picked another language meanwhile: restart the clip in
+        // it (restartCurrentClipForLocale() also plays it and fixes the caption). If
+        // there is nothing to restart (the new language resolves to the clip already
+        // loaded, or the screen is the live stream), the clip this screen paused must
+        // simply carry on (CodeRabbit).
+        let restarted = false;
         if ( timeUpClipRestartPending ) {
-            // The visitor picked another language meanwhile: restart the clip in
-            // it (restartCurrentClipForLocale() also plays it and fixes the caption).
             timeUpClipRestartPending = false;
-            restartCurrentClipForLocale( currentLocale );
-        } else if ( timeUpWasPlaying ) {
+            restarted = restartCurrentClipForLocale( currentLocale );
+        }
+        if ( ! restarted && timeUpWasPlaying ) {
             video.play().catch( function () {} );
         }
     }

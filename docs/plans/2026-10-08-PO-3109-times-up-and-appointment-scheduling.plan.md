@@ -173,6 +173,14 @@ appointment; nothing is deployed until those are agreed.
   Live: with Mandarin picked on the last screen the clip stayed paused at 6.66 s for
   8 s and the screen stayed `time-up`; Keep Talking Now restarted `bts-zh.mp4` from
   0 with the Chinese caption, and identity appeared only after the clip ended.
+- A language pick that cannot restart anything (review, CodeRabbit): when the new
+  language resolves to the clip already loaded, or the screen is the live stream,
+  `restartCurrentClipForLocale()` returns without playing, so `closeTimeUp()` used to
+  leave the clip it had paused paused. The function now returns whether it restarted
+  the clip and `closeTimeUp()` plays the paused clip otherwise. Live, on the intro
+  (live stream, `video.srcObject` set): Time is up paused the stream, Mandarin was picked
+  while it showed, and Keep Talking Now resumed the stream (`paused: false`, time
+  advancing).
 - Question still in flight (review, Dejan Arsic): `qaQuestionsInFlight` counts
   questions sent but not yet answered (closing the panel does not cancel one);
   `isAnswerPending()` counts them with an answer being spoken, and
