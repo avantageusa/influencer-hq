@@ -23,7 +23,8 @@
  *   resume: Function,
  *   waitWhileHeld: Function,
  *   isPaused: Function,
- *   setExternalHold: Function
+ *   setExternalHold: Function,
+ *   waitWhileExternallyHeld: Function
  * }}
  */
 export function createSequenceHold( { setTimeout, clearTimeout, now } ) {
@@ -39,6 +40,8 @@ export function createSequenceHold( { setTimeout, clearTimeout, now } ) {
 	// Resolvers for everything currently waiting out a hold (ENGR-7051);
 	// released together once no hold is left.
 	let waiters = [];
+	// Resolvers waiting for the external hold alone (see waitWhileExternallyHeld).
+	let externalWaiters = [];
 
 	function createPausableTimeout( callback, ms ) {
 		let remaining = ms;
@@ -110,6 +113,25 @@ export function createSequenceHold( { setTimeout, clearTimeout, now } ) {
 	function setExternalHold( on ) {
 		externalHold = Boolean( on );
 		releaseWaiters();
+		if ( ! externalHold ) {
+			const released = externalWaiters;
+			externalWaiters = [];
+			released.forEach( function ( release ) {
+				release();
+			} );
+		}
+	}
+
+	// Like waitWhileHeld(), but for the external hold only: a caller that must not
+	// run underneath the Time is up screen, yet is allowed to run while the Ask
+	// Sami panel has the timers paused.
+	function waitWhileExternallyHeld() {
+		if ( ! externalHold ) {
+			return Promise.resolve();
+		}
+		return new Promise( function ( resolve ) {
+			externalWaiters.push( resolve );
+		} );
 	}
 
 	// Resolves immediately unless the sequence is on hold.
@@ -126,5 +148,5 @@ export function createSequenceHold( { setTimeout, clearTimeout, now } ) {
 		return paused;
 	}
 
-	return { createPausableTimeout, pause, resume, waitWhileHeld, isPaused, setExternalHold };
+	return { createPausableTimeout, pause, resume, waitWhileHeld, isPaused, setExternalHold, waitWhileExternallyHeld };
 }

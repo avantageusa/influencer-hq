@@ -163,6 +163,23 @@ appointment; nothing is deployed until those are agreed.
   plays the clip; with the same quick double choice the clip stayed paused at
   6.67 s with idle on until the previous screen was back (about 800 ms) and then
   resumed, and the second choice did nothing.
+- Language pick while the screen shows (review, Dejan Arsic): the restart used to
+  play the clip underneath, and at the last screen its end let `finishSequence()`
+  replace the screen with identity while the hold was still on, so the form's
+  Continue waited forever. Now `restartCurrentClipForLocale()` only remembers the
+  pick while Time is up shows, `closeTimeUp()` restarts the clip in the new
+  language once the previous screen is back, and `finishSequence()` waits for the
+  external hold (`waitWhileExternallyHeld()`, new in `sequence-hold.js`, 3 tests).
+  Live: with Mandarin picked on the last screen the clip stayed paused at 6.66 s for
+  8 s and the screen stayed `time-up`; Keep Talking Now restarted `bts-zh.mp4` from
+  0 with the Chinese caption, and identity appeared only after the clip ended.
+- Question still in flight (review, Dejan Arsic): `qaQuestionsInFlight` counts
+  questions sent but not yet answered (closing the panel does not cancel one);
+  `isAnswerPending()` counts them with an answer being spoken, and
+  `speakAnswerOrFallback()` also returns while Time is up shows. Live, with the reply
+  held back 12 s: question sent at 1 s, panel closed at 2 s, time check due at about
+  8 s; the screen did not open then, the reply was delivered at 19 s and spoken at
+  19 s, and Time is up opened at 21 s.
 - Keep Talking Now: the previous screen came back, the clip resumed from where it
   stopped (6.66 s to 7.47 s), idle went off, the Ask Sami button returned to its
   previous state (it was disabled before: a resumed visit has no live session),

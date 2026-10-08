@@ -104,6 +104,7 @@ const pauseSequenceTimers = sequenceHold.pause;
 const resumeSequenceTimers = sequenceHold.resume;
 const waitWhileSequenceHeld = sequenceHold.waitWhileHeld;
 const setSequenceExternalHold = sequenceHold.setExternalHold;
+const waitWhileSequenceExternallyHeld = sequenceHold.waitWhileExternallyHeld;
 
 // FR-17 — trigger the time-remaining check once this proportion of the
 // selected tier's total duration has elapsed. The ticket explicitly says the
@@ -331,9 +332,9 @@ if ( stage && avatarWrap ) {
     let currentLocale = detectInitialLocale();
     let askSamiWrap = null; // set once buildAskSami() runs below; selectLocale() toggles its visibility
     let askSamiBtn = null;
-    let isAnswerPlaying = function () {
+    let isAnswerPending = function () {
         return false;
-    }; // set by buildAskSami(): a spoken answer is still in progress, even with the panel closed
+    }; // set by buildAskSami(): a question is in flight or its answer is still playing, even with the panel closed
     let closeAskSamiPanel = null; // set once buildAskSami() runs below; selectLocale() calls this before hiding the panel
     let toggleAskSamiPanel = null; // set once buildAskSami() runs below; the stage's tap-to-interrupt listener calls this
     let applyResumedQaHistory = null; // set once buildAskSami() runs below; init() calls this with a resumed visitor's saved Q&A pairs
@@ -400,6 +401,13 @@ if ( stage && avatarWrap ) {
     // for the "intro" screen — reconnecting that is a separate, bigger piece
     // of work, see selectLocale()'s own note above).
     function restartCurrentClipForLocale( locale ) {
+        // PO-3109 (review, Dejan Arsić) — restarting plays the clip, which must not
+        // happen under the Time is up screen. Remember it; closeTimeUp() restarts
+        // the clip in the new language once the previous screen is back.
+        if ( timeUpOpen ) {
+            timeUpClipRestartPending = true;
+            return;
+        }
         const screen = SCREENS[ sequenceIndex ];
         if ( ! screen || video.srcObject || ! activeClipRestart ) {
             return;
@@ -637,6 +645,10 @@ if ( stage && avatarWrap ) {
         // element instead of racing each other — see both below.
         let qaClient = null;
         let qaClientReady = false;
+        // PO-3109 (review, Dejan Arsić) — questions sent whose answer has not arrived
+        // yet. Closing the panel does not cancel one (only reopening it does), so
+        // its answer can still land later, with qaAnswering false until it does.
+        let qaQuestionsInFlight = 0;
         let qaAnswering = false;
         // ENGR-7051 — true only while a lip-synced answer stream is what the
         // shared <video> is actually showing (not merely while an answer is
@@ -940,6 +952,11 @@ if ( stage && avatarWrap ) {
             if ( qaAnswering ) {
                 return;
             }
+            // PO-3109 — never speak an answer under the Time is up screen. The time
+            // check waits for a question in flight, so this is only a safety net.
+            if ( timeUpOpen ) {
+                return;
+            }
             // A fresh video envelope, OR an already-connected client from an
             // earlier answer this visit (a follow-up question deliberately
             // requests want:['text'] only — see askQuestion() — so
@@ -1133,6 +1150,7 @@ if ( stage && avatarWrap ) {
             answerEl.textContent = '';
             statusEl.textContent = 'Thinking…';
             micBtn.disabled = true;
+            qaQuestionsInFlight++;
             try {
                 const res = await fetch( garyMessageUrl( garySessionId ), {
                     method: 'POST',
@@ -1193,6 +1211,7 @@ if ( stage && avatarWrap ) {
                 errorEl.textContent = 'Something went wrong — please try again.';
                 statusEl.textContent = '';
             } finally {
+                qaQuestionsInFlight--;
                 if ( generation === askGeneration ) {
                     micBtn.disabled = false;
                 }
@@ -1263,8 +1282,8 @@ if ( stage && avatarWrap ) {
             }
         }
 
-        isAnswerPlaying = function () {
-            return qaAnswering;
+        isAnswerPending = function () {
+            return qaAnswering || qaQuestionsInFlight > 0;
         };
         closeAskSamiPanel = closePanel; // exposed so selectLocale() can close this before hiding it out from under itself
 
@@ -1514,6 +1533,10 @@ if ( stage && avatarWrap ) {
             // them for that tier) — see the loop's own equity-bts check.
             await inviteQuestionOrSkip();
         }
+        // PO-3109 (review, Dejan Arsić) — the end destination must not replace the
+        // Time is up screen: its external hold would then never be released and
+        // the form's Continue would wait on it forever.
+        await waitWhileSequenceExternallyHeld();
         if ( sequenceEndDestination ) {
             showPanel( sequenceEndDestination );
         }
@@ -2341,6 +2364,7 @@ if ( stage && avatarWrap ) {
     let timeUpOpen = false;
     let timeUpReturnPanelKey = null;
     let timeUpWasPlaying = false;
+    let timeUpClipRestartPending = false; // a language pick arrived while the screen showed
     let timeUpAskSamiWasDisabled = false;
 
     function openTimeUp() {
@@ -2394,7 +2418,12 @@ if ( stage && avatarWrap ) {
         }
         resumeSequenceTimers();
         setSequenceExternalHold( false );
-        if ( timeUpWasPlaying ) {
+        if ( timeUpClipRestartPending ) {
+            // The visitor picked another language meanwhile: restart the clip in
+            // it (restartCurrentClipForLocale() also plays it and fixes the caption).
+            timeUpClipRestartPending = false;
+            restartCurrentClipForLocale( currentLocale );
+        } else if ( timeUpWasPlaying ) {
             video.play().catch( function () {} );
         }
     }
@@ -2409,10 +2438,10 @@ if ( stage && avatarWrap ) {
             timeRemainingCheckPending = true;
             return;
         }
-        // A spoken answer can outlast its closed panel. Its own cleanup resumes
-        // the clip it interrupted, which must not happen under this screen, so
-        // wait for it to finish.
-        if ( isAnswerPlaying() ) {
+        // A question can outlast its closed panel: while it is in flight, and while
+        // its answer is spoken, its own cleanup resumes the clip it interrupted,
+        // which must not happen under this screen. Wait for it to finish.
+        if ( isAnswerPending() ) {
             window.setTimeout( maybeShowTimeRemainingCheck, TIME_UP_ANSWER_POLL_MS );
             return;
         }
