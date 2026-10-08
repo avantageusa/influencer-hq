@@ -103,6 +103,7 @@ const createPausableTimeout = sequenceHold.createPausableTimeout;
 const pauseSequenceTimers = sequenceHold.pause;
 const resumeSequenceTimers = sequenceHold.resume;
 const waitWhileSequenceHeld = sequenceHold.waitWhileHeld;
+const setSequenceExternalHold = sequenceHold.setExternalHold;
 
 // FR-17 — trigger the time-remaining check once this proportion of the
 // selected tier's total duration has elapsed. The ticket explicitly says the
@@ -330,6 +331,9 @@ if ( stage && avatarWrap ) {
     let currentLocale = detectInitialLocale();
     let askSamiWrap = null; // set once buildAskSami() runs below; selectLocale() toggles its visibility
     let askSamiBtn = null;
+    let isAnswerPlaying = function () {
+        return false;
+    }; // set by buildAskSami(): a spoken answer is still in progress, even with the panel closed
     let closeAskSamiPanel = null; // set once buildAskSami() runs below; selectLocale() calls this before hiding the panel
     let toggleAskSamiPanel = null; // set once buildAskSami() runs below; the stage's tap-to-interrupt listener calls this
     let applyResumedQaHistory = null; // set once buildAskSami() runs below; init() calls this with a resumed visitor's saved Q&A pairs
@@ -1259,6 +1263,9 @@ if ( stage && avatarWrap ) {
             }
         }
 
+        isAnswerPlaying = function () {
+            return qaAnswering;
+        };
         closeAskSamiPanel = closePanel; // exposed so selectLocale() can close this before hiding it out from under itself
 
         // PO-3346 — shared by the button below and the stage's tap-to-interrupt
@@ -1318,6 +1325,10 @@ if ( stage && avatarWrap ) {
         } );
     }
 
+    // PO-3109 — panels that interrupt a screen and give it back, so they are never
+    // saved as the visitor's stage.
+    const TRANSIENT_PANEL_KEYS = [ 'time-up' ];
+
     function getActivePanel() {
         return stage.querySelector( '.aicoach-panel.is-active' );
     }
@@ -1361,8 +1372,12 @@ if ( stage && avatarWrap ) {
         }
 
         // PO-3102 — every real panel transition is "current stage" for Scenario
-        // 20's continuous save, not just the 3 form-submit checkpoints.
-        saveProgress( { stage: panelKey } );
+        // 20's continuous save, not just the 3 form-submit checkpoints. A
+        // transient panel (Time is up) is never a place to resume into, so it is
+        // not saved: the stage stays the screen the visitor came from.
+        if ( TRANSIENT_PANEL_KEYS.indexOf( panelKey ) === -1 ) {
+            saveProgress( { stage: panelKey } );
+        }
 
         hydratePanelImages( next );
 
@@ -2298,21 +2313,21 @@ if ( stage && avatarWrap ) {
         }
     } );
 
-    // FR-17 — time-remaining check (Scenario 29/30). Overlays whichever screen
-    // is currently showing (it isn't one of the SCREENS/aicoach-panel entries,
-    // since it can interrupt any of them) once the visitor has used up
-    // TIME_REMAINING_THRESHOLD_RATIO of their selected tier. Fires once per
-    // session (Scenario 30's "does not fire again"); if the visitor has
-    // already completed registration by then, the page has already navigated
-    // away to the portal (PO-3100's redirect) and this timer is moot — no
-    // extra guard needed for that case.
-    //
-    // "No" is meant to trigger FR-18's appointment scheduling (PO-3109, a
-    // separate story, not built yet) — for now it just dismisses; wire the
-    // real scheduling flow in here once that story exists.
-    const timeCheckOverlay = document.getElementById( 'aicoach-time-check' );
-    const timeCheckYesBtn = document.getElementById( 'aicoach-time-check-yes' );
-    const timeCheckNoBtn = document.getElementById( 'aicoach-time-check-no' );
+    // FR-17 — time-remaining check (Scenario 29/30) and the entry to FR-18's
+    // appointment scheduling. Once the visitor has used up
+    // TIME_REMAINING_THRESHOLD_RATIO of their selected tier, the "Time is up?"
+    // panel (PO-3109) takes the stage from whichever screen is showing, with two
+    // choices: Keep Talking Now carries on exactly where they were, Set an
+    // Appointment goes to scheduling. It is not one of SCREENS (it can interrupt any
+    // of them) and is never saved as the visitor's stage (TRANSIENT_PANEL_KEYS).
+    // Fires once per session (Scenario 30's "does not fire again"); if the visitor
+    // has already completed registration by then, the page has already navigated
+    // away to the portal (PO-3100's redirect) and this timer is moot.
+    const TIME_UP_PANEL_KEY = 'time-up';
+    const TIME_UP_RETRY_MS = 150;
+    const TIME_UP_ANSWER_POLL_MS = 1000;
+    const timeUpPanel = stage.querySelector( '.aicoach-panel[data-panel="' + TIME_UP_PANEL_KEY + '"]' );
+    const timeUpChoices = timeUpPanel ? timeUpPanel.querySelectorAll( '.aicoach-timeup-check' ) : [];
     let timeRemainingPromptShown = false;
     let timeRemainingTimer = null;
     // PO-3330's own AC pulls in two different directions here: elapsed-time
@@ -2323,10 +2338,61 @@ if ( stage && avatarWrap ) {
     // wait for an open Q&A to finish before it's shown on top of it. This
     // flag defers just the SHOWING, not the counting.
     let timeRemainingCheckPending = false;
+    let timeUpOpen = false;
+    let timeUpReturnPanelKey = null;
+    let timeUpWasPlaying = false;
+    let timeUpAskSamiWasDisabled = false;
 
-    function hideTimeRemainingCheck() {
-        timeCheckOverlay?.classList.remove( 'is-visible' );
-        timeCheckOverlay?.setAttribute( 'aria-hidden', 'true' );
+    function openTimeUp() {
+        const current = getActivePanel();
+        if ( isAnimating || ! current ) {
+            // Mid-transition there is no active panel to come back to; try again
+            // once it has settled.
+            window.setTimeout( openTimeUp, TIME_UP_RETRY_MS );
+            return;
+        }
+        timeUpOpen = true;
+        timeUpReturnPanelKey = current.getAttribute( 'data-panel' );
+        timeUpWasPlaying = ! video.paused;
+        video.pause();
+        // Nothing may advance underneath: the timers stop, and the screen loop
+        // waits (external hold) until this panel gives the stage back, even if
+        // something else resumes the timers in the meantime.
+        pauseSequenceTimers();
+        setSequenceExternalHold( true );
+        // The paused clip would otherwise sit on whatever frame it was on (see
+        // ENGR-7051); show her neutral portrait instead.
+        avatarWrap.classList.add( 'is-idle' );
+        // The Ask Sami panel must not open on top of a decision (the old modal
+        // blocked it by z-index).
+        if ( askSamiBtn ) {
+            timeUpAskSamiWasDisabled = askSamiBtn.disabled;
+            askSamiBtn.disabled = true;
+        }
+        timeUpChoices.forEach( function ( choice ) {
+            choice.checked = false;
+        } );
+        showPanel( TIME_UP_PANEL_KEY );
+    }
+
+    // Gives the stage back to the screen the visitor was on and lets the
+    // sequence carry on.
+    function closeTimeUp() {
+        timeUpOpen = false;
+        avatarWrap.classList.remove( 'is-idle' );
+        if ( askSamiBtn ) {
+            askSamiBtn.disabled = timeUpAskSamiWasDisabled;
+        }
+        const returnPanelKey = timeUpReturnPanelKey;
+        timeUpReturnPanelKey = null;
+        if ( returnPanelKey ) {
+            showPanel( returnPanelKey );
+        }
+        resumeSequenceTimers();
+        setSequenceExternalHold( false );
+        if ( timeUpWasPlaying ) {
+            video.play().catch( function () {} );
+        }
     }
 
     function maybeShowTimeRemainingCheck() {
@@ -2339,9 +2405,15 @@ if ( stage && avatarWrap ) {
             timeRemainingCheckPending = true;
             return;
         }
+        // A spoken answer can outlast its closed panel. Its own cleanup resumes
+        // the clip it interrupted, which must not happen under this screen, so
+        // wait for it to finish.
+        if ( isAnswerPlaying() ) {
+            window.setTimeout( maybeShowTimeRemainingCheck, TIME_UP_ANSWER_POLL_MS );
+            return;
+        }
         timeRemainingPromptShown = true;
-        timeCheckOverlay?.classList.add( 'is-visible' );
-        timeCheckOverlay?.setAttribute( 'aria-hidden', 'false' );
+        openTimeUp();
     }
 
     function scheduleTimeRemainingCheck( tierMinutes ) {
@@ -2353,15 +2425,25 @@ if ( stage && avatarWrap ) {
         timeRemainingTimer = window.setTimeout( maybeShowTimeRemainingCheck, totalMs * TIME_REMAINING_THRESHOLD_RATIO );
     }
 
-    timeCheckYesBtn?.addEventListener( 'click', function () {
-        // Scenario 30 — continue from the current screen with no loss; the
-        // overlay was layered on top of it, so there's nothing to resume.
-        hideTimeRemainingCheck();
-    } );
+    // FR-18 isn't built yet (PO-3109, later steps): until the scheduling screen
+    // exists, Set an Appointment carries on like Keep Talking Now so the visitor is
+    // never stuck on this panel. Replace the body with the scheduling entry.
+    function startAppointmentScheduling() {
+        closeTimeUp();
+    }
 
-    timeCheckNoBtn?.addEventListener( 'click', function () {
-        hideTimeRemainingCheck();
-        // FR-18 isn't built yet — nothing further happens until it exists.
+    timeUpChoices.forEach( function ( choice ) {
+        choice.addEventListener( 'change', function () {
+            if ( ! timeUpOpen || ! choice.checked ) {
+                return;
+            }
+            if ( 'appointment' === choice.value ) {
+                startAppointmentScheduling();
+                return;
+            }
+            // Scenario 30 — continue from the current screen with no loss.
+            closeTimeUp();
+        } );
     } );
 
     // Open a Gary Coach API session (inc/gary-proxy.php) and return its parsed

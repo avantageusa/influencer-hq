@@ -223,3 +223,74 @@ test( 'resume restarts the paused timers', () => {
 	hold.resume();
 	assert.equal( clock.pendingCount(), 1 );
 } );
+
+test( 'the external hold keeps waiters waiting until it is cleared, even after resume (PO-3109)', async () => {
+	const { hold } = setup();
+	const log = [];
+	hold.pause();
+	hold.setExternalHold( true );
+	const waiting = hold.waitWhileHeld().then( () => log.push( 'released' ) );
+
+	hold.resume();
+	await Promise.resolve();
+	await Promise.resolve();
+	assert.deepEqual( log, [] );
+
+	hold.setExternalHold( false );
+	await waiting;
+	assert.deepEqual( log, [ 'released' ] );
+} );
+
+test( 'the external hold alone holds waiters, and clearing it releases them', async () => {
+	const { hold } = setup();
+	let released = false;
+	hold.setExternalHold( true );
+	const waiting = hold.waitWhileHeld().then( () => {
+		released = true;
+	} );
+
+	await Promise.resolve();
+	await Promise.resolve();
+	assert.equal( released, false );
+	assert.equal( hold.isPaused(), false );
+
+	hold.setExternalHold( false );
+	await waiting;
+	assert.equal( released, true );
+} );
+
+test( 'the external hold does not touch the timers', () => {
+	const { clock, hold } = setup();
+	const fired = recorder();
+	hold.createPausableTimeout( fired.fn, 100 );
+
+	hold.setExternalHold( true );
+	clock.tick( 100 );
+	assert.deepEqual( fired.calls, [ 'fired' ] );
+} );
+
+test( 'pause still holds waiters after the external hold is cleared', async () => {
+	const { hold } = setup();
+	let released = false;
+	hold.pause();
+	hold.setExternalHold( true );
+	const waiting = hold.waitWhileHeld().then( () => {
+		released = true;
+	} );
+
+	hold.setExternalHold( false );
+	await Promise.resolve();
+	await Promise.resolve();
+	assert.equal( released, false );
+
+	hold.resume();
+	await waiting;
+	assert.equal( released, true );
+} );
+
+test( 'waitWhileHeld resolves at once after the external hold was turned off', async () => {
+	const { hold } = setup();
+	hold.setExternalHold( true );
+	hold.setExternalHold( false );
+	assert.equal( await hold.waitWhileHeld(), undefined );
+} );

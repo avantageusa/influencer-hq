@@ -22,7 +22,8 @@
  *   pause: Function,
  *   resume: Function,
  *   waitWhileHeld: Function,
- *   isPaused: Function
+ *   isPaused: Function,
+ *   setExternalHold: Function
  * }}
  */
 export function createSequenceHold( { setTimeout, clearTimeout, now } ) {
@@ -31,8 +32,12 @@ export function createSequenceHold( { setTimeout, clearTimeout, now } ) {
 	// creation (PR #63): without this flag a timer made mid-panel, for example
 	// by a language switch restarting a clip, would run live under the panel.
 	let paused = false;
+	// A second reason to hold new screens back that does not touch the timers
+	// (PO-3109: the Time is up screen). Whoever owns it clears it; resume() must
+	// not release a screen that is still waiting on it.
+	let externalHold = false;
 	// Resolvers for everything currently waiting out a hold (ENGR-7051);
-	// released together by resume().
+	// released together once no hold is left.
 	let waiters = [];
 
 	function createPausableTimeout( callback, ms ) {
@@ -86,6 +91,13 @@ export function createSequenceHold( { setTimeout, clearTimeout, now } ) {
 		timers.forEach( function ( timer ) {
 			timer.resume();
 		} );
+		releaseWaiters();
+	}
+
+	function releaseWaiters() {
+		if ( paused || externalHold ) {
+			return;
+		}
 		const released = waiters;
 		waiters = [];
 		released.forEach( function ( release ) {
@@ -93,9 +105,16 @@ export function createSequenceHold( { setTimeout, clearTimeout, now } ) {
 		} );
 	}
 
+	// Turns the external hold on or off. It holds back waitWhileHeld() only:
+	// the timers are paused and resumed by pause()/resume().
+	function setExternalHold( on ) {
+		externalHold = Boolean( on );
+		releaseWaiters();
+	}
+
 	// Resolves immediately unless the sequence is on hold.
 	function waitWhileHeld() {
-		if ( ! paused ) {
+		if ( ! paused && ! externalHold ) {
 			return Promise.resolve();
 		}
 		return new Promise( function ( resolve ) {
@@ -107,5 +126,5 @@ export function createSequenceHold( { setTimeout, clearTimeout, now } ) {
 		return paused;
 	}
 
-	return { createPausableTimeout, pause, resume, waitWhileHeld, isPaused };
+	return { createPausableTimeout, pause, resume, waitWhileHeld, isPaused, setExternalHold };
 }
