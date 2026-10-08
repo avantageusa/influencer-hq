@@ -154,6 +154,15 @@ appointment; nothing is deployed until those are agreed.
   the screen still `time-up` (a clip that would have ended by then did not
   advance the sequence); the idle portrait showed, the Ask Sami button was
   disabled, and the saved stage stayed `equity-bts`, never `time-up`.
+- Choosing straight after the screen appears (review, CodeRabbit): the first version
+  resumed the clip while the previous screen was still fading back in, so for
+  about 0.3 s the clip played (with sound) under the Time is up screen
+  (reproduced, sampled every 100 ms: `paused: false`, time advancing, panel still
+  `time-up`). `closeTimeUp()` now waits for `showPanel()` before it removes the
+  idle portrait, re-enables Ask Sami, resumes the timers, clears the hold and
+  plays the clip; with the same quick double choice the clip stayed paused at
+  6.67 s with idle on until the previous screen was back (about 800 ms) and then
+  resumed, and the second choice did nothing.
 - Keep Talking Now: the previous screen came back, the clip resumed from where it
   stopped (6.66 s to 7.47 s), idle went off, the Ask Sami button returned to its
   previous state (it was disabled before: a resumed visit has no live session),

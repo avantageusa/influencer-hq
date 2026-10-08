@@ -2376,17 +2376,21 @@ if ( stage && avatarWrap ) {
     }
 
     // Gives the stage back to the screen the visitor was on and lets the
-    // sequence carry on.
-    function closeTimeUp() {
+    // sequence carry on. Everything that makes the page move again waits until
+    // that screen is actually back: showPanel() is queued while the Time is up
+    // screen is still fading in, and a clip resumed before then would play (with
+    // sound) under this screen (CodeRabbit).
+    async function closeTimeUp() {
+        // Reset first, so a second choice during the fade does nothing.
         timeUpOpen = false;
-        avatarWrap.classList.remove( 'is-idle' );
-        if ( askSamiBtn ) {
-            askSamiBtn.disabled = timeUpAskSamiWasDisabled;
-        }
         const returnPanelKey = timeUpReturnPanelKey;
         timeUpReturnPanelKey = null;
         if ( returnPanelKey ) {
-            showPanel( returnPanelKey );
+            await showPanel( returnPanelKey );
+        }
+        avatarWrap.classList.remove( 'is-idle' );
+        if ( askSamiBtn ) {
+            askSamiBtn.disabled = timeUpAskSamiWasDisabled;
         }
         resumeSequenceTimers();
         setSequenceExternalHold( false );
