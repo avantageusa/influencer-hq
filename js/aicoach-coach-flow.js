@@ -19,6 +19,18 @@ import {
     CHANNELS,
     FINAL_SCREEN,
 } from '@ihq/aicoach/screens';
+import {
+    CHOICE,
+    validateAppointment,
+    listTimeZones,
+    getDefaultTimeZone,
+} from '@ihq/aicoach/appointment';
+import {
+    appointmentErrorKey,
+    buildAppointmentLink,
+    copyToClipboard,
+    timeZoneChoices,
+} from '@ihq/aicoach/appointment-screen';
 
 /*
  * PO-3062 avatar connection — as of 2026-09-15, the avatar/video is opened via
@@ -1348,9 +1360,10 @@ if ( stage && avatarWrap ) {
         } );
     }
 
-    // PO-3109 — panels that interrupt a screen and give it back, so they are never
-    // saved as the visitor's stage.
-    const TRANSIENT_PANEL_KEYS = [ 'time-up' ];
+    // PO-3109 — panels that interrupt a screen and give it back (Time is up), or
+    // end the visit (the appointment screens), so they are never saved as the
+    // visitor's stage: a reload must not resume into them.
+    const TRANSIENT_PANEL_KEYS = [ 'time-up', 'appointment', 'appointment-done' ];
 
     function getActivePanel() {
         return stage.querySelector( '.aicoach-panel.is-active' );
@@ -2467,11 +2480,121 @@ if ( stage && avatarWrap ) {
         timeRemainingTimer = window.setTimeout( maybeShowTimeRemainingCheck, totalMs * TIME_REMAINING_THRESHOLD_RATIO );
     }
 
-    // FR-18 isn't built yet (PO-3109, later steps): until the scheduling screen
-    // exists, Set an Appointment carries on like Keep Talking Now so the visitor is
-    // never stuck on this panel. Replace the body with the scheduling entry.
+    // PO-3109 step 3 — "Set your appointment" and the screen after it. Time is up
+    // stays open underneath (the clip, the timers, the screen loop and Ask Sami
+    // all stay held), because the visit is over once the link is copied; the
+    // visitor leaves through the final screen's button.
+    const APPOINTMENT_PANEL_KEY = 'appointment';
+    const APPOINTMENT_DONE_PANEL_KEY = 'appointment-done';
+    const APPOINTMENT_DONE_DELAY_MS = 4000;
+    const appointmentPanel = stage.querySelector( '.aicoach-panel[data-panel="' + APPOINTMENT_PANEL_KEY + '"]' );
+    const appointmentChoices = appointmentPanel ? appointmentPanel.querySelectorAll( '.aicoach-appt-check' ) : [];
+    const appointmentChoicesBox = document.getElementById( 'aicoach-appt-choices' );
+    const appointmentOtherBox = document.getElementById( 'aicoach-appt-other' );
+    const appointmentDateInput = document.getElementById( 'aicoach-appt-date' );
+    const appointmentZoneSelect = document.getElementById( 'aicoach-appt-timezone' );
+    const appointmentTimeInput = document.getElementById( 'aicoach-appt-time' );
+    const appointmentErrorEl = document.getElementById( 'aicoach-appt-error' );
+    const appointmentCopyBtn = document.getElementById( 'aicoach-appt-copy' );
+    const appointmentStatusEl = document.getElementById( 'aicoach-appt-status' );
+    const appointmentLinkInput = document.getElementById( 'aicoach-appt-link' );
+
+    function fillTimeZoneList() {
+        if ( ! appointmentZoneSelect ) {
+            return;
+        }
+        const choices = timeZoneChoices( { zones: listTimeZones(), defaultZone: getDefaultTimeZone() } );
+        choices.zones.forEach( function ( zone ) {
+            const option = document.createElement( 'option' );
+            option.value = zone;
+            option.textContent = zone;
+            appointmentZoneSelect.appendChild( option );
+        } );
+        appointmentZoneSelect.value = choices.selected;
+    }
+
+    function clearAppointmentMessages() {
+        appointmentErrorEl.textContent = '';
+        appointmentStatusEl.textContent = '';
+    }
+
+    function readAppointmentSelection() {
+        const chosen = Array.prototype.find.call( appointmentChoices, function ( choice ) {
+            return choice.checked;
+        } );
+        return {
+            choice: chosen ? chosen.value : '',
+            date: appointmentDateInput.value,
+            time: appointmentTimeInput.value,
+            timeZone: appointmentZoneSelect.value,
+        };
+    }
+
     function startAppointmentScheduling() {
-        closeTimeUp();
+        appointmentChoices.forEach( function ( choice ) {
+            choice.checked = false;
+        } );
+        appointmentChoicesBox.hidden = false;
+        appointmentOtherBox.hidden = true;
+        clearAppointmentMessages();
+        showPanel( APPOINTMENT_PANEL_KEY );
+    }
+
+    appointmentChoices.forEach( function ( choice ) {
+        choice.addEventListener( 'change', function () {
+            clearAppointmentMessages();
+            // Other swaps the three options for the three fields; the flow only moves
+            // forward, so nothing brings the options back.
+            if ( CHOICE.OTHER === choice.value && choice.checked ) {
+                appointmentChoicesBox.hidden = true;
+                appointmentOtherBox.hidden = false;
+            }
+        } );
+    } );
+
+    let appointmentLinkCopied = false;
+
+    async function copyAppointmentLink() {
+        if ( appointmentLinkCopied ) {
+            return;
+        }
+        clearAppointmentMessages();
+        // The clock is read once, here: "in 30 minutes" counts from the moment the
+        // link is created, and the past-time check uses the same instant.
+        const result = validateAppointment( readAppointmentSelection(), Date.now() );
+        if ( ! result.ok ) {
+            appointmentErrorEl.textContent = result.errors.map( function ( errorCode ) {
+                return t( currentLocale, appointmentErrorKey( errorCode ) );
+            } ).join( '\n' );
+            return;
+        }
+
+        const link = buildAppointmentLink( { pageUrl: window.location.href, startsAtIso: result.startsAtIso } );
+        appointmentCopyBtn.disabled = true;
+        const copied = await copyToClipboard( link, navigator.clipboard );
+        if ( ! copied.ok ) {
+            // Moving on now would lose the only copy of the link: show it to be copied
+            // by hand and let the visitor press the button again.
+            appointmentLinkInput.value = link;
+            appointmentLinkInput.hidden = false;
+            appointmentLinkInput.select();
+            appointmentStatusEl.textContent = t( currentLocale, 'appointmentCopyFailed' );
+            appointmentCopyBtn.disabled = false;
+            return;
+        }
+
+        appointmentLinkCopied = true;
+        appointmentStatusEl.textContent = t( currentLocale, 'appointmentCopied' );
+        // Plain window.setTimeout, not a pausable sequence timer: those are held
+        // while Time is up is open.
+        window.setTimeout( function () {
+            showPanel( APPOINTMENT_DONE_PANEL_KEY );
+        }, APPOINTMENT_DONE_DELAY_MS );
+    }
+
+    fillTimeZoneList();
+    if ( appointmentCopyBtn ) {
+        appointmentCopyBtn.addEventListener( 'click', copyAppointmentLink );
     }
 
     timeUpChoices.forEach( function ( choice ) {

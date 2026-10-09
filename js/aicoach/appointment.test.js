@@ -6,7 +6,6 @@ import {
 	isValidTimeZone,
 	zonedDateTimeToInstant,
 	validateAppointment,
-	buildTimeSlots,
 	listTimeZones,
 	getDefaultTimeZone,
 } from './appointment.js';
@@ -177,20 +176,6 @@ test( 'Other with an invalid zone, date or time reports that, not a missing fiel
 test( 'Other on a time that does not exist (clocks going forward) is refused as such', () => {
 	const now = Date.UTC( 2026, 2, 1 );
 	assert.deepEqual( validateAppointment( { choice: CHOICE.OTHER, date: '2026-03-08', time: '02:30', timeZone: 'America/New_York' }, now ).errors, [ ERROR.TIME_DOES_NOT_EXIST ] );
-} );
-
-test( 'the time slots are every 30 minutes from 00:00 to 23:30', () => {
-	const slots = buildTimeSlots();
-	assert.equal( slots.length, 48 );
-	assert.deepEqual( slots.slice( 0, 3 ), [ '00:00', '00:30', '01:00' ] );
-	assert.deepEqual( slots.slice( -2 ), [ '23:00', '23:30' ] );
-	assert.equal( new Set( slots ).size, 48 );
-} );
-
-test( 'every slot is accepted as a time by the converter', () => {
-	buildTimeSlots().forEach( ( slot ) => {
-		assert.equal( zonedDateTimeToInstant( { date: '2026-10-09', time: slot, timeZone: 'UTC' } ).ok, true, slot );
-	} );
 } );
 
 test( 'listTimeZones sorts the zones the browser reports and always includes UTC', () => {
