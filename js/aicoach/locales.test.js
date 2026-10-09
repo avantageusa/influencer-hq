@@ -2,6 +2,34 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SUPPORTED_LOCALES, I18N_EN, I18N_TRANSLATIONS, t, detectLocale } from './locales.js';
 
+// PO-3109: the appointment screen's text, English only until translations exist.
+const APPOINTMENT_KEYS = [
+	'appointmentReady',
+	'appointmentTitle',
+	'appointmentIn30Minutes',
+	'appointmentInAnHour',
+	'appointmentOther',
+	'appointmentDate',
+	'appointmentTimeZone',
+	'appointmentTime',
+	'appointmentCopy',
+	'appointmentHint',
+	'appointmentCopied',
+	'appointmentCopyFailed',
+	'appointmentError-choice-missing',
+	'appointmentError-date-missing',
+	'appointmentError-time-zone-missing',
+	'appointmentError-time-missing',
+	'appointmentError-date-invalid',
+	'appointmentError-time-invalid',
+	'appointmentError-time-zone-invalid',
+	'appointmentError-time-does-not-exist',
+	'appointmentError-time-in-past',
+	'appointmentDoneTitle',
+	'appointmentDoneMessage',
+	'appointmentDoneContinue',
+];
+
 const CHANNEL_KEYS = [ 'email', 'kakaotalk', 'line', 'sms', 'telegram', 'wechat', 'whatsapp', 'zalo' ];
 
 // Keys that have no approved translation yet in any language but English;
@@ -21,6 +49,7 @@ const GAPS_IN_EVERY_LANGUAGE = [
 	'timeUpTitle',
 	'timeUpKeepTalking',
 	'timeUpSetAppointment',
+	...APPOINTMENT_KEYS,
 	...CHANNEL_KEYS.map( ( key ) => 'channel-' + key + '-inputLabel' ),
 	...CHANNEL_KEYS.map( ( key ) => 'channel-' + key + '-placeholder' ),
 ];

@@ -11,6 +11,11 @@ get_template_part( 'template-parts/portal-styles' );
 
 $theme_uri = get_template_directory_uri();
 
+// PO-3109 — where "CONTINUE TO IHQ PORTAL" on the appointment's final screen goes:
+// the IHQ Coach page, the same address as the "Coach" item of the portal header
+// (template-parts/portal-header.php).
+$aicoach_portal_url = home_url( '/portal-home' );
+
 // PO-3062 — Alix Earle's photo (design-approved, 2026-09-23) is served from
 // this same, permanently-fixed filename ("alix-earle-placeholder.svg" — kept
 // as-is rather than renamed, since swapping the SVG's own content in place
@@ -445,6 +450,61 @@ $aicoach_channels = array(
                                     <span class="aicoach-timeup-label" data-i18n="timeUpSetAppointment"><?php esc_html_e( 'Set an Appointment', 'influencer-hq' ); ?></span>
                                 </label>
                             </div>
+                        </div>
+                    </div>
+
+                    <?php /* PO-3109 — FR-18's "Set your appointment" screen, reached from Time is up (js/aicoach-coach-flow.js, startAppointmentScheduling()). Transient like time-up. Other replaces the three options with the Date / Timezone / Appointment Time fields; there is no way back, the flow only moves forward. */ ?>
+                    <div class="aicoach-panel" data-panel="appointment" aria-hidden="true">
+                        <div class="aicoach-appt">
+                            <h2 class="aicoach-appt-ready" data-i18n="appointmentReady"><?php esc_html_e( "Yes, I'm Ready...", 'influencer-hq' ); ?></h2>
+                            <p class="aicoach-appt-title" id="aicoach-appt-title" data-i18n="appointmentTitle"><?php esc_html_e( 'Set your appointment', 'influencer-hq' ); ?></p>
+                            <div class="aicoach-timeup-choices aicoach-appt-choices" id="aicoach-appt-choices" role="radiogroup" aria-labelledby="aicoach-appt-title">
+                                <label class="aicoach-timeup-choice">
+                                    <input class="aicoach-timeup-check aicoach-appt-check" type="radio" name="aicoach_appointment" value="in-30-minutes">
+                                    <span class="aicoach-timeup-box" aria-hidden="true"></span>
+                                    <span class="aicoach-appt-label" data-i18n="appointmentIn30Minutes"><?php esc_html_e( 'In 30 minutes', 'influencer-hq' ); ?></span>
+                                </label>
+                                <label class="aicoach-timeup-choice">
+                                    <input class="aicoach-timeup-check aicoach-appt-check" type="radio" name="aicoach_appointment" value="in-an-hour">
+                                    <span class="aicoach-timeup-box" aria-hidden="true"></span>
+                                    <span class="aicoach-appt-label" data-i18n="appointmentInAnHour"><?php esc_html_e( 'In an hour', 'influencer-hq' ); ?></span>
+                                </label>
+                                <label class="aicoach-timeup-choice">
+                                    <input class="aicoach-timeup-check aicoach-appt-check" type="radio" name="aicoach_appointment" value="other">
+                                    <span class="aicoach-timeup-box" aria-hidden="true"></span>
+                                    <span class="aicoach-appt-label" data-i18n="appointmentOther"><?php esc_html_e( 'Other', 'influencer-hq' ); ?></span>
+                                </label>
+                            </div>
+                            <div class="aicoach-appt-other" id="aicoach-appt-other" hidden>
+                                <div class="aicoach-appt-row">
+                                    <label class="aicoach-appt-field">
+                                        <span class="aicoach-appt-field-label" data-i18n="appointmentDate"><?php esc_html_e( 'Date', 'influencer-hq' ); ?></span>
+                                        <input class="aicoach-appt-input" type="date" id="aicoach-appt-date">
+                                    </label>
+                                    <label class="aicoach-appt-field">
+                                        <span class="aicoach-appt-field-label" data-i18n="appointmentTimeZone"><?php esc_html_e( 'Timezone', 'influencer-hq' ); ?></span>
+                                        <select class="aicoach-appt-input" id="aicoach-appt-timezone"></select>
+                                    </label>
+                                </div>
+                                <label class="aicoach-appt-field">
+                                    <span class="aicoach-appt-field-label" data-i18n="appointmentTime"><?php esc_html_e( 'Appointment Time', 'influencer-hq' ); ?></span>
+                                    <input class="aicoach-appt-input" type="time" id="aicoach-appt-time">
+                                </label>
+                            </div>
+                            <p class="aicoach-appt-error" id="aicoach-appt-error" role="alert"></p>
+                            <button type="button" class="aicoach-appt-copy" id="aicoach-appt-copy" data-i18n="appointmentCopy"><?php esc_html_e( 'Copy Your Appointment Link', 'influencer-hq' ); ?></button>
+                            <p class="aicoach-appt-status" id="aicoach-appt-status" role="status"></p>
+                            <input class="aicoach-appt-input aicoach-appt-link" type="text" id="aicoach-appt-link" readonly hidden aria-label="<?php esc_attr_e( 'Appointment link', 'influencer-hq' ); ?>">
+                            <p class="aicoach-appt-hint" data-i18n="appointmentHint"><?php esc_html_e( 'Open this link at your appointment time to join your video with Sami.', 'influencer-hq' ); ?></p>
+                        </div>
+                    </div>
+
+                    <?php /* PO-3109 — the screen after the appointment link is copied (design: "You are all set up"). Transient. The button goes to the IHQ Coach page ($aicoach_portal_url). */ ?>
+                    <div class="aicoach-panel" data-panel="appointment-done" aria-hidden="true">
+                        <div class="aicoach-appt-done">
+                            <p class="aicoach-appt-done-message" data-i18n="appointmentDoneMessage"><?php esc_html_e( "I'll always be here for you 24 hours a day, 7 days a week. If you have not saved IHQ portal address already, make sure to do that now.", 'influencer-hq' ); ?></p>
+                            <h2 class="aicoach-appt-ready" data-i18n="appointmentDoneTitle"><?php esc_html_e( 'You are all set up', 'influencer-hq' ); ?></h2>
+                            <a class="aicoach-appt-copy aicoach-appt-portal" href="<?php echo esc_url( $aicoach_portal_url ); ?>" data-i18n="appointmentDoneContinue"><?php esc_html_e( 'CONTINUE TO IHQ PORTAL', 'influencer-hq' ); ?></a>
                         </div>
                     </div>
 
@@ -928,6 +988,174 @@ $aicoach_channels = array(
         font-size: clamp(1.4rem, 6.3vw, 1.75rem);
         line-height: 1.2;
         color: #fff;
+    }
+
+    /* PO-3109 — "Set your appointment" (design 16 to 16c) and the final screen
+    (17). The three options reuse the Time is up square choice above; only the
+    label is smaller in the design. */
+    .aicoach-appt,
+    .aicoach-appt-done {
+        padding: 8px 0 24px;
+        text-align: center;
+    }
+
+    .aicoach-appt [hidden],
+    .aicoach-appt-done [hidden] {
+        display: none;
+    }
+
+    .aicoach-appt-ready {
+        margin: 0 0 14px;
+        font-weight: 700;
+        font-size: clamp(1.9rem, 8.5vw, 2.4rem);
+        line-height: 1.15;
+        color: #fff;
+    }
+
+    .aicoach-appt-title {
+        margin: 0 0 22px;
+        font-weight: 600;
+        font-size: clamp(1.5rem, 6.5vw, 1.9rem);
+        line-height: 1.2;
+        color: #fff;
+    }
+
+    .aicoach-appt-choices {
+        margin-bottom: 30px;
+    }
+
+    .aicoach-appt-label {
+        font-weight: 600;
+        font-size: clamp(1.1rem, 4.6vw, 1.3rem);
+        line-height: 1.2;
+        color: #fff;
+    }
+
+    .aicoach-appt-other {
+        display: grid;
+        gap: 12px;
+        max-width: 440px;
+        margin: 0 auto 30px;
+        text-align: left;
+    }
+
+    .aicoach-appt-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    .aicoach-appt-field {
+        display: grid;
+        gap: 6px;
+        min-width: 0;
+    }
+
+    .aicoach-appt-field-label {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #fff;
+    }
+
+    .aicoach-appt-input {
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+        padding: 10px 12px;
+        border: 2px solid #fff;
+        border-radius: 4px;
+        background: #1b1c20;
+        color: #fff;
+        font-family: inherit;
+        font-weight: 500;
+        font-size: clamp(1.05rem, 4.6vw, 1.3rem);
+        color-scheme: dark;
+    }
+
+    .aicoach-appt-input:focus-visible {
+        outline: 3px solid #fdd65b;
+        outline-offset: 2px;
+    }
+
+    .aicoach-appt-error {
+        min-height: 1.2em;
+        margin: 0 auto 12px;
+        max-width: 440px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        white-space: pre-line;
+        color: #ff6b6b;
+    }
+
+    .aicoach-appt-copy {
+        display: block;
+        width: 100%;
+        max-width: 440px;
+        box-sizing: border-box;
+        margin: 0 auto;
+        padding: 14px 12px;
+        border: none;
+        border-radius: 2px;
+        background: #148942;
+        color: #fff;
+        font-family: inherit;
+        font-weight: 600;
+        font-size: clamp(1.5rem, 7vw, 1.9rem);
+        line-height: 1.2;
+        text-align: center;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .aicoach-appt-copy:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .aicoach-appt-copy:focus-visible {
+        outline: 3px solid #fdd65b;
+        outline-offset: 2px;
+    }
+
+    .aicoach-appt-status {
+        min-height: 1.2em;
+        margin: 12px auto 0;
+        max-width: 440px;
+        font-weight: 600;
+        font-size: 1rem;
+        color: #fff;
+    }
+
+    .aicoach-appt-link {
+        max-width: 440px;
+        margin: 8px auto 0;
+    }
+
+    .aicoach-appt-hint {
+        max-width: 440px;
+        margin: 14px auto 0;
+        font-weight: 500;
+        font-size: clamp(0.95rem, 4vw, 1.1rem);
+        line-height: 1.4;
+        color: #fff;
+    }
+
+    /* The design's final button is one line at a smaller size than the copy button. */
+    .aicoach-appt-portal {
+        font-size: clamp(1.1rem, 5.2vw, 1.5rem);
+    }
+
+    .aicoach-appt-done-message {
+        max-width: 560px;
+        margin: 0 auto 32px;
+        font-weight: 600;
+        font-size: clamp(1rem, 2.8vw, 1.25rem);
+        line-height: 1.5;
+        color: #fff;
+    }
+
+    .aicoach-appt-done .aicoach-appt-ready {
+        margin-bottom: 40px;
     }
 
     .aicoach-stage {

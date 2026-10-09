@@ -6,7 +6,7 @@ overview: >
   carries on; Set an Appointment opens "Set your appointment" (In 30 minutes,
   In an hour, Other with date, time zone and time), and "Copy Your Appointment
   Link" copies a link, confirms it and moves the visitor to the final screen
-  after 4 seconds. This plan splits the work into reviewable steps, starting
+  ("You are all set up") after 4 seconds. This plan splits the work into reviewable steps, starting
   with the Times up screen, and records the questions that block later steps.
   Out of scope until answered: the appointment link pages (waiting, join,
   missed, expired, ended, invalid) and the reminder.
@@ -21,8 +21,8 @@ todos:
     content: Pure module js/aicoach/appointment.js (choice to start time, required fields, past-time check, time zone handling) with tests
     status: completed
   - id: scheduling-panel
-    content: Set your appointment panel, validation messages, copy to clipboard with confirmation and the 4 second move to the final screen
-    status: pending
+    content: Set your appointment panel, validation messages, copy to clipboard with confirmation, the 4 second move to the final screen and the final screen itself (step 3)
+    status: completed
   - id: appointment-endpoint
     content: WordPress REST endpoints that create a signed appointment link and store it with the visitor's progress
     status: pending
@@ -60,9 +60,14 @@ appointment flow behind it, and the design (Figma, nodes 46293:66471 and
   hour / Other, a green "Copy Your Appointment Link" button and the line "Open
   this link at your appointment time to join your video with Sami"; Other shows
   Date, Timezone and Appointment Time.
-- Not found in the design yet: the message after copying, the correction
-  messages (missing field, past time, nothing chosen), the final screen after the
-  4 seconds, and the link pages.
+- **Final screen** (design node 45327:43893, screen 17): the same stage with the
+  heading "You are all set up" and a green button "CONTINUE TO IHQ PORTAL". A
+  note beside it gives Sami's closing message: "I'll always be here for you 24
+  hours a day, 7 days a week. If you have not saved IHQ portal address already, make
+  sure to do that now." The coach is Sami everywhere.
+- Not found in the design (Ivan, 2026-10-09: there is none): the message after
+  copying and the correction messages (missing field, past time, nothing chosen).
+  Plain English text is used for them. The link pages are a later step.
 
 ## Approach
 Steps, each its own PR where it makes sense:
@@ -100,17 +105,51 @@ Steps, each its own PR where it makes sense:
    to text. `zonedDateTimeToInstant()` turns a wall-clock date, time and IANA zone into
    one instant: the skipped hour when clocks go forward is refused
    (`time-does-not-exist`), and the repeated hour when they go back resolves to the
-   first occurrence. Also `buildTimeSlots()` (every 30 minutes, 00:00 to 23:30),
-   `listTimeZones()` (browser list, sorted, UTC always present), `getDefaultTimeZone()`
+   first occurrence. Also `buildTimeSlots()` (every 30 minutes, 00:00 to 23:30; removed in step 3,
+   see there), `listTimeZones()` (browser list, sorted, UTC always present), `getDefaultTimeZone()`
    and `isValidTimeZone()`. Assumptions the ticket leaves open, each a one-line
    change: "In 30 minutes" and "In an hour" count from the moment `now` is taken
    (the screen takes it when the visitor copies); a time equal to `now` is in the
    past; a missing field is reported before anything else is checked; no rule for
    an appointment under 5 minutes away, since the ticket does not define one.
-3. **Scheduling panel.** Three radio options (one choice, drawn round), the Other
-   fields, the three correction messages, copy to clipboard with a visible
-   confirmation, the 4 second move. Before it opens, if no contact method has been
-   given yet, Set an Appointment first collects one (Ivan, 2026-10-08).
+3. **Scheduling panel and final screen (step 3).** Answers from Ivan Vladic
+   (Teams, 2026-10-08 and 2026-10-09) decide the details:
+   - The three options are **square checkbox-looking boxes with a single choice**
+     (a radio group underneath, like the Time is up options), not round buttons
+     (the first version of this plan said round; that was a misreading, corrected
+     here). The button reads **Copy Your Appointment Link**.
+   - Choosing **Other** **replaces** the three options with Date, Timezone and
+     Appointment Time (design 16c). There is no way back to the three options: the
+     flow only moves forward (the dev, 2026-10-09), so no back control is built.
+   - "In 30 minutes" counts from when the link is created, i.e. when the visitor
+     copies it. A time that is not strictly after that moment is in the past (15:15
+     cannot be booked at 15:16): `validateAppointment()` already does this.
+   - **Timezone** lists every zone the browser knows, the visitor's own preselected.
+   - **Appointment Time** is a choice of hour and minute, not a list of 30-minute
+     slots. It is a native `<input type="time">` (the phone's own hour and minute
+     picker), so `buildTimeSlots()` from step 2 is no longer used and is removed
+     with its tests (the requirement it encoded was replaced by Ivan's answer, not
+     bent to make a test pass). Minutes are one minute apart; Ivan did not say
+     otherwise.
+   - Messages (plain English, no design): the correction for each error code of
+     `validateAppointment()`, and "Your appointment link is copied." after copying.
+     If the browser refuses to copy, the link is shown in a field to copy by hand
+     and the screen does not move on (the visitor would lose the only copy).
+   - After copying, the final screen opens 4 seconds later. It is a new transient
+     panel (`appointment-done`, never saved as the visitor's stage): "You are all
+     set up", the closing message as its caption, and a button "CONTINUE TO IHQ
+     PORTAL". The screen stays held (no clip, no timers, Ask Sami disabled), since
+     the visit is over.
+   - **CONTINUE TO IHQ PORTAL** goes to the IHQ Coach page (the dev,
+     2026-10-09): `home_url( '/portal-home' )`, the address of the "Coach" item in the
+     portal header.
+   - **The link is a placeholder until step 4:** the page address with the start
+     time in `appointment` (ISO, UTC). It is not signed and no page handles it yet.
+     It is isolated in one function so step 4 replaces it with the server's signed
+     link. This change must not go to production before steps 4 and 5.
+   - **Collecting a contact method first (Ivan) is not in this step.** Which screen
+     and whether the identity is needed is still open (question 1), so Set an
+     Appointment goes straight to scheduling for now.
 4. **Endpoints in the theme** (`inc/`, same style as `aicoach-progress.php` and
    `gary-proxy.php`): create an appointment (the time is validated again on the
    server, never trusted from the browser), return a link that is signed with an
@@ -144,9 +183,10 @@ appointment; nothing is deployed until those are agreed.
    well or only a channel, and which screen it uses (the channel screens in those
    two nodes look different from the current `comm-channels` panel, a checkbox
    list with an input per channel; that restyle is a separate change).
-2. **"The final screen" after copying**: which one in this flow, `final-continue`
-   (Let's Continue, account creation) or a new one? Account creation needs the
-   identity and channels from question 1.
+2. ~~**"The final screen" after copying**~~ Answered (design, screen 17): a new
+   screen, "You are all set up" with a button "CONTINUE TO IHQ PORTAL". Still
+   open: what happens to a visitor who has no account yet when they reach the Coach
+   page (question 1).
 3. Does Sami speak on the Times up screen (the commentary box is shown)? If so,
    what is the script?
 4. Does Keep Talking Now resume exactly where she was, as FR-17's scenario 30
@@ -155,8 +195,8 @@ appointment; nothing is deployed until those are agreed.
    selecting or from copying; what happens when the clipboard is blocked or the
    appointment is under 5 minutes away; the join/missed boundary at exactly 15
    minutes; what the reminder says and whether it carries the link.
-6. ~~Single or multiple choice?~~ Answered: single choice, shown as round radio
-   buttons instead of checkboxes (the three scheduling options).
+6. ~~Single or multiple choice?~~ Answered (Ivan, 2026-10-08): single choice, but
+   drawn as the square checkbox look, not round radio buttons.
 7. Who sets up the reminder on the messaging side, and which channels can send
    an unprompted reminder (Steve).
 
@@ -239,10 +279,44 @@ appointment; nothing is deployed until those are agreed.
   and behaviour on a browser without `Intl.supportedValuesOf` (covered by a replaced
   `Intl` only).
 
+## Verification, step 3
+- `npm run test:js`: 136 tests (127 before; 11 new in `appointment-screen.test.js`,
+  2 removed with `buildTimeSlots()`), `npm run test:php` all pass, `node --check` on
+  the entry as a module and `php -l` are clean. `tests/aicoach-modules.test.php` now
+  expects the two new modules (`appointment`, `appointment-screen`).
+- wp-env, mobile viewport (414 px), threshold temporarily lowered to 0.06 (reverted,
+  not in the diff), resumed at the time selection with the 2-minute tier:
+  - Time is up, Set an Appointment: the scheduling screen replaced it (heading,
+    "Set your appointment", three square boxes, green button, hint), matching
+    design 16.
+  - Copy with nothing chosen: "Please choose when you would like your appointment."
+  - Other: the three options disappeared and Date, Timezone (419 zones, Europe/Belgrade
+    preselected) and Appointment Time appeared (design 16c).
+  - Other with the zone preselected and the rest empty: "Please choose a date." and
+    "Please choose a time." on two lines. Today 00:01 in the zone: "That time has already
+    passed. Please choose a later time."
+  - Other, today in two minutes (17:27 in Belgrade, +2): copied
+    `...home-ai-coach/?appointment=2026-10-09T15%3A27%3A00.000Z`; "Your appointment link
+    is copied."; the final screen opened 4 seconds later.
+  - In an hour: the copied start was 60 minutes after the click; In 30 minutes was
+    chosen in the refusal run below.
+  - Clipboard refused (`writeText` replaced to throw), In 30 minutes: "We could not copy
+    the link automatically. Please copy it from the box below.", the link shown and
+    selected in a field, the button usable again, no move to the final screen.
+  - Final screen: closing message, "You are all set up", one-line green button
+    "CONTINUE TO IHQ PORTAL" (href `/portal-home`, the header's Coach address). The saved stage stayed
+    `home` through all of it (never `appointment` or `appointment-done`).
+- Not verified: the real flow with a live Gary session (all runs resumed at the time
+  selection), a real phone's date and time pickers (the browser pane's pickers were
+  filled by script), the translations (English only), other time zones' daylight-saving
+  edges on the screen (covered by the unit tests of step 2), a narrow-phone layout
+  below 414 px, and the screen's look at desktop width.
+- Known gaps, by design of this step: the copied link is the unsigned placeholder (step
+  4), no page handles it, and a visitor with no contact method is not asked for one first (question 1).
+
 ## Notes
-- The three scheduling options are a radio group (one choice) drawn round, per
-  the answer to question 6. The Time is up options follow the design (squares,
-  like the time selection, which is also a radio group underneath).
+- The three scheduling options are a radio group (one choice) drawn as squares,
+  per the answer to question 6, like the Time is up options and the time selection.
 - The appointment record is stored by the theme (WordPress); nothing here
   requires a separate service.
 - The new strings are English-only on purpose (see Approach 1).

@@ -12,8 +12,9 @@
  * is told what to correct (the codes in ERROR below; the screen maps them to
  * text). Decisions the ticket leaves open, taken here and easy to change:
  * "In 30 minutes" and "In an hour" count from `now`, which the screen takes at the
- * moment of copying; a time exactly equal to `now` counts as past; the Appointment
- * Time list offers a slot every 30 minutes through the whole day.
+ * moment of copying (Ivan: from when the link is created); a time exactly equal to
+ * `now` counts as past (Ivan: 15:15 cannot be booked at 15:16). The screen offers
+ * any hour and minute, so there is no list of times here.
  */
 
 export const CHOICE = {
@@ -40,7 +41,6 @@ const RELATIVE_CHOICE_MINUTES = {
 	[ CHOICE.IN_30_MINUTES ]: 30,
 	[ CHOICE.IN_AN_HOUR ]: 60,
 };
-const SLOT_MINUTES = 30;
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const TIME_PATTERN = /^(\d{2}):(\d{2})$/;
 
@@ -216,22 +216,6 @@ function accepted( startsAt ) {
 
 function refused( errors ) {
 	return { ok: false, errors, startsAt: null, startsAtIso: null };
-}
-
-/**
- * The times offered in the Appointment Time list: HH:mm, a slot every 30 minutes
- * from 00:00 to 23:30.
- *
- * @return {string[]}
- */
-export function buildTimeSlots() {
-	const slots = [];
-	for ( let minutes = 0; minutes < 24 * 60; minutes += SLOT_MINUTES ) {
-		const hour = String( Math.floor( minutes / 60 ) ).padStart( 2, '0' );
-		const minute = String( minutes % 60 ).padStart( 2, '0' );
-		slots.push( hour + ':' + minute );
-	}
-	return slots;
 }
 
 /**

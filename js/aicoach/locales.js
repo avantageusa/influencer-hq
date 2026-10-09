@@ -71,6 +71,33 @@ export const I18N_EN = {
     timeUpTitle: 'Time is up?',
     timeUpKeepTalking: 'Keep Talking Now',
     timeUpSetAppointment: 'Set an Appointment',
+    // PO-3109 — "Set your appointment" screen, its messages and the final screen.
+    // English only; the messages have no design (Ivan, 2026-10-09), so they are
+    // plain text to be replaced if a design arrives.
+    appointmentReady: "Yes, I'm Ready...",
+    appointmentTitle: 'Set your appointment',
+    appointmentIn30Minutes: 'In 30 minutes',
+    appointmentInAnHour: 'In an hour',
+    appointmentOther: 'Other',
+    appointmentDate: 'Date',
+    appointmentTimeZone: 'Timezone',
+    appointmentTime: 'Appointment Time',
+    appointmentCopy: 'Copy Your Appointment Link',
+    appointmentHint: 'Open this link at your appointment time to join your video with Sami.',
+    appointmentCopied: 'Your appointment link is copied.',
+    appointmentCopyFailed: 'We could not copy the link automatically. Please copy it from the box below.',
+    'appointmentError-choice-missing': 'Please choose when you would like your appointment.',
+    'appointmentError-date-missing': 'Please choose a date.',
+    'appointmentError-time-zone-missing': 'Please choose a time zone.',
+    'appointmentError-time-missing': 'Please choose a time.',
+    'appointmentError-date-invalid': 'That date is not valid. Please choose another date.',
+    'appointmentError-time-invalid': 'That time is not valid. Please choose another time.',
+    'appointmentError-time-zone-invalid': 'That time zone is not valid. Please choose another one.',
+    'appointmentError-time-does-not-exist': 'That time does not exist in this time zone because the clocks change then. Please choose another time.',
+    'appointmentError-time-in-past': 'That time has already passed. Please choose a later time.',
+    appointmentDoneTitle: 'You are all set up',
+    appointmentDoneMessage: "I'll always be here for you 24 hours a day, 7 days a week. If you have not saved IHQ portal address already, make sure to do that now.",
+    appointmentDoneContinue: 'CONTINUE TO IHQ PORTAL',
     // Mirrors $aicoach_channels in page-home-aicoach.php — kept in sync by hand,
     // there's no single shared source between PHP and this file for it.
     'channel-email-label': 'Email',
@@ -108,7 +135,8 @@ export const I18N_EN = {
 // English for any key a locale's table doesn't have, so every gap here is a
 // deliberate omission, not a bug:
 //   - Not in the sheet at all yet: tierGroupLabel, channelsHint,
-//     timeUpTitle, timeUpKeepTalking, timeUpSetAppointment (PO-3109), and all 8
+//     timeUpTitle, timeUpKeepTalking, timeUpSetAppointment and every appointment*
+//     key (PO-3109), and all 8
 //     channel-*-inputLabel /
 //     5 channel-*-placeholder keys (the sheet only has the channel NAMES,
 //     e.g. "Email", not the input-field copy, e.g. "Email address").
