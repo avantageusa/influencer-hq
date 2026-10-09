@@ -297,17 +297,18 @@ function ihq_aicoach_appointment_load( $id ) {
  * record lives in the visitor's progress and in an option of its own, so the link
  * page can find the visitor from the id alone on a device that has no cookie.
  *
+ * The previous appointment is kept until both writes have succeeded, so a failed
+ * write never leaves the visitor with no appointment, and a link is never handed
+ * out for a record that was not saved.
+ *
  * @param string $ref       The visitor's progress ref.
  * @param int    $starts_at Start, in seconds.
  * @param string $time_zone IANA name the visitor chose, kept for display.
  * @param int    $now       The server clock, in seconds.
- * @return array The stored record.
+ * @return array|WP_Error The stored record, or an error when it could not be saved.
  */
 function ihq_aicoach_appointment_create( $ref, $starts_at, $time_zone, $now ) {
 	$previous = ihq_aicoach_progress_load( $ref );
-	if ( isset( $previous['appointment']['id'] ) ) {
-		delete_option( ihq_aicoach_appointment_option_key( $previous['appointment']['id'] ) );
-	}
 
 	$id     = wp_generate_uuid4();
 	$record = array(
@@ -316,9 +317,26 @@ function ihq_aicoach_appointment_create( $ref, $starts_at, $time_zone, $now ) {
 		'timeZone'  => $time_zone,
 		'createdAt' => gmdate( 'c', $now ),
 	);
-	// autoload=no, like the progress record: read only by the link page.
-	update_option( ihq_aicoach_appointment_option_key( $id ), array_merge( $record, array( 'ref' => $ref ) ), false );
+	$option_key = ihq_aicoach_appointment_option_key( $id );
+	// autoload=no, like the progress record: read only by the link page. The id is
+	// new, so a false answer is a failed write, not an unchanged value.
+	if ( ! update_option( $option_key, array_merge( $record, array( 'ref' => $ref ) ), false ) ) {
+		return new WP_Error( 'appointment_save_failed', 'The appointment could not be saved.' );
+	}
+
+	// ihq_aicoach_progress_save() does not report whether the write worked, and
+	// update_option() leaves the cache alone when it did not, so read the record
+	// back to see whether it is the new one.
 	ihq_aicoach_progress_save( $ref, array( 'appointment' => $record ) );
+	$stored = ihq_aicoach_progress_load( $ref );
+	if ( ! isset( $stored['appointment']['id'] ) || $id !== $stored['appointment']['id'] ) {
+		delete_option( $option_key );
+		return new WP_Error( 'appointment_progress_save_failed', 'The appointment could not be saved.' );
+	}
+
+	if ( isset( $previous['appointment']['id'] ) ) {
+		delete_option( ihq_aicoach_appointment_option_key( $previous['appointment']['id'] ) );
+	}
 	return $record;
 }
 
@@ -384,6 +402,11 @@ function ihq_aicoach_appointment_handle_post( WP_REST_Request $request ) {
 		isset( $selection['timeZone'] ) ? $selection['timeZone'] : '',
 		$now
 	);
+	if ( is_wp_error( $record ) ) {
+		return ihq_aicoach_appointment_no_store(
+			new WP_REST_Response( array( 'error' => $record->get_error_message() ), 500 )
+		);
+	}
 
 	return ihq_aicoach_appointment_no_store(
 		new WP_REST_Response(

@@ -387,6 +387,18 @@ appointment; nothing is deployed until those are agreed.
   Please try again.", the button usable again, one request. With the clipboard refusing
   both writes: the link shown in the field and the copy message, a second press made no
   new request, copied the same link and moved on.
+- Failed writes (review, CodeRabbit): `ihq_aicoach_appointment_create()` used to delete
+  the visitor's previous appointment before writing the new one and ignored the write
+  results, so a failed write could leave the visitor with no appointment while the route
+  still answered 201 with a link for a record that was not saved. It now keeps the
+  previous appointment until both writes have succeeded, checks the option write, reads
+  the progress record back (`ihq_aicoach_progress_save()` does not report its result,
+  and `update_option()` leaves the cache alone when the write fails), removes the new
+  option if the progress write did not take, and the route answers 500 with no link.
+  10 new PHP checks (a failed appointment write, a failed progress write, the old
+  appointment kept, a retry that then works, the 500) and 7 mutations of this handling,
+  all killed. Live on wp-env: two requests in a row left one appointment option, the
+  visitor's current one.
 - Not verified: Safari on a phone (the reason for the `ClipboardItem` write; Chrome
   here), a real server with Cloudflare in front, the signature against a configured
   secret on a live instance (the unit test covers it), another visitor's appointment

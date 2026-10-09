@@ -34,7 +34,23 @@ function wp_generate_uuid4() {
 
 $GLOBALS['wp_options'] = array();
 function get_option( $key, $default = false ) { return $GLOBALS['wp_options'][ $key ] ?? $default; }
-function update_option( $key, $value, $autoload = true ) { $GLOBALS['wp_options'][ $key ] = $value; return true; }
+// Option keys listed here fail to save, like a database write that did not go through.
+$GLOBALS['wp_options_failing'] = array();
+function update_option( $key, $value, $autoload = true ) {
+	if ( in_array( $key, $GLOBALS['wp_options_failing'], true ) || ( isset( $GLOBALS['wp_options_failing_prefix'] ) && 0 === strpos( $key, $GLOBALS['wp_options_failing_prefix'] ) ) ) {
+		return false;
+	}
+	$GLOBALS['wp_options'][ $key ] = $value;
+	return true;
+}
+function is_wp_error( $thing ) { return $thing instanceof WP_Error; }
+class WP_Error {
+	private $code;
+	private $message;
+	public function __construct( $code = '', $message = '' ) { $this->code = $code; $this->message = $message; }
+	public function get_error_code() { return $this->code; }
+	public function get_error_message() { return $this->message; }
+}
 function delete_option( $key ) { unset( $GLOBALS['wp_options'][ $key ] ); return true; }
 
 $GLOBALS['wp_transients'] = array();
@@ -226,6 +242,28 @@ $other_ref = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 ihq_aicoach_appointment_create( $other_ref, 1791007200, 'UTC', $now );
 check( 'another visitor\'s appointment does not touch this one', 1791003600 === ihq_aicoach_appointment_load( $second['id'] )['startsAt'] );
 
+// --- a write that fails never loses the visitor's current appointment ---
+
+$persisting = ihq_aicoach_appointment_create( 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', 1791010000, 'UTC', $now );
+$kept_id    = $persisting['id'];
+$before     = $GLOBALS['wp_options'];
+
+$GLOBALS['wp_options_failing_prefix'] = 'ihq_aicoach_appointment_';
+$failed = ihq_aicoach_appointment_create( 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', 1791020000, 'UTC', $now );
+unset( $GLOBALS['wp_options_failing_prefix'] );
+check( 'a failed appointment write is reported as an error', $failed instanceof WP_Error && 'appointment_save_failed' === $failed->get_error_code() );
+check( 'a failed appointment write changes nothing: the old appointment and the progress are as they were', $before === $GLOBALS['wp_options'] );
+
+$GLOBALS['wp_options_failing_prefix'] = 'ihq_aicoach_progress_';
+$failed = ihq_aicoach_appointment_create( 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', 1791020000, 'UTC', $now );
+unset( $GLOBALS['wp_options_failing_prefix'] );
+check( 'a failed progress write is reported as an error', $failed instanceof WP_Error && 'appointment_progress_save_failed' === $failed->get_error_code() );
+check( 'a failed progress write removes the new appointment option and keeps the old one', $before === $GLOBALS['wp_options'] );
+check( 'the old appointment is still the visitor\'s', 1791010000 === ihq_aicoach_appointment_load( $kept_id )['startsAt'] && $kept_id === ihq_aicoach_progress_load( 'cccccccc-cccc-4ccc-8ccc-cccccccccccc' )['appointment']['id'] );
+
+$retry = ihq_aicoach_appointment_create( 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', 1791020000, 'UTC', $now );
+check( 'once writes work again the new appointment replaces the old one', is_array( $retry ) && null === ihq_aicoach_appointment_load( $kept_id ) && 1791020000 === ihq_aicoach_appointment_load( $retry['id'] )['startsAt'] );
+
 check( 'load refuses an id that is not a UUID', null === ihq_aicoach_appointment_load( 'not-an-id' ) && null === ihq_aicoach_appointment_load( '../../etc' ) && null === ihq_aicoach_appointment_load( null ) && null === ihq_aicoach_appointment_load( array() ) );
 $GLOBALS['wp_options']['ihq_aicoach_appointment_not-an-id'] = array( 'startsAt' => 1 );
 check( 'load refuses an id that is not a UUID even when an option of that name exists', null === ihq_aicoach_appointment_load( 'not-an-id' ) );
@@ -265,6 +303,14 @@ $response = $post( array( 'choice' => 'other' ) );
 check( 'missing fields come back as codes', 400 === $response->status && array( 'errors' => array( 'date-missing', 'time-zone-missing', 'time-missing' ) ) === $response->data );
 check( 'a body that is not an object is a request with no choice', array( 'errors' => array( 'choice-missing' ) ) === $post( null )->data );
 check( 'non-string fields are ignored, not trusted', array( 'errors' => array( 'date-missing', 'time-zone-missing', 'time-missing' ) ) === $post( array( 'choice' => 'other', 'date' => array( 'x' ), 'time' => 5, 'timeZone' => true ) )->data );
+
+$before = $GLOBALS['wp_options'];
+$GLOBALS['wp_options_failing_prefix'] = 'ihq_aicoach_appointment_';
+$response = $post( array( 'choice' => 'in-an-hour' ) );
+unset( $GLOBALS['wp_options_failing_prefix'] );
+check( 'a save that fails is answered with 500 and no link', 500 === $response->status && array( 'error' => 'The appointment could not be saved.' ) === $response->data );
+check( 'the failed save is never cached either', array( 'Cache-Control' => 'no-store, private' ) === $response->headers );
+check( 'the failed save changed nothing', $before === $GLOBALS['wp_options'] );
 
 $long_zone = str_repeat( 'a', 500 );
 check( 'an oversized time zone is cut and then refused as invalid', array( 'errors' => array( 'time-zone-invalid' ) ) === $post( array( 'choice' => 'other', 'date' => '2030-01-01', 'time' => '10:00', 'timeZone' => $long_zone ) )->data );
