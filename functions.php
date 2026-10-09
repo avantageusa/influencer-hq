@@ -400,6 +400,7 @@ require_once get_template_directory() . '/inc/aicoach-prerender.php';
  * successful account creation.
  */
 require_once get_template_directory() . '/inc/aicoach-progress.php';
+require_once get_template_directory() . '/inc/aicoach-appointment.php';
 
 /**
  * AI Coach uninterrupted registration event (PO-3257).

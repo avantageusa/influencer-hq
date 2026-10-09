@@ -85,6 +85,7 @@ export const I18N_EN = {
     appointmentCopy: 'Copy Your Appointment Link',
     appointmentHint: 'Open this link at your appointment time to join your video with Sami.',
     appointmentCopied: 'Your appointment link is copied.',
+    appointmentRequestFailed: 'We could not create your appointment link. Please try again.',
     appointmentCopyFailed: 'We could not copy the link automatically. Please copy it from the box below.',
     'appointmentError-choice-missing': 'Please choose when you would like your appointment.',
     'appointmentError-date-missing': 'Please choose a date.',

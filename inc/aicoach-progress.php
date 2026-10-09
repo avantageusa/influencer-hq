@@ -246,16 +246,9 @@ function ihq_aicoach_progress_sanitize_partial( array $params ) {
 		$out['qaHistory'] = $qa_history;
 	}
 
-	// FR-18 (PO-3109) isn't built yet — no appointment UI exists to populate this from.
-	// Shape reserved so that story doesn't need a second progress-record migration.
-	if ( isset( $params['appointment'] ) && is_array( $params['appointment'] ) ) {
-		$out['appointment'] = array_map(
-			function ( $value ) use ( $cap ) {
-				return $cap( sanitize_text_field( (string) $value ), IHQ_AICOACH_PROGRESS_MAX_FIELD_LENGTH );
-			},
-			wp_array_slice_assoc( $params['appointment'], array( 'date', 'time', 'timezone' ) )
-		);
-	}
+	// No 'appointment' here on purpose (PO-3109 step 4): the appointment is written by
+	// the server alone (inc/aicoach-appointment.php). A key the browser could write
+	// would let it forge an appointment the server later trusts.
 
 	return $out;
 }
