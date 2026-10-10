@@ -27,8 +27,8 @@ todos:
     content: WordPress REST endpoint that validates the time on the server, creates a signed appointment link and stores the appointment (step 4); the screen asks it for the link
     status: in-progress
   - id: link-pages
-    content: Appointment link pages and their states (separate PR, depends on the answers)
-    status: pending
+    content: The appointment link page /appointment and its six states, with Join back into the AI Coach flow (step 5); the windows and "Start now instead" are defaults to be confirmed
+    status: in-progress
   - id: reminder
     content: Reminder 5 minutes before through the visitor's channels via Braze (depends on Steve)
     status: pending
@@ -194,7 +194,53 @@ Steps, each its own PR where it makes sense:
      place to decide), and which channels the reminder uses (the progress record is
      cleared at registration, so the reminder step has to read the channels from the
      account then).
-5. **Link pages and reminder**: after the questions below are answered.
+5. **The link page (step 5)**, scoped to this epic (PO-3062); what the dev decided
+   on 2026-10-10 and what is a default that a later answer can change in one place:
+   - **A WordPress page, built from the page itself.** The theme has no rewrite
+     rules, every page is a WordPress page with a template, so `/appointment` is a
+     page with the slug `appointment` and the template `page-appointment.php`,
+     created in wp-admin on each environment. The route builds the link from that
+     page (`get_page_by_path()` and `get_permalink()`), not from a fixed path, and
+     answers 500 without creating anything when the page does not exist, instead of
+     handing out a link that goes to a 404. The address of the link is the page's
+     permalink with `?t=<token>`; the page is `noindex` and never cached.
+   - **Six states, from the server clock** (`ihq_aicoach_appointment_state()`, pure
+     and tested at every boundary): waiting (more than 10 minutes before the start),
+     join (from 10 minutes before until 15 minutes after), missed (15 minutes to 24
+     hours), expired (later), ended (the visitor has registered) and invalid (a bad
+     signature, an unknown id, or an appointment that was replaced by a newer one; the
+     page never says which, so nothing reveals whether an appointment exists). The
+     windows are constants in one place. **Defaults, to be confirmed by Marcus and
+     Steve:** exactly 15 minutes counts as missed (the ticket puts it on both pages),
+     exactly 10 minutes before is join, exactly 24 hours is still missed, and "Start now
+     instead" is off (`IHQ_AICOACH_APPOINTMENT_START_NOW_ENABLED`) so the button is
+     not shown.
+   - **The page shows** the appointment time in the zone the visitor chose, a
+     countdown on the waiting page (counted down from the server's remaining seconds,
+     so a wrong clock on the phone does not matter) and, at the next boundary, a reload
+     that shows the next state. Text is plain English from the ticket; the design of these
+     pages is not in the Figma of the ticket (the dev asked Ivan), so the layout reuses
+     the stage look of the landing (black, the portrait, white text, the green button)
+     and is to be replaced if a design arrives.
+   - **Join resumes the AI Coach flow** (the dev's reading of "Onboarding process
+     again" inside this epic): a POST with the token, a nonce and the state allowing it,
+     then the server sets the visitor's progress cookie to the ref stored with the
+     appointment and redirects to the AI Coach page, which resumes at the saved screen in
+     the saved language. The AI Coach page is looked up (the published page that uses
+     the template `page-home-aicoach.php`), not assumed to be the home page: it is the
+     front page on dev and production and a page of its own (`/home-ai-coach/`) in
+     wp-env. A first version assumed the home page and was caught in wp-env. This works on a device that has no cookie. **Security note:**
+     the link is therefore a key to that visitor's saved progress (name and the contact
+     details they entered), and a link gets copied and pasted. Not decided; to be
+     raised with BE.
+   - **Ended** is set when the visitor registers: `ihq_aicoach_appointment_mark_completed()`
+     is called next to the place that clears the progress record.
+   - **The Book buttons** (expired, ended, invalid, missed) lead to the AI Coach page for
+     now. There is no way to open the scheduling screen directly (it only opens from
+     "Time is up?"), which is a gap for Ivan.
+   - **Not in this step:** greeting the visitor by first name (nothing in the flow does
+     it yet), the contact method at scheduling (design missing), the confirmation message
+     and the reminder (Steve and BE), translations of the page (English only).
 
 ## Alternatives considered
 - Keeping the modal and only renaming the buttons: the design is a screen in
@@ -404,6 +450,37 @@ appointment; nothing is deployed until those are agreed.
   secret on a live instance (the unit test covers it), another visitor's appointment
   in the same database, and the link page (step 5; the link goes to `/appointment/`,
   which does not exist yet).
+
+## Verification, step 5
+- `npm run test:js`: 157 tests (147 before, 10 new for the countdown helpers).
+  `npm run test:php`: 13 suites, all pass; `tests/aicoach-appointment.test.php` has 152
+  checks (the states at every boundary, the wait to the next state, the completion marker,
+  the link built from the page, no page means 500 and nothing stored) and the new
+  `tests/aicoach-appointment-page.test.php` has 73 (what a link means: valid, edited, unknown,
+  replaced, ended; the time in the visitor's zone; what each state shows with "Start now
+  instead" on and off; every way Join is refused or allowed; the script loading).
+- Manual mutation checks (Stryker is deferred) on the state logic and the page: 27 mutations
+  (each boundary, each window, the completed flag, the start mismatch, the nonce, the join
+  state check, the ref format, where Join leads, the buttons per state, the "Start now"
+  setting in each place, the script's dependency, loading it on every page), all killed. One
+  of them first "died" because it referred to a constant that does not exist; it was redone
+  with a real value and died on the tests.
+- wp-env (page created with `wp post create`, template `page-appointment.php`): the route's
+  link starts with the page's permalink. The six states, from appointments made by a script
+  at different start times: waiting ("Your appointment is coming up", the time in Europe/
+  Belgrade, a countdown that ticks and no button), join ("Join your video with Sami"),
+  missed, expired, ended and invalid (an edited token and no token give the same page).
+  Only waiting and join show the time; only waiting has a countdown. The headers:
+  `Cache-Control: no-store, private` and `X-Robots-Tag: noindex, nofollow`. The reload
+  delay is the seconds to the next boundary. Join from a browser with its own progress: the
+  visitor landed on `/home-ai-coach/` at the saved screen (equity-bts, tier 5, the saved
+  first name), which proves the cookie was replaced by the appointment's ref.
+- Not verified: the "ended" state after a real registration (the call that marks it sits
+  next to where the progress is cleared; the marker itself is tested, the registration flow
+  was not run), the reload at a boundary by waiting for one, the pages at desktop width and
+  on a real phone, the pages on dev and production (the page has to be created there first),
+  and `composer lint:wpcs` is not clean on the new PHP (the same kinds of findings as the
+  rest of the theme: space-indented markup, `const`, the `_s` text domain).
 
 ## Notes
 - The three scheduling options are a radio group (one choice) drawn as squares,
