@@ -17,9 +17,9 @@
  *
  * The link carries the appointment id and start time signed with HMAC-SHA256, so an
  * edited link is detectable. It never carries the visitor's cookie ref (the ref is
- * the credential for the visitor's progress). The link page is a later step; it
- * reads the appointment back with ihq_aicoach_appointment_verify_token() and
- * ihq_aicoach_appointment_load().
+ * the credential for the visitor's progress). The link page (page-appointment.php,
+ * inc/aicoach-appointment-page.php) reads the appointment back with
+ * ihq_aicoach_appointment_verify_token() and ihq_aicoach_appointment_load().
  *
  * @package influencer-hq
  */
@@ -28,8 +28,33 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-/** Page the link points to (built in step 5). */
-const IHQ_AICOACH_APPOINTMENT_LINK_PATH = '/appointment/';
+/**
+ * Slug of the WordPress page the link points to (template page-appointment.php). The
+ * link is built from that page, so it cannot point at an address that does not exist.
+ */
+const IHQ_AICOACH_APPOINTMENT_PAGE_SLUG = 'appointment';
+
+/** The states of a link page; the page decides what to show from one of these. */
+const IHQ_AICOACH_APPOINTMENT_STATE_WAITING = 'waiting';
+const IHQ_AICOACH_APPOINTMENT_STATE_JOIN    = 'join';
+const IHQ_AICOACH_APPOINTMENT_STATE_MISSED  = 'missed';
+const IHQ_AICOACH_APPOINTMENT_STATE_EXPIRED = 'expired';
+const IHQ_AICOACH_APPOINTMENT_STATE_ENDED   = 'ended';
+const IHQ_AICOACH_APPOINTMENT_STATE_INVALID = 'invalid';
+
+/**
+ * The windows around the start (PO-3109, Scenario 32). The ticket leaves the numbers
+ * and the exact 15-minute boundary to Marcus and Steve, so these are defaults kept
+ * in one place: join opens 10 minutes before the start and closes 15 minutes after
+ * it (exactly 15 minutes counts as missed), and a missed link expires 24 hours after
+ * the start (exactly 24 hours is still missed).
+ */
+const IHQ_AICOACH_APPOINTMENT_JOIN_OPENS_BEFORE = 10 * MINUTE_IN_SECONDS;
+const IHQ_AICOACH_APPOINTMENT_JOIN_CLOSES_AFTER = 15 * MINUTE_IN_SECONDS;
+const IHQ_AICOACH_APPOINTMENT_EXPIRES_AFTER     = DAY_IN_SECONDS;
+
+/** "Start now instead" on the waiting and missed pages: off until it is confirmed. */
+const IHQ_AICOACH_APPOINTMENT_START_NOW_ENABLED = false;
 
 /** Query parameter that carries the signed token. */
 const IHQ_AICOACH_APPOINTMENT_TOKEN_PARAM = 't';
@@ -341,16 +366,102 @@ function ihq_aicoach_appointment_create( $ref, $starts_at, $time_zone, $now ) {
 }
 
 /**
+ * The address of the link page: the permalink of the published WordPress page with the
+ * slug IHQ_AICOACH_APPOINTMENT_PAGE_SLUG.
+ *
+ * @return string|null Null when that page does not exist or is not published.
+ */
+function ihq_aicoach_appointment_page_url() {
+	$page = get_page_by_path( IHQ_AICOACH_APPOINTMENT_PAGE_SLUG );
+	if ( ! $page || 'publish' !== $page->post_status ) {
+		return null;
+	}
+	return get_permalink( $page );
+}
+
+/**
+ * @param string $page_url  From ihq_aicoach_appointment_page_url().
  * @param string $id        Appointment id.
  * @param int    $starts_at Start, in seconds.
  * @return string The link the visitor copies.
  */
-function ihq_aicoach_appointment_link( $id, $starts_at ) {
+function ihq_aicoach_appointment_link( $page_url, $id, $starts_at ) {
 	return add_query_arg(
 		IHQ_AICOACH_APPOINTMENT_TOKEN_PARAM,
 		ihq_aicoach_appointment_make_token( $id, $starts_at ),
-		home_url( IHQ_AICOACH_APPOINTMENT_LINK_PATH )
+		$page_url
 	);
+}
+
+/**
+ * Which page a link shows right now.
+ *
+ * @param int  $starts_at Start, in seconds.
+ * @param int  $now       The server clock, in seconds.
+ * @param bool $completed Whether the visitor has finished the process (registered).
+ * @return string One of IHQ_AICOACH_APPOINTMENT_STATE_* (never invalid: that is for a
+ *                link that is not an appointment at all).
+ */
+function ihq_aicoach_appointment_state( $starts_at, $now, $completed = false ) {
+	if ( $completed ) {
+		return IHQ_AICOACH_APPOINTMENT_STATE_ENDED;
+	}
+	if ( $now < $starts_at - IHQ_AICOACH_APPOINTMENT_JOIN_OPENS_BEFORE ) {
+		return IHQ_AICOACH_APPOINTMENT_STATE_WAITING;
+	}
+	if ( $now < $starts_at + IHQ_AICOACH_APPOINTMENT_JOIN_CLOSES_AFTER ) {
+		return IHQ_AICOACH_APPOINTMENT_STATE_JOIN;
+	}
+	if ( $now <= $starts_at + IHQ_AICOACH_APPOINTMENT_EXPIRES_AFTER ) {
+		return IHQ_AICOACH_APPOINTMENT_STATE_MISSED;
+	}
+	return IHQ_AICOACH_APPOINTMENT_STATE_EXPIRED;
+}
+
+/**
+ * How long until the state above changes, so the page can reload and show the next one.
+ *
+ * @param int    $starts_at Start, in seconds.
+ * @param int    $now       The server clock, in seconds.
+ * @param string $state     From ihq_aicoach_appointment_state().
+ * @return int|null Whole seconds (at least 1), or null when the state never changes.
+ */
+function ihq_aicoach_appointment_seconds_to_next_state( $starts_at, $now, $state ) {
+	$changes_at = null;
+	if ( IHQ_AICOACH_APPOINTMENT_STATE_WAITING === $state ) {
+		$changes_at = $starts_at - IHQ_AICOACH_APPOINTMENT_JOIN_OPENS_BEFORE;
+	} elseif ( IHQ_AICOACH_APPOINTMENT_STATE_JOIN === $state ) {
+		$changes_at = $starts_at + IHQ_AICOACH_APPOINTMENT_JOIN_CLOSES_AFTER;
+	} elseif ( IHQ_AICOACH_APPOINTMENT_STATE_MISSED === $state ) {
+		// The last second of the missed window is EXPIRES_AFTER itself.
+		$changes_at = $starts_at + IHQ_AICOACH_APPOINTMENT_EXPIRES_AFTER + 1;
+	}
+	if ( null === $changes_at ) {
+		return null;
+	}
+	return max( 1, $changes_at - $now );
+}
+
+/**
+ * Marks a visitor's appointment as finished: the link then shows "This session has
+ * ended". Called when the visitor registers, next to the place that clears their
+ * progress record.
+ *
+ * @param string $ref The visitor's progress ref.
+ * @param int    $now The server clock, in seconds.
+ * @return bool Whether an appointment was marked.
+ */
+function ihq_aicoach_appointment_mark_completed( $ref, $now ) {
+	$progress = ihq_aicoach_progress_load( $ref );
+	if ( ! isset( $progress['appointment']['id'] ) ) {
+		return false;
+	}
+	$appointment = ihq_aicoach_appointment_load( $progress['appointment']['id'] );
+	if ( null === $appointment ) {
+		return false;
+	}
+	$appointment['completedAt'] = gmdate( 'c', $now );
+	return update_option( ihq_aicoach_appointment_option_key( $progress['appointment']['id'] ), $appointment, false );
 }
 
 /**
@@ -395,6 +506,14 @@ function ihq_aicoach_appointment_handle_post( WP_REST_Request $request ) {
 		);
 	}
 
+	// Without the page there is nowhere for the link to go: stop before anything is stored.
+	$page_url = ihq_aicoach_appointment_page_url();
+	if ( null === $page_url ) {
+		return ihq_aicoach_appointment_no_store(
+			new WP_REST_Response( array( 'error' => 'The appointment page is not available.' ), 500 )
+		);
+	}
+
 	$ref    = ihq_aicoach_progress_get_ref();
 	$record = ihq_aicoach_appointment_create(
 		$ref,
@@ -411,7 +530,7 @@ function ihq_aicoach_appointment_handle_post( WP_REST_Request $request ) {
 	return ihq_aicoach_appointment_no_store(
 		new WP_REST_Response(
 			array(
-				'link'     => ihq_aicoach_appointment_link( $record['id'], $record['startsAt'] ),
+				'link'     => ihq_aicoach_appointment_link( $page_url, $record['id'], $record['startsAt'] ),
 				'startsAt' => gmdate( 'c', $record['startsAt'] ),
 			),
 			201
