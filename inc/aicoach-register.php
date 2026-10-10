@@ -349,6 +349,12 @@ function ihq_aicoach_handle_create_account( WP_REST_Request $request ) {
 		// PO-3109 — an appointment the visitor booked is finished once they register:
 		// its link then says the session has ended. Done before the record that points
 		// to it is cleared.
+		// Known gap (CodeRabbit, #107): if that write fails (a database error right after
+		// the account was created) the progress record is cleared anyway, so nothing retries
+		// it and the link keeps showing join or missed instead of ended. No data is lost
+		// and nothing is exposed; a retry would mean keeping the draft record after the
+		// account exists and retrying in the logged-in branch above, which is a design
+		// change to this flow, not a fix. Not done here.
 		if ( function_exists( 'ihq_aicoach_appointment_mark_completed' ) ) {
 			ihq_aicoach_appointment_mark_completed( $progress_ref, time() );
 		}

@@ -30,9 +30,6 @@ const IHQ_AICOACH_APPOINTMENT_COACH_TEMPLATE = 'page-home-aicoach.php';
 const IHQ_AICOACH_APPOINTMENT_JOIN_FIELD        = 'ihq_appointment_join';
 const IHQ_AICOACH_APPOINTMENT_JOIN_NONCE_ACTION = 'ihq_appointment_join';
 
-/** setTimeout cannot wait longer than this; a longer wait would fire at once. */
-const IHQ_AICOACH_APPOINTMENT_MAX_RELOAD_SECONDS = 2147483;
-
 /** The actions a page can offer. */
 const IHQ_AICOACH_APPOINTMENT_ACTION_JOIN      = 'join';
 const IHQ_AICOACH_APPOINTMENT_ACTION_START_NOW = 'start-now';

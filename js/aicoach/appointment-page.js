@@ -7,8 +7,6 @@
 import { formatCountdown, secondsLeft, reloadDelayMs } from '@ihq/aicoach/countdown';
 
 const COUNTDOWN_TICK_MS = 1000;
-// Reload a little after the boundary, so the server has certainly crossed it.
-const RELOAD_MARGIN_MS = 500;
 
 const root = document.getElementById( 'aicoach-link' );
 if ( root ) {
@@ -28,6 +26,6 @@ if ( root ) {
 	if ( null !== reloadDelay ) {
 		window.setTimeout( function () {
 			window.location.reload();
-		}, reloadDelay + RELOAD_MARGIN_MS );
+		}, reloadDelay );
 	}
 }

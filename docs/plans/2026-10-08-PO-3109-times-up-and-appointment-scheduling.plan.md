@@ -452,7 +452,7 @@ appointment; nothing is deployed until those are agreed.
   which does not exist yet).
 
 ## Verification, step 5
-- `npm run test:js`: 157 tests (147 before, 10 new for the countdown helpers).
+- `npm run test:js`: 159 tests (147 before, 12 for the countdown helpers).
   `npm run test:php`: 13 suites, all pass; `tests/aicoach-appointment.test.php` has 152
   checks (the states at every boundary, the wait to the next state, the completion marker,
   the link built from the page, no page means 500 and nothing stored) and the new
@@ -475,6 +475,23 @@ appointment; nothing is deployed until those are agreed.
   delay is the seconds to the next boundary. Join from a browser with its own progress: the
   visitor landed on `/home-ai-coach/` at the saved screen (equity-bts, tier 5, the saved
   first name), which proves the cookie was replaced by the appointment's ref.
+- Long waits (review, CodeRabbit on #107): the first version did not set the reload timer when
+  the next boundary was further away than a timer can wait (about 24.8 days, an appointment
+  chosen weeks ahead), so a tab left open would never switch to the next state. It now waits
+  the longest a timer allows (margin included in the helper, so the cap and the margin are
+  in one tested place) and the reload that follows renders the page again with the time that
+  is left and sets the timer again. 2 tests replaced and 3 added, 5 mutations of the delay all
+  killed; the old test said such a boundary gets no timer, which was the behaviour under
+  review, so its intent changed on purpose. Live: an appointment 40 days ahead showed
+  "39d 23:59:55", the server asked for a reload in 3455395 seconds, and the timer was set
+  to 2147483647 ms. The unused `IHQ_AICOACH_APPOINTMENT_MAX_RELOAD_SECONDS` was removed.
+- Known gap, not fixed (review, CodeRabbit on #107): if marking the appointment ended fails
+  at registration (a database write error right after the account exists), the progress
+  record is cleared anyway and nothing retries it, so the link keeps showing join or missed
+  instead of ended. The claim holds, but nothing is lost or exposed. The suggested fix keeps
+  the draft record after the account exists and retries in the logged-in branch of the
+  registration route, which changes that flow's design. Documented in a comment in
+  `inc/aicoach-register.php`; to be decided with BE if it matters.
 - Not verified: the "ended" state after a real registration (the call that marks it sits
   next to where the progress is cleared; the marker itself is tested, the registration flow
   was not run), the reload at a boundary by waiting for one, the pages at desktop width and

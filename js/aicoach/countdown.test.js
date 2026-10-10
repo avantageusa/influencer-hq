@@ -49,11 +49,11 @@ test( 'seconds left are zero when either figure is not a number', () => {
 	assert.equal( secondsLeft( undefined, 0 ), 0 );
 } );
 
-test( 'the reload waits for the seconds given, in milliseconds', () => {
-	assert.equal( reloadDelayMs( 1 ), 1000 );
-	assert.equal( reloadDelayMs( 600 ), 600000 );
-	assert.equal( reloadDelayMs( '90' ), 90000 );
-	assert.equal( reloadDelayMs( 0.5 ), 500 );
+test( 'the reload waits for the seconds given, in milliseconds, plus a margin past the boundary', () => {
+	assert.equal( reloadDelayMs( 1 ), 1500 );
+	assert.equal( reloadDelayMs( 600 ), 600500 );
+	assert.equal( reloadDelayMs( '90' ), 90500 );
+	assert.equal( reloadDelayMs( 0.5 ), 1000 );
 } );
 
 test( 'there is nothing to reload for when no next state is given', () => {
@@ -62,8 +62,20 @@ test( 'there is nothing to reload for when no next state is given', () => {
 	} );
 } );
 
-test( 'a wait too long for a timer is not set, because it would fire at once', () => {
-	assert.equal( reloadDelayMs( 2147483 ), 2147483000 );
-	assert.equal( reloadDelayMs( 2147484 ), null );
-	assert.equal( reloadDelayMs( 30 * 86400 ), null );
+test( 'a boundary a timer can wait for is waited for in full, margin included', () => {
+	assert.equal( reloadDelayMs( 2147482 ), 2147482500 );
+	assert.equal( reloadDelayMs( 2147483 ), 2147483500 );
+} );
+
+test( 'a boundary too far away for a timer gets the longest wait, so the page reloads and sets it again', () => {
+	assert.equal( reloadDelayMs( 2147484 ), 2147483647 );
+	assert.equal( reloadDelayMs( 30 * 86400 ), 2147483647 );
+	assert.equal( reloadDelayMs( 400 * 86400 ), 2147483647 );
+} );
+
+test( 'no wait is ever longer than a timer allows, so none fires at once', () => {
+	[ 1, 1000, 2147482, 2147483, 99999999, 1e12 ].forEach( ( seconds ) => {
+		const delay = reloadDelayMs( seconds );
+		assert.ok( delay > 0 && delay <= 2147483647, String( seconds ) );
+	} );
 } );

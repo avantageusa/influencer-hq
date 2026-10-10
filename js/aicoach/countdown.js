@@ -15,6 +15,9 @@ const MS_PER_SECOND = 1000;
 // setTimeout stores its delay in 32 bits; a longer wait fires immediately.
 const MAX_TIMER_MS = 2147483647;
 
+// Reload a little after the boundary, so the server has certainly crossed it.
+const RELOAD_MARGIN_MS = 500;
+
 function pad( value ) {
 	return String( value ).padStart( 2, '0' );
 }
@@ -53,8 +56,11 @@ export function secondsLeft( secondsAtRender, elapsedMs ) {
 
 /**
  * How long to wait before reloading to show the next state, in milliseconds, or null
- * when there is nothing to wait for (no next state, not a number, not positive, or too
- * far away for a timer).
+ * when there is nothing to wait for (no next state, not a number, or not positive).
+ *
+ * The wait includes a small margin past the boundary. A boundary too far away for a timer
+ * (an appointment weeks ahead) gets the longest wait a timer allows: the reload that
+ * follows renders the page again with the time that is left, and sets the timer again.
  *
  * @param {number|string|undefined|null} seconds
  * @return {number|null}
@@ -67,6 +73,5 @@ export function reloadDelayMs( seconds ) {
 	if ( ! Number.isFinite( wanted ) || wanted <= 0 ) {
 		return null;
 	}
-	const delay = wanted * MS_PER_SECOND;
-	return delay > MAX_TIMER_MS ? null : delay;
+	return Math.min( wanted * MS_PER_SECOND + RELOAD_MARGIN_MS, MAX_TIMER_MS );
 }
