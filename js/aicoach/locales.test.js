@@ -15,6 +15,7 @@ const APPOINTMENT_KEYS = [
 	'appointmentCopy',
 	'appointmentHint',
 	'appointmentCopied',
+	'appointmentRequestFailed',
 	'appointmentCopyFailed',
 	'appointmentError-choice-missing',
 	'appointmentError-date-missing',

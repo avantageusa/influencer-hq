@@ -27,7 +27,7 @@ import {
 } from '@ihq/aicoach/appointment';
 import {
     appointmentErrorKey,
-    buildAppointmentLink,
+    requestAppointmentLink,
     copyToClipboard,
     timeZoneChoices,
 } from '@ihq/aicoach/appointment-screen';
@@ -2552,7 +2552,35 @@ if ( stage && avatarWrap ) {
         } );
     } );
 
+    const APPOINTMENT_URL = cfg.identityRestBase + '/aicoach/appointment';
     let appointmentLinkCopied = false;
+    // The link the server issued, kept when only the copy failed so that pressing the
+    // button again copies the same link instead of replacing the appointment (the
+    // server keeps one per visitor, so a new request would invalidate the link the
+    // visitor may already have copied by hand).
+    let createdAppointmentLink = null;
+
+    function showAppointmentErrors( errorCodes ) {
+        appointmentErrorEl.textContent = errorCodes.map( function ( errorCode ) {
+            return t( currentLocale, appointmentErrorKey( errorCode ) );
+        } ).join( '\n' );
+    }
+
+    function resetCreatedAppointmentLink() {
+        createdAppointmentLink = null;
+        appointmentLinkInput.hidden = true;
+        appointmentLinkInput.value = '';
+    }
+
+    // Choosing something else makes the issued link the wrong one.
+    if ( appointmentPanel ) {
+        appointmentPanel.addEventListener( 'change', resetCreatedAppointmentLink );
+        appointmentPanel.addEventListener( 'input', resetCreatedAppointmentLink );
+    }
+
+    function linkOrReject( created ) {
+        return created.ok ? created.link : Promise.reject( new Error( 'no appointment link' ) );
+    }
 
     async function copyAppointmentLink() {
         if ( appointmentLinkCopied ) {
@@ -2560,22 +2588,42 @@ if ( stage && avatarWrap ) {
         }
         clearAppointmentMessages();
         // The clock is read once, here: "in 30 minutes" counts from the moment the
-        // link is created, and the past-time check uses the same instant.
-        const result = validateAppointment( readAppointmentSelection(), Date.now() );
+        // link is created. This check is only for instant messages; the server
+        // checks again with the same rules and its own clock.
+        const selection = readAppointmentSelection();
+        const result = validateAppointment( selection, Date.now() );
         if ( ! result.ok ) {
-            appointmentErrorEl.textContent = result.errors.map( function ( errorCode ) {
-                return t( currentLocale, appointmentErrorKey( errorCode ) );
-            } ).join( '\n' );
+            showAppointmentErrors( result.errors );
             return;
         }
 
-        const link = buildAppointmentLink( { pageUrl: window.location.href, startsAtIso: result.startsAtIso } );
         appointmentCopyBtn.disabled = true;
-        const copied = await copyToClipboard( link, navigator.clipboard );
+        // The request starts inside the tap and the clipboard is handed the pending
+        // link: Safari on a phone only accepts a clipboard write made inside the
+        // gesture, and the link does not exist until the server has answered.
+        const pending = createdAppointmentLink
+            ? Promise.resolve( { ok: true, link: createdAppointmentLink } )
+            : requestAppointmentLink( { selection: selection, url: APPOINTMENT_URL, nonce: cfg.nonce, fetchFn: window.fetch.bind( window ) } );
+        const copied = await copyToClipboard( pending.then( linkOrReject ), {
+            clipboard: navigator.clipboard,
+            ClipboardItemClass: window.ClipboardItem,
+        } );
+        const created = await pending;
+        if ( ! created.ok ) {
+            appointmentCopyBtn.disabled = false;
+            if ( created.errors.length > 0 ) {
+                showAppointmentErrors( created.errors );
+            } else {
+                appointmentErrorEl.textContent = t( currentLocale, 'appointmentRequestFailed' );
+            }
+            return;
+        }
+
+        createdAppointmentLink = created.link;
         if ( ! copied.ok ) {
             // Moving on now would lose the only copy of the link: show it to be copied
             // by hand and let the visitor press the button again.
-            appointmentLinkInput.value = link;
+            appointmentLinkInput.value = created.link;
             appointmentLinkInput.hidden = false;
             appointmentLinkInput.select();
             appointmentStatusEl.textContent = t( currentLocale, 'appointmentCopyFailed' );

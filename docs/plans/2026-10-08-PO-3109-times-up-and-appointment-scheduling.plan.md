@@ -24,8 +24,8 @@ todos:
     content: Set your appointment panel, validation messages, copy to clipboard with confirmation, the 4 second move to the final screen and the final screen itself (step 3)
     status: completed
   - id: appointment-endpoint
-    content: WordPress REST endpoints that create a signed appointment link and store it with the visitor's progress
-    status: pending
+    content: WordPress REST endpoint that validates the time on the server, creates a signed appointment link and stores the appointment (step 4); the screen asks it for the link
+    status: in-progress
   - id: link-pages
     content: Appointment link pages and their states (separate PR, depends on the answers)
     status: pending
@@ -150,11 +150,50 @@ Steps, each its own PR where it makes sense:
    - **Collecting a contact method first (Ivan) is not in this step.** Which screen
      and whether the identity is needed is still open (question 1), so Set an
      Appointment goes straight to scheduling for now.
-4. **Endpoints in the theme** (`inc/`, same style as `aicoach-progress.php` and
-   `gary-proxy.php`): create an appointment (the time is validated again on the
-   server, never trusted from the browser), return a link that is signed with an
-   HMAC so an edited link is detectable, and store the appointment next to the
-   visitor's progress record. The link state is computed from the server clock.
+4. **Endpoint in the theme (step 4)** (`inc/aicoach-appointment.php`, same style as
+   `aicoach-progress.php` and `gary-proxy.php`). The dev's decisions, 2026-10-09,
+   taken as defaults where the ticket is silent:
+   - `POST ihq/v1/aicoach/appointment` with the same nonce and the same per-IP write
+     limiter as the progress route. Body: `choice`, `date`, `time`, `timeZone`.
+     Returns 201 `{ link, startsAt }`, 400 `{ errors }` with the same codes as
+     `appointment.js` (the screen already has text for them), 429 when limited.
+   - **The server validates again** with a PHP port of `validateAppointment()`
+     (same rules: relative choices from the server clock, the field order, a time
+     not strictly after now is past, the skipped hour refused, the repeated hour
+     resolves to the first occurrence). The browser's clock and zone are never
+     trusted. The PHP tests repeat the JS table, so the two cannot drift.
+   - **Signed link:** `home_url( '/appointment/' )` with `?t=<token>`; the token is
+     the appointment id and start time, signed with HMAC-SHA256 (the pattern of
+     `gary-proxy.php`), so an edited link is detectable. The secret is the constant
+     `IHQ_AICOACH_APPOINTMENT_SECRET` from configuration, with `wp_salt()` as the
+     fallback. Verification (`ihq_aicoach_appointment_verify_token()`) is written
+     and tested here because it belongs with the signing; the page that uses it is
+     step 5. The visitor's cookie ref is never put in the link.
+   - **Storage:** one appointment per visitor, a new one replaces the old one. The
+     record lives in the visitor's progress (`appointment`: id, start, zone, created)
+     and in its own option `ihq_aicoach_appointment_<id>` (ref, start, zone, created),
+     so the link page can find the visitor from the id alone on another device,
+     where there is no cookie. Both are written by the server only: the browser could
+     write the `appointment` key through the generic progress route (a shape reserved
+     for this story), which would let it forge what the server later trusts, so that
+     key is removed from the progress sanitizer.
+   - **The screen** asks the endpoint for the link instead of building one
+     (`buildAppointmentLink()` is removed). The local check still runs first for
+     instant messages. The request starts inside the click and the clipboard write is
+     given the pending link (`ClipboardItem` with a promise, falling back to waiting
+     and `writeText`), because Safari on a phone only allows the write inside the
+     gesture and the design is a phone Safari frame. A server error shows a message
+     and nothing is copied.
+   - Zone names are checked against the server's own list (`DateTimeZone::listIdentifiers()`
+     with the legacy names), so offsets and abbreviations are refused. A browser that
+     reports a name this server's time zone data does not have (for example an old
+     alias such as `Europe/Kiev`, which this server has dropped) gets "time zone is not
+     valid" and can choose another name from the list.
+   - Not decided here and not needed: how long records are kept (options pile up
+     one per appointment, no cleanup yet; step 5's "expired" state is the natural
+     place to decide), and which channels the reminder uses (the progress record is
+     cleared at registration, so the reminder step has to read the channels from the
+     account then).
 5. **Link pages and reminder**: after the questions below are answered.
 
 ## Alternatives considered
@@ -313,6 +352,58 @@ appointment; nothing is deployed until those are agreed.
   below 414 px, and the screen's look at desktop width.
 - Known gaps, by design of this step: the copied link is the unsigned placeholder (step
   4), no page handles it, and a visitor with no contact method is not asked for one first (question 1).
+
+## Verification, step 4
+- `npm run test:js`: 147 tests (136 before; the placeholder link's tests are replaced by
+  tests for the request and the clipboard). `npm run test:php`: 12 suites, all pass,
+  the new `tests/aicoach-appointment.test.php` has 107 checks. Its time-rule cases
+  are the ones of `appointment.test.js` (the zone table, the refusals, the field order,
+  the boundary at exactly now, Tokyo against UTC), so the browser and the server are
+  held to the same rules. Also covered: the token (made, verified, a changed start or
+  signature, a missing or extra part, non-text input, a correctly signed payload of the
+  wrong shape, the configured secret against the salts), the stored records (own
+  option plus progress, a new one replacing the old one, another visitor untouched,
+  the rest of the progress kept, ids that are not UUIDs), the route (201, 400 with
+  codes, nothing stored on a refusal, non-text fields ignored, an oversized zone,
+  429 past the limit, `Cache-Control: no-store` on every answer) and that the progress
+  sanitizer drops an `appointment` sent by the browser.
+- Manual mutation checks on `inc/aicoach-appointment.php` (Stryker is deferred): 18
+  mutations (the past boundary, earliest against latest occurrence, the offset day,
+  the 23 and 59 limits, the 30 minutes, the field order, the signature comparison, the
+  part count, deleting the old appointment, dropping the progress save, dropping
+  `no-store`, ignoring the limiter, removing the date check, loosening the zone list,
+  ignoring the configured secret, the id format and the start type): 17 killed, and
+  the survivor (the id format check, because a name with no option returns null
+  anyway) got a test with an option of that name, which kills it.
+- wp-env (the route called from the page): missing fields 400 with the three codes, a
+  past time 400 `time-in-past`, a bad nonce 403, In an hour 201 with a link
+  `.../appointment/?t=<payload>.<signature>` and the start about an hour ahead; the
+  visitor's progress then holds the appointment (id, start, zone, created).
+- wp-env, the screen (414 px, threshold temporarily lowered and reverted): In 30 minutes
+  sent one request with the selection, the clipboard was written through a
+  `ClipboardItem` with the link the server returned, "Your appointment link is
+  copied.", the final screen 4 seconds later; the saved stage stayed `home`. With the
+  server answering 500 (fetch replaced): "We could not create your appointment link.
+  Please try again.", the button usable again, one request. With the clipboard refusing
+  both writes: the link shown in the field and the copy message, a second press made no
+  new request, copied the same link and moved on.
+- Failed writes (review, CodeRabbit): `ihq_aicoach_appointment_create()` used to delete
+  the visitor's previous appointment before writing the new one and ignored the write
+  results, so a failed write could leave the visitor with no appointment while the route
+  still answered 201 with a link for a record that was not saved. It now keeps the
+  previous appointment until both writes have succeeded, checks the option write, reads
+  the progress record back (`ihq_aicoach_progress_save()` does not report its result,
+  and `update_option()` leaves the cache alone when the write fails), removes the new
+  option if the progress write did not take, and the route answers 500 with no link.
+  10 new PHP checks (a failed appointment write, a failed progress write, the old
+  appointment kept, a retry that then works, the 500) and 7 mutations of this handling,
+  all killed. Live on wp-env: two requests in a row left one appointment option, the
+  visitor's current one.
+- Not verified: Safari on a phone (the reason for the `ClipboardItem` write; Chrome
+  here), a real server with Cloudflare in front, the signature against a configured
+  secret on a live instance (the unit test covers it), another visitor's appointment
+  in the same database, and the link page (step 5; the link goes to `/appointment/`,
+  which does not exist yet).
 
 ## Notes
 - The three scheduling options are a radio group (one choice) drawn as squares,
