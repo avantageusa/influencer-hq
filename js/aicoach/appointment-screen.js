@@ -133,3 +133,33 @@ export function timeZoneChoices( { zones, defaultZone } ) {
 	}
 	return { zones: [ defaultZone, ...zones ], selected: defaultZone };
 }
+
+/**
+ * Whether the visitor has already given a contact method: at least one channel with a
+ * value, captured in this visit or restored from their saved progress. Without one,
+ * choosing Set an Appointment first shows the channels screen (PO-3109, Ivan, 2026-10-10).
+ *
+ * @param {Array<{channel: string, value: string}>|null|undefined} channels
+ * @return {boolean}
+ */
+export function hasContactMethod( channels ) {
+	if ( ! Array.isArray( channels ) ) {
+		return false;
+	}
+	return channels.some( ( entry ) => Boolean( entry && entry.channel && entry.value ) );
+}
+
+const CHANNELS_SUBMITTED_STAGES = [ 'comm-channels', 'final-continue' ];
+
+/**
+ * Whether a saved stage is one where the channels form was already submitted, so a resume
+ * shows it as saved. At an earlier stage the saved channels came from a booking made
+ * before the visitor reached the channels step: the form is filled in but still editable,
+ * or the visitor could never get past it.
+ *
+ * @param {string|undefined|null} stage The saved stage.
+ * @return {boolean}
+ */
+export function channelsAreSubmitted( stage ) {
+	return CHANNELS_SUBMITTED_STAGES.includes( stage );
+}

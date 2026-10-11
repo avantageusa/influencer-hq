@@ -29,6 +29,9 @@ todos:
   - id: link-pages
     content: The appointment link page /appointment and its six states, with Join back into the AI Coach flow (step 5); the windows and "Start now instead" are defaults to be confirmed
     status: in-progress
+  - id: contact-method
+    content: A visitor who chooses Set an Appointment before giving a contact method is first shown the communication channels screen, then the scheduling screen (step 6)
+    status: in-progress
   - id: reminder
     content: Reminder 5 minutes before through the visitor's channels via Braze (depends on Steve)
     status: pending
@@ -147,9 +150,8 @@ Steps, each its own PR where it makes sense:
      time in `appointment` (ISO, UTC). It is not signed and no page handles it yet.
      It is isolated in one function so step 4 replaces it with the server's signed
      link. This change must not go to production before steps 4 and 5.
-   - **Collecting a contact method first (Ivan) is not in this step.** Which screen
-     and whether the identity is needed is still open (question 1), so Set an
-     Appointment goes straight to scheduling for now.
+   - **Collecting a contact method first is step 6** (below), not this one: in this
+     step Set an Appointment goes straight to scheduling.
 4. **Endpoint in the theme (step 4)** (`inc/aicoach-appointment.php`, same style as
    `aicoach-progress.php` and `gary-proxy.php`). The dev's decisions, 2026-10-09,
    taken as defaults where the ticket is silent:
@@ -242,6 +244,37 @@ Steps, each its own PR where it makes sense:
      it yet), the contact method at scheduling (design missing), the confirmation message
      and the reminder (Steve and BE), translations of the page (English only).
 
+6. **A contact method before scheduling (step 6).** Ivan Vladic's answer (Teams,
+   2026-10-10): if Time is up comes before the visitor has given a contact method and
+   they choose to carry on, nothing changes; if they choose to book, **the screen for
+   choosing the method must appear first, and only after it the choice of time**. The name
+   is not asked for at all ("nonsense"): Sami can greet the visitor by name only when they
+   come back to the booked meeting, if the name is known by then. In the code:
+   - **Which screen.** The existing `comm-channels` panel (checkboxes, an input per
+     channel, the same checks), used as it is. The Figma of the 2-minute track (node
+     44987:30109, screens A5 and A6) draws it differently ("Connect with ..." buttons and
+     "Forgot One?"); the restyle is a separate change that applies to this panel
+     wherever it is shown.
+   - **When it appears.** `startAppointmentScheduling()` asks whether the visitor already
+     has a contact method (`hasContactMethod()`, from the channels captured in this visit
+     or restored from the saved progress). If so it opens scheduling as before; if not it
+     opens the channels panel in a mode where its Continue goes to scheduling instead of
+     queuing the final screen.
+   - **Nothing else changes in the normal flow.** The panel is not saved as the visitor's
+     stage while it is open for the booking (it is transient in that mode), so a reload does
+     not resume into the channels panel without the identity. The channels themselves are
+     saved to the visitor's progress like on the normal path.
+   - **A visitor who comes back through the link** resumes at the screen they were on with
+     the channels already filled in. Before this step a resume with saved channels locked
+     the channels form as already submitted (Continue disabled, "Saved"), which was right
+     only for a visitor who had reached the end; a visitor who booked before the identity
+     step would get stuck on it later. The form is now locked only when the saved stage is
+     `comm-channels` or `final-continue`; for earlier stages it is filled in and editable.
+   - **Not in this step:** greeting by name (nothing in the flow does it), the reminder
+     and confirmation message (Steve and BE), the restyle of the channels panel.
+   - **Appointments shorter than 5 minutes:** unchanged, and still only an assumption (the
+     ticket leaves it undefined and Ivan did not take it up): allowed, with no reminder.
+
 ## Alternatives considered
 - Keeping the modal and only renaming the buttons: the design is a screen in
   the stage, not a modal, and a modal would sit over the coach.
@@ -259,15 +292,14 @@ appointment; nothing is deployed until those are agreed.
 
 ## Open questions (they block steps 3 to 5)
 1. ~~Reminder channels.~~ Answered (the dev, then Ivan Vladic on Teams,
-   2026-10-08): the channels come from the channel step of the flow (design nodes
-   44987:30249 and 45086:22830: "Let's Start The Conversation", the channel grid,
-   "Connect with ..." and "Forgot One?"). Time is up can appear before that step
-   (Ivan: possible "in theory"), so **when no contact method has been given yet,
-   Set an Appointment must first collect one, and only then go to scheduling.**
-   Still to settle for that path: whether it needs the identity (name) step as
-   well or only a channel, and which screen it uses (the channel screens in those
-   two nodes look different from the current `comm-channels` panel, a checkbox
-   list with an input per channel; that restyle is a separate change).
+   2026-10-08 and 2026-10-10): the channels come from the channel step of the flow
+   (design nodes 44987:30249 and 45086:22830: "Let's Start The Conversation", the
+   channel grid, "Connect with ..." and "Forgot One?"). Time is up can appear before
+   that step, so **when no contact method has been given yet, Set an Appointment
+   first shows the channels screen, and only then scheduling. The name is not asked
+   for** (step 6). Join returns the visitor to the AI Coach flow where they left
+   (Ivan: yes). There is no design for the link pages (Ivan: nothing for now), so the
+   plain version of step 5 stays.
 2. ~~**"The final screen" after copying**~~ Answered (design, screen 17): a new
    screen, "You are all set up" with a button "CONTINUE TO IHQ PORTAL". Still
    open: what happens to a visitor who has no account yet when they reach the Coach
@@ -498,6 +530,28 @@ appointment; nothing is deployed until those are agreed.
   on a real phone, the pages on dev and production (the page has to be created there first),
   and `composer lint:wpcs` is not clean on the new PHP (the same kinds of findings as the
   rest of the theme: space-indented markup, `const`, the `_s` text domain).
+
+## Verification, step 6
+- `npm run test:js`: 165 tests (159 before, 6 new for `hasContactMethod()` and
+  `channelsAreSubmitted()`); `npm run test:php`: 13 suites, all pass; `node --check` of the
+  entry as a module is clean. 8 manual mutations of the two helpers (every instead of some,
+  the value and the channel no longer required, an empty list counting, the array check, and
+  each of the three ways to change the list of submitted stages), all killed.
+- wp-env (threshold temporarily lowered to see Time is up quickly, reverted, not in the
+  diff). No channels yet, Set an Appointment: the channels panel appeared (Continue disabled,
+  "Please select at least one communication method."); no stage was saved while it was open.
+  With email dev@example.com, Continue went to the scheduling panel; the only save was
+  `{"channels":[{"channel":"email",...}]}` and the saved stage stayed `equity-bts`, never
+  `comm-channels`. After a reload the visitor resumed at `equity-bts` with the email filled in
+  and **Continue enabled** (the old behaviour would have locked it as "Saved"). With the
+  channels already saved, Set an Appointment went straight to scheduling. The normal path
+  after such a booking: resumed at `identity`, submitted the identity form, the channels panel
+  showed the email filled in with Continue enabled, and Continue reached the final screen.
+- Not verified: a booking made after real channels (typed through the form with the keyboard
+  and every validation) on other channels than email, the panel's look in the booking mode on
+  a real phone, a language other than English on that panel (its strings are the existing
+  translated ones), and the case where a booking-mode visitor reloads while on the channels
+  panel (written to resume at the saved stage; not driven).
 
 ## Notes
 - The three scheduling options are a radio group (one choice) drawn as squares,

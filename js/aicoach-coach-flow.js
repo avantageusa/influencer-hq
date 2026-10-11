@@ -30,6 +30,8 @@ import {
     requestAppointmentLink,
     copyToClipboard,
     timeZoneChoices,
+    hasContactMethod,
+    channelsAreSubmitted,
 } from '@ihq/aicoach/appointment-screen';
 
 /*
@@ -1364,6 +1366,11 @@ if ( stage && avatarWrap ) {
     // end the visit (the appointment screens), so they are never saved as the
     // visitor's stage: a reload must not resume into them.
     const TRANSIENT_PANEL_KEYS = [ 'time-up', 'appointment', 'appointment-done' ];
+    // PO-3109 step 6 — the channels panel is also shown, as a stop before scheduling, to a
+    // visitor who chose Set an Appointment before giving a contact method. In that mode it
+    // is transient too: reloading must not resume into the channels panel without the
+    // identity step it normally follows.
+    let channelsForAppointment = false;
 
     function getActivePanel() {
         return stage.querySelector( '.aicoach-panel.is-active' );
@@ -1411,7 +1418,9 @@ if ( stage && avatarWrap ) {
         // 20's continuous save, not just the 3 form-submit checkpoints. A
         // transient panel (Time is up) is never a place to resume into, so it is
         // not saved: the stage stays the screen the visitor came from.
-        if ( TRANSIENT_PANEL_KEYS.indexOf( panelKey ) === -1 ) {
+        const isTransient = TRANSIENT_PANEL_KEYS.indexOf( panelKey ) !== -1
+            || ( panelKey === 'comm-channels' && channelsForAppointment );
+        if ( ! isTransient ) {
             saveProgress( { stage: panelKey } );
         }
 
@@ -2281,6 +2290,15 @@ if ( stage && avatarWrap ) {
             channelsContinueBtn.disabled = true;
             channelsContinueBtn.textContent = cfg.i18n?.identitySaved || 'Saved';
 
+            // PO-3109 step 6 — the visitor came here to book: now that there is a way to
+            // reach them, on to choosing the time. The final screen is not queued; the
+            // flow stays held, as it has been since Time is up.
+            if ( channelsForAppointment ) {
+                channelsForAppointment = false;
+                openAppointmentScheduling();
+                return;
+            }
+
             // FR-09 — queue the final confirmation + account-creation screen, same
             // resume pattern as FR-07 queuing FR-08. sequenceEndDestination stays
             // null: nothing to navigate to on completing this screen's own
@@ -2530,7 +2548,19 @@ if ( stage && avatarWrap ) {
         };
     }
 
+    // Set an Appointment on Time is up. A visitor who has not given a contact method yet
+    // (Time is up can come long before the channels step) is first shown the channels
+    // screen and only then the choice of time (Ivan, 2026-10-10); the name is not asked.
     function startAppointmentScheduling() {
+        if ( ! hasContactMethod( capturedChannels ) ) {
+            channelsForAppointment = true;
+            showPanel( 'comm-channels' );
+            return;
+        }
+        openAppointmentScheduling();
+    }
+
+    function openAppointmentScheduling() {
         appointmentChoices.forEach( function ( choice ) {
             choice.checked = false;
         } );
@@ -2873,7 +2903,7 @@ if ( stage && avatarWrap ) {
         }
     }
 
-    function applyResumedChannels( channels ) {
+    function applyResumedChannels( channels, submitted ) {
         capturedChannels = channels;
         channels.forEach( function ( entry ) {
             const { checkbox, field, input } = getChannelParts( entry.channel );
@@ -2885,7 +2915,10 @@ if ( stage && avatarWrap ) {
             input.value = entry.value;
         } );
         updateChannelsContinueState();
-        if ( channelsContinueBtn && channels.length > 0 ) {
+        // Locked as already submitted only when the visitor got as far as the channels
+        // step. Channels saved earlier came from a booking made before it (PO-3109
+        // step 6): the form is filled in but editable, or they could never get past it.
+        if ( submitted && channelsContinueBtn && channels.length > 0 ) {
             channelsContinueBtn.disabled = true;
             channelsContinueBtn.textContent = cfg.i18n?.identitySaved || 'Saved';
         }
@@ -2929,7 +2962,7 @@ if ( stage && avatarWrap ) {
             applyResumedIdentity( progress.identity );
         }
         if ( progress.channels && progress.channels.length ) {
-            applyResumedChannels( progress.channels );
+            applyResumedChannels( progress.channels, channelsAreSubmitted( progress.stage ) );
         }
         if ( progress.qaHistory && progress.qaHistory.length && applyResumedQaHistory ) {
             applyResumedQaHistory( progress.qaHistory );
