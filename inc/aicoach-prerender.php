@@ -107,6 +107,12 @@ function ihq_aicoach_prerender_url_base() {
  */
 const IHQ_AICOACH_AVATAR_VERSION_OPTION = 'ihq_aicoach_avatar_version';
 
+/** How many 5 second polls one render waits for before it reports "pending" and lets the next run resume it. */
+const IHQ_AICOACH_PRERENDER_MAX_POLLS = 18;
+
+/** The shorter wait of a render step run from a web request, which a gateway cuts off at about a minute. */
+const IHQ_AICOACH_PRERENDER_STEP_MAX_POLLS = 5;
+
 /**
  * Whether a string can be an avatar version: "v" and one to three digits. A version ends
  * up in file names and in an idempotency key, so nothing else is accepted.
@@ -351,9 +357,11 @@ function ihq_aicoach_coach_get_video( $job_id ) {
  * @param callable|null $log         Optional fn(string $line) for CLI progress output.
  * @param string        $version     An avatar version to render into (its own manifest, file
  *                                    names and idempotency key), or '' for the original set.
+ * @param int           $max_polls   How many 5 second polls to wait for the job before
+ *                                    reporting 'pending'.
  * @return array{status:string, url?:string, error?:string, job_id?:string}
  */
-function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $language = 'en', $log = null, $version = '' ) {
+function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $language = 'en', $log = null, $version = '', $max_polls = IHQ_AICOACH_PRERENDER_MAX_POLLS ) {
 	$log = $log ?: function ( $line ) {};
 
 	$manifest_key = ihq_aicoach_prerender_manifest_key( $segment_key, $language );
@@ -401,7 +409,7 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $language 
 	// idempotently replay this same job and just keep polling it — confirmed
 	// live that a replay returns the job's current state instantly, ready or
 	// not.
-	$max_attempts = 18; // 18 x 5s = 90s.
+	$max_attempts = max( 0, (int) $max_polls ); // 18 x 5s = 90s by default.
 	$attempts     = 0;
 	$status_now   = $job['status'] ?? 'queued';
 	while ( ! in_array( $status_now, $terminal, true ) && $attempts < $max_attempts ) {
@@ -534,18 +542,18 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $language 
 }
 
 /**
- * Render every approved segment this page actually uses (per
- * ihq_aicoach_prerender_panel_map()). Called by the WP-CLI command below.
+ * What is to be rendered: every approved segment this page actually uses (per
+ * ihq_aicoach_prerender_panel_map()) in English, and in every other language that has a
+ * translated script of ours. The same list drives the WP-CLI command and the step-by-step
+ * run from a web page, so they cannot disagree about what the set is.
  *
- * @param callable|null $log     Optional fn(string $line) for progress output.
- * @param string        $version An avatar version to render into, or '' for the original set.
- * @return array<string,array>|WP_Error segment_key => result (same shape as
- *                              ihq_aicoach_prerender_segment()'s return), or
- *                              a WP_Error if the scripts fetch itself failed
- *                              — distinct from an empty array, which means
- *                              the fetch succeeded and nothing needed doing.
+ * @param callable|null $log Optional fn(string $line) for progress output (what is skipped).
+ * @return array<int,array{manifest_key:string,segment_key:string,language:string,text:string,sha256:string}>|WP_Error
+ *         The items in the order they are rendered, or a WP_Error if the scripts fetch itself
+ *         failed, which is not the same as an empty list (the fetch worked and nothing is
+ *         wanted).
  */
-function ihq_aicoach_prerender_all( $log = null, $version = '' ) {
+function ihq_aicoach_prerender_work_list( $log = null ) {
 	$log = $log ?: function ( $line ) {};
 
 	$scripts_result = ihq_coach_request( 'GET', '/coach/v1/registration/scripts', null );
@@ -568,9 +576,12 @@ function ihq_aicoach_prerender_all( $log = null, $version = '' ) {
 		);
 	}
 
-	$segments = $scripts_result['body']['segments'] ?? array();
-	$wanted   = array_unique( array_values( ihq_aicoach_prerender_panel_map() ) );
-	$results  = array();
+	$segments     = $scripts_result['body']['segments'] ?? array();
+	$wanted       = array_unique( array_values( ihq_aicoach_prerender_panel_map() ) );
+	$translations = function_exists( 'ihq_aicoach_segment_translations' )
+		? ihq_aicoach_segment_translations()
+		: array();
+	$items        = array();
 
 	foreach ( $wanted as $segment_key ) {
 		$segment = $segments[ $segment_key ] ?? null;
@@ -582,8 +593,13 @@ function ihq_aicoach_prerender_all( $log = null, $version = '' ) {
 			$log( "{$segment_key}: status is '{$segment['status']}', not approved — skipping (held content stays as static caption for now)" );
 			continue;
 		}
-		$log( "{$segment_key}: rendering (en)..." );
-		$results[ $segment_key ] = ihq_aicoach_prerender_segment( $segment_key, $segment['text'], $segment['sha256'], 'en', $log, $version );
+		$items[] = array(
+			'manifest_key' => ihq_aicoach_prerender_manifest_key( $segment_key, 'en' ),
+			'segment_key'  => $segment_key,
+			'language'     => 'en',
+			'text'         => $segment['text'],
+			'sha256'       => $segment['sha256'],
+		);
 
 		// FR-16 (single avatar/voice, confirmed with product 2026-09-25 — not a
 		// different avatar per language) — render the same approved segment in
@@ -594,26 +610,94 @@ function ihq_aicoach_prerender_all( $log = null, $version = '' ) {
 		// to borrow for non-English text — hash the translated text itself,
 		// which still gives the same "only re-render what actually changed"
 		// behavior once a translation gets corrected.
-		$translations = function_exists( 'ihq_aicoach_segment_translations' )
-			? ihq_aicoach_segment_translations()
-			: array();
 		foreach ( $translations[ $segment_key ] ?? array() as $language => $translated_text ) {
 			if ( '' === trim( (string) $translated_text ) ) {
 				continue;
 			}
-			$log( "{$segment_key}: rendering ({$language})..." );
-			$results[ "{$segment_key}__{$language}" ] = ihq_aicoach_prerender_segment(
-				$segment_key,
-				$translated_text,
-				hash( 'sha256', $translated_text ),
-				$language,
-				$log,
-				$version
+			$items[] = array(
+				'manifest_key' => ihq_aicoach_prerender_manifest_key( $segment_key, $language ),
+				'segment_key'  => $segment_key,
+				'language'     => $language,
+				'text'         => $translated_text,
+				'sha256'       => hash( 'sha256', $translated_text ),
 			);
 		}
 	}
 
+	return $items;
+}
+
+/**
+ * Render every approved segment this page actually uses (the work list above). Called by the
+ * WP-CLI command below.
+ *
+ * @param callable|null $log     Optional fn(string $line) for progress output.
+ * @param string        $version An avatar version to render into, or '' for the original set.
+ * @return array<string,array>|WP_Error segment_key => result (same shape as
+ *                              ihq_aicoach_prerender_segment()'s return), or
+ *                              a WP_Error if the scripts fetch itself failed
+ *                              — distinct from an empty array, which means
+ *                              the fetch succeeded and nothing needed doing.
+ */
+function ihq_aicoach_prerender_all( $log = null, $version = '' ) {
+	$log   = $log ?: function ( $line ) {};
+	$items = ihq_aicoach_prerender_work_list( $log );
+	if ( is_wp_error( $items ) ) {
+		return $items;
+	}
+
+	$results = array();
+	foreach ( $items as $item ) {
+		$log( "{$item['segment_key']}: rendering ({$item['language']})..." );
+		$results[ $item['manifest_key'] ] = ihq_aicoach_prerender_segment(
+			$item['segment_key'],
+			$item['text'],
+			$item['sha256'],
+			$item['language'],
+			$log,
+			$version
+		);
+	}
 	return $results;
+}
+
+/**
+ * One step of rendering a version from a web page, for a server with no WP-CLI: renders the
+ * item at an index of the work list and says how it went, so the page can walk through the
+ * list one request at a time. A request is cut off at about a minute, so a step waits only
+ * a few polls; an item still rendering is reported as 'pending' and the page asks for the
+ * same index again (Gary's job is replayed, not started again, because the key is the same).
+ *
+ * @param string $version An avatar version such as "v2". The original set is refused: this
+ *                        is for rendering a new version.
+ * @param int    $index   Position in the work list, from 0.
+ * @param int    $max_polls How many 5 second polls the step waits for.
+ * @return array|WP_Error {done:bool,index:int,total:int,key?:string,status?:string,error?:string}
+ */
+function ihq_aicoach_avatar_render_step( $version, $index, $max_polls = IHQ_AICOACH_PRERENDER_STEP_MAX_POLLS ) {
+	if ( ! ihq_aicoach_avatar_version_is_valid( $version ) ) {
+		return new WP_Error( 'avatar_version_invalid', 'An avatar version is "v" and one to three digits, for example v2.' );
+	}
+	$items = ihq_aicoach_prerender_work_list();
+	if ( is_wp_error( $items ) ) {
+		return $items;
+	}
+	$total = count( $items );
+	$index = (int) $index;
+	if ( $index < 0 || $index >= $total ) {
+		return array( 'done' => true, 'index' => $index, 'total' => $total );
+	}
+
+	$item   = $items[ $index ];
+	$result = ihq_aicoach_prerender_segment( $item['segment_key'], $item['text'], $item['sha256'], $item['language'], null, $version, $max_polls );
+	return array(
+		'done'   => false,
+		'index'  => $index,
+		'total'  => $total,
+		'key'    => $item['manifest_key'],
+		'status' => $result['status'],
+		'error'  => $result['error'] ?? '',
+	);
 }
 
 /**

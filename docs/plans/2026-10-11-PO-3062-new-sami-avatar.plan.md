@@ -86,12 +86,23 @@ What this means for the page:
   shown in a circle with `object-fit: cover`.
 - **Commands** (`wp aicoach`): `prerender --avatar-version=<v>` renders into a version,
   `activate-avatar <v|original>` switches, `avatar-status` shows the served version and how
-  complete each version is. A server with no WP-CLI uses the one-off trigger script that is
-  not in git, which is updated separately to pass the version.
-- **Order of the switch** (the plan the dev follows): 1) agree the time with Gary; 2) he
-  switches and sends the new id (or we see `say.video.avatar_id` change); 3) render version
-  `v2`; 4) check the clips and the portrait; 5) activate `v2`; 6) purge the cache if needed
-  and check the AI Coach page in every language.
+  complete each version is.
+- **A server with no WP-CLI (dev).** The list of what to render is one function,
+  `ihq_aicoach_prerender_work_list()` (the approved segments in English and in every
+  translation of ours: 63 items, checked live against Gary's scripts), used by the command and
+  by `ihq_aicoach_avatar_render_step( $version, $index )`, which renders one item and says how it
+  went. A request is cut off at about a minute, so a step waits only 5 polls (the command waits
+  18); an item still rendering is reported as `pending` and asked for again (Gary's job is
+  replayed under the same key, not started again). A small web page, kept outside git and deleted
+  from the server after use, walks through the items one request at a time, shows the status
+  table and has the switch and the way back; it is open to a logged-in administrator only and
+  every action carries a nonce.
+- **Order of the switch** (the plan the dev follows): 1) agree the time with Gary (Monday
+  2026-10-12, 15:00 CEST, 13:00 UTC); 2) he switches, checks the face on a live call and
+  emails the new `avatar_id`, and we see `say.video.avatar_id` move off
+  `3cb8331c-95d6-41d4-bb2f-bbc687581357`; 3) render version `v2` **on one site**; 4) check the
+  clips and the portrait; 5) copy that version's files to the other site; 6) activate `v2` on
+  each site; 7) purge the cache and check the AI Coach page in every language.
 
 ## Alternatives considered
 - **Re-render in place under the same names with a new key:** a visitor mid-flow gets a
@@ -127,7 +138,7 @@ runs inside one HTTP request needs the existing pending-and-resume behaviour.
   in every language).
 
 ## Verification
-- `npm run test:php`: 14 suites, all pass; the new `tests/aicoach-prerender.test.php` has 90
+- `npm run test:php`: 14 suites, all pass; the new `tests/aicoach-prerender.test.php` has 123
   checks (what can be a version, the version served, names, manifests and keys of the original
   set and of a version, a full render into a version with stubbed Coach API calls: the files,
   the manifest and the key sent, the cached case, `ihq_aicoach_prerender_all()` passing the
@@ -153,6 +164,18 @@ runs inside one HTTP request needs the existing pending-and-resume behaviour.
   export of the Figma node, cropped to the centre 3:2 (1092 x 728 of 1592 x 728) as Gary
   describes. His own crop file was not on this machine, so it is a reproduction of his framing,
   not his file; if he confirms a different frame, only this image changes.
+- The render step and the page for a server with no WP-CLI (wp-env, no clip rendered): not
+  logged in, the page and its calls answer 403; a call with no nonce or a wrong one answers 403;
+  the status call lists the versions; a step past the end reads Gary's real script list and
+  answers `done` with `total: 63` and renders nothing; the switch with nothing rendered is refused;
+  with a simulated complete `v2` the switch is made, repeated it says nothing changed, the AI Coach
+  page serves `.v2.mp4` clips, and the way back restores the original. The loop in the page was
+  driven with a replaced request function through rendered, cached, pending (asked again), a
+  gateway error (tried again, then stopped after four), a clip that fails (stops and says so) and
+  the end of the list. That run caught a bug in the page: a pending step carries a message, which
+  the first version took for an error and stopped on. 24 more mutations of the work list and the
+  step, all killed after two tests were added (the default poll counts, by reflection); the one
+  that survived changes a negative poll count, which behaves like zero.
 - Not verified: a real render against Gary's box (it costs 63 renders and the face of a job
   is fixed when it starts, so it has to wait for his confirmation of the switch), the commands
   on a server with no WP-CLI (they need the one-off trigger script, updated separately), the

@@ -20,6 +20,9 @@ $GLOBALS['wp_options']   = array();
 $GLOBALS['api_calls']    = array();
 $GLOBALS['scripts_body'] = array( 'segments' => array() );
 $GLOBALS['translations'] = array();
+$GLOBALS['scripts_status']        = 200;
+$GLOBALS['scripts_transport_error'] = false;
+$GLOBALS['post_job_status']       = 'ready'; // what a new job says: 'ready', or 'queued' to be polled
 mkdir( $GLOBALS['tmp'] . '/uploads', 0777, true );
 mkdir( $GLOBALS['tmp'] . '/theme/images/aicoach', 0777, true );
 
@@ -49,10 +52,17 @@ function ihq_aicoach_segment_translations() { return $GLOBALS['translations']; }
 function ihq_coach_request( $method, $path, $body = null, $headers = array() ) {
 	$GLOBALS['api_calls'][] = array( 'method' => $method, 'path' => $path, 'body' => $body, 'headers' => $headers );
 	if ( 'GET' === $method && '/coach/v1/registration/scripts' === $path ) {
-		return array( 'status' => 200, 'body' => $GLOBALS['scripts_body'] );
+		if ( $GLOBALS['scripts_transport_error'] ) {
+			return new WP_Error( 'http_request_failed', 'cURL error 6: Could not resolve host' );
+		}
+		return array( 'status' => $GLOBALS['scripts_status'], 'body' => $GLOBALS['scripts_body'] );
 	}
 	if ( 'POST' === $method && '/coach/v1/videos' === $path ) {
-		return array( 'status' => 202, 'body' => array( 'id' => 'job-' . count( $GLOBALS['api_calls'] ), 'status' => 'ready', 'content' => array( 'url' => '/coach/v1/videos/x/content' ) ) );
+		return array( 'status' => 202, 'body' => array( 'id' => 'job-' . count( $GLOBALS['api_calls'] ), 'status' => $GLOBALS['post_job_status'], 'content' => array( 'url' => '/coach/v1/videos/x/content' ) ) );
+	}
+	if ( 'GET' === $method && 0 === strpos( $path, '/coach/v1/videos/' ) ) {
+		// A poll: the job is ready by the first one.
+		return array( 'status' => 200, 'body' => array( 'status' => 'ready', 'content' => array( 'url' => '/coach/v1/videos/x/content' ) ) );
 	}
 	return array( 'status' => 404, 'body' => array() );
 }
@@ -153,6 +163,96 @@ check( 'a clip whose file is gone is not offered', array( 'en' ) === array_keys(
 put_clip( 'bts-ja.v2.mp4' );
 update_option( IHQ_AICOACH_AVATAR_VERSION_OPTION, '' );
 
+// --- the work list ---
+
+$GLOBALS['scripts_body'] = array(
+	'segments' => array(
+		'bts'     => array( 'status' => 'approved', 'text' => 'BTS text', 'sha256' => 'sha-bts' ),
+		'world'   => array( 'status' => 'approved', 'text' => 'World text', 'sha256' => 'sha-world' ),
+		'private' => array( 'status' => 'held', 'text' => 'Held text', 'sha256' => 'sha-private' ),
+	),
+);
+$GLOBALS['translations'] = array( 'bts' => array( 'ja' => 'BTS in Japanese', 'ko' => '   ' ), 'world' => array( 'ja' => 'World in Japanese' ), 'private' => array( 'ja' => 'Private in Japanese' ) );
+$logged = array();
+$list   = ihq_aicoach_prerender_work_list( function ( $line ) use ( &$logged ) { $logged[] = $line; } );
+check( 'the work list is the approved segments, each in English and then in its translations, in the page\'s order', array( 'bts', 'bts__ja', 'world', 'world__ja' ) === array_column( $list, 'manifest_key' ) );
+check( 'an item says what to render and how', array(
+	'manifest_key' => 'bts__ja',
+	'segment_key'  => 'bts',
+	'language'     => 'ja',
+	'text'         => 'BTS in Japanese',
+	'sha256'       => hash( 'sha256', 'BTS in Japanese' ),
+) === $list[1] );
+check( 'the English item carries Gary\'s own hash and text', 'sha-bts' === $list[0]['sha256'] && 'BTS text' === $list[0]['text'] && 'en' === $list[0]['language'] && 'bts' === $list[0]['segment_key'] );
+check( 'a translation that is only spaces is left out, and so is a held segment with its translations', ! in_array( 'bts__ko', array_column( $list, 'manifest_key' ), true ) && ! in_array( 'private__ja', array_column( $list, 'manifest_key' ), true ) );
+check( 'what is skipped is logged', in_array( "private: status is 'held', not approved — skipping (held content stays as static caption for now)", $logged, true ) && in_array( "community: not present in Gary's script manifest, skipping", $logged, true ) );
+check( 'the list is the same one every time', $list === ihq_aicoach_prerender_work_list() );
+
+$GLOBALS['scripts_status'] = 500;
+$bad_status = ihq_aicoach_prerender_work_list();
+check( 'a Gary error is an error, not an empty list', is_wp_error( $bad_status ) && 'coach_scripts_fetch_failed' === $bad_status->get_error_code() && false !== strpos( $bad_status->get_error_message(), '500' ) );
+$GLOBALS['scripts_status'] = 200;
+$GLOBALS['scripts_transport_error'] = true;
+$bad_transport = ihq_aicoach_prerender_work_list();
+check( 'a network failure is passed on as the error it is', is_wp_error( $bad_transport ) && 'http_request_failed' === $bad_transport->get_error_code() );
+$GLOBALS['scripts_transport_error'] = false;
+$GLOBALS['scripts_body'] = array( 'segments' => array() );
+check( 'nothing wanted is an empty list, not an error', array() === ihq_aicoach_prerender_work_list() );
+check( 'rendering everything passes the error on', is_wp_error( ( function () { $GLOBALS['scripts_status'] = 503; $r = ihq_aicoach_prerender_all(); $GLOBALS['scripts_status'] = 200; return $r; } )() ) );
+
+// --- a render step from a web page ---
+
+foreach ( glob( $dir . '/*' ) as $f ) { unlink( $f ); }
+$GLOBALS['wp_options'] = array();
+$GLOBALS['scripts_body'] = array(
+	'segments' => array(
+		'bts'   => array( 'status' => 'approved', 'text' => 'BTS text', 'sha256' => 'sha-bts' ),
+		'world' => array( 'status' => 'approved', 'text' => 'World text', 'sha256' => 'sha-world' ),
+	),
+);
+$GLOBALS['translations'] = array( 'bts' => array( 'ja' => 'BTS in Japanese' ), 'world' => array( 'ja' => 'World in Japanese' ) );
+
+reset_calls();
+foreach ( array( '', 'x', 'v', 'v1234', 'V2', "v2\n", null, 2 ) as $bad_version ) {
+	$step_bad = ihq_aicoach_avatar_render_step( $bad_version, 0 );
+	check( 'a step with a version that is not one is refused: ' . json_encode( $bad_version ), is_wp_error( $step_bad ) && 'avatar_version_invalid' === $step_bad->get_error_code() );
+}
+check( 'a refused step calls nothing', 0 === count( posted() ) && array() === array_filter( $GLOBALS['api_calls'], function ( $c ) { return 'POST' === $c['method']; } ) );
+
+reset_calls();
+$step0 = ihq_aicoach_avatar_render_step( 'v2', 0 );
+check( 'the first step renders the first item into the version and says so', array( 'done' => false, 'index' => 0, 'total' => 4, 'key' => 'bts', 'status' => 'rendered', 'error' => '' ) === $step0 );
+check( 'it wrote the version\'s clip and sent the version\'s key', file_exists( $dir . '/bts.v2.mp4' ) && ! file_exists( $dir . '/bts.mp4' ) && 'ihq-seg-bts-sha-bts-v2' === posted()[0]['headers']['Idempotency-Key'] );
+$again = ihq_aicoach_avatar_render_step( 'v2', 0 );
+check( 'asking for the same step again is cached and starts nothing', 'cached' === $again['status'] && 1 === count( posted() ) );
+$step1 = ihq_aicoach_avatar_render_step( 'v2', 1 );
+check( 'the next step is the next item', 'bts__ja' === $step1['key'] && 1 === $step1['index'] && 'rendered' === $step1['status'] && file_exists( $dir . '/bts-ja.v2.mp4' ) );
+$step_text = ihq_aicoach_avatar_render_step( 'v2', '2' );
+check( 'an index given as text is the same index', 'world' === $step_text['key'] && 2 === $step_text['index'] );
+$past = ihq_aicoach_avatar_render_step( 'v2', 4 );
+check( 'past the last item the run is done and says how many there were', array( 'done' => true, 'index' => 4, 'total' => 4 ) === $past );
+$before = count( posted() );
+$negative = ihq_aicoach_avatar_render_step( 'v2', -1 );
+check( 'a negative index is done as well, and neither starts a render', true === $negative['done'] && $before === count( posted() ) );
+
+$GLOBALS['post_job_status'] = 'queued';
+$pending = ihq_aicoach_avatar_render_step( 'v2', 3, 0 );
+check( 'a job still rendering is reported as pending, with the step\'s poll count honoured', 'pending' === $pending['status'] && 'world__ja' === $pending['key'] && false !== strpos( $pending['error'], 'still in progress' ) && ! file_exists( $dir . '/world-ja.v2.mp4' ) );
+check( 'a pending item is not recorded as rendered', ! isset( ihq_aicoach_prerender_load_manifest( 'v2' )['world__ja'] ) );
+$GLOBALS['post_job_status'] = 'ready';
+$retry = ihq_aicoach_avatar_render_step( 'v2', 3 );
+check( 'asking again once it is ready renders it', 'rendered' === $retry['status'] && file_exists( $dir . '/world-ja.v2.mp4' ) );
+check( 'the polls of a step are few and of a run many', 5 === IHQ_AICOACH_PRERENDER_STEP_MAX_POLLS && 18 === IHQ_AICOACH_PRERENDER_MAX_POLLS );
+$step_default    = ( new ReflectionFunction( 'ihq_aicoach_avatar_render_step' ) )->getParameters()[2]->getDefaultValue();
+$segment_default = ( new ReflectionFunction( 'ihq_aicoach_prerender_segment' ) )->getParameters()[6]->getDefaultValue();
+check( 'a step waits for few polls by default, so a web request is not cut off, and a run for many', 5 === $step_default && 18 === $segment_default );
+
+$GLOBALS['scripts_status'] = 502;
+$step_down = ihq_aicoach_avatar_render_step( 'v2', 0 );
+check( 'a step passes on a Gary outage as an error', is_wp_error( $step_down ) && 'coach_scripts_fetch_failed' === $step_down->get_error_code() );
+$GLOBALS['scripts_status'] = 200;
+check( 'the four steps together made the whole set', array( 'bts', 'bts__ja', 'world', 'world__ja' ) === array_keys( ihq_aicoach_prerender_load_manifest( 'v2' ) ) );
+
 // --- rendering everything into a version ---
 
 foreach ( glob( $dir . '/*' ) as $f ) { unlink( $f ); }
@@ -176,6 +276,7 @@ check( 'running it again renders nothing', 0 === count( posted() ) && 4 === coun
 reset_calls();
 ihq_aicoach_prerender_all();
 check( 'with no version it renders the original set, which the version does not cover', 4 === count( posted() ) && file_exists( $dir . '/manifest.json' ) && file_exists( $dir . '/bts.mp4' ) );
+
 
 // --- the checked switch ---
 
