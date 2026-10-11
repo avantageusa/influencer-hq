@@ -6,6 +6,7 @@ import {
 	appointmentErrorKey,
 	requestAppointmentLink,
 	copyToClipboard,
+	hasContactMethod,
 	timeZoneChoices,
 } from './appointment-screen.js';
 
@@ -208,4 +209,26 @@ test( 'the zone list handed in is not changed', () => {
 	timeZoneChoices( { zones, defaultZone: 'UTC' } );
 	timeZoneChoices( { zones, defaultZone: '' } );
 	assert.deepEqual( zones, [ 'UTC' ] );
+} );
+
+test( 'a visitor with a channel and a value has a contact method', () => {
+	assert.equal( hasContactMethod( [ { channel: 'email', value: 'a@b.co' } ] ), true );
+	assert.equal( hasContactMethod( [ { channel: 'sms', value: '+66812345678' }, { channel: 'email', value: 'a@b.co' } ] ), true );
+} );
+
+test( 'no channels, an empty list or nothing at all is no contact method', () => {
+	[ null, undefined, [], {}, 'email', 5 ].forEach( ( value ) => {
+		assert.equal( hasContactMethod( value ), false, JSON.stringify( value ) );
+	} );
+} );
+
+test( 'a channel with no value, or an entry that is not a channel, is no contact method', () => {
+	assert.equal( hasContactMethod( [ { channel: 'email', value: '' } ] ), false );
+	assert.equal( hasContactMethod( [ { channel: '', value: 'a@b.co' } ] ), false );
+	assert.equal( hasContactMethod( [ { value: 'a@b.co' } ] ), false );
+	assert.equal( hasContactMethod( [ null, undefined, 'email', 5 ] ), false );
+} );
+
+test( 'one usable channel among unusable ones is enough', () => {
+	assert.equal( hasContactMethod( [ { channel: 'email', value: '' }, { channel: 'line', value: 'U0123456789abcdef0123456789abcdef' } ] ), true );
 } );

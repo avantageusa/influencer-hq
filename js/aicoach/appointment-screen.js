@@ -133,3 +133,18 @@ export function timeZoneChoices( { zones, defaultZone } ) {
 	}
 	return { zones: [ defaultZone, ...zones ], selected: defaultZone };
 }
+
+/**
+ * Whether the visitor has already given a contact method: at least one channel with a
+ * value, captured in this visit or restored from their saved progress. Without one,
+ * choosing Set an Appointment first shows the channels screen (PO-3109, Ivan, 2026-10-10).
+ *
+ * @param {Array<{channel: string, value: string}>|null|undefined} channels
+ * @return {boolean}
+ */
+export function hasContactMethod( channels ) {
+	if ( ! Array.isArray( channels ) ) {
+		return false;
+	}
+	return channels.some( ( entry ) => Boolean( entry && entry.channel && entry.value ) );
+}

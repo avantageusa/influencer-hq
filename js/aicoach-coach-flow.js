@@ -30,6 +30,7 @@ import {
     requestAppointmentLink,
     copyToClipboard,
     timeZoneChoices,
+    hasContactMethod,
 } from '@ihq/aicoach/appointment-screen';
 
 /*
@@ -1364,6 +1365,11 @@ if ( stage && avatarWrap ) {
     // end the visit (the appointment screens), so they are never saved as the
     // visitor's stage: a reload must not resume into them.
     const TRANSIENT_PANEL_KEYS = [ 'time-up', 'appointment', 'appointment-done' ];
+    // PO-3109 step 6 — the channels panel is also shown, as a stop before scheduling, to a
+    // visitor who chose Set an Appointment before giving a contact method. In that mode it
+    // is transient too: reloading must not resume into the channels panel without the
+    // identity step it normally follows.
+    let channelsForAppointment = false;
 
     function getActivePanel() {
         return stage.querySelector( '.aicoach-panel.is-active' );
@@ -1411,7 +1417,9 @@ if ( stage && avatarWrap ) {
         // 20's continuous save, not just the 3 form-submit checkpoints. A
         // transient panel (Time is up) is never a place to resume into, so it is
         // not saved: the stage stays the screen the visitor came from.
-        if ( TRANSIENT_PANEL_KEYS.indexOf( panelKey ) === -1 ) {
+        const isTransient = TRANSIENT_PANEL_KEYS.indexOf( panelKey ) !== -1
+            || ( panelKey === 'comm-channels' && channelsForAppointment );
+        if ( ! isTransient ) {
             saveProgress( { stage: panelKey } );
         }
 
@@ -2281,6 +2289,15 @@ if ( stage && avatarWrap ) {
             channelsContinueBtn.disabled = true;
             channelsContinueBtn.textContent = cfg.i18n?.identitySaved || 'Saved';
 
+            // PO-3109 step 6 — the visitor came here to book: now that there is a way to
+            // reach them, on to choosing the time. The final screen is not queued; the
+            // flow stays held, as it has been since Time is up.
+            if ( channelsForAppointment ) {
+                channelsForAppointment = false;
+                openAppointmentScheduling();
+                return;
+            }
+
             // FR-09 — queue the final confirmation + account-creation screen, same
             // resume pattern as FR-07 queuing FR-08. sequenceEndDestination stays
             // null: nothing to navigate to on completing this screen's own
@@ -2530,7 +2547,19 @@ if ( stage && avatarWrap ) {
         };
     }
 
+    // Set an Appointment on Time is up. A visitor who has not given a contact method yet
+    // (Time is up can come long before the channels step) is first shown the channels
+    // screen and only then the choice of time (Ivan, 2026-10-10); the name is not asked.
     function startAppointmentScheduling() {
+        if ( ! hasContactMethod( capturedChannels ) ) {
+            channelsForAppointment = true;
+            showPanel( 'comm-channels' );
+            return;
+        }
+        openAppointmentScheduling();
+    }
+
+    function openAppointmentScheduling() {
         appointmentChoices.forEach( function ( choice ) {
             choice.checked = false;
         } );
@@ -2884,11 +2913,14 @@ if ( stage && avatarWrap ) {
             field.hidden = false;
             input.value = entry.value;
         } );
+        // The form is filled in and stays editable, with Continue enabled. It used to be
+        // locked as "Saved" here, but saved channels do not mean the form was submitted: a
+        // booking made before the channels step (PO-3109 step 6) saves them too, and then
+        // reaching the channels panel saves its stage, so a reload there would have locked
+        // a form whose Continue is the only way on (it is what queues the final screen).
+        // Pressing Continue again is harmless, and once the final screen has been reached
+        // the channels panel is never shown again.
         updateChannelsContinueState();
-        if ( channelsContinueBtn && channels.length > 0 ) {
-            channelsContinueBtn.disabled = true;
-            channelsContinueBtn.textContent = cfg.i18n?.identitySaved || 'Saved';
-        }
     }
 
     // The dynamic SCREENS panel keys in the exact order a fresh flow reaches them
