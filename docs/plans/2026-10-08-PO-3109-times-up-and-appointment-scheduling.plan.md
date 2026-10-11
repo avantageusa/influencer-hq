@@ -265,11 +265,17 @@ Steps, each its own PR where it makes sense:
      not resume into the channels panel without the identity. The channels themselves are
      saved to the visitor's progress like on the normal path.
    - **A visitor who comes back through the link** resumes at the screen they were on with
-     the channels already filled in. Before this step a resume with saved channels locked
-     the channels form as already submitted (Continue disabled, "Saved"), which was right
-     only for a visitor who had reached the end; a visitor who booked before the identity
-     step would get stuck on it later. The form is now locked only when the saved stage is
-     `comm-channels` or `final-continue`; for earlier stages it is filled in and editable.
+     the channels already filled in, and the form stays editable with Continue enabled.
+     Before this step a resume with saved channels locked the channels form as already
+     submitted (Continue disabled, "Saved"). That was only safe while saved channels meant
+     a submitted form. A booking made before the channels step saves channels too, and
+     reaching the channels panel afterwards saves its stage, so a reload there would lock a
+     form whose Continue is the only way on (it queues the final screen). The first version
+     of this step kept the lock for the stages `comm-channels` and `final-continue`
+     (`channelsAreSubmitted()`); CodeRabbit (#108) caught that this still locks the form in
+     exactly that case, and tracking "submitted" separately buys nothing, because pressing
+     Continue again is harmless and the panel is never shown again once the final screen has
+     been reached. The lock and the helper are removed.
    - **Not in this step:** greeting by name (nothing in the flow does it), the reminder
      and confirmation message (Steve and BE), the restyle of the channels panel.
    - **Appointments shorter than 5 minutes:** unchanged, and still only an assumption (the
@@ -532,18 +538,20 @@ appointment; nothing is deployed until those are agreed.
   rest of the theme: space-indented markup, `const`, the `_s` text domain).
 
 ## Verification, step 6
-- `npm run test:js`: 165 tests (159 before, 6 new for `hasContactMethod()` and
-  `channelsAreSubmitted()`); `npm run test:php`: 13 suites, all pass; `node --check` of the
-  entry as a module is clean. 8 manual mutations of the two helpers (every instead of some,
-  the value and the channel no longer required, an empty list counting, the array check, and
-  each of the three ways to change the list of submitted stages), all killed.
+- `npm run test:js`: 163 tests (159 before, 4 new for `hasContactMethod()`);
+  `npm run test:php`: 13 suites, all pass; `node --check` of the entry as a module is clean.
+  5 manual mutations of the helper (every instead of some, the value and the channel no longer
+  required, an empty list counting, the array check), all killed.
 - wp-env (threshold temporarily lowered to see Time is up quickly, reverted, not in the
   diff). No channels yet, Set an Appointment: the channels panel appeared (Continue disabled,
   "Please select at least one communication method."); no stage was saved while it was open.
   With email dev@example.com, Continue went to the scheduling panel; the only save was
   `{"channels":[{"channel":"email",...}]}` and the saved stage stayed `equity-bts`, never
   `comm-channels`. After a reload the visitor resumed at `equity-bts` with the email filled in
-  and **Continue enabled** (the old behaviour would have locked it as "Saved"). With the
+  and **Continue enabled** (the old behaviour would have locked it as "Saved"). Review
+  (CodeRabbit, #108): the same with the saved stage `comm-channels` (a booking, then the
+  normal channels panel, then a reload before Continue): the first version locked the form;
+  now the email is filled in, Continue is enabled and reaches the final screen. With the
   channels already saved, Set an Appointment went straight to scheduling. The normal path
   after such a booking: resumed at `identity`, submitted the identity form, the channels panel
   showed the email filled in with Continue enabled, and Continue reached the final screen.

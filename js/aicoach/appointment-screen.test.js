@@ -7,7 +7,6 @@ import {
 	requestAppointmentLink,
 	copyToClipboard,
 	hasContactMethod,
-	channelsAreSubmitted,
 	timeZoneChoices,
 } from './appointment-screen.js';
 
@@ -232,15 +231,4 @@ test( 'a channel with no value, or an entry that is not a channel, is no contact
 
 test( 'one usable channel among unusable ones is enough', () => {
 	assert.equal( hasContactMethod( [ { channel: 'email', value: '' }, { channel: 'line', value: 'U0123456789abcdef0123456789abcdef' } ] ), true );
-} );
-
-test( 'the channels form counts as submitted only at the channels and final stages', () => {
-	assert.equal( channelsAreSubmitted( 'comm-channels' ), true );
-	assert.equal( channelsAreSubmitted( 'final-continue' ), true );
-} );
-
-test( 'at every other stage, or none, the saved channels are editable', () => {
-	[ 'identity', 'intro', 'believe-1', 'home', 'equity-bts', 'competition-world', 'time-up', 'appointment', '', undefined, null ].forEach( ( stage ) => {
-		assert.equal( channelsAreSubmitted( stage ), false, String( stage ) );
-	} );
 } );

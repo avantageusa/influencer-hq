@@ -148,18 +148,3 @@ export function hasContactMethod( channels ) {
 	}
 	return channels.some( ( entry ) => Boolean( entry && entry.channel && entry.value ) );
 }
-
-const CHANNELS_SUBMITTED_STAGES = [ 'comm-channels', 'final-continue' ];
-
-/**
- * Whether a saved stage is one where the channels form was already submitted, so a resume
- * shows it as saved. At an earlier stage the saved channels came from a booking made
- * before the visitor reached the channels step: the form is filled in but still editable,
- * or the visitor could never get past it.
- *
- * @param {string|undefined|null} stage The saved stage.
- * @return {boolean}
- */
-export function channelsAreSubmitted( stage ) {
-	return CHANNELS_SUBMITTED_STAGES.includes( stage );
-}

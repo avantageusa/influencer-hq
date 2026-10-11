@@ -31,7 +31,6 @@ import {
     copyToClipboard,
     timeZoneChoices,
     hasContactMethod,
-    channelsAreSubmitted,
 } from '@ihq/aicoach/appointment-screen';
 
 /*
@@ -2903,7 +2902,7 @@ if ( stage && avatarWrap ) {
         }
     }
 
-    function applyResumedChannels( channels, submitted ) {
+    function applyResumedChannels( channels ) {
         capturedChannels = channels;
         channels.forEach( function ( entry ) {
             const { checkbox, field, input } = getChannelParts( entry.channel );
@@ -2914,14 +2913,14 @@ if ( stage && avatarWrap ) {
             field.hidden = false;
             input.value = entry.value;
         } );
+        // The form is filled in and stays editable, with Continue enabled. It used to be
+        // locked as "Saved" here, but saved channels do not mean the form was submitted: a
+        // booking made before the channels step (PO-3109 step 6) saves them too, and then
+        // reaching the channels panel saves its stage, so a reload there would have locked
+        // a form whose Continue is the only way on (it is what queues the final screen).
+        // Pressing Continue again is harmless, and once the final screen has been reached
+        // the channels panel is never shown again.
         updateChannelsContinueState();
-        // Locked as already submitted only when the visitor got as far as the channels
-        // step. Channels saved earlier came from a booking made before it (PO-3109
-        // step 6): the form is filled in but editable, or they could never get past it.
-        if ( submitted && channelsContinueBtn && channels.length > 0 ) {
-            channelsContinueBtn.disabled = true;
-            channelsContinueBtn.textContent = cfg.i18n?.identitySaved || 'Saved';
-        }
     }
 
     // The dynamic SCREENS panel keys in the exact order a fresh flow reaches them
@@ -2962,7 +2961,7 @@ if ( stage && avatarWrap ) {
             applyResumedIdentity( progress.identity );
         }
         if ( progress.channels && progress.channels.length ) {
-            applyResumedChannels( progress.channels, channelsAreSubmitted( progress.stage ) );
+            applyResumedChannels( progress.channels );
         }
         if ( progress.qaHistory && progress.qaHistory.length && applyResumedQaHistory ) {
             applyResumedQaHistory( progress.qaHistory );
