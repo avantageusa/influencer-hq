@@ -73,7 +73,7 @@ What this means for the page:
 - **One version is served.** The option `ihq_aicoach_avatar_version` holds it (empty means
   today's set). `ihq_aicoach_prerender_get_urls()` reads that manifest only, so rendering a
   new version changes nothing visitors see.
-- **Switching is one checked step.** `ihq_aicoach_prerender_activate( $version )` compares the
+- **Switching is one checked step.** `ihq_aicoach_avatar_activate( $version )` compares the
   new version with what is served now: every clip the served manifest has must exist, as a
   file, in the new version's manifest. If one is missing it changes nothing and lists them.
   Otherwise it sets the option. Activating `''` is the way back (the old files are never
