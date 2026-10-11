@@ -96,6 +96,19 @@ function ihq_aicoach_progress_get_ref() {
 	}
 
 	$ref = wp_generate_uuid4();
+	ihq_aicoach_progress_set_ref_cookie( $ref );
+	return $ref;
+}
+
+/**
+ * Sends the progress ref cookie. Also used when a visitor joins an appointment from its
+ * link (inc/aicoach-appointment-page.php), to give them back their saved progress on a
+ * device that has no cookie.
+ *
+ * @param string $ref A valid UUID.
+ * @return void
+ */
+function ihq_aicoach_progress_set_ref_cookie( $ref ) {
 	// Headers may already be sent in some contexts (e.g. a unit-style call) — best-effort,
 	// same discipline as every other cookie-setting call in this theme.
 	if ( ! headers_sent() ) {
@@ -111,7 +124,6 @@ function ihq_aicoach_progress_get_ref() {
 			)
 		);
 	}
-	return $ref;
 }
 
 /**

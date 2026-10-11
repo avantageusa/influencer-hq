@@ -200,8 +200,9 @@ function ihq_render_concierge_fab() {
 	// page-home-aicoach.php has its own "Sami" video avatar (also a fixed
 	// bottom-right circle, same shape as this FAB) — Filip flagged the old
 	// concierge widget still floating over it, same collision page-portal-home.php
-	// is already excluded for above.
-	if ( is_page_template( array( 'page-portal-home.php', 'page-home-aicoach.php' ) ) ) {
+	// is already excluded for above. The appointment link page (PO-3109) shows the same
+	// Sami portrait, so it is excluded for the same reason.
+	if ( is_page_template( array( 'page-portal-home.php', 'page-home-aicoach.php', 'page-appointment.php' ) ) ) {
 		return;
 	}
 	get_template_part( 'template-parts/concierge-fab' );
@@ -401,6 +402,7 @@ require_once get_template_directory() . '/inc/aicoach-prerender.php';
  */
 require_once get_template_directory() . '/inc/aicoach-progress.php';
 require_once get_template_directory() . '/inc/aicoach-appointment.php';
+require_once get_template_directory() . '/inc/aicoach-appointment-page.php';
 
 /**
  * AI Coach uninterrupted registration event (PO-3257).

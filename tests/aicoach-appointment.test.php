@@ -25,6 +25,10 @@ function wp_array_slice_assoc( $array, $keys ) { return array_intersect_key( $ar
 function wp_json_encode( $value ) { return json_encode( $value ); }
 function wp_salt( $scheme = 'auth' ) { return 'salt-for-' . $scheme; }
 function home_url( $path = '' ) { return 'https://example.test' . $path; }
+// The link page: a WordPress page with the slug `appointment`, unless a test removes it.
+$GLOBALS['wp_pages'] = array( 'appointment' => (object) array( 'post_status' => 'publish', 'permalink' => 'https://example.test/appointment/' ) );
+function get_page_by_path( $path ) { return $GLOBALS['wp_pages'][ $path ] ?? null; }
+function get_permalink( $page ) { return $page->permalink; }
 function add_query_arg( $key, $value, $url ) { return $url . '?' . rawurlencode( $key ) . '=' . rawurlencode( $value ); }
 function wp_generate_uuid4() {
 	static $n = 0;
@@ -219,8 +223,50 @@ check( 'the two secrets give different tokens for the same appointment', $token 
 
 // --- link ---
 
-$link = ihq_aicoach_appointment_link( $id, 1791000000 );
-check( 'the link points to the appointment page with the token', 'https://example.test/appointment/?t=' . rawurlencode( $token_configured ) === $link );
+$link = ihq_aicoach_appointment_link( 'https://example.test/appointment/', $id, 1791000000 );
+check( 'the link points to the page it is given, with the token', 'https://example.test/appointment/?t=' . rawurlencode( $token_configured ) === $link );
+check( 'the page address is the permalink of the published page with the slug appointment', 'https://example.test/appointment/' === ihq_aicoach_appointment_page_url() );
+$GLOBALS['wp_pages']['appointment']->post_status = 'draft';
+check( 'a page that is not published is no page for the link', null === ihq_aicoach_appointment_page_url() );
+$GLOBALS['wp_pages']['appointment']->post_status = 'publish';
+$saved_page = $GLOBALS['wp_pages']['appointment'];
+unset( $GLOBALS['wp_pages']['appointment'] );
+check( 'with no such page there is no address', null === ihq_aicoach_appointment_page_url() );
+$GLOBALS['wp_pages']['appointment'] = $saved_page;
+
+// --- the states of a link, from the server clock ---
+
+$start = 1791000000;
+$min   = 60;
+foreach ( array(
+	array( 'long before the start', $start - 3 * 3600, 'waiting' ),
+	array( 'one second before join opens', $start - 10 * $min - 1, 'waiting' ),
+	array( 'exactly 10 minutes before the start', $start - 10 * $min, 'join' ),
+	array( 'at the start', $start, 'join' ),
+	array( 'one second before 15 minutes after', $start + 15 * $min - 1, 'join' ),
+	array( 'exactly 15 minutes after the start (the ticket puts it on both pages)', $start + 15 * $min, 'missed' ),
+	array( 'an hour after', $start + 3600, 'missed' ),
+	array( 'exactly 24 hours after', $start + 86400, 'missed' ),
+	array( 'one second over 24 hours after', $start + 86401, 'expired' ),
+	array( 'a week after', $start + 7 * 86400, 'expired' ),
+) as $case ) {
+	check( 'state ' . $case[0], $case[2] === ihq_aicoach_appointment_state( $start, $case[1] ) );
+}
+check( 'a finished process is ended, whatever the time', 'ended' === ihq_aicoach_appointment_state( $start, $start - 3 * 3600, true ) && 'ended' === ihq_aicoach_appointment_state( $start, $start + 7 * 86400, true ) && 'ended' === ihq_aicoach_appointment_state( $start, $start, true ) );
+
+// --- how long until the state changes ---
+
+check( 'waiting changes when join opens', 600 === ihq_aicoach_appointment_seconds_to_next_state( $start, $start - 1200, 'waiting' ) );
+check( 'join changes 15 minutes after the start', 900 === ihq_aicoach_appointment_seconds_to_next_state( $start, $start, 'join' ) );
+check( 'missed changes after the 24th hour', 86401 === ihq_aicoach_appointment_seconds_to_next_state( $start, $start, 'missed' ) );
+check( 'the wait is never less than a second', 1 === ihq_aicoach_appointment_seconds_to_next_state( $start, $start + 99999, 'waiting' ) );
+check( 'expired, ended and invalid never change', null === ihq_aicoach_appointment_seconds_to_next_state( $start, $start, 'expired' ) && null === ihq_aicoach_appointment_seconds_to_next_state( $start, $start, 'ended' ) && null === ihq_aicoach_appointment_seconds_to_next_state( $start, $start, 'invalid' ) );
+check( 'a wait is a whole number', is_int( ihq_aicoach_appointment_seconds_to_next_state( $start, $start - 1200, 'waiting' ) ) );
+foreach ( array( array( 'waiting', $start - 1200 ), array( 'join', $start ), array( 'missed', $start + 3600 ) ) as $case ) {
+	$wait = ihq_aicoach_appointment_seconds_to_next_state( $start, $case[1], $case[0] );
+	check( 'after the wait the state is no longer ' . $case[0], $case[0] !== ihq_aicoach_appointment_state( $start, $case[1] + $wait ) );
+	check( 'one second before the wait ends the state is still ' . $case[0], $wait <= 1 || $case[0] === ihq_aicoach_appointment_state( $start, $case[1] + $wait - 1 ) );
+}
 
 // --- storage ---
 
@@ -270,6 +316,18 @@ check( 'load refuses an id that is not a UUID even when an option of that name e
 unset( $GLOBALS['wp_options']['ihq_aicoach_appointment_not-an-id'] );
 check( 'load returns null for an id with no appointment', null === ihq_aicoach_appointment_load( 'ffffffff-ffff-4fff-8fff-ffffffffffff' ) );
 
+// --- finished appointments ---
+
+$done_ref = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+$done     = ihq_aicoach_appointment_create( $done_ref, 1791030000, 'UTC', $now );
+check( 'a new appointment is not completed', ! isset( ihq_aicoach_appointment_load( $done['id'] )['completedAt'] ) );
+check( 'marking a visitor\'s appointment as completed says so', true === ihq_aicoach_appointment_mark_completed( $done_ref, $now + 60 ) );
+check( 'the appointment then carries when it was completed', gmdate( 'c', $now + 60 ) === ihq_aicoach_appointment_load( $done['id'] )['completedAt'] );
+check( 'marking keeps the rest of the appointment', 1791030000 === ihq_aicoach_appointment_load( $done['id'] )['startsAt'] && $done_ref === ihq_aicoach_appointment_load( $done['id'] )['ref'] );
+check( 'a visitor with no appointment has nothing to mark', false === ihq_aicoach_appointment_mark_completed( 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', $now ) );
+ihq_aicoach_progress_save( 'ffffffff-ffff-4fff-8fff-ffffffffffff', array( 'appointment' => array( 'id' => '99999999-9999-4999-8999-999999999999' ) ) );
+check( 'a progress record that points to a missing appointment has nothing to mark', false === ihq_aicoach_appointment_mark_completed( 'ffffffff-ffff-4fff-8fff-ffffffffffff', $now ) );
+
 // --- the browser cannot write an appointment through the progress route ---
 
 check(
@@ -311,6 +369,15 @@ unset( $GLOBALS['wp_options_failing_prefix'] );
 check( 'a save that fails is answered with 500 and no link', 500 === $response->status && array( 'error' => 'The appointment could not be saved.' ) === $response->data );
 check( 'the failed save is never cached either', array( 'Cache-Control' => 'no-store, private' ) === $response->headers );
 check( 'the failed save changed nothing', $before === $GLOBALS['wp_options'] );
+
+$before = $GLOBALS['wp_options'];
+$saved_page = $GLOBALS['wp_pages']['appointment'];
+unset( $GLOBALS['wp_pages']['appointment'] );
+$response = $post( array( 'choice' => 'in-an-hour' ) );
+$GLOBALS['wp_pages']['appointment'] = $saved_page;
+check( 'with no link page the answer is 500 and no link', 500 === $response->status && array( 'error' => 'The appointment page is not available.' ) === $response->data );
+check( 'with no link page nothing is stored', $before === $GLOBALS['wp_options'] );
+check( 'that answer is never cached either', array( 'Cache-Control' => 'no-store, private' ) === $response->headers );
 
 $long_zone = str_repeat( 'a', 500 );
 check( 'an oversized time zone is cut and then refused as invalid', array( 'errors' => array( 'time-zone-invalid' ) ) === $post( array( 'choice' => 'other', 'date' => '2030-01-01', 'time' => '10:00', 'timeZone' => $long_zone ) )->data );
