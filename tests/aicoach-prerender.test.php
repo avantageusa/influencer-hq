@@ -319,6 +319,31 @@ check( 'the lock file is the manifest\'s name with .lock, so the status ignores 
 ihq_aicoach_prerender_record_clip( 'bts', entry( 'bts.mp4', 'orig' ), '' );
 check( 'the original set has its own manifest and lock', array( 'bts' ) === array_keys( ihq_aicoach_prerender_load_manifest( '' ) ) && file_exists( $dir . '/manifest.json' ) && file_exists( $dir . '/manifest.json.lock' ) );
 
+// a save that cannot be completed leaves the manifest on disk as it was
+foreach ( glob( $dir . '/*' ) as $f ) { unlink( $f ); }
+put_manifest( 'v2', array( 'bts' => entry( 'bts.v2.mp4', 'kept' ) ) );
+$before = file_get_contents( $dir . '/manifest-v2.json' );
+$temp_path = $dir . '/manifest-v2.json.tmp-' . getmypid();
+
+check( 'a save succeeds and says so', true === ihq_aicoach_prerender_save_manifest( array( 'bts' => entry( 'bts.v2.mp4', 'kept' ) ), 'v2' ) );
+check( 'a manifest that cannot be encoded is not saved, and the one on disk stays', false === ihq_aicoach_prerender_save_manifest( array( 'bts' => array( 'fingerprint' => NAN ) ), 'v2' ) && $before === file_get_contents( $dir . '/manifest-v2.json' ) && ! file_exists( $temp_path ) );
+
+mkdir( $temp_path ); // the temporary file cannot be written: its name is a folder
+check( 'a temporary file that cannot be written is not renamed over the manifest', false === ihq_aicoach_prerender_save_manifest( array( 'world' => entry( 'world.v2.mp4' ) ), 'v2' ) && $before === file_get_contents( $dir . '/manifest-v2.json' ) );
+check( 'recording a clip reports the failed save and leaves the manifest as it was', false === ihq_aicoach_prerender_record_clip( 'world', entry( 'world.v2.mp4' ), 'v2' ) && $before === file_get_contents( $dir . '/manifest-v2.json' ) );
+
+reset_calls();
+put_clip( 'we_believe_1.v2.mp4' );
+$failed_render = ihq_aicoach_prerender_segment( 'bts', 'BTS text', 'sha-bts', 'en', null, 'v2' );
+check( 'a render whose manifest cannot be saved reports an error, not rendered', 'error' === $failed_render['status'] && false !== strpos( $failed_render['error'], 'manifest' ) && $before === file_get_contents( $dir . '/manifest-v2.json' ) );
+rmdir( $temp_path );
+
+unlink( $dir . '/manifest-v2.json' );
+mkdir( $dir . '/manifest-v2.json' ); // the rename onto the manifest fails: its name is a folder
+check( 'a failed rename reports it and removes the temporary file', false === ihq_aicoach_prerender_save_manifest( array( 'bts' => entry( 'bts.v2.mp4' ) ), 'v2' ) && ! file_exists( $temp_path ) );
+rmdir( $dir . '/manifest-v2.json' );
+
+
 foreach ( glob( $dir . '/*' ) as $f ) { unlink( $f ); }
 foreach ( $saved_files as $name => $content ) { file_put_contents( $dir . '/' . $name, $content ); }
 

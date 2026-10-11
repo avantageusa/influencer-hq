@@ -138,7 +138,12 @@ runs inside one HTTP request needs the existing pending-and-resume behaviour.
   it takes an exclusive `flock` on `<manifest>.lock`, reads the manifest again, sets that one
   entry and saves through a temporary file and `rename()`, so a reader never sees half a file.
   If the lock cannot be taken (a file system without it) the re-read still shrinks the window
-  from minutes to the moment between read and write.
+  from minutes to the moment between read and write. The rename is made only after the whole
+  text was written (CodeRabbit, second round): a full disk or a quota gives a short or empty
+  temporary file, and renaming that would empty the manifest and hide every clip of the set.
+  A failed encode, write or rename removes the temporary file, leaves the manifest as it was and
+  returns `false`; `ihq_aicoach_prerender_segment()` then reports an `error` for that clip
+  instead of `rendered`, so the render page and the command show it and ask again.
 - The set to render is the served manifest's set. A segment added later is rendered by the
   normal command and has to be rendered in the active version too.
 - The two Sami versions on the Anam account and which one Gary deletes are the dev's and
@@ -148,7 +153,7 @@ runs inside one HTTP request needs the existing pending-and-resume behaviour.
   in every language).
 
 ## Verification
-- `npm run test:php`: 14 suites, all pass; the new `tests/aicoach-prerender.test.php` has 133
+- `npm run test:php`: 14 suites, all pass; the new `tests/aicoach-prerender.test.php` has 139
   checks (what can be a version, the version served, names, manifests and keys of the original
   set and of a version, a full render into a version with stubbed Coach API calls: the files,
   the manifest and the key sent, the cached case, `ihq_aicoach_prerender_all()` passing the
@@ -159,7 +164,11 @@ runs inside one HTTP request needs the existing pending-and-resume behaviour.
   `\z` now.
 - The overlap is tested by writing another clip into the same manifest from inside the stubbed
   Coach API call, while a render is under way, and checking that both clips are served. Four
-  mutations (no re-read, no atomic rename, the entry not set, the wrong lock file) were killed. Not covered: the `flock` call itself, because one process cannot
+  mutations (no re-read, no atomic rename, the entry not set, the wrong lock file) were killed,
+  and eight more on the checked save (no encode check, no rename check, no temporary-file
+  cleanup, always `true`, the record and the segment ignoring a failure, the error text); the
+  one that survived is the length check, because a short write needs a full disk or a quota to
+  happen. Not covered: the `flock` call itself, because one process cannot
   observe it; a wider `glob` for the status is an equivalent mutation (the version check
   already rejects `v2.json.lock`).
 - Manual mutation checks (Stryker is deferred): 29 mutations (the pattern, the validation,

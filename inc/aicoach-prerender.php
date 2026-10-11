@@ -164,14 +164,21 @@ function ihq_aicoach_prerender_load_manifest( $version = '' ) {
 /**
  * @param array  $manifest
  * @param string $version An avatar version, or '' for the original set.
+ * @return bool Whether the manifest was replaced; on false the one on disk is untouched.
  */
 function ihq_aicoach_prerender_save_manifest( array $manifest, $version = '' ) {
 	// Written to a temporary file in the same folder and renamed over the manifest, so a
 	// request that reads it while it is being saved sees the old one or the new one, never half.
+	// The rename happens only after the whole text is written: a full disk or a quota gives a
+	// short or empty file, and renaming that would empty the manifest and hide every clip of the set.
 	$path = ihq_aicoach_prerender_manifest_path( $version );
 	$temp = $path . '.tmp-' . getmypid();
-	file_put_contents( $temp, wp_json_encode( $manifest, JSON_PRETTY_PRINT ) );
-	rename( $temp, $path );
+	$json = wp_json_encode( $manifest, JSON_PRETTY_PRINT );
+	if ( false === $json || strlen( $json ) !== @file_put_contents( $temp, $json ) || ! @rename( $temp, $path ) ) {
+		@unlink( $temp );
+		return false;
+	}
+	return true;
 }
 
 /**
@@ -186,6 +193,7 @@ function ihq_aicoach_prerender_save_manifest( array $manifest, $version = '' ) {
  * @param string $manifest_key The manifest key (segment, or segment__language).
  * @param array  $entry        The entry: fingerprint, file, rendered_at.
  * @param string $version      An avatar version, or '' for the original set.
+ * @return bool Whether the manifest was saved.
  */
 function ihq_aicoach_prerender_record_clip( $manifest_key, array $entry, $version = '' ) {
 	// If the lock cannot be taken (a file system without it), the manifest is still read
@@ -197,12 +205,13 @@ function ihq_aicoach_prerender_record_clip( $manifest_key, array $entry, $versio
 
 	$manifest                  = ihq_aicoach_prerender_load_manifest( $version );
 	$manifest[ $manifest_key ] = $entry;
-	ihq_aicoach_prerender_save_manifest( $manifest, $version );
+	$saved                     = ihq_aicoach_prerender_save_manifest( $manifest, $version );
 
 	if ( $lock ) {
 		flock( $lock, LOCK_UN );
 		fclose( $lock );
 	}
+	return $saved;
 }
 
 /**
@@ -564,7 +573,7 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $language 
 		);
 	}
 
-	ihq_aicoach_prerender_record_clip(
+	$recorded = ihq_aicoach_prerender_record_clip(
 		$manifest_key,
 		array(
 			'fingerprint' => $sha256,
@@ -573,6 +582,13 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $language 
 		),
 		$version
 	);
+	if ( ! $recorded ) {
+		return array(
+			'status' => 'error',
+			'error'  => 'clip saved but the manifest could not be written',
+			'job_id' => $job_id,
+		);
+	}
 
 	return array(
 		'status' => 'rendered',
