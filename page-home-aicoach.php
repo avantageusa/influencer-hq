@@ -37,8 +37,11 @@ if ( $alix_mtime ) {
 // the file in place (as this one just did, to fix the idle-portrait/live-
 // avatar mismatch) would stay invisible to any visitor who loaded this page
 // before the purge.
-$portrait_image_path = get_template_directory() . '/images/aicoach/coach-portrait.webp';
-$portrait_image_url  = $theme_uri . '/images/aicoach/coach-portrait.webp';
+// The Sami portrait follows the avatar version being served (inc/aicoach-prerender.php), so
+// it changes together with the pre-rendered clips.
+$portrait_file       = ihq_aicoach_portrait_file();
+$portrait_image_path = get_template_directory() . '/images/aicoach/' . $portrait_file;
+$portrait_image_url  = $theme_uri . '/images/aicoach/' . $portrait_file;
 $portrait_mtime      = file_exists( $portrait_image_path ) ? filemtime( $portrait_image_path ) : false;
 if ( $portrait_mtime ) {
 	$portrait_image_url = add_query_arg( 'v', $portrait_mtime, $portrait_image_url );

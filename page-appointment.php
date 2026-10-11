@@ -15,8 +15,9 @@ get_template_part( 'template-parts/portal-styles' );
 $theme_uri = get_template_directory_uri();
 
 // Same Sami portrait as the AI Coach page, with the same cache-busting version on its URL.
-$portrait_path = get_template_directory() . '/images/aicoach/coach-portrait.webp';
-$portrait_url  = $theme_uri . '/images/aicoach/coach-portrait.webp';
+$portrait_file = ihq_aicoach_portrait_file();
+$portrait_path = get_template_directory() . '/images/aicoach/' . $portrait_file;
+$portrait_url  = $theme_uri . '/images/aicoach/' . $portrait_file;
 $portrait_time = file_exists( $portrait_path ) ? filemtime( $portrait_path ) : false;
 if ( $portrait_time ) {
 	$portrait_url = add_query_arg( 'v', $portrait_time, $portrait_url );
