@@ -129,6 +129,16 @@ files have other names), and rendering 63 clips takes about 50 minutes, so a tri
 runs inside one HTTP request needs the existing pending-and-resume behaviour.
 
 ## Notes
+- **One manifest per version, written one clip at a time.** `ihq_aicoach_prerender_segment()`
+  used to read the manifest when it started and write it back when it finished, after the
+  polling and the download. Two renders running at once (the web step runner and the command,
+  or two browser tabs) would each write back the manifest they had read, and the later write
+  dropped the other's clip; the clip file stayed on disk but was no longer served, and the
+  switch would then be refused as incomplete. The write is now `ihq_aicoach_prerender_record_clip()`:
+  it takes an exclusive `flock` on `<manifest>.lock`, reads the manifest again, sets that one
+  entry and saves through a temporary file and `rename()`, so a reader never sees half a file.
+  If the lock cannot be taken (a file system without it) the re-read still shrinks the window
+  from minutes to the moment between read and write.
 - The set to render is the served manifest's set. A segment added later is rendered by the
   normal command and has to be rendered in the active version too.
 - The two Sami versions on the Anam account and which one Gary deletes are the dev's and
@@ -138,7 +148,7 @@ runs inside one HTTP request needs the existing pending-and-resume behaviour.
   in every language).
 
 ## Verification
-- `npm run test:php`: 14 suites, all pass; the new `tests/aicoach-prerender.test.php` has 123
+- `npm run test:php`: 14 suites, all pass; the new `tests/aicoach-prerender.test.php` has 133
   checks (what can be a version, the version served, names, manifests and keys of the original
   set and of a version, a full render into a version with stubbed Coach API calls: the files,
   the manifest and the key sent, the cached case, `ihq_aicoach_prerender_all()` passing the
@@ -147,6 +157,11 @@ runs inside one HTTP request needs the existing pending-and-resume behaviour.
 - It caught one bug of mine: the version pattern ended with `$`, which lets a trailing newline
   through, so "v2\n" would have been a valid version (it ends up in file names). It ends with
   `\z` now.
+- The overlap is tested by writing another clip into the same manifest from inside the stubbed
+  Coach API call, while a render is under way, and checking that both clips are served. Four
+  mutations (no re-read, no atomic rename, the entry not set, the wrong lock file) were killed. Not covered: the `flock` call itself, because one process cannot
+  observe it; a wider `glob` for the status is an equivalent mutation (the version check
+  already rejects `v2.json.lock`).
 - Manual mutation checks (Stryker is deferred): 29 mutations (the pattern, the validation,
   each place that takes the version into the manifest path, the file name, the key, the cache
   check, the saving, the served set and the rendering of English and translations, the

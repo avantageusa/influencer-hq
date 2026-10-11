@@ -58,6 +58,9 @@ function ihq_coach_request( $method, $path, $body = null, $headers = array() ) {
 		return array( 'status' => $GLOBALS['scripts_status'], 'body' => $GLOBALS['scripts_body'] );
 	}
 	if ( 'POST' === $method && '/coach/v1/videos' === $path ) {
+		if ( is_callable( $GLOBALS['during_post'] ?? null ) ) {
+			( $GLOBALS['during_post'] )(); // another render finishing while this one is under way
+		}
 		return array( 'status' => 202, 'body' => array( 'id' => 'job-' . count( $GLOBALS['api_calls'] ), 'status' => $GLOBALS['post_job_status'], 'content' => array( 'url' => '/coach/v1/videos/x/content' ) ) );
 	}
 	if ( 'GET' === $method && 0 === strpos( $path, '/coach/v1/videos/' ) ) {
@@ -277,6 +280,47 @@ reset_calls();
 ihq_aicoach_prerender_all();
 check( 'with no version it renders the original set, which the version does not cover', 4 === count( posted() ) && file_exists( $dir . '/manifest.json' ) && file_exists( $dir . '/bts.mp4' ) );
 
+
+// --- two renders that overlap do not lose each other's clip ---
+
+// The checks below start from an empty folder; what the sections around them built is put back after.
+$saved_files = array();
+foreach ( glob( $dir . '/*' ) as $f ) { $saved_files[ basename( $f ) ] = file_get_contents( $f ); }
+
+foreach ( glob( $dir . '/*' ) as $f ) { unlink( $f ); }
+reset_calls();
+put_manifest( 'v2', array( 'we_believe_1' => entry( 'we_believe_1.v2.mp4', 'old' ) ) );
+put_clip( 'we_believe_1.v2.mp4' );
+$GLOBALS['during_post'] = function () {
+	// Another step records its clip while this one is still rendering.
+	$other = ihq_aicoach_prerender_load_manifest( 'v2' );
+	$other['world'] = entry( 'world.v2.mp4', 'sha-world' );
+	ihq_aicoach_prerender_save_manifest( $other, 'v2' );
+	put_clip( 'world.v2.mp4' );
+};
+ihq_aicoach_prerender_segment( 'bts', 'BTS text', 'sha-bts', 'en', null, 'v2' );
+$GLOBALS['during_post'] = null;
+$merged = ihq_aicoach_prerender_load_manifest( 'v2' );
+check( 'a clip recorded by another render while this one was under way is still in the manifest', isset( $merged['world'] ) && 'world.v2.mp4' === $merged['world']['file'] );
+check( 'so is this render\'s own clip, and what was there before', isset( $merged['bts'] ) && 'bts.v2.mp4' === $merged['bts']['file'] && isset( $merged['we_believe_1'] ) );
+check( 'nothing is lost, so a clip whose file exists is still served', array( 'bts', 'we_believe_1', 'world' ) === ( function () { $k = array_keys( ihq_aicoach_prerender_get_urls( 'v2' ) ); sort( $k ); return $k; } )() );
+
+// recording a clip directly
+foreach ( glob( $dir . '/*' ) as $f ) { unlink( $f ); }
+ihq_aicoach_prerender_record_clip( 'bts', entry( 'bts.v2.mp4', 'one' ), 'v2' );
+check( 'recording a clip creates the manifest when there is none', array( 'bts' ) === array_keys( ihq_aicoach_prerender_load_manifest( 'v2' ) ) );
+ihq_aicoach_prerender_record_clip( 'world', entry( 'world.v2.mp4', 'two' ), 'v2' );
+check( 'recording another keeps the first', array( 'bts', 'world' ) === array_keys( ihq_aicoach_prerender_load_manifest( 'v2' ) ) );
+ihq_aicoach_prerender_record_clip( 'bts', entry( 'bts.v2.mp4', 'three' ), 'v2' );
+check( 'recording the same one again replaces only its entry', 'three' === ihq_aicoach_prerender_load_manifest( 'v2' )['bts']['fingerprint'] && 'two' === ihq_aicoach_prerender_load_manifest( 'v2' )['world']['fingerprint'] && 2 === count( ihq_aicoach_prerender_load_manifest( 'v2' ) ) );
+check( 'another version\'s manifest is not touched', array() === ihq_aicoach_prerender_load_manifest( 'v3' ) && array() === ihq_aicoach_prerender_load_manifest( '' ) );
+check( 'no temporary file is left behind and the manifest is whole JSON', array() === glob( $dir . '/*.tmp-*' ) && is_array( json_decode( file_get_contents( $dir . '/manifest-v2.json' ), true ) ) );
+check( 'the lock file is the manifest\'s name with .lock, so the status ignores it', file_exists( $dir . '/manifest-v2.json.lock' ) && ! in_array( 'v2.json.lock', array_column( ihq_aicoach_avatar_status(), 'version' ), true ) );
+ihq_aicoach_prerender_record_clip( 'bts', entry( 'bts.mp4', 'orig' ), '' );
+check( 'the original set has its own manifest and lock', array( 'bts' ) === array_keys( ihq_aicoach_prerender_load_manifest( '' ) ) && file_exists( $dir . '/manifest.json' ) && file_exists( $dir . '/manifest.json.lock' ) );
+
+foreach ( glob( $dir . '/*' ) as $f ) { unlink( $f ); }
+foreach ( $saved_files as $name => $content ) { file_put_contents( $dir . '/' . $name, $content ); }
 
 // --- the checked switch ---
 

@@ -166,7 +166,43 @@ function ihq_aicoach_prerender_load_manifest( $version = '' ) {
  * @param string $version An avatar version, or '' for the original set.
  */
 function ihq_aicoach_prerender_save_manifest( array $manifest, $version = '' ) {
-	file_put_contents( ihq_aicoach_prerender_manifest_path( $version ), wp_json_encode( $manifest, JSON_PRETTY_PRINT ) );
+	// Written to a temporary file in the same folder and renamed over the manifest, so a
+	// request that reads it while it is being saved sees the old one or the new one, never half.
+	$path = ihq_aicoach_prerender_manifest_path( $version );
+	$temp = $path . '.tmp-' . getmypid();
+	file_put_contents( $temp, wp_json_encode( $manifest, JSON_PRETTY_PRINT ) );
+	rename( $temp, $path );
+}
+
+/**
+ * Records one rendered clip in a manifest without losing what another render recorded in the
+ * meantime. A render loads the manifest when it starts and would save it back when it ends,
+ * minutes later; two renders that overlap (two tabs of the render page, a retry of a request a
+ * gateway cut off while its PHP kept running, the command next to the page) would each save
+ * their own stale copy and the last save would remove the other's clip from the manifest even
+ * though its file exists, hiding a served clip or blocking the switch. So the manifest is
+ * locked, read again at this moment, changed in this one entry and written atomically.
+ *
+ * @param string $manifest_key The manifest key (segment, or segment__language).
+ * @param array  $entry        The entry: fingerprint, file, rendered_at.
+ * @param string $version      An avatar version, or '' for the original set.
+ */
+function ihq_aicoach_prerender_record_clip( $manifest_key, array $entry, $version = '' ) {
+	// If the lock cannot be taken (a file system without it), the manifest is still read
+	// again here, which shrinks the window from minutes to the moment between read and write.
+	$lock = @fopen( ihq_aicoach_prerender_manifest_path( $version ) . '.lock', 'c' );
+	if ( $lock ) {
+		flock( $lock, LOCK_EX );
+	}
+
+	$manifest                  = ihq_aicoach_prerender_load_manifest( $version );
+	$manifest[ $manifest_key ] = $entry;
+	ihq_aicoach_prerender_save_manifest( $manifest, $version );
+
+	if ( $lock ) {
+		flock( $lock, LOCK_UN );
+		fclose( $lock );
+	}
 }
 
 /**
@@ -528,12 +564,15 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $language 
 		);
 	}
 
-	$manifest[ $manifest_key ] = array(
-		'fingerprint' => $sha256,
-		'file'        => $file_name,
-		'rendered_at' => gmdate( 'c' ),
+	ihq_aicoach_prerender_record_clip(
+		$manifest_key,
+		array(
+			'fingerprint' => $sha256,
+			'file'        => $file_name,
+			'rendered_at' => gmdate( 'c' ),
+		),
+		$version
 	);
-	ihq_aicoach_prerender_save_manifest( $manifest, $version );
 
 	return array(
 		'status' => 'rendered',
