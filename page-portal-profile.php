@@ -647,7 +647,6 @@ get_template_part( 'template-parts/portal-styles' );
     color: #fff;
     font-style: normal;
 }
-#portal-content .sett-account-card .sett-referral-copy-btn,
 #portal-content .sett-account-card #portal-username-save-btn {
     position: absolute;
     width: 1px;
