@@ -372,7 +372,7 @@ $portal_embed_urls = [
                         </div>
                     </div>
 
-                    <div class="portal-leaderboards-section">
+                    <div class="portal-leaderboards-section" id="world-leaderboard-iframe">
                         <div class="portal-leaderboards-section-title">
                             <?php esc_html_e( 'Influencer/FolLOwer Competition Results', 'influencer-hq' ); ?>
                         </div>
@@ -384,7 +384,6 @@ $portal_embed_urls = [
                                 'url'      => $portal_embed_urls['world'],
                                 'title'    => __( 'Influencer / Follower Competition Results', 'influencer-hq' ),
                                 'fallback' => __( 'World competition content is temporarily unavailable. Please try again later.', 'influencer-hq' ),
-                                'wrap_id'  => 'world-leaderboard-iframe',
                             )
                         );
                         ?>
