@@ -102,19 +102,58 @@ function ihq_aicoach_prerender_url_base() {
 }
 
 /**
- * Path to the manifest mapping segment key -> { sha256, file, rendered_at }.
- *
- * @return string
+ * The option that holds the avatar version visitors are served. Empty is the original set
+ * (the clips rendered before there were versions).
  */
-function ihq_aicoach_prerender_manifest_path() {
-	return ihq_aicoach_prerender_dir() . '/manifest.json';
+const IHQ_AICOACH_AVATAR_VERSION_OPTION = 'ihq_aicoach_avatar_version';
+
+/** How many 5 second polls one render waits for before it reports "pending" and lets the next run resume it. */
+const IHQ_AICOACH_PRERENDER_MAX_POLLS = 18;
+
+/** The shorter wait of a render step run from a web request, which a gateway cuts off at about a minute. */
+const IHQ_AICOACH_PRERENDER_STEP_MAX_POLLS = 5;
+
+/**
+ * Whether a string can be an avatar version: "v" and one to three digits. A version ends
+ * up in file names and in an idempotency key, so nothing else is accepted.
+ *
+ * @param mixed $version
+ * @return bool
+ */
+function ihq_aicoach_avatar_version_is_valid( $version ) {
+	return is_string( $version ) && 1 === preg_match( '/^v[0-9]{1,3}\z/', $version );
 }
 
 /**
- * @return array<string,array{sha256:string,file:string,rendered_at:string}>
+ * The avatar version visitors are served: the option, or the original set ('') when it is
+ * empty, missing or not a valid version.
+ *
+ * @return string
  */
-function ihq_aicoach_prerender_load_manifest() {
-	$path = ihq_aicoach_prerender_manifest_path();
+function ihq_aicoach_avatar_active_version() {
+	$version = get_option( IHQ_AICOACH_AVATAR_VERSION_OPTION, '' );
+	return ihq_aicoach_avatar_version_is_valid( $version ) ? $version : '';
+}
+
+/**
+ * Path to the manifest mapping segment key -> { fingerprint, file, rendered_at }. The
+ * original set (version '') keeps manifest.json; a version has its own file, so rendering
+ * it changes nothing that visitors are served.
+ *
+ * @param string $version An avatar version, or '' for the original set.
+ * @return string
+ */
+function ihq_aicoach_prerender_manifest_path( $version = '' ) {
+	$name = '' === $version ? 'manifest.json' : "manifest-{$version}.json";
+	return ihq_aicoach_prerender_dir() . '/' . $name;
+}
+
+/**
+ * @param string $version An avatar version, or '' for the original set.
+ * @return array<string,array{fingerprint:string,file:string,rendered_at:string}>
+ */
+function ihq_aicoach_prerender_load_manifest( $version = '' ) {
+	$path = ihq_aicoach_prerender_manifest_path( $version );
 	if ( ! file_exists( $path ) ) {
 		return array();
 	}
@@ -123,10 +162,56 @@ function ihq_aicoach_prerender_load_manifest() {
 }
 
 /**
- * @param array $manifest
+ * @param array  $manifest
+ * @param string $version An avatar version, or '' for the original set.
+ * @return bool Whether the manifest was replaced; on false the one on disk is untouched.
  */
-function ihq_aicoach_prerender_save_manifest( array $manifest ) {
-	file_put_contents( ihq_aicoach_prerender_manifest_path(), wp_json_encode( $manifest, JSON_PRETTY_PRINT ) );
+function ihq_aicoach_prerender_save_manifest( array $manifest, $version = '' ) {
+	// Written to a temporary file in the same folder and renamed over the manifest, so a
+	// request that reads it while it is being saved sees the old one or the new one, never half.
+	// The rename happens only after the whole text is written: a full disk or a quota gives a
+	// short or empty file, and renaming that would empty the manifest and hide every clip of the set.
+	$path = ihq_aicoach_prerender_manifest_path( $version );
+	$temp = $path . '.tmp-' . getmypid();
+	$json = wp_json_encode( $manifest, JSON_PRETTY_PRINT );
+	if ( false === $json || strlen( $json ) !== @file_put_contents( $temp, $json ) || ! @rename( $temp, $path ) ) {
+		@unlink( $temp );
+		return false;
+	}
+	return true;
+}
+
+/**
+ * Records one rendered clip in a manifest without losing what another render recorded in the
+ * meantime. A render loads the manifest when it starts and would save it back when it ends,
+ * minutes later; two renders that overlap (two tabs of the render page, a retry of a request a
+ * gateway cut off while its PHP kept running, the command next to the page) would each save
+ * their own stale copy and the last save would remove the other's clip from the manifest even
+ * though its file exists, hiding a served clip or blocking the switch. So the manifest is
+ * locked, read again at this moment, changed in this one entry and written atomically.
+ *
+ * @param string $manifest_key The manifest key (segment, or segment__language).
+ * @param array  $entry        The entry: fingerprint, file, rendered_at.
+ * @param string $version      An avatar version, or '' for the original set.
+ * @return bool Whether the manifest was saved.
+ */
+function ihq_aicoach_prerender_record_clip( $manifest_key, array $entry, $version = '' ) {
+	// If the lock cannot be taken (a file system without it), the manifest is still read
+	// again here, which shrinks the window from minutes to the moment between read and write.
+	$lock = @fopen( ihq_aicoach_prerender_manifest_path( $version ) . '.lock', 'c' );
+	if ( $lock ) {
+		flock( $lock, LOCK_EX );
+	}
+
+	$manifest                  = ihq_aicoach_prerender_load_manifest( $version );
+	$manifest[ $manifest_key ] = $entry;
+	$saved                     = ihq_aicoach_prerender_save_manifest( $manifest, $version );
+
+	if ( $lock ) {
+		flock( $lock, LOCK_UN );
+		fclose( $lock );
+	}
+	return $saved;
 }
 
 /**
@@ -153,10 +238,32 @@ function ihq_aicoach_prerender_manifest_key( $segment_key, $language = 'en' ) {
 /**
  * @param string $segment_key
  * @param string $language
+ * @param string $version     An avatar version, or '' for the original set, whose names
+ *                            are the ones already rendered and deployed.
  * @return string Filename only, no directory.
  */
-function ihq_aicoach_prerender_file_name( $segment_key, $language = 'en' ) {
-	return 'en' === $language ? "{$segment_key}.mp4" : "{$segment_key}-{$language}.mp4";
+function ihq_aicoach_prerender_file_name( $segment_key, $language = 'en', $version = '' ) {
+	$base   = 'en' === $language ? $segment_key : "{$segment_key}-{$language}";
+	$suffix = '' === $version ? '' : ".{$version}";
+	return "{$base}{$suffix}.mp4";
+}
+
+/**
+ * The Idempotency-Key of one render job. Gary matches a job on this key alone, so a
+ * different key always starts a new render (his answer, 2026-10-11): the original set
+ * keeps the keys it was rendered with, and a version adds its own ending.
+ *
+ * @param string $segment_key
+ * @param string $language
+ * @param string $sha256      The hash of the text being spoken.
+ * @param string $version     An avatar version, or '' for the original set.
+ * @return string
+ */
+function ihq_aicoach_prerender_idempotency_key( $segment_key, $language, $sha256, $version = '' ) {
+	$key = 'en' === $language
+		? 'ihq-seg-' . $segment_key . '-' . substr( $sha256, 0, 16 )
+		: 'ihq-seg-' . $segment_key . '-' . $language . '-' . substr( $sha256, 0, 16 );
+	return '' === $version ? $key : "{$key}-{$version}";
 }
 
 /**
@@ -177,10 +284,14 @@ function ihq_aicoach_prerender_file_name( $segment_key, $language = 'en' ) {
  * re-render happens at all), so reusing it here makes each real content
  * change a genuinely new URL instead of fighting the CDN's cache lifetime.
  *
+ * @param string|null $version An avatar version, '' for the original set, or null for
+ *                             the one visitors are served.
  * @return array<string,array<string,string>>
  */
-function ihq_aicoach_prerender_get_urls() {
-	$manifest = ihq_aicoach_prerender_load_manifest();
+function ihq_aicoach_prerender_get_urls( $version = null ) {
+	// Only the version visitors are served unless a caller asks about another one.
+	$version  = null === $version ? ihq_aicoach_avatar_active_version() : $version;
+	$manifest = ihq_aicoach_prerender_load_manifest( $version );
 	$urls     = array();
 	foreach ( $manifest as $manifest_key => $entry ) {
 		if ( empty( $entry['file'] ) || ! file_exists( ihq_aicoach_prerender_dir() . '/' . $entry['file'] ) ) {
@@ -289,15 +400,19 @@ function ihq_aicoach_coach_get_video( $job_id ) {
  *                                    API Idempotency-Key.
  * @param string        $language    BCP-47-ish code, e.g. 'ja'. Defaults to 'en'.
  * @param callable|null $log         Optional fn(string $line) for CLI progress output.
+ * @param string        $version     An avatar version to render into (its own manifest, file
+ *                                    names and idempotency key), or '' for the original set.
+ * @param int           $max_polls   How many 5 second polls to wait for the job before
+ *                                    reporting 'pending'.
  * @return array{status:string, url?:string, error?:string, job_id?:string}
  */
-function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $language = 'en', $log = null ) {
+function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $language = 'en', $log = null, $version = '', $max_polls = IHQ_AICOACH_PRERENDER_MAX_POLLS ) {
 	$log = $log ?: function ( $line ) {};
 
 	$manifest_key = ihq_aicoach_prerender_manifest_key( $segment_key, $language );
-	$file_name    = ihq_aicoach_prerender_file_name( $segment_key, $language );
+	$file_name    = ihq_aicoach_prerender_file_name( $segment_key, $language, $version );
 
-	$manifest = ihq_aicoach_prerender_load_manifest();
+	$manifest = ihq_aicoach_prerender_load_manifest( $version );
 	$existing = $manifest[ $manifest_key ] ?? null;
 	if ( $existing && ( $existing['fingerprint'] ?? '' ) === $sha256 && file_exists( ihq_aicoach_prerender_dir() . '/' . $existing['file'] ) ) {
 		$log( "  {$manifest_key}: already rendered for this script, skipping" );
@@ -311,9 +426,7 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $language 
 	// whose sha256 actually changed. 'en' keeps the original key shape
 	// unchanged (no language suffix) so already-rendered English clips are
 	// never orphaned/re-rendered by this change.
-	$idempotency_key = 'en' === $language
-		? 'ihq-seg-' . $segment_key . '-' . substr( $sha256, 0, 16 )
-		: 'ihq-seg-' . $segment_key . '-' . $language . '-' . substr( $sha256, 0, 16 );
+	$idempotency_key = ihq_aicoach_prerender_idempotency_key( $segment_key, $language, $sha256, $version );
 
 	$log( "  {$manifest_key}: creating (or resuming) render job..." );
 	$job = ihq_aicoach_coach_create_video( $text, $idempotency_key, $manifest_key );
@@ -341,7 +454,7 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $language 
 	// idempotently replay this same job and just keep polling it — confirmed
 	// live that a replay returns the job's current state instantly, ready or
 	// not.
-	$max_attempts = 18; // 18 x 5s = 90s.
+	$max_attempts = max( 0, (int) $max_polls ); // 18 x 5s = 90s by default.
 	$attempts     = 0;
 	$status_now   = $job['status'] ?? 'queued';
 	while ( ! in_array( $status_now, $terminal, true ) && $attempts < $max_attempts ) {
@@ -460,12 +573,22 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $language 
 		);
 	}
 
-	$manifest[ $manifest_key ] = array(
-		'fingerprint' => $sha256,
-		'file'        => $file_name,
-		'rendered_at' => gmdate( 'c' ),
+	$recorded = ihq_aicoach_prerender_record_clip(
+		$manifest_key,
+		array(
+			'fingerprint' => $sha256,
+			'file'        => $file_name,
+			'rendered_at' => gmdate( 'c' ),
+		),
+		$version
 	);
-	ihq_aicoach_prerender_save_manifest( $manifest );
+	if ( ! $recorded ) {
+		return array(
+			'status' => 'error',
+			'error'  => 'clip saved but the manifest could not be written',
+			'job_id' => $job_id,
+		);
+	}
 
 	return array(
 		'status' => 'rendered',
@@ -474,17 +597,18 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $language 
 }
 
 /**
- * Render every approved segment this page actually uses (per
- * ihq_aicoach_prerender_panel_map()). Called by the WP-CLI command below.
+ * What is to be rendered: every approved segment this page actually uses (per
+ * ihq_aicoach_prerender_panel_map()) in English, and in every other language that has a
+ * translated script of ours. The same list drives the WP-CLI command and the step-by-step
+ * run from a web page, so they cannot disagree about what the set is.
  *
- * @param callable|null $log Optional fn(string $line) for progress output.
- * @return array<string,array>|WP_Error segment_key => result (same shape as
- *                              ihq_aicoach_prerender_segment()'s return), or
- *                              a WP_Error if the scripts fetch itself failed
- *                              — distinct from an empty array, which means
- *                              the fetch succeeded and nothing needed doing.
+ * @param callable|null $log Optional fn(string $line) for progress output (what is skipped).
+ * @return array<int,array{manifest_key:string,segment_key:string,language:string,text:string,sha256:string}>|WP_Error
+ *         The items in the order they are rendered, or a WP_Error if the scripts fetch itself
+ *         failed, which is not the same as an empty list (the fetch worked and nothing is
+ *         wanted).
  */
-function ihq_aicoach_prerender_all( $log = null ) {
+function ihq_aicoach_prerender_work_list( $log = null ) {
 	$log = $log ?: function ( $line ) {};
 
 	$scripts_result = ihq_coach_request( 'GET', '/coach/v1/registration/scripts', null );
@@ -507,9 +631,12 @@ function ihq_aicoach_prerender_all( $log = null ) {
 		);
 	}
 
-	$segments = $scripts_result['body']['segments'] ?? array();
-	$wanted   = array_unique( array_values( ihq_aicoach_prerender_panel_map() ) );
-	$results  = array();
+	$segments     = $scripts_result['body']['segments'] ?? array();
+	$wanted       = array_unique( array_values( ihq_aicoach_prerender_panel_map() ) );
+	$translations = function_exists( 'ihq_aicoach_segment_translations' )
+		? ihq_aicoach_segment_translations()
+		: array();
+	$items        = array();
 
 	foreach ( $wanted as $segment_key ) {
 		$segment = $segments[ $segment_key ] ?? null;
@@ -521,8 +648,13 @@ function ihq_aicoach_prerender_all( $log = null ) {
 			$log( "{$segment_key}: status is '{$segment['status']}', not approved — skipping (held content stays as static caption for now)" );
 			continue;
 		}
-		$log( "{$segment_key}: rendering (en)..." );
-		$results[ $segment_key ] = ihq_aicoach_prerender_segment( $segment_key, $segment['text'], $segment['sha256'], 'en', $log );
+		$items[] = array(
+			'manifest_key' => ihq_aicoach_prerender_manifest_key( $segment_key, 'en' ),
+			'segment_key'  => $segment_key,
+			'language'     => 'en',
+			'text'         => $segment['text'],
+			'sha256'       => $segment['sha256'],
+		);
 
 		// FR-16 (single avatar/voice, confirmed with product 2026-09-25 — not a
 		// different avatar per language) — render the same approved segment in
@@ -533,25 +665,213 @@ function ihq_aicoach_prerender_all( $log = null ) {
 		// to borrow for non-English text — hash the translated text itself,
 		// which still gives the same "only re-render what actually changed"
 		// behavior once a translation gets corrected.
-		$translations = function_exists( 'ihq_aicoach_segment_translations' )
-			? ihq_aicoach_segment_translations()
-			: array();
 		foreach ( $translations[ $segment_key ] ?? array() as $language => $translated_text ) {
 			if ( '' === trim( (string) $translated_text ) ) {
 				continue;
 			}
-			$log( "{$segment_key}: rendering ({$language})..." );
-			$results[ "{$segment_key}__{$language}" ] = ihq_aicoach_prerender_segment(
-				$segment_key,
-				$translated_text,
-				hash( 'sha256', $translated_text ),
-				$language,
-				$log
+			$items[] = array(
+				'manifest_key' => ihq_aicoach_prerender_manifest_key( $segment_key, $language ),
+				'segment_key'  => $segment_key,
+				'language'     => $language,
+				'text'         => $translated_text,
+				'sha256'       => hash( 'sha256', $translated_text ),
 			);
 		}
 	}
 
+	return $items;
+}
+
+/**
+ * Render every approved segment this page actually uses (the work list above). Called by the
+ * WP-CLI command below.
+ *
+ * @param callable|null $log     Optional fn(string $line) for progress output.
+ * @param string        $version An avatar version to render into, or '' for the original set.
+ * @return array<string,array>|WP_Error segment_key => result (same shape as
+ *                              ihq_aicoach_prerender_segment()'s return), or
+ *                              a WP_Error if the scripts fetch itself failed
+ *                              — distinct from an empty array, which means
+ *                              the fetch succeeded and nothing needed doing.
+ */
+function ihq_aicoach_prerender_all( $log = null, $version = '' ) {
+	$log   = $log ?: function ( $line ) {};
+	$items = ihq_aicoach_prerender_work_list( $log );
+	if ( is_wp_error( $items ) ) {
+		return $items;
+	}
+
+	$results = array();
+	foreach ( $items as $item ) {
+		$log( "{$item['segment_key']}: rendering ({$item['language']})..." );
+		$results[ $item['manifest_key'] ] = ihq_aicoach_prerender_segment(
+			$item['segment_key'],
+			$item['text'],
+			$item['sha256'],
+			$item['language'],
+			$log,
+			$version
+		);
+	}
 	return $results;
+}
+
+/**
+ * One step of rendering a version from a web page, for a server with no WP-CLI: renders the
+ * item at an index of the work list and says how it went, so the page can walk through the
+ * list one request at a time. A request is cut off at about a minute, so a step waits only
+ * a few polls; an item still rendering is reported as 'pending' and the page asks for the
+ * same index again (Gary's job is replayed, not started again, because the key is the same).
+ *
+ * @param string $version An avatar version such as "v2". The original set is refused: this
+ *                        is for rendering a new version.
+ * @param int    $index   Position in the work list, from 0.
+ * @param int    $max_polls How many 5 second polls the step waits for.
+ * @return array|WP_Error {done:bool,index:int,total:int,key?:string,status?:string,error?:string}
+ */
+function ihq_aicoach_avatar_render_step( $version, $index, $max_polls = IHQ_AICOACH_PRERENDER_STEP_MAX_POLLS ) {
+	if ( ! ihq_aicoach_avatar_version_is_valid( $version ) ) {
+		return new WP_Error( 'avatar_version_invalid', 'An avatar version is "v" and one to three digits, for example v2.' );
+	}
+	$items = ihq_aicoach_prerender_work_list();
+	if ( is_wp_error( $items ) ) {
+		return $items;
+	}
+	$total = count( $items );
+	$index = (int) $index;
+	if ( $index < 0 || $index >= $total ) {
+		return array( 'done' => true, 'index' => $index, 'total' => $total );
+	}
+
+	$item   = $items[ $index ];
+	$result = ihq_aicoach_prerender_segment( $item['segment_key'], $item['text'], $item['sha256'], $item['language'], null, $version, $max_polls );
+	return array(
+		'done'   => false,
+		'index'  => $index,
+		'total'  => $total,
+		'key'    => $item['manifest_key'],
+		'status' => $result['status'],
+		'error'  => $result['error'] ?? '',
+	);
+}
+
+/**
+ * Whether a clip of a manifest is really there to be served.
+ *
+ * @param array $entry A manifest entry.
+ * @return bool
+ */
+function ihq_aicoach_prerender_entry_is_servable( $entry ) {
+	return is_array( $entry ) && ! empty( $entry['file'] ) && file_exists( ihq_aicoach_prerender_dir() . '/' . $entry['file'] );
+}
+
+/**
+ * The clips a version still lacks compared with what visitors are served now: every clip
+ * the served set can play must exist, as a file, in the version too. The original set is
+ * a version for this purpose ('').
+ *
+ * @param string $version An avatar version, or '' for the original set.
+ * @return string[] Manifest keys (segment, or segment__language) the version lacks.
+ */
+function ihq_aicoach_avatar_version_missing( $version ) {
+	$served  = ihq_aicoach_prerender_load_manifest( ihq_aicoach_avatar_active_version() );
+	$target  = ihq_aicoach_prerender_load_manifest( $version );
+	$missing = array();
+	foreach ( $served as $manifest_key => $entry ) {
+		if ( ! ihq_aicoach_prerender_entry_is_servable( $entry ) ) {
+			continue;
+		}
+		if ( ! ihq_aicoach_prerender_entry_is_servable( $target[ $manifest_key ] ?? null ) ) {
+			$missing[] = $manifest_key;
+		}
+	}
+	sort( $missing );
+	return $missing;
+}
+
+/**
+ * Makes a version the one visitors are served, but only when it is complete: it changes
+ * nothing, and lists what is missing, when a clip that is served now has no clip in the
+ * version. This is the one step that switches every clip to the new face together; the
+ * way back is the same call with the original set ('').
+ *
+ * @param string $version An avatar version such as "v2", or '' for the original set.
+ * @return array{version:string,changed:bool}|WP_Error
+ */
+function ihq_aicoach_avatar_activate( $version ) {
+	if ( '' !== $version && ! ihq_aicoach_avatar_version_is_valid( $version ) ) {
+		return new WP_Error( 'avatar_version_invalid', 'An avatar version is "v" and one to three digits, for example v2.' );
+	}
+	if ( ihq_aicoach_avatar_active_version() === $version ) {
+		return array( 'version' => $version, 'changed' => false );
+	}
+	if ( '' !== $version && array() === ihq_aicoach_prerender_load_manifest( $version ) ) {
+		return new WP_Error( 'avatar_version_empty', "Nothing has been rendered for {$version} yet." );
+	}
+	$missing = ihq_aicoach_avatar_version_missing( $version );
+	if ( array() !== $missing ) {
+		return new WP_Error(
+			'avatar_version_incomplete',
+			'Not switched. Clips missing from the version: ' . implode( ', ', $missing ),
+			array( 'missing' => $missing )
+		);
+	}
+	update_option( IHQ_AICOACH_AVATAR_VERSION_OPTION, $version );
+	return array( 'version' => $version, 'changed' => true );
+}
+
+/**
+ * The versions that have a manifest, with how many clips each can serve and how many it
+ * lacks compared with what is served now.
+ *
+ * @return array<int,array{version:string,clips:int,missing:int,active:bool}> The original
+ *         set first, then the versions in order.
+ */
+function ihq_aicoach_avatar_status() {
+	$versions = array( '' );
+	foreach ( (array) glob( ihq_aicoach_prerender_dir() . '/manifest-v*.json' ) as $path ) {
+		$version = substr( basename( $path, '.json' ), strlen( 'manifest-' ) );
+		if ( ihq_aicoach_avatar_version_is_valid( $version ) ) {
+			$versions[] = $version;
+		}
+	}
+	natsort( $versions );
+
+	$active = ihq_aicoach_avatar_active_version();
+	$status = array();
+	foreach ( $versions as $version ) {
+		$clips = 0;
+		foreach ( ihq_aicoach_prerender_load_manifest( $version ) as $entry ) {
+			if ( ihq_aicoach_prerender_entry_is_servable( $entry ) ) {
+				++$clips;
+			}
+		}
+		$status[] = array(
+			'version' => $version,
+			'clips'   => $clips,
+			'missing' => count( ihq_aicoach_avatar_version_missing( $version ) ),
+			'active'  => $version === $active,
+		);
+	}
+	return $status;
+}
+
+/**
+ * The file name of the still portrait (images/aicoach/) for an avatar version: the one made
+ * for the version when it exists, otherwise the original. It changes with the clips, in the
+ * same step, so the portrait shown while the live avatar connects is never another face.
+ *
+ * @param string|null $version An avatar version, '' for the original, or null for the one
+ *                             visitors are served.
+ * @return string
+ */
+function ihq_aicoach_portrait_file( $version = null ) {
+	$version = null === $version ? ihq_aicoach_avatar_active_version() : $version;
+	if ( '' === $version ) {
+		return 'coach-portrait.webp';
+	}
+	$versioned = "coach-portrait-{$version}.webp";
+	return file_exists( get_template_directory() . '/images/aicoach/' . $versioned ) ? $versioned : 'coach-portrait.webp';
 }
 
 if ( defined( 'WP_CLI' ) && WP_CLI ) {
@@ -561,19 +881,30 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 	class IHQ_Aicoach_Prerender_Command {
 		/**
 		 * Render every approved segment that isn't already cached for its
-		 * current sha256.
+		 * current sha256, into an avatar version (the one visitors are served
+		 * unless one is given). A new version renders into its own files and
+		 * changes nothing visitors see until `wp aicoach activate-avatar`.
+		 *
+		 * ## OPTIONS
+		 *
+		 * [--avatar-version=<version>]
+		 * : An avatar version such as v2, or "original" for the clips rendered
+		 * before there were versions. Defaults to the version being served.
 		 *
 		 * ## EXAMPLES
 		 *
 		 *     wp aicoach prerender
+		 *     wp aicoach prerender --avatar-version=v2
 		 *
 		 * @when after_wp_load
 		 */
 		public function prerender( $args, $assoc_args ) {
+			$version = self::version_from_argument( $assoc_args['avatar-version'] ?? null, true );
 			$results = ihq_aicoach_prerender_all(
 				function ( $line ) {
 					WP_CLI::log( $line );
-				}
+				},
+				$version
 			);
 
 			// A deploy step checking this command's exit code must be able to
@@ -619,6 +950,79 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 				return;
 			}
 			WP_CLI::success( "Done. {$summary}" );
+		}
+
+		/**
+		 * Serve an avatar version to visitors, only when it is complete: every
+		 * clip served now must exist in it. Also switches the still portrait.
+		 * "original" goes back to the clips rendered before there were versions.
+		 *
+		 * ## OPTIONS
+		 *
+		 * <version>
+		 * : An avatar version such as v2, or "original".
+		 *
+		 * ## EXAMPLES
+		 *
+		 *     wp aicoach activate-avatar v2
+		 *     wp aicoach activate-avatar original
+		 *
+		 * @subcommand activate-avatar
+		 * @when after_wp_load
+		 */
+		public function activate_avatar( $args ) {
+			$version = self::version_from_argument( $args[0] ?? null, false );
+			$result  = ihq_aicoach_avatar_activate( $version );
+			if ( is_wp_error( $result ) ) {
+				WP_CLI::error( $result->get_error_message() );
+				return;
+			}
+			$name = '' === $version ? 'original' : $version;
+			if ( ! $result['changed'] ) {
+				WP_CLI::success( "{$name} is already the version served." );
+				return;
+			}
+			WP_CLI::success( "Visitors are now served {$name}. Purge the cache if the page is cached." );
+		}
+
+		/**
+		 * Show the avatar versions: which one is served, how many clips each has
+		 * and how many it lacks compared with what is served now.
+		 *
+		 * ## EXAMPLES
+		 *
+		 *     wp aicoach avatar-status
+		 *
+		 * @subcommand avatar-status
+		 * @when after_wp_load
+		 */
+		public function avatar_status() {
+			foreach ( ihq_aicoach_avatar_status() as $row ) {
+				$name = '' === $row['version'] ? 'original' : $row['version'];
+				WP_CLI::log( sprintf( '%s%-9s clips: %d, missing: %d', $row['active'] ? '* ' : '  ', $name, $row['clips'], $row['missing'] ) );
+			}
+			WP_CLI::log( '* is the version visitors are served.' );
+		}
+
+		/**
+		 * @param string|null $argument         What was typed, or null when nothing was.
+		 * @param bool        $default_to_active Whether nothing typed means the version served.
+		 * @return string A valid version, or '' for the original set.
+		 */
+		private static function version_from_argument( $argument, $default_to_active ) {
+			if ( null === $argument ) {
+				if ( $default_to_active ) {
+					return ihq_aicoach_avatar_active_version();
+				}
+				WP_CLI::error( 'Give a version such as v2, or "original".' );
+			}
+			if ( 'original' === $argument ) {
+				return '';
+			}
+			if ( ! ihq_aicoach_avatar_version_is_valid( $argument ) ) {
+				WP_CLI::error( 'An avatar version is "v" and one to three digits, for example v2, or "original".' );
+			}
+			return $argument;
 		}
 	}
 
