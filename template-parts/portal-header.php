@@ -188,7 +188,7 @@ $hm_ch = function ( $tab, $hash = '' ) {
                         <img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-globe.png' ); ?>" width="16" height="16" alt="">
                         <?php esc_html_e( 'World', 'influencer-hq' ); ?>
                     </a>
-                    <a href="<?php echo $hm_ch( 'world', 'world-leaderboards' ); ?>" class="hm-link hm-icon-row hm-indent-2"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-leaderboard.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Results & Leaderboards', 'influencer-hq' ); ?></a>
+                    <a href="<?php echo $hm_ch( 'world', 'world-leaderboard-iframe' ); ?>" class="hm-link hm-icon-row hm-indent-2"><img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-leaderboard.png' ); ?>" width="16" height="16" alt=""><?php esc_html_e( 'Results & Leaderboards', 'influencer-hq' ); ?></a>
 
                     <a href="<?php echo $hm_ch( 'leagues' ); ?>" class="hm-link hm-icon-row hm-indent-1">
                         <img class="hm-ico-img hm-ico-img--sm" src="<?php echo $hm_ic( 'icon-leagues.png' ); ?>" width="16" height="16" alt="">
