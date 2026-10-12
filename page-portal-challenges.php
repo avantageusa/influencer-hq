@@ -16,11 +16,21 @@ $celebrity_selections = [
     'music_artists' => get_user_meta( $user->ID, '_ihq_cel_music_artists', true ) ?: '',
     'sports_icons'  => get_user_meta( $user->ID, '_ihq_cel_sports_icons',  true ) ?: '',
 ];
+$ihq_sports_icon_renames = array(
+    'Son Heung-min' => 'Erling Haaland',
+    'Virat Kohli'   => 'Alysa Liu',
+);
+if ( isset( $ihq_sports_icon_renames[ $celebrity_selections['sports_icons'] ] ) ) {
+    $celebrity_selections['sports_icons'] = $ihq_sports_icon_renames[ $celebrity_selections['sports_icons'] ];
+    if ( $user->ID ) {
+        update_user_meta( $user->ID, '_ihq_cel_sports_icons', $celebrity_selections['sports_icons'] );
+    }
+}
 $intl_league_team = get_user_meta( $user->ID, '_ihq_intl_league_team', true ) ?: '';
 $celeb_lists = [
     'movie_stars'   => ['Leonardo DiCaprio','Fan Bingbing','Scarlett Johansson','Tony Leung','Anya Wong','Maggie Cheung','Iko Uwais','Tom Cruise','Hyun Bin','Chow Yun-fat','Zhang Ziyi','Song Hye-kyo','Gong Yoo','Michelle Yeoh','Donnie Yen','Vicky Chen','Bruce Lee','Gong Li','Liu Yifei','Jackie Chan'],
     'music_artists' => ['Jolin Tsai','Namewee','IU (Lee Ji-eun)','BTS','Ariana Grande','Bruno Mars','PSY','Blackpink','Twice','Tomorrow X Together','Billie Eilish','Jay Chou','Lisa (BLACKPINK)','Zhou Shen','G-Dragon','Lady Gaga','Taylor Swift','Deng Liqi','Justin Bieber','Ed Sheeran'],
-    'sports_icons'  => ['Son Heung-min','Lionel Messi','Roger Federer','Naomi Osaka','Ding Junhui','Jeremy Lin','Cristiano Ronaldo','Stephen Curry','Michael Jordan','Novak Djokovic','Kento Momota','Sachin Tendulkar','Rafael Nadal','Virat Kohli','Manny Pacquiao','Shohei Ohtani','Yao Ming','LeBron James','Kylian Mbappé','Lee Chong Wei'],
+    'sports_icons'  => ['Cristiano Ronaldo','Stephen Curry','Sachin Tendulkar','Lionel Messi','Novak Djokovic','Rafael Nadal','Lee Chong Wei','Naomi Osaka','Jeremy Lin','Ding Junhui','Alysa Liu','Roger Federer','Erling Haaland','Yao Ming','Manny Pacquiao','Kylian Mbappé','LeBron James','Kento Momota','Michael Jordan','Shohei Ohtani'],
 ];
 $celeb_labels = ['movie_stars' => 'Movie Stars', 'music_artists' => 'Music Artists', 'sports_icons' => 'Sports Icons'];
 $intl_league_regions = ['South Korea','Europe','Malaysia','Thailand','Africa','Singapore','Asia','India','China','Hong Kong','Philippines','Taiwan','United States','Canada','Macao','Pakistan','South America','Japan','Australia','South Africa'];
