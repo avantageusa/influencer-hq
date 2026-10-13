@@ -263,6 +263,11 @@ require_once get_template_directory() . '/inc/email-verification-handler.php';
 require_once get_template_directory() . '/inc/harness-auth-bridge.php';
 
 /**
+ * STREAM NOW link on Live Appearance (ENGR-7346).
+ */
+require_once get_template_directory() . '/inc/ihq-stream-now.php';
+
+/**
  * Game portal base URL for this instance.
  *
  * The environment is a property of the instance (wp-config IHQ_GAME_PORTAL_BASE_URL),

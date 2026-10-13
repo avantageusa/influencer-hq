@@ -4409,7 +4409,22 @@
         font-weight: 700;
         letter-spacing: 0.06em;
         text-transform: uppercase;
-        cursor: default;
+        /* ENGR-7346: now an <a>; keep the button look (no underline from Bootstrap, centred text). */
+        text-align: center;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    body.page-template-page-portal-live-php .live-stream-now:focus-visible {
+        outline: 2px solid #fff;
+        outline-offset: 3px;
+    }
+
+    /* ENGR-7346: not offered on phones. Must follow the base rule above, which sets display: block. */
+    @media (max-width: 767px) {
+        body.page-template-page-portal-live-php .live-stream-now {
+            display: none;
+        }
     }
 
 

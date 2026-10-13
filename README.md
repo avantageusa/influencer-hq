@@ -42,6 +42,7 @@ define( 'CF_TURNSTILE_SITE_KEY',    '' );
 define( 'CF_TURNSTILE_SECRET_KEY',  '' );
 define( 'IHQ_ELEVENLABS_API_KEY',   '' );
 define( 'IHQ_GENIUS_REFERRALS_API_TOKEN', '' );   // test-form.php only
+define( 'IHQ_PUBLISHER_URL',        '' );   // publisher app behind STREAM NOW on Live Appearance (ENGR-7346)
 
 // Optional — default applies when absent
 define( 'IHQ_REF_COOKIE_TTL_DAYS',  '90' );   // lifetime of the ihq_ref referral cookie (ENGR-6966)
@@ -51,11 +52,21 @@ define( 'IHQ_REF_COOKIE_TTL_DAYS',  '90' );   // lifetime of the ihq_ref referra
 is refused at load. WP Engine's `wp-config.php` has no "stop editing" marker — put the block after
 the existing `ANAM_API_KEY` block, before the `ABSPATH` define.
 
-| Instance | `IHQ_ENVIRONMENT` | `IHQ_API_BASE_URL` | `IHQ_GAME_PORTAL_BASE_URL` | API key (SSM, per AWS account) |
-|---|---|---|---|---|
-| influenchqdev.wpenginepowered.com | `dev` | `https://02nvfvonol.execute-api.eu-west-2.amazonaws.com/qc` | `https://qc-game-portal-client-tf-b2c.dev.ae.games/av-baccarat` | `/qc/account-api-tf-api/INFLUENCER_HQ_SSO_API_KEY` — dev account, eu-west-2 |
-| influencerhqqa.wpenginepowered.com | `qa` | `https://nxyd4exz24.execute-api.eu-west-2.amazonaws.com/main` | `https://main-game-portal-client-tf-b2c.qa.ae.games/av-baccarat` | `/main/account-api-tf-api/INFLUENCER_HQ_SSO_API_KEY` — QA account, eu-west-2 |
-| influencerhq.co | `prod` | `https://0cn4xq456d.execute-api.ap-southeast-1.amazonaws.com/main` | `https://play.bet5games.com/av-baccarat` | `/main/account-api-tf-api/INFLUENCER_HQ_SSO_API_KEY` — bet5 account, ap-southeast-1 |
+`IHQ_PUBLISHER_URL` must also be an absolute `https://` URL, but it is optional: when it is unset
+or invalid, STREAM NOW is simply not rendered (an invalid value is logged) and the rest of the site
+runs normally. Removing it is the kill switch for the button.
+
+| Instance | `IHQ_ENVIRONMENT` | `IHQ_API_BASE_URL` | `IHQ_GAME_PORTAL_BASE_URL` | `IHQ_PUBLISHER_URL` | API key (SSM, per AWS account) |
+|---|---|---|---|---|---|
+| influenchqdev.wpenginepowered.com | `dev` | `https://02nvfvonol.execute-api.eu-west-2.amazonaws.com/qc` | `https://qc-game-portal-client-tf-b2c.dev.ae.games/av-baccarat` | `https://stream-dev.influencerhq.co` * | `/qc/account-api-tf-api/INFLUENCER_HQ_SSO_API_KEY` — dev account, eu-west-2 |
+| influencerhqqa.wpenginepowered.com | `qa` | `https://nxyd4exz24.execute-api.eu-west-2.amazonaws.com/main` | `https://main-game-portal-client-tf-b2c.qa.ae.games/av-baccarat` | `https://stream-qa.influencerhq.co` * | `/main/account-api-tf-api/INFLUENCER_HQ_SSO_API_KEY` — QA account, eu-west-2 |
+| influencerhq.co | `prod` | `https://0cn4xq456d.execute-api.ap-southeast-1.amazonaws.com/main` | `https://play.bet5games.com/av-baccarat` | unset * | `/main/account-api-tf-api/INFLUENCER_HQ_SSO_API_KEY` — bet5 account, ap-southeast-1 |
+
+\* Set a stream host only once it serves over a valid certificate and that stage's game allows it
+to frame (ENGR-7349, ENGR-7350, ENGR-7351). Until then dev uses its current publisher host
+`https://qc-influencer-publisher-tf.dev.ae.games`, qa uses its current publisher host, and prod
+stays unset, which hides the button; prod gets `https://stream.influencerhq.co` once all three are
+done for bet5.
 
 `IHQ_API_BASE_URL` is the **influencerhq-api** gateway (the proxy), never account-api
 directly. The Turnstile keys are shared across instances; each instance's hostname
