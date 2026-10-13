@@ -848,6 +848,11 @@
         transform: translateX(0);
     }
 
+    /* The close button inside the drawer is only for pages that ask for it. */
+    .hamburger-drawer-close {
+        display: none;
+    }
+
     .hamburger-drawer-scroll {
         height: 100%;
         overflow-y: auto;

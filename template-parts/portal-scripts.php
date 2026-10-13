@@ -88,6 +88,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    if (dropdown) {
+        dropdown.querySelectorAll('.hamburger-drawer-close').forEach(function (closeBtn) {
+            closeBtn.addEventListener('click', function () {
+                setHmOpen(false);
+            });
+        });
+    }
+
     document.addEventListener('click', function (e) {
         if (!dropdown || !dropdown.classList.contains('open')) return;
         if (hamburger && hamburger.contains(e.target)) return;
