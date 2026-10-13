@@ -47,6 +47,8 @@ const GAPS_IN_EVERY_LANGUAGE = [
 	'privateChallengeName',
 	'friendFollowers',
 	'channelsHint',
+	'volumeReminder',
+	'weekly',
 	'timeUpTitle',
 	'timeUpKeepTalking',
 	'timeUpSetAppointment',

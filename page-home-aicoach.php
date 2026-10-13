@@ -16,27 +16,12 @@ $theme_uri = get_template_directory_uri();
 // (template-parts/portal-header.php).
 $aicoach_portal_url = home_url( '/portal-home' );
 
-// PO-3062 — Alix Earle's photo (design-approved, 2026-09-23) is served from
-// this same, permanently-fixed filename ("alix-earle-placeholder.svg" — kept
-// as-is rather than renamed, since swapping the SVG's own content in place
-// for the real asset needs no code/PR change at all). Cloudflare caches this
-// upload path for a full year (confirmed live on the pre-rendered coach
-// clips, same root cause) — without a cache-busting version on the URL,
-// updating the file would be invisible to visitors exactly like the old
-// "PHOTO PENDING" placeholder would otherwise keep being served here.
-$alix_image_path = get_template_directory() . '/images/aicoach/alix-earle-placeholder.svg';
-$alix_image_url  = $theme_uri . '/images/aicoach/alix-earle-placeholder.svg';
-$alix_mtime       = file_exists( $alix_image_path ) ? filemtime( $alix_image_path ) : false;
-if ( $alix_mtime ) {
-	$alix_image_url = add_query_arg( 'v', $alix_mtime, $alix_image_url );
-}
-
-// Same reasoning as the Alix image above — flagged by Dejan Arsic on PR #53:
-// a Cloudflare purge only clears the edge cache, not a browser that already
-// has this exact URL cached locally under the one-year max-age, so swapping
-// the file in place (as this one just did, to fix the idle-portrait/live-
-// avatar mismatch) would stay invisible to any visitor who loaded this page
-// before the purge.
+// Flagged by Dejan Arsic on PR #53: Cloudflare caches this upload path for a
+// full year, and a purge only clears the edge cache, not a browser that
+// already has this exact URL cached locally, so swapping a file in place (as
+// this one just did, to fix the idle-portrait/live-avatar mismatch) would
+// stay invisible to any visitor who loaded this page before the purge. The
+// file time in the URL is the cache-buster.
 // The Sami portrait follows the avatar version being served (inc/aicoach-prerender.php), so
 // it changes together with the pre-rendered clips.
 $portrait_file       = ihq_aicoach_portrait_file();
@@ -47,22 +32,25 @@ if ( $portrait_mtime ) {
 	$portrait_image_url = add_query_arg( 'v', $portrait_mtime, $portrait_image_url );
 }
 
+// PO-3062 (design alignment) — the screen images come from the updated design and live in
+// images/aicoach/design/. They have names of their own (not the old files' names), so a
+// browser or the edge that cached the old pictures for a year cannot serve them by mistake.
+$aicoach_design_dir = $theme_uri . '/images/aicoach/design';
+
 $aicoach_img = array(
-	'portrait'     => $portrait_image_url,
-	'bts'          => $theme_uri . '/images/aicoach/bts.webp',
-	'magic'        => $theme_uri . '/images/aicoach/magic-johnson.webp',
-	'alix'         => $alix_image_url,
-	'check'        => $theme_uri . '/images/aicoach/icon-check.svg',
-	'x'            => $theme_uri . '/images/aicoach/icon-x.svg',
-	// PO-3343 — coin/certificate re-exported from Figma "Belief 7" to match its
-	// filled illustration style now that all three sit together on one screen;
-	// belief-chart is deliberately NOT swapped yet — its Figma re-export kept
-	// failing (clipboard came back empty every attempt, cause unclear), so it
-	// stays the old outline-style icon as a placeholder until that's resolved.
-	'belief-coin'        => $theme_uri . '/images/aicoach/icon-belief-coin-v2.png',
-	'belief-chart'       => $theme_uri . '/images/aicoach/icon-belief-chart.svg',
-	'belief-certificate' => $theme_uri . '/images/aicoach/icon-belief-certificate.png',
-	'trophy'             => $theme_uri . '/images/aicoach/icon-trophy.svg',
+	'portrait'           => $portrait_image_url,
+	'bts'                => $aicoach_design_dir . '/bts.webp',
+	'magic'              => $aicoach_design_dir . '/magic-johnson.webp',
+	'alix'               => $aicoach_design_dir . '/alix-earle.webp',
+	'check'              => $aicoach_design_dir . '/check.svg',
+	'x'                  => $aicoach_design_dir . '/x.svg',
+	'belief-coin'        => $aicoach_design_dir . '/belief-coin.webp',
+	'belief-chart'       => $aicoach_design_dir . '/belief-chart.webp',
+	'belief-certificate' => $aicoach_design_dir . '/belief-certificate.webp',
+	'flag-mask'          => $aicoach_design_dir . '/flag-mask.png',
+	'back-arrow'         => $aicoach_design_dir . '/back-arrow.svg',
+	'globe'              => $aicoach_design_dir . '/globe.webp',
+	'sound'              => $aicoach_design_dir . '/sound.svg',
 );
 
 $aicoach_tiers = array(
@@ -168,54 +156,53 @@ $aicoach_channels = array(
 
         <?php get_template_part( 'template-parts/portal-header' ); ?>
 
-        <div class="container py-2 aicoach-page" id="portal-content" style="max-width: 1024px; padding-left: 20px; padding-right: 20px;">
+        <div class="container py-2 aicoach-page" id="portal-content">
 
             <section class="aicoach" aria-label="<?php esc_attr_e( 'AI Coach', 'influencer-hq' ); ?>">
 
-                <p class="aicoach-belief" data-i18n="belief"><?php esc_html_e( 'We believe conversations should be easy.', 'influencer-hq' ); ?></p>
+                <?php /* PO-3062 (design alignment) — Sami is a full-width banner under the header, with the commentary box right under it. The Ask Sami button is added to .aicoach-banner by js/aicoach-coach-flow.js. */ ?>
+                <div class="aicoach-banner">
+                    <div class="aicoach-avatar-wrap" id="aicoach-avatar-wrap" data-status="idle">
+                        <img
+                            class="aicoach-portrait"
+                            id="aicoach-portrait"
+                            src="<?php echo esc_url( $aicoach_img['portrait'] ); ?>"
+                            alt="<?php esc_attr_e( 'AI Coach', 'influencer-hq' ); ?>"
+                            width="600"
+                            height="400"
+                            fetchpriority="high"
+                        >
+                        <video class="aicoach-avatar-video" id="aicoach-avatar-video" autoplay playsinline muted></video>
+                        <div class="aicoach-avatar-loading" aria-hidden="true"><div class="aicoach-avatar-spinner"></div></div>
+                    </div>
+                </div>
 
-                <div class="aicoach-avatar-wrap" id="aicoach-avatar-wrap" data-status="idle">
-                    <img
-                        class="aicoach-portrait"
-                        id="aicoach-portrait"
-                        src="<?php echo esc_url( $aicoach_img['portrait'] ); ?>"
-                        alt="<?php esc_attr_e( 'AI Coach', 'influencer-hq' ); ?>"
-                        width="452"
-                        height="452"
-                        fetchpriority="high"
-                    >
-                    <video class="aicoach-avatar-video" id="aicoach-avatar-video" autoplay playsinline muted></video>
-                    <div class="aicoach-avatar-loading" aria-hidden="true"><div class="aicoach-avatar-spinner"></div></div>
+                <?php /* What Sami is saying: the words appear in the first element as she says them (js/aicoach/commentary.js); the second holds the whole script once, hidden from sight, for a screen reader. */ ?>
+                <div class="aicoach-commentary" id="aicoach-commentary">
+                    <p class="aicoach-commentary-text" id="aicoach-commentary-text" aria-hidden="true"></p>
+                    <p class="aicoach-commentary-sr" id="aicoach-commentary-sr" aria-live="polite"></p>
                 </div>
 
                 <div class="aicoach-stage" id="aicoach-stage">
 
-                    <div class="aicoach-panel is-active" data-panel="intro" aria-hidden="false">
-                        <p class="aicoach-caption" data-caption-for="intro" aria-live="polite"></p>
-                    </div>
+                    <?php /* The intro has no screen content of its own: only Sami and what she says. */ ?>
+                    <div class="aicoach-panel is-active" data-panel="intro" aria-hidden="false"></div>
 
-                    <div class="aicoach-panel" data-panel="believe-1" aria-hidden="true">
-                        <div class="aicoach-believe" id="aicoach-believe-1">
-                            <span class="aicoach-believe-kicker" data-i18n="weBelieve"><?php esc_html_e( 'We Believe', 'influencer-hq' ); ?></span>
-                            <div class="aicoach-believe-icons">
-                                <img class="aicoach-believe-icon" src="<?php echo esc_url( $aicoach_img['belief-coin'] ); ?>" alt="" width="72" height="72" aria-hidden="true">
-                                <img class="aicoach-believe-icon" src="<?php echo esc_url( $aicoach_img['belief-chart'] ); ?>" alt="" width="72" height="72" aria-hidden="true">
-                                <img class="aicoach-believe-icon" src="<?php echo esc_url( $aicoach_img['belief-certificate'] ); ?>" alt="" width="72" height="72" aria-hidden="true">
-                            </div>
-                            <p class="aicoach-caption" data-caption-for="believe-1" aria-live="polite"></p>
-                        </div>
-                    </div>
-
-                    <div class="aicoach-panel" data-panel="believe-2" aria-hidden="true">
+                    <?php /* "We Believe" is one screen for both narrations, so the two panels look the same while the two clips play one after the other. */ ?>
+                    <?php foreach ( array( 'believe-1', 'believe-2' ) as $believe_panel ) : ?>
+                    <div class="aicoach-panel" data-panel="<?php echo esc_attr( $believe_panel ); ?>" aria-hidden="true">
                         <div class="aicoach-believe">
-                            <img class="aicoach-believe-icon" src="<?php echo esc_url( $aicoach_img['belief-chart'] ); ?>" alt="" width="72" height="72" aria-hidden="true">
-                            <span class="aicoach-believe-kicker" data-i18n="weBelieve"><?php esc_html_e( 'We Believe', 'influencer-hq' ); ?></span>
-                            <p class="aicoach-caption" data-caption-for="believe-2" aria-live="polite"></p>
+                            <h2 class="aicoach-believe-title" data-i18n="weBelieve"><?php esc_html_e( 'We Believe', 'influencer-hq' ); ?></h2>
+                            <div class="aicoach-believe-icons" aria-hidden="true">
+                                <span class="aicoach-believe-coin"><img src="<?php echo esc_url( $aicoach_img['belief-coin'] ); ?>" alt="" width="400" height="400"></span>
+                                <img class="aicoach-believe-chart" src="<?php echo esc_url( $aicoach_img['belief-chart'] ); ?>" alt="" width="520" height="423">
+                                <span class="aicoach-believe-certificate"><img src="<?php echo esc_url( $aicoach_img['belief-certificate'] ); ?>" alt="" width="400" height="400"></span>
+                            </div>
                         </div>
                     </div>
+                    <?php endforeach; ?>
 
                     <div class="aicoach-panel" data-panel="home" aria-hidden="true">
-                        <p class="aicoach-caption" data-caption-for="home" aria-live="polite"></p>
                         <div class="aicoach-tiers" role="radiogroup" data-i18n-attr="aria-label:tierGroupLabel" aria-label="<?php esc_attr_e( 'Conversation length', 'influencer-hq' ); ?>">
                             <?php foreach ( $aicoach_tiers as $index => $tier ) : ?>
                             <?php
@@ -253,8 +240,8 @@ $aicoach_channels = array(
                                     class="aicoach-magic-img"
                                     data-src="<?php echo esc_url( $aicoach_img['magic'] ); ?>"
                                     alt="<?php esc_attr_e( 'Magic Johnson', 'influencer-hq' ); ?>"
-                                    width="596"
-                                    height="844"
+                                    width="500"
+                                    height="707"
                                 >
                                 <h2 class="aicoach-magic-name">
                                     <span><?php esc_html_e( 'Magic', 'influencer-hq' ); ?></span>
@@ -263,47 +250,42 @@ $aicoach_channels = array(
                             </div>
                             <ul class="aicoach-story-points">
                                 <li class="aicoach-story-point">
-                                    <img class="aicoach-story-icon" src="<?php echo esc_url( $aicoach_img['check'] ); ?>" alt="" width="48" height="45" aria-hidden="true">
+                                    <img class="aicoach-story-icon aicoach-story-icon--check" src="<?php echo esc_url( $aicoach_img['check'] ); ?>" alt="" width="49" height="46" aria-hidden="true">
                                     <span data-i18n="magicAdidas"><?php esc_html_e( 'Adidas $100k cash', 'influencer-hq' ); ?></span>
                                 </li>
-                                <li class="aicoach-story-point aicoach-story-point--stacked">
-                                    <img class="aicoach-story-icon" src="<?php echo esc_url( $aicoach_img['x'] ); ?>" alt="" width="48" height="48" aria-hidden="true">
+                                <li class="aicoach-story-point aicoach-story-point--x aicoach-story-point--stacked">
+                                    <img class="aicoach-story-icon aicoach-story-icon--cross" src="<?php echo esc_url( $aicoach_img['x'] ); ?>" alt="" width="48" height="48" aria-hidden="true">
                                     <span>
                                         <span data-i18n="magicNike"><?php esc_html_e( "Nike's 11 cent stock", 'influencer-hq' ); ?></span>
                                         <span class="aicoach-story-sub" data-i18n="magicNikeWorth"><?php esc_html_e( 'Now worth 5.4 billion', 'influencer-hq' ); ?></span>
                                     </span>
                                 </li>
                             </ul>
-                            <p class="aicoach-caption" data-caption-for="equity-magic" aria-live="polite"></p>
                         </div>
                     </div>
 
                     <div class="aicoach-panel" data-panel="equity-alix" aria-hidden="true">
-                        <div class="aicoach-story aicoach-story--magic">
-                            <div class="aicoach-magic">
+                        <div class="aicoach-story aicoach-story--alix">
+                            <h2 class="aicoach-story-title"><?php esc_html_e( 'Alix Earle', 'influencer-hq' ); ?></h2>
+                            <div class="aicoach-story-media">
                                 <img
-                                    class="aicoach-magic-img"
+                                    class="aicoach-story-photo"
                                     src="<?php echo esc_url( $aicoach_img['alix'] ); ?>"
                                     alt="<?php esc_attr_e( 'Alix Earle', 'influencer-hq' ); ?>"
-                                    width="596"
-                                    height="844"
+                                    width="711"
+                                    height="698"
                                 >
-                                <h2 class="aicoach-magic-name">
-                                    <span><?php esc_html_e( 'Alix', 'influencer-hq' ); ?></span>
-                                    <span><?php esc_html_e( 'Earle', 'influencer-hq' ); ?></span>
-                                </h2>
                             </div>
                             <ul class="aicoach-story-points">
                                 <li class="aicoach-story-point aicoach-story-point--stacked">
-                                    <img class="aicoach-story-icon" src="<?php echo esc_url( $aicoach_img['check'] ); ?>" alt="" width="48" height="45" aria-hidden="true">
+                                    <img class="aicoach-story-icon aicoach-story-icon--check" src="<?php echo esc_url( $aicoach_img['check'] ); ?>" alt="" width="49" height="46" aria-hidden="true">
                                     <span data-i18n="alixPoppi"><?php esc_html_e( 'Said yes to an ownership-based partnership with Poppi', 'influencer-hq' ); ?></span>
                                 </li>
-                                <li class="aicoach-story-point">
-                                    <img class="aicoach-story-icon" src="<?php echo esc_url( $aicoach_img['x'] ); ?>" alt="" width="48" height="48" aria-hidden="true">
+                                <li class="aicoach-story-point aicoach-story-point--x">
+                                    <img class="aicoach-story-icon aicoach-story-icon--cross" src="<?php echo esc_url( $aicoach_img['x'] ); ?>" alt="" width="48" height="48" aria-hidden="true">
                                     <span data-i18n="turnedDownCash"><?php esc_html_e( 'Turned down cash', 'influencer-hq' ); ?></span>
                                 </li>
                             </ul>
-                            <p class="aicoach-caption" data-caption-for="equity-alix" aria-live="polite"></p>
                         </div>
                     </div>
 
@@ -315,63 +297,61 @@ $aicoach_channels = array(
                                     class="aicoach-story-photo"
                                     data-src="<?php echo esc_url( $aicoach_img['bts'] ); ?>"
                                     alt="<?php esc_attr_e( 'BTS', 'influencer-hq' ); ?>"
-                                    width="624"
-                                    height="471"
+                                    width="520"
+                                    height="392"
                                 >
                             </div>
                             <ul class="aicoach-story-points">
                                 <li class="aicoach-story-point">
-                                    <img class="aicoach-story-icon" src="<?php echo esc_url( $aicoach_img['check'] ); ?>" alt="" width="48" height="45" aria-hidden="true">
+                                    <img class="aicoach-story-icon aicoach-story-icon--check" src="<?php echo esc_url( $aicoach_img['check'] ); ?>" alt="" width="49" height="46" aria-hidden="true">
                                     <span data-i18n="btsOwnership"><?php esc_html_e( 'Said yes to shared ownership, valued at 103.6 million', 'influencer-hq' ); ?></span>
                                 </li>
-                                <li class="aicoach-story-point">
-                                    <img class="aicoach-story-icon" src="<?php echo esc_url( $aicoach_img['x'] ); ?>" alt="" width="48" height="48" aria-hidden="true">
+                                <li class="aicoach-story-point aicoach-story-point--x">
+                                    <img class="aicoach-story-icon aicoach-story-icon--cross" src="<?php echo esc_url( $aicoach_img['x'] ); ?>" alt="" width="48" height="48" aria-hidden="true">
                                     <span data-i18n="turnedDownCash"><?php esc_html_e( 'Turned down cash', 'influencer-hq' ); ?></span>
                                 </li>
                             </ul>
-                            <p class="aicoach-caption" data-caption-for="equity-bts" aria-live="polite"></p>
                         </div>
                     </div>
 
                     <div class="aicoach-panel" data-panel="competition-world" aria-hidden="true">
                         <div class="aicoach-competition">
-                            <img class="aicoach-competition-icon" src="<?php echo esc_url( $aicoach_img['trophy'] ); ?>" alt="" width="72" height="72" aria-hidden="true">
                             <h2 class="aicoach-competition-name" data-i18n="worldCompetitionName"><?php esc_html_e( 'World Competition', 'influencer-hq' ); ?></h2>
+                            <span class="aicoach-flag" aria-hidden="true"></span>
                             <p class="aicoach-competition-format">
+                                <span data-i18n="weekly"><?php esc_html_e( 'Weekly', 'influencer-hq' ); ?></span>
                                 <span data-i18n="youFollowers"><?php esc_html_e( 'You + Followers', 'influencer-hq' ); ?></span>
-                                <span class="aicoach-competition-vs" data-i18n="versus"><?php esc_html_e( 'versus', 'influencer-hq' ); ?></span>
+                                <span data-i18n="versus"><?php esc_html_e( 'versus', 'influencer-hq' ); ?></span>
                                 <span data-i18n="allInfluencersFollowers"><?php esc_html_e( 'All Influencers + Followers', 'influencer-hq' ); ?></span>
                             </p>
-                            <p class="aicoach-caption" data-caption-for="competition-world" aria-live="polite"></p>
                         </div>
                     </div>
 
                     <div class="aicoach-panel" data-panel="competition-community" aria-hidden="true">
                         <div class="aicoach-competition">
-                            <img class="aicoach-competition-icon" src="<?php echo esc_url( $aicoach_img['trophy'] ); ?>" alt="" width="72" height="72" aria-hidden="true">
                             <h2 class="aicoach-competition-name" data-i18n="communityCompetitionName"><?php esc_html_e( 'Community Competition', 'influencer-hq' ); ?></h2>
-                            <p class="aicoach-competition-format" data-i18n="communityCompetitionFormat"><?php esc_html_e( 'Weekly competition for your followers only', 'influencer-hq' ); ?></p>
-                            <p class="aicoach-caption" data-caption-for="competition-community" aria-live="polite"></p>
+                            <span class="aicoach-flag" aria-hidden="true"></span>
+                            <p class="aicoach-competition-format" data-i18n="communityCompetitionFormat"><?php esc_html_e( 'Weekly COMPETITION for your FOLLOWERS only', 'influencer-hq' ); ?></p>
                         </div>
                     </div>
 
                     <div class="aicoach-panel" data-panel="competition-private" aria-hidden="true">
                         <div class="aicoach-competition">
-                            <img class="aicoach-competition-icon" src="<?php echo esc_url( $aicoach_img['trophy'] ); ?>" alt="" width="72" height="72" aria-hidden="true">
-                            <h2 class="aicoach-competition-name" data-i18n="privateChallengeName"><?php esc_html_e( 'Private Challenge', 'influencer-hq' ); ?></h2>
+                            <h2 class="aicoach-competition-name" data-i18n="privateChallengeName"><?php esc_html_e( 'Private Challenges', 'influencer-hq' ); ?></h2>
+                            <span class="aicoach-flag" aria-hidden="true"></span>
                             <p class="aicoach-competition-format">
                                 <span data-i18n="youFollowers"><?php esc_html_e( 'You + Followers', 'influencer-hq' ); ?></span>
-                                <span class="aicoach-competition-vs" data-i18n="versus"><?php esc_html_e( 'versus', 'influencer-hq' ); ?></span>
+                                <span data-i18n="versus"><?php esc_html_e( 'versus', 'influencer-hq' ); ?></span>
                                 <span data-i18n="friendFollowers"><?php esc_html_e( 'An Influencer Friend + Followers', 'influencer-hq' ); ?></span>
                             </p>
-                            <p class="aicoach-caption" data-caption-for="competition-private" aria-live="polite"></p>
                         </div>
                     </div>
 
                     <div class="aicoach-panel" data-panel="identity" aria-hidden="true">
                         <div class="aicoach-identity">
-                            <h2 class="aicoach-identity-title" data-i18n="identityTitle"><?php esc_html_e( "Let's Start The Conversation", 'influencer-hq' ); ?></h2>
+                            <p class="aicoach-belief" data-i18n="belief"><?php esc_html_e( 'We believe conversations should be easy.', 'influencer-hq' ); ?></p>
                             <p class="aicoach-identity-subtitle" data-i18n="identitySubtitle"><?php esc_html_e( 'Let us know who you are', 'influencer-hq' ); ?></p>
+                            <h2 class="aicoach-identity-title" data-i18n="identityTitle"><?php esc_html_e( "Let's Start The Conversation", 'influencer-hq' ); ?></h2>
                             <form class="aicoach-identity-form" id="aicoach-identity-form" novalidate>
                                 <label class="aicoach-identity-field">
                                     <span class="aicoach-identity-label" data-i18n="firstName"><?php esc_html_e( 'First Name', 'influencer-hq' ); ?></span>
@@ -394,8 +374,9 @@ $aicoach_channels = array(
                     </div>
 
                     <div class="aicoach-panel" data-panel="comm-channels" aria-hidden="true">
-                        <p class="aicoach-caption" data-caption-for="comm-channels" aria-live="polite"></p>
                         <form class="aicoach-channels" id="aicoach-channels-form" novalidate>
+                            <p class="aicoach-volume-note" data-i18n="volumeReminder"><?php esc_html_e( 'Please Remember to Turn Up Your Volume', 'influencer-hq' ); ?></p>
+                            <h2 class="aicoach-identity-title" data-i18n="identityTitle"><?php esc_html_e( "Let's Start The Conversation", 'influencer-hq' ); ?></h2>
                             <p class="aicoach-channels-hint" id="aicoach-channels-hint" data-i18n="channelsHint">
                                 <?php esc_html_e( 'Please select at least one communication method.', 'influencer-hq' ); ?>
                             </p>
@@ -429,7 +410,6 @@ $aicoach_channels = array(
 
                     <div class="aicoach-panel" data-panel="final-continue" aria-hidden="true">
                         <div class="aicoach-final">
-                            <p class="aicoach-caption" data-caption-for="final-continue" aria-live="polite"></p>
                             <p class="aicoach-final-error" id="aicoach-final-error" role="alert"></p>
                             <button type="button" class="aicoach-form-continue" id="aicoach-final-continue" data-i18n="letsContinue">
                                 <?php esc_html_e( "Let's Continue", 'influencer-hq' ); ?>
@@ -520,38 +500,87 @@ $aicoach_channels = array(
         <?php get_template_part( 'template-parts/portal-footer' ); ?>
     </main><!-- #main -->
 
+<?php /* The design uses the ExtraBold and Black weights, which the shared portal fonts link (template-parts/portal-styles.php) does not load. */ ?>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@800&family=Inter:wght@800;900&display=swap" rel="stylesheet">
 <style>
+    /* PO-3062 (design alignment) — the frame every screen shares: the header, the banner Sami
+    is shown in and the commentary box under it. Sizes are the design's, drawn for a 398 px
+    wide phone; the column is capped at 480 px and centred on a wider screen. */
+    #portal-content.aicoach-page {
+        max-width: 480px;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
     .aicoach {
-        max-width: 720px;
-        margin: 0 auto 56px;
+        --aicoach-yellow: #fdd65b;
+        --aicoach-green: #148942;
+        --aicoach-box-green: #138a42;
+        --aicoach-commentary-bg: #2d2b2b;
+        --aicoach-field-bg: #161612;
+        max-width: 480px;
+        margin: 0 auto;
         /* NFR-02 — no hardcoded top clearance here: #portal-content (see the
         wrapping .aicoach-page container) gets its padding-top set dynamically
         by adjustContentPadding() in portal-header.php, which measures the
-        sticky header's actual rendered height. A fixed value here (previously
-        185px) broke on mobile once the shared nav wraps onto multiple lines
-        and grows taller than that. */
+        sticky header's actual rendered height. */
         padding: 0 0 40px;
         color: #fff;
         font-family: 'Be Vietnam Pro', sans-serif;
     }
 
-    .aicoach-belief {
-        margin: 0 0 28px;
-        font-weight: 600;
-        font-size: clamp(1.2rem, 3.4vw, 1.55rem);
-        line-height: 1.35;
-        text-align: center;
-        color: #fff;
+    .aicoach-banner {
+        position: relative;
     }
 
     .aicoach-avatar-wrap {
         position: relative;
-        width: min(280px, 62vw);
-        aspect-ratio: 1;
-        margin: 0 auto 48px;
-        border-radius: 50%;
+        width: 100%;
+        aspect-ratio: 398 / 182;
+        margin: 0;
         overflow: hidden;
         background: #12131a;
+    }
+
+    /* What Sami is saying (js/aicoach/commentary.js). The box is part of the frame, so it stays
+    when nothing is said; it is left out on the identity screen, which the design draws without it. */
+    .aicoach-commentary {
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: min(316px, 79.4%);
+        min-height: 86px;
+        margin: 6px auto 0;
+        padding: 8px 16px;
+        border: 1px dashed #fff;
+        background: var(--aicoach-commentary-bg);
+    }
+
+    .aicoach:has(.aicoach-panel[data-panel="identity"].is-active) .aicoach-commentary {
+        display: none;
+    }
+
+    .aicoach-commentary-text {
+        max-width: 197px;
+        margin: 0;
+        font-family: 'Inter', 'Be Vietnam Pro', sans-serif;
+        font-weight: 300;
+        font-style: italic;
+        font-size: 14px;
+        line-height: 24px;
+        text-align: center;
+        color: #fff;
+    }
+
+    .aicoach-commentary-sr {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
     }
 
     .aicoach-portrait,
@@ -562,7 +591,8 @@ $aicoach_channels = array(
         width: 100%;
         height: 100%;
         object-fit: cover;
-        object-position: center top;
+        /* The 3:2 picture and clips are cropped top and bottom to the banner; keep her head in. */
+        object-position: center 10%;
         transition: opacity 0.32s ease;
     }
 
@@ -578,7 +608,7 @@ $aicoach_channels = array(
     instantly (transition: none) so the video fades out over it rather than
     both layers dipping through the dark background. Skipped while connecting —
     the loading overlay owns that state. transform-only, inside this wrapper's
-    circular overflow mask, so layout and the circle's size never change. */
+    overflow mask, so layout and the banner's size never change. */
     .aicoach-avatar-wrap.is-idle:not([data-status="connecting"]) .aicoach-avatar-video { opacity: 0; }
 
     .aicoach-avatar-wrap.is-idle:not([data-status="connecting"]) .aicoach-portrait {
@@ -626,156 +656,201 @@ $aicoach_channels = array(
 
     @keyframes aicoach-spin { to { transform: rotate(360deg); } }
 
-    .aicoach-caption {
-        max-width: 560px;
-        margin: 0 auto 32px;
-        min-height: 4.5em;
-        font-weight: 600;
-        font-size: clamp(1rem, 2.8vw, 1.25rem);
-        line-height: 1.5;
-        text-align: center;
-        color: #fff;
-    }
-
+    /* "We Believe": one screen for both narrations. */
     .aicoach-believe {
-        max-width: 560px;
-        margin: 0 auto;
+        padding-top: 101px;
         text-align: center;
     }
 
-    .aicoach-believe-icon {
-        display: block;
-        margin: 0 auto 20px;
-        width: 72px;
-        height: 72px;
-    }
-
-    /* PO-3343 — believe-1's opening beat (coin/chart/certificate shown
-    together, matching Figma "Belief 7") pairs with a blank caption; once
-    getBelieveIntroActive() below switches it out, the icons row disappears
-    and the panel's own .aicoach-caption takes over exactly as every other
-    screen already works. Scoped under .aicoach-believe-icons rather than
-    resizing .aicoach-believe-icon itself, so believe-2's existing single-icon
-    layout (72px) is untouched. */
-    .aicoach-believe-icons {
+    .aicoach-believe-title {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 20px;
-        margin: 0 auto 20px;
-    }
-
-    .aicoach-believe-icons .aicoach-believe-icon {
+        min-height: 41px;
         margin: 0;
-        width: 64px;
-        height: 64px;
+        font-family: 'Cinzel', serif;
+        font-weight: 700;
+        font-size: 22.7px;
+        line-height: normal;
+        color: #fff;
     }
 
-    .aicoach-believe.is-text-phase .aicoach-believe-icons {
-        display: none;
+    .aicoach-believe-icons {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        padding: 0 14.8%;
+        margin-top: 39px;
+        row-gap: 52px;
     }
 
-    .aicoach-believe-kicker {
+    /* The artwork is cropped inside its box the way the design crops it. */
+    .aicoach-believe-coin,
+    .aicoach-believe-certificate {
+        position: relative;
         display: block;
-        margin: 0 0 16px;
-        font-weight: 800;
-        font-size: clamp(1.3rem, 4vw, 1.75rem);
-        text-transform: uppercase;
-        letter-spacing: .04em;
-        color: #fdd65b;
+        overflow: hidden;
     }
 
-    .aicoach-competition {
-        max-width: 560px;
+    .aicoach-believe-coin {
+        width: 97.1px;
+        height: 95.4px;
+    }
+
+    .aicoach-believe-coin img {
+        position: absolute;
+        left: -27.38%;
+        top: -22.42%;
+        width: 152.98%;
+        height: 155.76%;
+        max-width: none;
+    }
+
+    .aicoach-believe-chart {
+        width: 85.7px;
+        height: 69.7px;
+        object-fit: cover;
+    }
+
+    .aicoach-believe-certificate {
+        width: 109.6px;
+        height: 80px;
         margin: 0 auto;
-        text-align: center;
     }
 
-    .aicoach-competition-icon {
-        display: block;
-        margin: 0 auto 20px;
-        width: 72px;
-        height: 72px;
+    .aicoach-believe-certificate img {
+        position: absolute;
+        left: -17.56%;
+        top: -37.88%;
+        width: 134.21%;
+        height: 183.84%;
+        max-width: none;
+    }
+
+    /* The three competitions: name, the gold flag, three or four lines. */
+    .aicoach-competition {
+        padding-top: 37px;
+        text-align: center;
     }
 
     .aicoach-competition-name {
-        margin: 0 0 16px;
+        max-width: 269px;
+        margin: 0 auto;
         font-weight: 800;
-        font-size: clamp(1.5rem, 4.5vw, 2.25rem);
+        font-size: 32px;
+        line-height: 1.2;
         text-transform: uppercase;
-        color: #fdd65b;
+        color: var(--aicoach-yellow);
+    }
+
+    .aicoach-flag {
+        display: block;
+        width: 87.9px;
+        height: 87.4px;
+        margin: 28px auto 0;
+        background-image: linear-gradient(155.28deg, #856220 0.18%, #f4e683 34.35%, #bf923d 62.32%, #f1ea82 94.58%, #4e341b 124.45%);
+        -webkit-mask: url('<?php echo esc_url( $aicoach_img['flag-mask'] ); ?>') center / 100% 100% no-repeat;
+        mask: url('<?php echo esc_url( $aicoach_img['flag-mask'] ); ?>') center / 100% 100% no-repeat;
     }
 
     .aicoach-competition-format {
-        margin: 0 0 28px;
-        font-weight: 700;
-        font-size: clamp(1.05rem, 3vw, 1.3rem);
-        line-height: 1.4;
-        color: #fff;
+        max-width: 221px;
+        margin: 35px auto 0;
+        font-weight: 800;
+        font-size: 20px;
+        line-height: 34.4px;
+        color: var(--aicoach-yellow);
     }
 
-    .aicoach-competition-vs {
+    .aicoach-competition-format span {
         display: block;
-        margin: 4px 0;
-        font-weight: 600;
-        font-style: italic;
-        text-transform: uppercase;
-        font-size: clamp(0.85rem, 2.4vw, 1rem);
-        color: #a9a9b3;
     }
 
+    /* Identity: no commentary box on this screen, so it starts under the banner. */
     .aicoach-identity {
-        max-width: 440px;
-        margin: 0 auto;
+        padding: 31px 0 0;
         text-align: center;
     }
 
-    .aicoach-identity-title {
-        margin: 0 0 8px;
-        font-weight: 800;
-        font-size: clamp(1.5rem, 4.5vw, 2rem);
-        color: #fdd65b;
+    .aicoach-belief {
+        margin: 0 0 8.5px;
+        font-weight: 600;
+        font-size: 16px;
+        line-height: 1.3;
+        color: #fff;
     }
 
     .aicoach-identity-subtitle {
-        margin: 0 0 32px;
+        margin: 0 0 15px;
         font-weight: 600;
-        font-size: clamp(1rem, 2.8vw, 1.15rem);
+        font-size: 13.1px;
+        line-height: 21.6px;
         color: #fff;
+    }
+
+    .aicoach-identity-title {
+        max-width: 260px;
+        margin: 0 auto 19.5px;
+        font-family: 'Inter', 'Be Vietnam Pro', sans-serif;
+        font-weight: 900;
+        font-size: 28.5px;
+        line-height: 41.8px;
+        text-transform: capitalize;
+        color: var(--aicoach-yellow);
     }
 
     .aicoach-identity-form {
         display: flex;
         flex-direction: column;
-        gap: 20px;
+        gap: 18px;
+        width: min(261px, 66%);
+        margin: 0 auto;
     }
 
+    /* The label sits inside the field's row, the input is the dashed box beside it. */
     .aicoach-identity-field {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
+        position: relative;
+        box-sizing: border-box;
+        display: grid;
+        grid-template-columns: 76px minmax(0, 1fr);
+        align-items: center;
+        height: 44px;
+        padding: 0 8px;
+        border: 1px solid var(--aicoach-yellow);
+        border-radius: 4px;
+        background: var(--aicoach-field-bg);
         text-align: left;
     }
 
     .aicoach-identity-label {
-        font-weight: 700;
-        font-size: 0.95rem;
+        font-family: 'Inter', 'Be Vietnam Pro', sans-serif;
+        font-weight: 600;
+        font-size: 11px;
+        text-transform: uppercase;
         color: #fff;
     }
 
     .aicoach-identity-input {
-        padding: 12px 14px;
-        border: 2px solid #3a3b47;
-        border-radius: 8px;
-        background: #1b1c24;
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        height: 28px;
+        padding: 0 6px;
+        border: 1px dashed #fff;
+        border-radius: 0;
+        background: transparent;
         color: #fff;
-        font-size: 1rem;
-        font-family: inherit;
+        font-family: 'Inter', 'Be Vietnam Pro', sans-serif;
+        font-weight: 500;
+        /* 16 px: a smaller field makes iOS zoom the page in when it is focused. */
+        font-size: 16px;
     }
 
     .aicoach-identity-input:focus {
         outline: none;
-        border-color: #fdd65b;
+        border-style: solid;
+        border-color: var(--aicoach-yellow);
     }
 
     .aicoach-identity-input.is-invalid {
@@ -783,65 +858,87 @@ $aicoach_channels = array(
     }
 
     .aicoach-identity-error {
-        min-height: 1.2em;
+        position: absolute;
+        left: 0;
+        top: calc(100% + 2px);
         font-weight: 600;
-        font-size: 0.85rem;
-        color: #eb0000;
+        font-size: 12px;
+        line-height: 1.2;
+        color: #ff6b6b;
     }
 
     .aicoach-form-continue {
-        margin-top: 8px;
-        padding: 14px;
-        border: none;
-        border-radius: 8px;
-        background: #fdd65b;
-        color: #12131a;
-        font-weight: 800;
-        font-size: 1.05rem;
+        display: block;
+        box-sizing: border-box;
+        width: 100%;
+        height: 44px;
+        margin: 36px auto 0;
+        padding: 0 12px;
+        border: 1px solid var(--aicoach-green);
+        border-radius: 4px;
+        background: var(--aicoach-green);
+        color: #fff;
+        font-family: 'Inter', 'Be Vietnam Pro', sans-serif;
+        font-weight: 600;
+        font-size: 19.6px;
+        text-transform: uppercase;
         cursor: pointer;
     }
 
     .aicoach-form-continue:disabled {
-        background: #3a3b47;
-        color: #7a7b87;
+        opacity: 0.45;
         cursor: not-allowed;
     }
 
+    .aicoach-form-continue:focus-visible {
+        outline: 3px solid var(--aicoach-yellow);
+        outline-offset: 2px;
+    }
+
+    /* Channels: the reminder, the title, then the two-column list. */
     .aicoach-channels {
-        max-width: 440px;
-        margin: 0 auto;
+        padding-top: 15px;
+        text-align: center;
+    }
+
+    .aicoach-volume-note {
+        margin: 0 0 16px;
+        font-weight: 600;
+        font-size: 16px;
+        line-height: 35px;
+        color: #fff;
     }
 
     .aicoach-channels-hint {
-        margin: 0 0 20px;
+        display: none;
+        margin: 0 0 12px;
         font-weight: 600;
-        font-size: 0.9rem;
-        text-align: center;
-        color: #a9a9b3;
+        font-size: 14px;
+        color: #ff6b6b;
     }
 
     .aicoach-channels-hint.is-error {
-        color: #eb0000;
+        display: block;
     }
 
     .aicoach-channel-list {
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-        margin: 0 0 24px;
+        display: grid;
+        grid-template-columns: 57% 1fr;
+        row-gap: 22px;
+        padding: 16px 9% 0;
+        text-align: left;
     }
 
+    /* Every channel is one cell; a field that opens under a ticked channel takes a full row after the list. */
     .aicoach-channel {
-        padding: 14px 16px;
-        border: 2px solid #3a3b47;
-        border-radius: 10px;
-        background: #1b1c24;
+        display: contents;
     }
 
     .aicoach-channel-toggle {
+        order: 1;
         display: flex;
         align-items: center;
-        gap: 14px;
+        gap: 18px;
         cursor: pointer;
         -webkit-tap-highlight-color: transparent;
     }
@@ -854,53 +951,63 @@ $aicoach_channels = array(
 
     .aicoach-channel-box {
         flex-shrink: 0;
-        width: 24px;
-        height: 24px;
-        border: 2px solid #fdd65b;
-        border-radius: 6px;
-        background: transparent;
         box-sizing: border-box;
+        width: 23px;
+        height: 23px;
+        border: 2px solid #fff;
+        border-radius: 3px;
+        background: transparent;
     }
 
     .aicoach-channel-toggle:has(.aicoach-channel-check:checked) .aicoach-channel-box {
-        background: #fdd65b;
+        background: var(--aicoach-box-green);
+    }
+
+    .aicoach-channel-toggle:has(.aicoach-channel-check:focus-visible) .aicoach-channel-box {
+        outline: 3px solid var(--aicoach-yellow);
+        outline-offset: 2px;
     }
 
     .aicoach-channel-label {
-        font-weight: 700;
+        font-weight: 600;
+        font-size: 20px;
+        line-height: 30px;
         color: #fff;
     }
 
     .aicoach-channel-field {
-        margin-top: 14px;
-        padding-top: 14px;
-        border-top: 1px solid #3a3b47;
+        order: 2;
+        grid-column: 1 / -1;
         text-align: left;
+    }
+
+    .aicoach-channel-field[hidden] {
+        display: none;
     }
 
     .aicoach-channel-field-label {
         display: block;
-        margin: 0 0 8px;
+        margin: 0 0 6px;
         font-weight: 600;
-        font-size: 0.9rem;
+        font-size: 14px;
         color: #fff;
     }
 
     .aicoach-channel-input {
         width: 100%;
         box-sizing: border-box;
-        padding: 10px 12px;
-        border: 2px solid #3a3b47;
-        border-radius: 8px;
-        background: #12131a;
+        padding: 8px 10px;
+        border: 1px solid #fff;
+        border-radius: 4px;
+        background: var(--aicoach-field-bg);
         color: #fff;
-        font-size: 0.95rem;
-        font-family: inherit;
+        font-size: 16px;
+        font-family: 'Inter', 'Be Vietnam Pro', sans-serif;
     }
 
     .aicoach-channel-input:focus {
         outline: none;
-        border-color: #fdd65b;
+        border-color: var(--aicoach-yellow);
     }
 
     .aicoach-channel-input.is-invalid {
@@ -910,24 +1017,34 @@ $aicoach_channels = array(
     .aicoach-channel-error {
         display: block;
         min-height: 1.1em;
-        margin-top: 6px;
+        margin-top: 4px;
         font-weight: 600;
-        font-size: 0.8rem;
-        color: #eb0000;
+        font-size: 12px;
+        color: #ff6b6b;
+    }
+
+    .aicoach-channels .aicoach-form-continue {
+        width: min(261px, 66%);
     }
 
     .aicoach-final {
         max-width: 440px;
         margin: 0 auto;
+        padding-top: 32px;
         text-align: center;
+    }
+
+    .aicoach-final .aicoach-form-continue {
+        width: min(261px, 66%);
+        margin-top: 0;
     }
 
     .aicoach-final-error {
         min-height: 1.2em;
         margin: 0 0 16px;
         font-weight: 600;
-        font-size: 0.9rem;
-        color: #eb0000;
+        font-size: 14px;
+        color: #ff6b6b;
     }
 
     /* PO-3109 — "Time is up?" screen (design: Keep Talking Now / Set an
@@ -1196,19 +1313,19 @@ $aicoach_channels = array(
         top: 0;
     }
 
+    /* The time ask: a yellow box, the length in Cinzel, and what it includes. */
     .aicoach-tiers {
         display: flex;
         flex-direction: column;
         gap: 36px;
-        max-width: 640px;
-        margin: 0 auto;
+        padding: 11px 0 0;
     }
 
     .aicoach-tier-head {
         display: flex;
         align-items: center;
-        gap: 18px;
-        margin: 0 0 14px;
+        gap: 17px;
+        padding-left: 11.7%;
         cursor: pointer;
         -webkit-tap-highlight-color: transparent;
     }
@@ -1221,74 +1338,83 @@ $aicoach_channels = array(
 
     .aicoach-tier-box {
         flex-shrink: 0;
-        width: 42px;
-        height: 42px;
-        border: 4px solid #fdd65b;
-        border-radius: 10px;
-        background: transparent;
         box-sizing: border-box;
+        width: 27.4px;
+        height: 27.4px;
+        border: 2px solid var(--aicoach-yellow);
+        border-radius: 4px;
+        background: transparent;
     }
 
     .aicoach-tier.is-selected .aicoach-tier-box,
     .aicoach-tier-head:has(.aicoach-tier-check:checked) .aicoach-tier-box {
-        background: #fdd65b;
+        background: var(--aicoach-yellow);
+    }
+
+    .aicoach-tier-head:has(.aicoach-tier-check:focus-visible) .aicoach-tier-box {
+        outline: 3px solid #fff;
+        outline-offset: 2px;
     }
 
     .aicoach-tier-duration {
-        font-weight: 800;
-        font-size: clamp(1.75rem, 5vw, 2.5rem);
-        line-height: 1.1;
-        text-transform: capitalize;
-        color: #fdd65b;
+        font-family: 'Cinzel', serif;
+        font-weight: 700;
+        font-size: 22.7px;
+        line-height: 1.2;
+        color: #fff;
     }
 
     .aicoach-tier-list {
-        margin: 0;
-        padding: 0 0 0 1.35em;
+        margin: 14px 0 0 7.3%;
+        padding: 0 0 0 24px;
         list-style: disc;
         color: #fff;
     }
 
     .aicoach-tier-list li {
-        margin: 0 0 8px;
+        margin: 0;
         font-weight: 600;
-        font-size: clamp(1.05rem, 2.6vw, 1.35rem);
-        line-height: 1.45;
+        font-size: 16px;
+        line-height: 21.6px;
     }
 
-    .aicoach-tier-list li:last-child {
-        margin-bottom: 0;
-    }
-
+    /* BTS, Alix Earle and Magic Johnson: the name, the photo, a tick and a cross. */
     .aicoach-story {
-        max-width: 640px;
-        margin: 0 auto;
         padding-bottom: 24px;
+        text-align: center;
+    }
+
+    .aicoach-story--bts {
+        padding-top: 45px;
+    }
+
+    .aicoach-story--alix {
+        padding-top: 37px;
+    }
+
+    .aicoach-story--magic {
+        padding-top: 0;
     }
 
     .aicoach-story-title {
-        margin: 0 0 20px;
+        margin: 0;
         font-weight: 800;
-        font-size: clamp(2.5rem, 8vw, 4rem);
-        line-height: 1.05;
-        text-align: center;
+        font-size: 26px;
+        line-height: 1.2;
         text-transform: uppercase;
-        color: #fdd65b;
-    }
-
-    .aicoach-duration-label {
-        margin: 0 0 18px;
-        font-weight: 800;
-        font-size: clamp(1.75rem, 5vw, 2.5rem);
-        line-height: 1.1;
-        text-align: center;
-        text-transform: capitalize;
-        color: #fdd65b;
+        color: var(--aicoach-yellow);
     }
 
     .aicoach-story-media {
-        margin: 0 auto 36px;
-        max-width: 624px;
+        width: 64.2%;
+        margin: 22px auto 0;
+    }
+
+    .aicoach-story--alix .aicoach-story-media {
+        position: relative;
+        left: 5px;
+        width: 51.4%;
+        margin-top: 18px;
     }
 
     .aicoach-story-photo {
@@ -1297,10 +1423,11 @@ $aicoach_channels = array(
         height: auto;
     }
 
+    /* Magic Johnson: the photo has room at the top and the name sits on its right side. */
     .aicoach-magic {
         position: relative;
-        margin: 0 auto 28px;
-        max-width: 596px;
+        width: 61.3%;
+        margin: -13px auto 0;
     }
 
     .aicoach-magic-img {
@@ -1311,14 +1438,15 @@ $aicoach_channels = array(
 
     .aicoach-magic-name {
         position: absolute;
-        left: 38%;
-        top: 19%;
+        left: 38.2%;
+        top: 19.1%;
         margin: 0;
         font-weight: 800;
-        font-size: clamp(2rem, 7vw, 4rem);
-        line-height: 1.05;
+        font-size: 26.2px;
+        line-height: normal;
+        text-align: left;
         text-transform: uppercase;
-        color: #fdd65b;
+        color: var(--aicoach-yellow);
     }
 
     .aicoach-magic-name span {
@@ -1326,57 +1454,93 @@ $aicoach_channels = array(
     }
 
     .aicoach-story-points {
-        margin: 0;
-        padding: 0;
-        list-style: none;
         display: flex;
         flex-direction: column;
-        gap: 28px;
+        gap: 16px;
+        margin: 23px 0 0;
+        padding: 0 0 0 17.5%;
+        list-style: none;
+        text-align: left;
+    }
+
+    .aicoach-story--alix .aicoach-story-points {
+        margin-top: 41px;
+        padding-left: 12.5%;
+    }
+
+    .aicoach-story--magic .aicoach-story-points {
+        margin-top: 0;
+        padding-left: 13.5%;
+    }
+
+    .aicoach-story--alix .aicoach-story-point > span,
+    .aicoach-story--magic .aicoach-story-point > span {
+        font-size: 14.73px;
     }
 
     .aicoach-story-point {
         display: flex;
         align-items: flex-start;
-        gap: 18px;
+        gap: 26px;
         margin: 0;
     }
 
+    .aicoach-story--magic .aicoach-story-point {
+        gap: 19px;
+    }
+
+    .aicoach-story--magic .aicoach-story-points {
+        gap: 21.4px;
+    }
+
+    /* The tick and the cross are drawn a little larger than the space they take, as in the design. */
     .aicoach-story-icon {
         flex-shrink: 0;
+        height: auto;
+    }
+
+    .aicoach-story-icon--check {
+        width: 49.44px;
+        margin-right: -6.3px;
+    }
+
+    .aicoach-story-icon--cross {
         width: 48px;
-        height: 48px;
-        object-fit: contain;
+        margin-right: -5px;
     }
 
     .aicoach-story-point > span {
         flex: 1;
         min-width: 0;
+        position: relative;
+        max-width: 228px;
+        padding: 6px 0 0 22.5px;
         font-weight: 800;
-        font-size: clamp(1.05rem, 3.2vw, 1.5rem);
-        line-height: 1.2;
+        font-size: 15px;
+        line-height: 1.003;
         text-transform: uppercase;
         color: #fff;
-        padding-top: 6px;
+    }
+
+    /* The bullet hangs to the left of the text, as in the design. */
+    .aicoach-story-point--x > span {
+        padding-top: 11px;
     }
 
     .aicoach-story-point > span::before {
-        content: '• ';
+        content: '\2022';
+        position: absolute;
+        left: 5px;
     }
 
     .aicoach-story-sub {
         display: block;
-        margin-top: 4px;
-        padding-left: 0.85em;
-        text-transform: none;
-        font-weight: 800;
-    }
-
-    .aicoach-story-point--stacked .aicoach-story-sub {
-        text-transform: none;
+        padding-left: 0;
+        text-transform: uppercase;
     }
 
     /* FR-13 — language selector, injected by js/aicoach-coach-flow.js into the
-    shared header's .desktop-header-left-items row (this page only, see the JS
+    shared header's right-hand group, next to the sound control (this page only, see the JS
     comment for why it's a separate element from the header's own dormant
     .header-lang-wrap, which belongs to an unrelated feature). */
     .aicoach-lang-wrap {
@@ -1448,10 +1612,13 @@ $aicoach_channels = array(
     block instead of reusing it since this holds a form, not a flat option
     list. */
     .aicoach-ask-wrap {
-        position: relative;
+        position: absolute;
+        right: 10px;
+        bottom: 10px;
+        z-index: 2;
         display: flex;
         justify-content: center;
-        margin: 0 auto 24px;
+        margin: 0;
     }
 
     /* An author "display: flex" rule beats the browser's own [hidden] rule
@@ -1466,13 +1633,13 @@ $aicoach_channels = array(
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        padding: 10px 18px;
+        padding: 7px 14px;
         border: none;
         border-radius: 999px;
         background: #fdd65b;
         color: #12131a;
         font-weight: 700;
-        font-size: 0.95rem;
+        font-size: 0.85rem;
         cursor: pointer;
     }
 
@@ -1507,9 +1674,8 @@ $aicoach_channels = array(
         display: none;
         position: absolute;
         top: calc(100% + 10px);
-        left: 50%;
-        transform: translateX(-50%);
-        width: min(360px, 88vw);
+        right: 0;
+        width: min(320px, calc(100vw - 32px));
         padding: 16px;
         border: 1px solid #3a3b47;
         border-radius: 12px;
@@ -1637,69 +1803,14 @@ $aicoach_channels = array(
         color: #eb0000;
     }
 
-    @media (max-width: 520px) {
-        /* Ivan/Filip mobile feedback (2026-09-21): the shared portal header's
-        nav wraps onto 3 lines on narrow screens, which already pushes
-        #portal-content's dynamic top padding down a lot (see NFR-02 above —
-        that padding is correctly tracking the real header height, not a bug
-        to fix here). Shrinking the avatar and tightening the spacing below
-        it is what this page can safely do on its own to get the intro
-        caption back within view without a scroll; the header/nav height
-        itself is a shared component used on every portal page and isn't
-        touched by this page-scoped change. */
-        .aicoach-belief {
-            margin-bottom: 16px;
-        }
-
-        .aicoach-avatar-wrap {
-            width: min(160px, 42vw);
-            margin: 0 auto 20px;
-        }
-
-        .aicoach-caption {
-            margin-bottom: 20px;
-            min-height: 0;
-        }
-
-        .aicoach-tier-head {
-            gap: 14px;
-        }
-
-        .aicoach-tier-box {
-            width: 36px;
-            height: 36px;
-            border-width: 3px;
-            border-radius: 8px;
-        }
-
-        .aicoach-tiers {
-            gap: 28px;
-        }
-
-        .aicoach-story-icon {
-            width: 40px;
-            height: 40px;
-        }
-
-        .aicoach-story-point {
-            gap: 12px;
-        }
-
-        .aicoach-magic-name {
-            left: 36%;
-            top: 18%;
-        }
-    }
-
     /* Ivan's request (2026-09-23): strip the chrome around this specific
-    landing flow down to just logo + language globe + volume — hamburger
-    menu, Help, Login/Logout, PLAY, the full nav row, and both footers are
-    visual noise here. Scoped to this page's own body class and hidden via
-    CSS rather than touching the shared header/footer template-parts (used
-    on every other portal page) or deleting any markup, so turning any of
-    it back on later is just deleting the matching line below — nothing to
-    rebuild. */
-    body.page-template-page-home-aicoach-php .hamburger-menu,
+    landing flow — Help, Login/Logout, PLAY, the full nav row and both
+    footers are visual noise here. Scoped to this page's own body class and
+    hidden via CSS rather than touching the shared header/footer
+    template-parts (used on every other portal page) or deleting any markup,
+    so turning any of it back on later is just deleting the matching line
+    below — nothing to rebuild. The hamburger is back (PO-3062 design
+    alignment): the updated design draws it. */
     body.page-template-page-home-aicoach-php .header-help-btn,
     body.page-template-page-home-aicoach-php .header-login-link,
     body.page-template-page-home-aicoach-php .header-logout-btn,
@@ -1710,16 +1821,175 @@ $aicoach_channels = array(
         display: none !important;
     }
 
-    /* .aicoach-lang-wrap (the globe) is injected by js/aicoach-coach-flow.js
-    into .desktop-header-left-items, which portal-styles.php hides below
-    992px — .desktop-header-right-items (the volume control) already has its
-    own "show on mobile" override there, but the left container never got a
-    matching one since nothing used to live in it on small screens. Force it
-    visible at every width on this page; .header-help-btn inside the same
-    container stays hidden via the rule above. */
+    /* PO-3062 (design alignment) — the header as the design draws it, 70 px high: the hamburger
+    on the left, the brand in the middle, the sound control and the language globe on the right.
+    Scoped to this page like everything above; the shared header markup is the same one every
+    portal page uses (the brand is the only part that differs, see template-parts/portal-header.php). */
+    body.page-template-page-home-aicoach-php .sticky-header {
+        padding: 0 !important;
+    }
+
+    body.page-template-page-home-aicoach-php .sticky-header .container {
+        max-width: 480px !important;
+        margin-top: 0 !important;
+        padding: 0 22px !important;
+    }
+
+    body.page-template-page-home-aicoach-php .sticky-header .container > .d-flex {
+        height: 70px;
+    }
+
     body.page-template-page-home-aicoach-php .desktop-header-left-items {
+        display: none !important;
+    }
+
+    body.page-template-page-home-aicoach-php .hamburger-menu {
+        position: relative;
+        width: 21px;
+        height: 12px;
+        padding: 0;
+    }
+
+    body.page-template-page-home-aicoach-php .hamburger-menu-icon {
+        display: none;
+    }
+
+    /* The menu drawer covers the whole phone width and the header with it, so it carries its own close button. */
+    body.page-template-page-home-aicoach-php .hamburger-drawer-close {
+        position: absolute;
+        top: 10px;
+        right: 12px;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background: transparent;
+        color: #fff;
+        font-size: 30px;
+        line-height: 1;
+        cursor: pointer;
+    }
+
+    body.page-template-page-home-aicoach-php .hamburger-drawer-close:focus-visible {
+        outline: 3px solid #fdd65b;
+    }
+
+    body.page-template-page-home-aicoach-php .hamburger-menu::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 20.24px;
+        height: 1.62px;
+        border-radius: 3.2px;
+        background: #fff;
+        box-shadow: 0 4.86px 0 #fff, 0 9.72px 0 #fff;
+    }
+
+    .ihq-landing-brand {
+        margin-left: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding-top: 5px;
+        color: #fff;
+        font-family: 'Inter', 'Be Vietnam Pro', sans-serif;
+        font-weight: 600;
+        font-size: 15px;
+        line-height: 1.15;
+        text-decoration: none;
+    }
+
+    .ihq-landing-brand:hover,
+    .ihq-landing-brand:focus-visible {
+        color: #fff;
+        text-decoration: none;
+    }
+
+    .ihq-landing-brand-name {
+        flex: 0 0 105px;
+        text-align: left;
+    }
+
+    .ihq-landing-brand-domain {
+        flex: 0 0 75px;
+        text-align: right;
+    }
+
+    .ihq-landing-brand-mark {
+        position: relative;
+        flex: 0 0 52px;
+        height: 60px;
+    }
+
+    .ihq-landing-brand-lines {
+        position: absolute;
+        left: 8px;
+        top: 0;
+        width: 39px;
+        height: auto;
+    }
+
+    .ihq-landing-brand-ih {
+        position: absolute;
+        left: 0;
+        top: 26px;
+        font-weight: 800;
+        font-size: 29px;
+        line-height: 34px;
+    }
+
+    .ihq-landing-brand-tm {
+        position: absolute;
+        left: 37px;
+        top: 50px;
+        font-weight: 800;
+        font-size: 5px;
+        line-height: 1;
+    }
+
+    body.page-template-page-home-aicoach-php .desktop-header-right-items {
         display: flex !important;
         align-items: center;
+        gap: 11px;
+    }
+
+    body.page-template-page-home-aicoach-php .header-volume-btn {
+        width: 15px;
+        height: 16px;
+        padding: 0;
+        border: 0;
+        background: url('<?php echo esc_url( $aicoach_img['sound'] ); ?>') center / contain no-repeat;
+    }
+
+    body.page-template-page-home-aicoach-php .header-volume-icon {
+        display: none;
+    }
+
+    body.page-template-page-home-aicoach-php .header-volume-wrap {
+        width: 15px;
+    }
+
+    body.page-template-page-home-aicoach-php .aicoach-lang-btn {
+        width: 18px;
+        height: 18px;
+        border-radius: 0;
+        background: url('<?php echo esc_url( $aicoach_img['globe'] ); ?>') center / contain no-repeat;
+    }
+
+    body.page-template-page-home-aicoach-php .aicoach-lang-btn svg {
+        display: none;
+    }
+
+    body.page-template-page-home-aicoach-php .aicoach-lang-dropdown {
+        left: auto;
+        right: 0;
     }
 </style>
 

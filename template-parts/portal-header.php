@@ -48,9 +48,27 @@ if ( ! defined( 'ABSPATH' ) ) {
                 </div>
             </div>
             <div class="logo-container text-center">
+                <?php if ( is_page_template( 'page-home-aicoach.php' ) ) : ?>
+                <?php
+                // PO-3062 (design alignment) — the AI Coach landing flow shows the brand as the design draws it:
+                // the name, the "ih" mark with its red lines, and the domain. Drawn with text and one SVG so it
+                // scales with the header; every other page keeps the logo image below.
+                $ihq_brand_dir = get_template_directory_uri() . '/images/aicoach/design';
+                ?>
+                <a class="ihq-landing-brand" href="<?php echo esc_url( home_url('/portal/portal-home/') ); ?>" aria-label="influencerHQ">
+                    <span class="ihq-landing-brand-name" aria-hidden="true">influencer headquarters</span>
+                    <span class="ihq-landing-brand-mark" aria-hidden="true">
+                        <img class="ihq-landing-brand-lines" src="<?php echo esc_url( $ihq_brand_dir . '/red-lines.svg' ); ?>" alt="" width="39" height="39">
+                        <span class="ihq-landing-brand-ih">ih</span>
+                        <span class="ihq-landing-brand-tm">TM</span>
+                    </span>
+                    <span class="ihq-landing-brand-domain" aria-hidden="true">ihq.global</span>
+                </a>
+                <?php else : ?>
                 <a href="<?php echo esc_url( home_url('/portal/portal-home/') ); ?>">
                 <img src="<?php echo get_template_directory_uri(); ?>/images/logo-home-lander.jpg" alt="influencerHQ" class="img-fluid">
                 </a>
+                <?php endif; ?>
             </div>
             <?php
             $uid        = get_current_user_id();
@@ -138,6 +156,8 @@ $hm_ch = function ( $tab, $hash = '' ) {
 ?>
 <div class="hamburger-overlay" id="hamburgerOverlay" aria-hidden="true"></div>
 <div class="hamburger-dropdown" id="hamburgerDropdown" role="dialog" aria-modal="true" aria-label="<?php echo esc_attr__( 'Main navigation', 'influencer-hq' ); ?>">
+    <?php /* A way out of the menu on a phone, where the drawer covers the header's own button (shown on the AI Coach page only, see its CSS). */ ?>
+    <button type="button" class="hamburger-drawer-close" aria-label="<?php echo esc_attr__( 'Close menu', 'influencer-hq' ); ?>">&times;</button>
     <div class="hamburger-drawer-scroll">
         <div class="hamburger-drawer-logo-wrap">
             <a href="<?php echo esc_url( home_url( '/' ) ); ?>">

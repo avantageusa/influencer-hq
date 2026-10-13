@@ -10,6 +10,7 @@ import { createClient, AnamEvent } from 'https://cdn.jsdelivr.net/npm/@anam-ai/j
 import { createSequenceHold } from '@ihq/aicoach/sequence-hold';
 import { createStallWatchdog, once } from '@ihq/aicoach/stall-watchdog';
 import { isAvatarIdle } from '@ihq/aicoach/idle-state';
+import { buildCues, estimateDurationMs, visibleTextAt } from '@ihq/aicoach/commentary';
 import { SUPPORTED_LOCALES, t, detectLocale } from '@ihq/aicoach/locales';
 import {
     SCREENS,
@@ -72,6 +73,7 @@ import {
  */
 const FADE_MS = 400;
 const FALLBACK_READ_MS = 9000; // per-screen dwell for the static-text fallback (no speech to sync against)
+const FALLBACK_READING_WORDS_PER_SECOND = 4; // a brisk reading pace, for a script nobody is speaking
 // ENGR-7051 — fallback (audio-only) answers: how long playback may go without
 // any progress before it is treated as finished. A recording that stalls
 // (network hangs, no error) fires neither 'ended' nor 'error'.
@@ -116,6 +118,7 @@ const createPausableTimeout = sequenceHold.createPausableTimeout;
 const pauseSequenceTimers = sequenceHold.pause;
 const resumeSequenceTimers = sequenceHold.resume;
 const waitWhileSequenceHeld = sequenceHold.waitWhileHeld;
+const sequenceIsPaused = sequenceHold.isPaused;
 const setSequenceExternalHold = sequenceHold.setExternalHold;
 const waitWhileSequenceExternallyHeld = sequenceHold.waitWhileExternallyHeld;
 
@@ -284,12 +287,15 @@ async function loadProgress() {
 // portal pages generally. This page's own chrome is already stripped down to
 // logo/globe/volume (PO-3062's "hide chrome" work), so that much clearance
 // just pushes the avatar/caption down for no benefit here — mirrors the same
-// bottom-measurement logic with a smaller buffer instead, page-scoped so the
+// bottom-measurement logic with the design's own gap instead (PO-3062 design
+// alignment), page-scoped so the
 // shared function (and every other portal page relying on its own 20px) is
 // untouched. Registers its own load/resize listeners after portal-header.php's
 // inline script already has (this module script necessarily runs later), so
 // it always overrides with a freshly-measured value rather than compounding
 // off whatever the previous call left behind.
+// The design leaves a small gap of black between the header and the banner.
+const AICOACH_HEADER_GAP_PX = 14;
 function tightenAicoachTopPadding() {
     const stickyNav = document.querySelector('.sticky-nav');
     const stickyHeader = document.querySelector('.sticky-header');
@@ -305,7 +311,7 @@ function tightenAicoachTopPadding() {
         bottom = stickyHeader.getBoundingClientRect().bottom;
     }
     if ( bottom > 0 ) {
-        content.style.setProperty( 'padding-top', ( bottom + 4 ) + 'px', 'important' );
+        content.style.setProperty( 'padding-top', ( bottom + AICOACH_HEADER_GAP_PX ) + 'px', 'important' );
     }
 }
 window.addEventListener( 'load', tightenAicoachTopPadding );
@@ -326,9 +332,19 @@ const video = document.getElementById('aicoach-avatar-video');
 const headerVolumeBtn = document.getElementById('headerVolumeBtn');
 const headerVolumeSlider = document.getElementById('headerVolumeSlider');
 
-function getCaptionEl( panelKey ) {
-    return stage.querySelector( '.aicoach-panel[data-panel="' + panelKey + '"] .aicoach-caption' );
-}
+// PO-3062 (design alignment) — what Sami says is shown in one commentary box under
+// her picture, a few words at a time as she says them, instead of a block of text
+// inside each screen. js/aicoach/commentary.js works out which words are on screen
+// for a moment of the clip; the functions below only draw the result. The box itself
+// is always there (it is part of the frame); it is empty while nobody speaks. A
+// second, visually hidden element holds the whole script once, so a screen reader
+// reads the sentence rather than every word as it appears.
+const commentaryTextEl = document.getElementById( 'aicoach-commentary-text' );
+const commentarySrEl = document.getElementById( 'aicoach-commentary-sr' );
+const COMMENTARY_TICK_MS = 100;
+// Silence at the start of a rendered clip before Sami speaks, so the first words are not early.
+const COMMENTARY_CLIP_LEAD_IN_MS = 600;
+let commentaryTimer = null;
 
 if ( stage && avatarWrap ) {
     const tiers = stage.querySelectorAll( '.aicoach-tier' );
@@ -443,26 +459,16 @@ if ( stage && avatarWrap ) {
             return false;
         }
         activeClipRestart( newUrl );
-        // PO-3343 — believe-1's clip restarting from 0 means Sami is about to
-        // re-say the opening line too, in the new language — re-run the same
-        // icons-first intro rather than just patching in the (still-English,
-        // still-opening-included) caption text below.
-        if ( 'believe-1' === screen.panel ) {
-            startBelieveOneIntro();
-            return true;
-        }
-        // NFR-03 — keep the on-screen caption matching whatever the restarted
-        // clip is actually saying, same as the initial-load path in
-        // runFallback() above.
-        const captionEl = getCaptionEl( screen.panel );
-        if ( captionEl ) {
-            captionEl.textContent = getCaptionScript( screen.panel, locale ) || screen.script;
-        }
+        // The clip restarted from 0 in the new language, so what is shown in the
+        // commentary box starts again from its first words, in that language
+        // (NFR-03: it must match what the restarted clip is actually saying).
+        startCommentary( getCaptionScript( screen.panel, locale ) || screen.script, { clipUrl: newUrl } );
         return true;
     }
 
     ( function buildLanguageSelector() {
-        const headerRow = document.querySelector( '.desktop-header-left-items' );
+        // PO-3062 (design alignment) — the globe sits on the right of the header, next to the sound control.
+        const headerRow = document.querySelector( '.desktop-header-right-items' );
         if ( ! headerRow ) {
             return;
         }
@@ -1639,7 +1645,7 @@ if ( stage && avatarWrap ) {
     // loop and by the VIDEO_PLAY_STARTED handler, which needs the exact same
     // dwell-or-skip behavior for Gary's opening line before handing off to
     // runFallback() for the rest of the screens.
-    function waitForReadOrSkip() {
+    function waitForReadOrSkip( dwellMs = FALLBACK_READ_MS ) {
         return new Promise( ( resolve ) => {
             let settled = false;
             let timer;
@@ -1653,7 +1659,7 @@ if ( stage && avatarWrap ) {
                 resolve();
             };
             skipCurrent = finish;
-            timer = createPausableTimeout( finish, FALLBACK_READ_MS );
+            timer = createPausableTimeout( finish, dwellMs );
         } );
     }
 
@@ -1810,74 +1816,84 @@ if ( stage && avatarWrap ) {
         } );
     }
 
-    // PO-3343 — believe-1 opens on the coin/chart/certificate trio together
-    // (matching Figma "Belief 7"), no caption text yet, then switches to the
-    // normal icon-free caption once the opening line has had time to be said.
-    // Explicitly the "fallback" version Ivan signed off on (2026-09-29): a
-    // fixed dwell instead of syncing to the exact second in we_believe_1.mp4
-    // where Sami's opening line actually ends.
-    //
-    // 7200ms, not a guess — measured directly off the real we_believe_1.mp4
-    // (English) via Web Audio: decoded the clip and scanned RMS volume in
-    // 100ms windows to find the silence gaps between sentences. "Every
-    // successful company begins with a set of beliefs. Here's one of ours."
-    // (the two sentences meant to go with the icons) ends at the pause
-    // starting ~6.0s and finishing ~7.1s, right before "We believe influence
-    // is about..." begins — confirmed independently by word-count proportion
-    // (those two sentences are ~17% of the script's ~76 words, and 17% of
-    // the clip's ~31.8s of actual speech + its 1.8s lead-in silence lands at
-    // the same ~7.2s). The original 3500ms guess cut the sentence off
-    // mid-word (caught live: "quickly switches ... doesn't finish the
-    // opening sentence"). Only measured for English — every other locale's
-    // clip has its own pacing and still uses this same constant, the same
-    // "good enough fallback" gap already true of the rest of this feature.
-    const BELIEVE_1_ICON_PHASE_MS = 7200;
-    // Dejan (2026-09-29): once the opening two sentences have been spoken
-    // during the icon phase, re-showing them in the text-phase caption would
-    // have the visitor reading a line Sami already finished saying several
-    // seconds earlier — the same "caption must match what's actually being
-    // said right now" reasoning NFR-03 already cares about everywhere else.
-    // English-only for the same reason getCaptionScript() itself doesn't
-    // attempt this for translated captions: we don't have per-locale sentence
-    // boundaries, only a single continuous translated string.
-    const BELIEVE_1_OPENING_EN = "Every successful company begins with a set of beliefs. Here's one of ours. ";
-    const believeOneEl = document.getElementById( 'aicoach-believe-1' );
-    let believeOneIntroTimer = null; // the pending icon->text switch, if any
+    // How long a screen with nobody speaking stays: the usual dwell, or longer when the script
+    // would not be read through in that time (the box shows a few words at a time).
+    function readingTimeMs( script ) {
+        return Math.max( FALLBACK_READ_MS, estimateDurationMs( script, FALLBACK_READING_WORDS_PER_SECOND ) );
+    }
 
-    function startBelieveOneIntro() {
-        if ( ! believeOneEl ) {
+    // The commentary box (see where its elements are looked up at the top of this file).
+    function drawCommentary( text ) {
+        if ( commentaryTextEl && commentaryTextEl.textContent !== text ) {
+            commentaryTextEl.textContent = text;
+        }
+    }
+
+    function stopCommentary() {
+        window.clearInterval( commentaryTimer );
+        commentaryTimer = null;
+        drawCommentary( '' );
+        if ( commentarySrEl ) {
+            commentarySrEl.textContent = '';
+        }
+    }
+
+    /**
+     * Starts showing a script in the commentary box, a few words at a time.
+     *
+     * With clipUrl it follows that clip: time is the clip's own (so it stops when the
+     * clip is paused, as Ask Sami does) and its length is the clip's once known; nothing
+     * is shown until that clip is the one loaded. Without it, it follows a clock of its
+     * own that stands still while the sequence is held, for the live intro and for a
+     * screen whose clip did not play.
+     *
+     * @param {string} script
+     * @param {Object} [options]
+     * @param {string|null} [options.clipUrl]    The clip to follow.
+     * @param {number|null} [options.durationMs] How long the speech takes, when not following a clip; estimated from the words when omitted.
+     */
+    function startCommentary( script, { clipUrl = null, durationMs = null } = {} ) {
+        stopCommentary();
+        if ( ! commentaryTextEl || ! script ) {
             return;
         }
-        // A locale switch during the icon phase calls this again (see
-        // restartCurrentClipForLocale()) without sequenceIndex changing, so
-        // the guard below alone can't tell the old timer it's stale — without
-        // clearing it here, BOTH timers fire: whichever was scheduled first
-        // flips to the text phase on the OLD schedule, which no longer
-        // matches the just-restarted (from 0) clip's real timeline.
-        window.clearTimeout( believeOneIntroTimer );
-        const myIndex = sequenceIndex;
-        believeOneEl.classList.remove( 'is-text-phase' );
-        const captionEl = getCaptionEl( 'believe-1' );
-        if ( captionEl ) {
-            captionEl.textContent = '';
+        if ( commentarySrEl ) {
+            commentarySrEl.textContent = script;
         }
-        believeOneIntroTimer = window.setTimeout( function () {
-            believeOneIntroTimer = null;
-            // A tier confirmation's own early-advance (or a fresh
-            // runFallback() from a locale/tier change) may have already moved
-            // on to a later screen by the time this fires — applying the
-            // text phase to a screen the visitor isn't on anymore would just
-            // leave it in the wrong state for whenever they come back around
-            // to it.
-            if ( sequenceIndex !== myIndex ) {
-                return;
+        const expectedSrc = clipUrl ? new URL( clipUrl, window.location.href ).href : null;
+        const estimatedMs = durationMs || estimateDurationMs( script );
+        let cues = [];
+        let cuesForMs = 0;
+        let ownClockMs = 0;
+        let lastTickAt = Date.now();
+        const tick = function () {
+            const nowMs = Date.now();
+            if ( ! sequenceIsPaused() ) {
+                ownClockMs += nowMs - lastTickAt;
             }
-            believeOneEl.classList.add( 'is-text-phase' );
-            if ( captionEl ) {
-                const translated = getCaptionScript( 'believe-1', currentLocale );
-                captionEl.textContent = translated || SCREENS[ myIndex ].script.replace( BELIEVE_1_OPENING_EN, '' );
+            lastTickAt = nowMs;
+
+            let timeMs = ownClockMs;
+            let lengthMs = estimatedMs;
+            let leadInMs = 0;
+            if ( expectedSrc ) {
+                const clipMs = video.duration * 1000;
+                if ( video.src !== expectedSrc || ! ( clipMs > 0 ) || ! Number.isFinite( clipMs ) ) {
+                    drawCommentary( '' ); // the clip is not the one on screen yet
+                    return;
+                }
+                timeMs = video.currentTime * 1000;
+                lengthMs = clipMs;
+                leadInMs = COMMENTARY_CLIP_LEAD_IN_MS;
             }
-        }, BELIEVE_1_ICON_PHASE_MS );
+            if ( lengthMs !== cuesForMs ) {
+                cues = buildCues( script, lengthMs, { leadInMs } );
+                cuesForMs = lengthMs;
+            }
+            drawCommentary( visibleTextAt( cues, timeMs ) );
+        };
+        tick();
+        commentaryTimer = window.setInterval( tick, COMMENTARY_TICK_MS );
     }
 
     async function runFallback( keepAvatarLive ) {
@@ -1893,21 +1909,10 @@ if ( stage && avatarWrap ) {
             // underneath an open Ask Sami panel. A no-op unless the panel is open.
             await waitWhileSequenceHeld();
             const screen = SCREENS[ sequenceIndex ];
-            // PO-3343 — believe-1 gets the icons-first opening beat instead of
-            // the normal immediate caption; startBelieveOneIntro() (called
-            // once the panel is actually visible, below) owns setting its
-            // caption text instead of the two spots in this loop that
-            // otherwise do it for every screen.
-            const isBelieveOne = 'believe-1' === screen.panel;
             const panelReady = showPanel( screen.panel );
-            const captionEl = getCaptionEl( screen.panel );
-            if ( captionEl && ! isBelieveOne ) {
-                // NFR-03 — best-effort immediate text so the caption isn't blank
-                // during the fade; re-set below once currentLocale is final for
-                // this screen, same reasoning as the clip URL re-resolve just
-                // after panelReady.
-                captionEl.textContent = getCaptionScript( screen.panel, currentLocale ) || screen.script;
-            }
+            // The last words of the previous screen must not stay in the box through the
+            // fade to this one.
+            stopCommentary();
             // PO-3062 — an approved segment with a pre-rendered clip plays it
             // (real voice + lip-sync, dwell = the clip's own length); every
             // other screen keeps the original caption-only fixed dwell.
@@ -1932,30 +1937,24 @@ if ( stage && avatarWrap ) {
                 // restart) would otherwise still hear this screen start in the
                 // language they just left.
                 const clipUrl = getPrerenderedUrl( screen.panel, currentLocale );
-                if ( isBelieveOne ) {
-                    startBelieveOneIntro();
-                } else if ( captionEl ) {
-                    // NFR-03 — keep the caption in step with whichever clip just
-                    // got (re-)resolved above, for the same reason.
-                    captionEl.textContent = getCaptionScript( screen.panel, currentLocale ) || screen.script;
+                // NFR-03 — the words in the box are those of whichever clip just
+                // got (re-)resolved above, for the same reason.
+                const spoken = getCaptionScript( screen.panel, currentLocale ) || screen.script;
+                if ( clipUrl ) {
+                    startCommentary( spoken, { clipUrl } );
                 }
                 const played = clipUrl && await playPrerenderedClip( clipUrl );
                 if ( ! played ) {
-                    await waitForReadOrSkip();
+                    const readMs = readingTimeMs( spoken );
+                    startCommentary( spoken, { durationMs: readMs } );
+                    await waitForReadOrSkip( readMs );
                 }
             } else {
-                // PO-3343 — the same icons-first intro applies even in this
-                // no-prerendered-clip fallback (only reachable if believe-1's
-                // segment has no rendered video at all, in any locale —
-                // shouldn't happen in production, but leaving it dark here
-                // would mean icons forever with a blank caption for this
-                // screen's whole dwell instead of transitioning to text).
-                if ( isBelieveOne ) {
-                    await panelReady;
-                    startBelieveOneIntro();
-                }
-                await waitForReadOrSkip();
+                const readMs = readingTimeMs( screen.script );
+                startCommentary( screen.script, { durationMs: readMs } );
+                await waitForReadOrSkip( readMs );
             }
+            stopCommentary();
             if ( sequenceFinished ) {
                 fallbackRunning = false;
                 return; // a fresh runFallback() call elsewhere already took over
@@ -2774,10 +2773,9 @@ if ( stage && avatarWrap ) {
                 // sync against here — see the top-of-file note on why). Everything
                 // after this falls back to the static SCREENS display.
                 showPanel( 'intro' );
-                const introCaptionEl = getCaptionEl( 'intro' );
-                if ( introCaptionEl ) {
-                    introCaptionEl.textContent = gary.say.text || SCREENS[ 0 ].script;
-                }
+                // There is no end-of-speech event to follow, so the words are paced at
+                // an estimated speaking rate from the moment the stream starts.
+                startCommentary( gary.say.text || SCREENS[ 0 ].script );
 
                 // VIDEO_PLAY_STARTED is the confirmation that the peer connection
                 // is actually open — calling client.talk() any earlier (e.g. right

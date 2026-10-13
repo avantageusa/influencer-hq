@@ -51,12 +51,15 @@ export const I18N_EN = {
     turnedDownCash: 'Turned down cash',
     btsOwnership: 'Said yes to shared ownership, valued at 103.6 million',
     worldCompetitionName: 'World Competition',
+    // The design adds a first line, "Weekly", to the World Competition screen. Only English has it
+    // so far: the other languages fall back to English until approved translations are supplied.
+    weekly: 'Weekly',
     youFollowers: 'You + Followers',
     versus: 'versus',
     allInfluencersFollowers: 'All Influencers + Followers',
     communityCompetitionName: 'Community Competition',
-    communityCompetitionFormat: 'Weekly competition for your followers only',
-    privateChallengeName: 'Private Challenge',
+    communityCompetitionFormat: 'Weekly COMPETITION for your FOLLOWERS only',
+    privateChallengeName: 'Private Challenges',
     friendFollowers: 'An Influencer Friend + Followers',
     identityTitle: "Let's Start The Conversation",
     identitySubtitle: 'Let us know who you are',
@@ -65,6 +68,8 @@ export const I18N_EN = {
     username: 'Username',
     continue: 'Continue',
     channelsHint: 'Please select at least one communication method.',
+    // The design's reminder above the channel list. English only until translations are supplied.
+    volumeReminder: 'Please Remember to Turn Up Your Volume',
     letsContinue: "Let's Continue",
     // PO-3109 — the "Time is up?" screen that replaced FR-17's Yes/No prompt.
     // English only until approved translations exist, like every other new string.
