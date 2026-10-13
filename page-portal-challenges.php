@@ -41,7 +41,7 @@ $portal_embed_urls = [
     'world'     => ihq_build_hq_game_portal_external_url( '/external/leaderboards' ),
     'community' => ihq_build_hq_game_portal_external_url( '/external/leaderboards/community' ),
     'private'   => ihq_build_hq_game_portal_external_url( '/external/leaderboards/private' ),
-    'leagues'   => ihq_build_hq_game_portal_external_url( '/external/leagues-slider' ),
+    'leagues'   => ihq_build_hq_game_portal_external_url( '/external/leagues/International' ),
 ];
 ?>
 
