@@ -2800,7 +2800,13 @@ if ( stage && avatarWrap ) {
                     // other (non-speaking) screen uses.
                     await waitForSpeechOrSkip( client, 25000 );
                 } else {
-                    await waitForReadOrSkip();
+                    // Nobody is speaking: restart the words at a reading pace and stay long
+                    // enough to read them, instead of leaving them paced as if she were
+                    // talking and cutting the greeting off after the usual dwell.
+                    const introScript = gary.say.text || SCREENS[ 0 ].script;
+                    const readMs = readingTimeMs( introScript );
+                    startCommentary( introScript, { durationMs: readMs } );
+                    await waitForReadOrSkip( readMs );
                 }
                 sequenceIndex = 1;
                 // The intro's avatar seat is freed once a clip actually replaces
