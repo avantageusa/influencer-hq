@@ -157,7 +157,7 @@ get_template_part( 'template-parts/portal-styles' );
     align-items: center;
     justify-content: center;
     gap: 18px;
-    padding: 28px 0 12px;
+    padding: 10px 0 12px;
 }
 #portal-content .sett-header-icon {
     width: auto;
@@ -199,8 +199,8 @@ get_template_part( 'template-parts/portal-styles' );
     padding: 8px 0 36px;
 }
 #portal-content .sett-avatar-ring {
-    width: clamp(150px, 17vw, 326px);
-    height: clamp(150px, 17vw, 326px);
+    width: clamp(150px, 12vw, 326px);
+    height: clamp(150px, 12vw, 326px);
     border-radius: 50%;
     border: clamp(6px, 0.6vw, 12px) solid #fff;
     overflow: hidden;
@@ -220,14 +220,14 @@ get_template_part( 'template-parts/portal-styles' );
 }
 #portal-content .sett-display-name {
     font-family: 'Be Vietnam Pro', sans-serif;
-    font-size: clamp(30px, 3.9vw, 74px);
-    font-weight: 700;
+    font-size: clamp(30px, 1.5vw, 74px);
+    font-weight: 500;
     color: #fff;
     line-height: 1.06;
 }
 #portal-content .sett-user-handle {
     font-family: 'Be Vietnam Pro', sans-serif;
-    font-size: clamp(24px, 3.4vw, 65px);
+    font-size: clamp(24px, 1.3vw, 65px);
     font-weight: 700;
     color: #616161;
     line-height: 1.06;
@@ -240,8 +240,8 @@ get_template_part( 'template-parts/portal-styles' );
     margin-top: clamp(10px, 1vw, 20px);
 }
 #portal-content .sett-soc-icon {
-    width: clamp(28px, 2.7vw, 52px);
-    height: clamp(28px, 2.7vw, 52px);
+    width: clamp(28px, 1.7vw, 52px);
+    height: clamp(28px, 1.7vw, 52px);
     object-fit: contain;
     opacity: 1;
 }
@@ -250,8 +250,8 @@ get_template_part( 'template-parts/portal-styles' );
 }
 #portal-content .sett-gameplay-promo-text {
     font-family: 'Be Vietnam Pro', sans-serif;
-    font-size: clamp(20px, 2vw, 39px);
-    font-weight: 600;
+    font-size: 22px;
+    font-weight: 400;
     line-height: 1.35;
     color: #fff;
     text-transform: uppercase;
@@ -454,25 +454,6 @@ get_template_part( 'template-parts/portal-styles' );
     font-size: clamp(17px, 1.7vw, 32px);
     color: #919191;
 }
-#portal-content .profile-coach-fab-host {
-    position: absolute;
-    z-index: 5;
-    right: -8px;
-    top: 88px;
-    width: 160px;
-    height: 160px;
-    pointer-events: none;
-}
-#portal-content .profile-coach-fab-host .ihq-concierge-fab {
-    position: absolute !important;
-    inset: 0;
-    width: 100% !important;
-    height: 100% !important;
-    margin: 0;
-    pointer-events: auto;
-    right: auto;
-    bottom: auto;
-}
 #portal-content .celeb-col-label {
     font-size: clamp(15px, 1.4vw, 26px);
 }
@@ -647,7 +628,6 @@ get_template_part( 'template-parts/portal-styles' );
     color: #fff;
     font-style: normal;
 }
-#portal-content .sett-account-card .sett-referral-copy-btn,
 #portal-content .sett-account-card #portal-username-save-btn {
     position: absolute;
     width: 1px;
@@ -669,6 +649,7 @@ get_template_part( 'template-parts/portal-styles' );
     font-size: clamp(17px, 1.7vw, 32px);
     font-weight: 400;
     line-height: 1;
+    flex: 0 0 auto;
 }
 #portal-content .sett-account-card .sett-portal-username-val {
     display: flex;
@@ -676,15 +657,19 @@ get_template_part( 'template-parts/portal-styles' );
     justify-content: flex-end;
     gap: 0;
     width: auto;
+    flex: 0 1 auto;
+    margin-left: auto;
 }
 #portal-content .sett-account-card .sett-portal-username-input {
     width: auto;
+    flex: 0 1 auto;
     min-width: 8ch;
     max-width: 28ch;
     border: none;
     border-bottom: none;
     padding: 0;
-    text-align: left;
+    text-align: right;
+    field-sizing: content;
 }
 #portal-content .sett-account-card .sett-place-fields {
     align-items: flex-end;
@@ -712,14 +697,35 @@ get_template_part( 'template-parts/portal-styles' );
 
 @media (max-width: 900px) {
     #portal-content .sett-identity {
-        flex-direction: column;
-        align-items: flex-start;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: clamp(12px, 3vw, 24px);
     }
-    #portal-content .profile-coach-fab-host {
-        position: relative;
-        right: auto;
-        top: auto;
-        margin: 16px 0 0 auto;
+    #portal-content .sett-avatar-ring {
+        width: clamp(72px, 28vw, 150px);
+        height: clamp(72px, 28vw, 150px);
+        border-width: clamp(3px, 0.8vw, 6px);
+    }
+    #portal-content .sett-display-name {
+        font-size: clamp(16px, 4.5vw, 30px);
+    }
+    #portal-content .sett-user-handle {
+        font-size: clamp(13px, 3.6vw, 24px);
+    }
+    #portal-content .sett-social-row {
+        gap: clamp(8px, 2vw, 12px);
+        margin-top: clamp(6px, 1.5vw, 10px);
+    }
+    #portal-content .sett-soc-icon {
+        width: clamp(16px, 5vw, 28px);
+        height: clamp(16px, 5vw, 28px);
+    }
+    #portal-content .sett-gameplay-promo-text {
+        font-size: 18px;
+    }
+    #portal-content .sett-account-card .sett-portal-username-row {
+        flex-wrap: nowrap;
     }
     #portal-content .sett-row {
         flex-wrap: wrap;
@@ -1030,7 +1036,6 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                     </form>
                     <?php endif; ?>
                     </div>
-                    <div class="profile-coach-fab-host" id="profile-coach-fab-host" aria-hidden="true"></div>
                 </div>
 
                 <!-- ACCOUNT INFORMATION -->
@@ -2071,20 +2076,6 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
             });
         });
     });
-
-    function placeProfileCoachFab() {
-        var fab = document.getElementById('ihq-concierge-fab');
-        var host = document.getElementById('profile-coach-fab-host');
-        if (!fab || !host || fab.classList.contains('is-moved') || fab.parentNode === host) {
-            return;
-        }
-        host.appendChild(fab);
-    }
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', placeProfileCoachFab);
-    } else {
-        placeProfileCoachFab();
-    }
 
 })();
 
