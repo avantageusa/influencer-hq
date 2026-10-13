@@ -5614,12 +5614,18 @@
 .sett-portal-username-row .sett-portal-username-val {
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: flex-end;
+    gap: 0;
     width: auto;
-    flex: 1;
+    flex: 0 1 auto;
+    margin-left: auto;
     min-width: 0;
 }
-.sett-portal-username-input { min-width: 0; }
+.sett-portal-username-input {
+    min-width: 0;
+    text-align: right;
+    field-sizing: content;
+}
 .sett-portal-username-feedback {
     font-size: 13px;
     margin: -4px 0 10px;
@@ -5664,25 +5670,6 @@
 .sett-gameplay-main {
     width:100%;
     padding-right: 72px;
-}
-.profile-coach-fab-host {
-    position:absolute;
-    z-index:5;
-    right:-16px;
-    top:72px;
-    width:120px;
-    height:120px;
-    pointer-events:none;
-}
-.profile-coach-fab-host .ihq-concierge-fab {
-    position:absolute !important;
-    inset:0;
-    width:100% !important;
-    height:100% !important;
-    margin:0;
-    pointer-events:auto;
-    right:auto;
-    bottom:auto;
 }
 .sett-media-ask {
     margin: 28px 0 32px;
