@@ -14,6 +14,7 @@
     "IHQ_ENVIRONMENT": "dev",
     "IHQ_API_BASE_URL": "https://02nvfvonol.execute-api.eu-west-2.amazonaws.com/qc",
     "IHQ_GAME_PORTAL_BASE_URL": "https://qc-game-portal-client-tf-b2c.dev.ae.games/av-baccarat",
-    "IHQ_INFLUENCER_API_KEY": "<influencer-hq-sso-api-key>"
+    "IHQ_INFLUENCER_API_KEY": "<influencer-hq-sso-api-key>",
+    "IHQ_PUBLISHER_URL": "https://qc-influencer-publisher-tf.dev.ae.games"
   }
 }

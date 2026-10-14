@@ -20,6 +20,11 @@
  *     define( 'CF_TURNSTILE_SECRET_KEY',  '...' );
  *     define( 'IHQ_ELEVENLABS_API_KEY',   '...' );
  *     define( 'IHQ_GENIUS_REFERRALS_API_TOKEN', '...' );   // test-form.php only
+ *     define( 'IHQ_PUBLISHER_URL',        'https://<publisher-host>' );   // STREAM NOW on Live Appearance (ENGR-7346), inc/ihq-stream-now.php
+ *
+ * IHQ_PUBLISHER_URL must be an absolute https:// URL, but it is deliberately
+ * not in IHQ_ENV_URL_KEYS: an invalid value only hides STREAM NOW (and logs),
+ * it never stops the site.
  *
  * Optional constants with a default:
  *

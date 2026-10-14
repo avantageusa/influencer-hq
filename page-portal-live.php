@@ -365,7 +365,13 @@ if ( ! empty( $la_calendar_posts ) ) {
                                 <img src="<?php echo esc_url( $la_theme_uri ); ?>/images/live/icon-plus.png" alt="" class="live-add-another__icon" width="48" height="48">
                                 <span>CLICK TO ADD ANOTHER SCHEDULED APPEARANCE</span>
                             </button>
-                            <button type="button" class="live-stream-now">STREAM NOW</button>
+                            <?php
+                            // ENGR-7346: '' when logged out or IHQ_PUBLISHER_URL is unset / not https — then no element at all.
+                            $la_stream_now_url = ihq_get_stream_now_url( get_current_user_id() );
+                            ?>
+                            <?php if ( $la_stream_now_url !== '' ) : ?>
+                            <a class="live-stream-now" href="<?php echo esc_url( $la_stream_now_url ); ?>" target="_blank" rel="noopener noreferrer">STREAM NOW</a>
+                            <?php endif; ?>
                         </form>
 
                         <p class="live-label">Status of Request</p>
