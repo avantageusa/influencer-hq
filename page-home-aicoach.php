@@ -2389,6 +2389,13 @@ $aicoach_channels = array(
             aspect-ratio: 1920 / 387;
         }
 
+        /* The clip is a 3:2 box in the middle of the banner, so the wide picture stays behind it
+        instead of fading out when playback starts (the base rule hides it for the phone, where
+        the clip fills the banner). */
+        .aicoach-avatar-wrap[data-status="live"] .aicoach-portrait {
+            opacity: 1;
+        }
+
         .aicoach-avatar-video {
             inset: 0 auto 0 50%;
             width: auto;
