@@ -104,8 +104,58 @@ export const COMM_CHANNELS_SCREEN = {
 // lenient non-empty check until that's confirmed one way or the other.
 export const isValidPhoneNumber = ( v ) => /^\+[1-9]\d{7,14}$/.test( v );
 
+// ENGR-7511 — the same rules as WordPress's is_email(), which create-account
+// applies on the server: an address this accepts must not come back as a 400
+// on the final screen, where the visitor can't return to fix it.
+const WP_EMAIL_MIN_LENGTH = 6;
+const WP_EMAIL_LOCAL_PART = /^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~.-]+$/;
+const WP_EMAIL_DOMAIN_LABEL = /^[a-z0-9-]+$/i;
+
+export function isWordPressEmail( value ) {
+    if ( typeof value !== 'string' || value.length < WP_EMAIL_MIN_LENGTH ) {
+        return false;
+    }
+    const at = value.indexOf( '@', 1 );
+    if ( at === -1 ) {
+        return false;
+    }
+    const local = value.slice( 0, at );
+    const domain = value.slice( at + 1 );
+    if ( ! WP_EMAIL_LOCAL_PART.test( local ) ) {
+        return false;
+    }
+    if ( /\.{2,}/.test( domain ) || domain.startsWith( '.' ) || domain.endsWith( '.' ) ) {
+        return false;
+    }
+    const labels = domain.split( '.' );
+    if ( labels.length < 2 ) {
+        return false;
+    }
+    return labels.every( function ( label ) {
+        return ! label.startsWith( '-' ) && ! label.endsWith( '-' ) && WP_EMAIL_DOMAIN_LABEL.test( label );
+    } );
+}
+
+// ENGR-7511 — what the final screen shows when create-account fails: the
+// server's own reason when it gave one (`error` from our handler, `message`
+// from WordPress's REST errors such as a failed nonce check), else ''.
+// WordPress's fatal-error `message` is HTML, which textContent would print as
+// literal tags, so a `message` with markup falls back to the generic text.
+export function serverErrorMessage( data ) {
+    if ( ! data || typeof data !== 'object' ) {
+        return '';
+    }
+    if ( typeof data.error === 'string' ) {
+        return data.error;
+    }
+    if ( typeof data.message === 'string' && ! /<[a-z/!]/i.test( data.message ) ) {
+        return data.message;
+    }
+    return '';
+}
+
 export const CHANNELS = [
-    { key: 'email', validate: ( v ) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test( v ) },
+    { key: 'email', validate: isWordPressEmail },
     { key: 'kakaotalk', validate: ( v ) => v.length > 0 }, // TBD format
     { key: 'line', validate: ( v ) => /^U[0-9a-fA-F]{32}$/.test( v ) },
     { key: 'sms', validate: isValidPhoneNumber },

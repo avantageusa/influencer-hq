@@ -19,6 +19,7 @@ import {
     COMM_CHANNELS_SCREEN,
     CHANNELS,
     FINAL_SCREEN,
+    serverErrorMessage,
 } from '@ihq/aicoach/screens';
 import {
     CHOICE,
@@ -2331,6 +2332,10 @@ if ( stage && avatarWrap ) {
             finalError.textContent = '';
         }
 
+        // ENGR-7511 — the server's own reason (e.g. a username already taken) is
+        // shown instead of the generic message, so the visitor knows what to fix.
+        let serverMessage = '';
+
         try {
             // PO-3102 — every prior showPanel()/identity/channels save is chained
             // onto this same promise. Without waiting for it here, a still-in-flight
@@ -2349,6 +2354,7 @@ if ( stage && avatarWrap ) {
                 redirect: false,
             } );
             if ( ! data || ! data.success || ! data.redirectUrl ) {
+                serverMessage = serverErrorMessage( data );
                 throw new Error( ( data && data.error ) || 'create-account failed' );
             }
 
@@ -2363,7 +2369,7 @@ if ( stage && avatarWrap ) {
         } catch ( error ) {
             console.warn( '[aicoach] account creation failed:', error );
             if ( finalError ) {
-                finalError.textContent = cfg.i18n?.accountCreateErr || 'Something went wrong creating your account. Please try again.';
+                finalError.textContent = serverMessage || cfg.i18n?.accountCreateErr || 'Something went wrong creating your account. Please try again.';
             }
             finalContinueBtn.disabled = false;
         }

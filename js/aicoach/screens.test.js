@@ -10,6 +10,8 @@ import {
 	getEquityScreensForTier,
 	getCompetitionScreensForTier,
 	isValidPhoneNumber,
+	isWordPressEmail,
+	serverErrorMessage,
 } from './screens.js';
 
 function panels( screens ) {
@@ -138,4 +140,35 @@ test( 'channels whose format is still TBD accept any non-empty value and reject 
 		assert.equal( validatorFor( key )( '@someone' ), true, key );
 		assert.equal( validatorFor( key )( '' ), false, key );
 	} );
+} );
+
+// ENGR-7511 — the browser check must accept exactly what WordPress's
+// is_email() accepts, or create-account's invalid-email 400 is reachable.
+test( 'email follows the rules of WordPress is_email()', () => {
+	assert.equal( isWordPressEmail( 'ann@example.com' ), true );
+	assert.equal( isWordPressEmail( "o'neil+tag@mail.example.co" ), true );
+	assert.equal( isWordPressEmail( 'a@b.co' ), true );
+	assert.equal( isWordPressEmail( 'ann@exa_mple.com' ), false );
+	assert.equal( isWordPressEmail( 'a@b.c' ), false );
+	assert.equal( isWordPressEmail( 'ann@example..com' ), false );
+	assert.equal( isWordPressEmail( 'ann@-example.com' ), false );
+	assert.equal( isWordPressEmail( 'ann@example-.com' ), false );
+	assert.equal( isWordPressEmail( 'ann@example.com.' ), false );
+	assert.equal( isWordPressEmail( 'an(n@example.com' ), false );
+	assert.equal( isWordPressEmail( '@Avantage123' ), false );
+	assert.equal( isWordPressEmail( 'abc@' ), false );
+	assert.equal( isWordPressEmail( undefined ), false );
+	assert.equal( validatorFor( 'email' ), isWordPressEmail );
+} );
+
+test( 'serverErrorMessage prefers error, falls back to message, else empty', () => {
+	assert.equal( serverErrorMessage( { success: false, error: 'Please enter a valid email address.' } ), 'Please enter a valid email address.' );
+	assert.equal( serverErrorMessage( { error: 'from handler', message: 'from WordPress' } ), 'from handler' );
+	assert.equal( serverErrorMessage( { code: 'rest_cookie_invalid_nonce', message: 'Cookie check failed' } ), 'Cookie check failed' );
+	assert.equal( serverErrorMessage( { code: 'internal_server_error', message: '<p>There has been a critical error on this website.</p>' } ), '' );
+	assert.equal( serverErrorMessage( { message: 'Use 3 < 5 characters' } ), 'Use 3 < 5 characters' );
+	assert.equal( serverErrorMessage( { success: false } ), '' );
+	assert.equal( serverErrorMessage( { error: 42, message: null } ), '' );
+	assert.equal( serverErrorMessage( null ), '' );
+	assert.equal( serverErrorMessage( 'boom' ), '' );
 } );

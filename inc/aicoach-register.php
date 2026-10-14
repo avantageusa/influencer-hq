@@ -41,6 +41,19 @@ function ihq_aicoach_allowed_channel_keys() {
 }
 
 /**
+ * A unique, undeliverable email for an account registered without one
+ * (ENGR-7511; domain and detection in inc/placeholder-email.php).
+ *
+ * Not built from the channel value: that value is unverified, and a
+ * random local part cannot collide with, or reveal, anyone's handle.
+ *
+ * @return string
+ */
+function ihq_aicoach_placeholder_email() {
+	return wp_generate_uuid4() . '@' . IHQ_PLACEHOLDER_EMAIL_DOMAIN;
+}
+
+/**
  * Turn a REST body into named registration fields.
  *
  * Accepts the coach-flow camelCase shape and the comm_methods map used by the
@@ -103,10 +116,25 @@ function ihq_aicoach_parse_register_payload( array $params ) {
 		}
 	}
 
-	if ( $email === '' ) {
+	if ( $comm_methods === array() ) {
 		return array(
-			'error' => __( 'Please add an email address so we can create your account.', 'influencer-hq' ),
+			'error' => __( 'Please select at least one communication method.', 'influencer-hq' ),
 		);
+	}
+
+	// An Email channel the visitor chose must be a real address: masking a typo
+	// with the stand-in would leave them no way to sign back in by email code.
+	if ( isset( $comm_methods['email'] ) && ! is_email( $comm_methods['email'] ) ) {
+		return array(
+			'error' => __( 'Please enter a valid email address.', 'influencer-hq' ),
+		);
+	}
+
+	// ENGR-7511 — PO-3099 lets the visitor pick any one channel, but a
+	// WordPress account needs an email. Stand-in until PO-3155's chat-app
+	// sign-in reaches IHQ.
+	if ( $email === '' ) {
+		$email = ihq_aicoach_placeholder_email();
 	}
 
 	$username = '';
@@ -415,8 +443,8 @@ function ihq_aicoach_enqueue_register_event() {
 			'restUrl' => esc_url_raw( rest_url( 'ihq/v1/create-account' ) ),
 			'nonce'   => wp_create_nonce( 'wp_rest' ),
 			'i18n'    => array(
-				'missingEmail' => __( 'Please add an email address so we can create your account.', 'influencer-hq' ),
-				'network'      => __( 'Network error. Please try again.', 'influencer-hq' ),
+				'missingChannel' => __( 'Please select at least one communication method.', 'influencer-hq' ),
+				'network'        => __( 'Network error. Please try again.', 'influencer-hq' ),
 			),
 		)
 	);
