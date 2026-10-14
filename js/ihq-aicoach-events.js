@@ -148,7 +148,9 @@
 		return next;
 	}
 
-	function hasEmailChannel(channels) {
+	// ENGR-7511 — any one channel is enough (PO-3099); the server stands in an
+	// address when none of them is an email.
+	function hasAnyChannel(channels) {
 		if (!Array.isArray(channels)) {
 			return false;
 		}
@@ -157,7 +159,7 @@
 				return false;
 			}
 			var value = trimString(String(entry.value == null ? '' : entry.value));
-			return value.indexOf('@') !== -1;
+			return value !== '';
 		});
 	}
 
@@ -207,12 +209,12 @@
 		var shouldRedirect = options.redirect !== false;
 		var payload = mergePayload(collectFromPage(), options);
 
-		if (!hasEmailChannel(payload.channels)) {
+		if (!hasAnyChannel(payload.channels)) {
 			return Promise.resolve({
 				success: false,
-				error: cfg.i18n && cfg.i18n.missingEmail
-					? cfg.i18n.missingEmail
-					: 'Please add an email address so we can create your account.',
+				error: cfg.i18n && cfg.i18n.missingChannel
+					? cfg.i18n.missingChannel
+					: 'Please select at least one communication method.',
 			});
 		}
 
