@@ -165,6 +165,8 @@ test( 'serverErrorMessage prefers error, falls back to message, else empty', () 
 	assert.equal( serverErrorMessage( { success: false, error: 'Please enter a valid email address.' } ), 'Please enter a valid email address.' );
 	assert.equal( serverErrorMessage( { error: 'from handler', message: 'from WordPress' } ), 'from handler' );
 	assert.equal( serverErrorMessage( { code: 'rest_cookie_invalid_nonce', message: 'Cookie check failed' } ), 'Cookie check failed' );
+	assert.equal( serverErrorMessage( { code: 'internal_server_error', message: '<p>There has been a critical error on this website.</p>' } ), '' );
+	assert.equal( serverErrorMessage( { message: 'Use 3 < 5 characters' } ), 'Use 3 < 5 characters' );
 	assert.equal( serverErrorMessage( { success: false } ), '' );
 	assert.equal( serverErrorMessage( { error: 42, message: null } ), '' );
 	assert.equal( serverErrorMessage( null ), '' );

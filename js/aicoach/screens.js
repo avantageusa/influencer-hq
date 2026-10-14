@@ -139,6 +139,8 @@ export function isWordPressEmail( value ) {
 // ENGR-7511 — what the final screen shows when create-account fails: the
 // server's own reason when it gave one (`error` from our handler, `message`
 // from WordPress's REST errors such as a failed nonce check), else ''.
+// WordPress's fatal-error `message` is HTML, which textContent would print as
+// literal tags, so a `message` with markup falls back to the generic text.
 export function serverErrorMessage( data ) {
     if ( ! data || typeof data !== 'object' ) {
         return '';
@@ -146,7 +148,7 @@ export function serverErrorMessage( data ) {
     if ( typeof data.error === 'string' ) {
         return data.error;
     }
-    if ( typeof data.message === 'string' ) {
+    if ( typeof data.message === 'string' && ! /<[a-z/!]/i.test( data.message ) ) {
         return data.message;
     }
     return '';
