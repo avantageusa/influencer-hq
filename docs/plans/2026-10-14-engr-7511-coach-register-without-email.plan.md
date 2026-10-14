@@ -68,3 +68,10 @@ any other registration, with the stand-in email.
   only, built from an unverified handle, and rejected by referral's `IsEmail`.
 - Wire the unreachable Telegram widget login into `/portal/login`: adds a sign-in
   surface PO-3155 is retiring; out of the minimal scope Steve set.
+
+## Review follow-up (independent review, 2026-10-14)
+
+- **W1:** `inc/placeholder-email.php` owns the domain and `ihq_is_placeholder_email()`, so PO-3255 can find stand-in accounts to merge. No dedupe on the unverified handle.
+- **W2:** a stand-in is not marked `email_verified`, and `ihq_send_influencer_to_braze()` neither looks it up in Braze nor sends it as `email`. start-session still gets it (account-api and referral need an email).
+- **W3:** the browser email check now applies WordPress `is_email()`'s rules (`isWordPressEmail` in `js/aicoach/screens.js`), so the invalid-email 400 can't be reached from the form. Reopening the identity / channels panel from the final screen is **not** done: it changes the coach flow's screen sequencing, beyond the minimal change Steve asked for (PO-3255 / PO-3100 Scenario 16 follow-up).
+- **W4:** JS tests for the channel gate (`js/aicoach/ihq-aicoach-events.test.js`, VM) and `serverErrorMessage()`.

@@ -156,7 +156,14 @@ function ihq_send_influencer_to_braze( $user_id ) {
 	// simply omitted for them rather than sent as an empty string.
 	$language_preference = (string) get_user_meta( $user_id, '_ihq_aicoach_language', true );
 
-	$braze_user_check   = check_braze_user_exists_influencer( $email );
+	// ENGR-7511 — a stand-in address (no email given) is never sent to Braze:
+	// any email to it would hard-bounce, and no Braze profile can match it.
+	$has_real_email = ! ( function_exists( 'ihq_is_placeholder_email' ) && ihq_is_placeholder_email( $email ) );
+
+	$braze_user_check = array( 'success' => false, 'exists' => false );
+	if ( $has_real_email ) {
+		$braze_user_check = check_braze_user_exists_influencer( $email );
+	}
 	$external_id_to_use = '';
 	$influencer_guid    = (string) get_user_meta( $user_id, 'wp_influencer_guid', true );
 
@@ -181,6 +188,9 @@ function ihq_send_influencer_to_braze( $user_id ) {
 		'Language'           => $country,
 		'wp_influencer_guid' => $influencer_guid,
 	);
+	if ( ! $has_real_email ) {
+		unset( $braze_attributes['email'] );
+	}
 	if ( $language_preference !== '' ) {
 		$braze_attributes['language_preference'] = $language_preference;
 	}

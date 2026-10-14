@@ -318,7 +318,11 @@ function ihq_create_influencer_user_from_registration_data( array $registration_
     }
 
     update_user_meta( $user_id, 'registration_date', current_time( 'mysql' ) );
-    update_user_meta( $user_id, 'email_verified', true );
+    // ENGR-7511 — a stand-in address (no email given) was never verified.
+    $is_placeholder_email = function_exists( 'ihq_is_placeholder_email' ) && ihq_is_placeholder_email( $email );
+    if ( ! $is_placeholder_email ) {
+        update_user_meta( $user_id, 'email_verified', true );
+    }
     update_user_meta( $user_id, 'ihq_oauth_country_iso', ihq_normalize_country_iso_alpha2( $country_iso ) );
 
     $ihq_oauth_response = ihq_register_oauth_user(

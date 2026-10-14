@@ -85,6 +85,7 @@ function ihq_create_influencer_user_from_registration_data( array $registration 
 function wp_set_current_user( $id ) {}
 function wp_set_auth_cookie( $id, $remember ) { $GLOBALS['signed_in'][] = $id; }
 
+require __DIR__ . '/../inc/placeholder-email.php';
 require __DIR__ . '/../inc/aicoach-register.php';
 
 $failures = 0;

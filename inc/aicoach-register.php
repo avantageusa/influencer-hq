@@ -41,14 +41,8 @@ function ihq_aicoach_allowed_channel_keys() {
 }
 
 /**
- * Domain for the stand-in address of a visitor who gave no email (ENGR-7511).
- * .invalid can never deliver (RFC 2606), and it is the same placeholder
- * domain PO-3155 uses for chat-app-only accounts.
- */
-const IHQ_AICOACH_PLACEHOLDER_EMAIL_DOMAIN = 'chat.invalid';
-
-/**
- * A unique, undeliverable email for an account registered without one.
+ * A unique, undeliverable email for an account registered without one
+ * (ENGR-7511; domain and detection in inc/placeholder-email.php).
  *
  * Not built from the channel value: that value is unverified, and a
  * random local part cannot collide with, or reveal, anyone's handle.
@@ -56,7 +50,7 @@ const IHQ_AICOACH_PLACEHOLDER_EMAIL_DOMAIN = 'chat.invalid';
  * @return string
  */
 function ihq_aicoach_placeholder_email() {
-	return wp_generate_uuid4() . '@' . IHQ_AICOACH_PLACEHOLDER_EMAIL_DOMAIN;
+	return wp_generate_uuid4() . '@' . IHQ_PLACEHOLDER_EMAIL_DOMAIN;
 }
 
 /**
@@ -450,7 +444,7 @@ function ihq_aicoach_enqueue_register_event() {
 			'nonce'   => wp_create_nonce( 'wp_rest' ),
 			'i18n'    => array(
 				'missingChannel' => __( 'Please select at least one communication method.', 'influencer-hq' ),
-				'network'      => __( 'Network error. Please try again.', 'influencer-hq' ),
+				'network'        => __( 'Network error. Please try again.', 'influencer-hq' ),
 			),
 		)
 	);

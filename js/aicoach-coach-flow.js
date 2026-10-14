@@ -19,6 +19,7 @@ import {
     COMM_CHANNELS_SCREEN,
     CHANNELS,
     FINAL_SCREEN,
+    serverErrorMessage,
 } from '@ihq/aicoach/screens';
 import {
     CHOICE,
@@ -2353,12 +2354,7 @@ if ( stage && avatarWrap ) {
                 redirect: false,
             } );
             if ( ! data || ! data.success || ! data.redirectUrl ) {
-                if ( data && typeof data.error === 'string' ) {
-                    serverMessage = data.error;
-                } else if ( data && typeof data.message === 'string' ) {
-                    // WordPress's own REST errors (e.g. a failed nonce check) use `message`.
-                    serverMessage = data.message;
-                }
+                serverMessage = serverErrorMessage( data );
                 throw new Error( ( data && data.error ) || 'create-account failed' );
             }
 
