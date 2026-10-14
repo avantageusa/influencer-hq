@@ -128,6 +128,14 @@ function ihq_aicoach_parse_register_payload( array $params ) {
 		);
 	}
 
+	// An Email channel the visitor chose must be a real address: masking a typo
+	// with the stand-in would leave them no way to sign back in by email code.
+	if ( isset( $comm_methods['email'] ) && ! is_email( $comm_methods['email'] ) ) {
+		return array(
+			'error' => __( 'Please enter a valid email address.', 'influencer-hq' ),
+		);
+	}
+
 	// ENGR-7511 — PO-3099 lets the visitor pick any one channel, but a
 	// WordPress account needs an email. Stand-in until PO-3155's chat-app
 	// sign-in reaches IHQ.

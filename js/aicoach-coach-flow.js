@@ -2355,6 +2355,9 @@ if ( stage && avatarWrap ) {
             if ( ! data || ! data.success || ! data.redirectUrl ) {
                 if ( data && typeof data.error === 'string' ) {
                     serverMessage = data.error;
+                } else if ( data && typeof data.message === 'string' ) {
+                    // WordPress's own REST errors (e.g. a failed nonce check) use `message`.
+                    serverMessage = data.message;
                 }
                 throw new Error( ( data && data.error ) || 'create-account failed' );
             }

@@ -169,6 +169,35 @@ check(
 	$no_channel_error
 );
 
+$invalid_email_error = array( 'error' => 'Please enter a valid email address.' );
+check(
+	'an invalid Email channel on its own is an error, not a stand-in',
+	ihq_aicoach_parse_register_payload( base_params( array( array( 'channel' => 'email', 'value' => 'abc@' ) ) ) ),
+	$invalid_email_error
+);
+check(
+	'an invalid Email channel next to Telegram is still an error',
+	ihq_aicoach_parse_register_payload(
+		base_params(
+			array(
+				array( 'channel' => 'telegram', 'value' => '@Avantage123' ),
+				array( 'channel' => 'email', 'value' => 'abc@' ),
+			)
+		)
+	),
+	$invalid_email_error
+);
+
+// --- ihq_aicoach_handle_create_account: invalid Email channel is a 400. ---
+reset_state();
+$response = ihq_aicoach_handle_create_account(
+	new WP_REST_Request( base_params( array( array( 'channel' => 'email', 'value' => 'abc@' ) ) ) )
+);
+check( 'invalid email: 400', $response->status, 400 );
+check( 'invalid email: error body', $response->data, array( 'success' => false, 'error' => 'Please enter a valid email address.' ) );
+check( 'invalid email: no account created', $GLOBALS['created_registrations'], array() );
+check( 'invalid email: nobody signed in', $GLOBALS['signed_in'], array() );
+
 // --- ihq_aicoach_handle_create_account: Telegram only creates and signs in. ---
 reset_state();
 $response = ihq_aicoach_handle_create_account(
