@@ -33,11 +33,14 @@ Nothing on the Coach page knows whether an Influencer has been onboarded. New ac
 through onboarding; existing accounts and finished users must not see it.
 
 ## Approach
-- `ihq_portal_onboarding_should_launch( $user_id )`: logged in, kill switch on, account created strictly
+- `ihq_portal_onboarding_should_launch( $user_id )`: logged in, Influencer role (the existing
+  `ihq_user_has_influencer_role_id()` helper, checked by name), kill switch on, account created strictly
   after the release date, and the store (ENGR-7563) not complete. Each check fails closed.
-- Release date: option `ihq_portal_onboarding_release_date` (ISO date, a date without a zone is UTC,
-  or a Unix timestamp). Missing or unreadable means nobody is onboarded. Accounts created before it are
-  never launched, which is how "treated as complete" is met without writing to every old account.
+- Release date: option `ihq_portal_onboarding_release_date` (ISO-8601 date or date-time, a value without
+  a zone is UTC, or a Unix timestamp). Relative values, impossible dates and any instant before
+  2026-01-01 read as unset (so a compact `20261101` is not read as a 1970 timestamp). Missing or
+  unreadable means nobody is onboarded. Accounts created before it are never launched, which is how
+  "treated as complete" is met without writing to every old account.
 - Kill switch: checked as `function_exists( 'ihq_portal_onboarding_enabled' ) && ihq_portal_onboarding_enabled()`
   because ENGR-7561 is a separate PR off `main`.
 - `ihq_portal_onboarding_maybe_render()` is called from `page-portal-home.php` right after the portal

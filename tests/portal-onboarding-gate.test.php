@@ -4,8 +4,9 @@
  * inc/portal-onboarding-gate.php), on top of the store it reads
  * (inc/portal-onboarding-progress.php). No WordPress bootstrap: options, users,
  * user meta, actions, nonces and the REST classes are stubbed in memory. The
- * kill switch (ENGR-7561) is a separate module; it is stubbed here, first
- * absent and then present, because the gate checks it by name.
+ * kill switch (ENGR-7561) and the Influencer role helper (inc/portal-username.php)
+ * are separate modules; each is stubbed here, first absent and then present,
+ * because the gate checks them by name.
  *
  *     docker run -v "$PWD":/t -w /t php:8.2-cli php tests/portal-onboarding-gate.test.php
  *
@@ -20,6 +21,8 @@ function check( $label, $cond ) { global $fail; echo ( $cond ? 'PASS ' : 'FAIL '
 
 $GLOBALS['wp_options']    = array();
 $GLOBALS['users']         = array(); // user_id => user_registered (UTC, 'Y-m-d H:i:s')
+$GLOBALS['roles']         = array(); // user_id => role slugs
+$GLOBALS['role_checks']   = array(); // user ids the role helper was asked about
 $GLOBALS['user_meta']     = array();
 $GLOBALS['actions_fired'] = array();
 $GLOBALS['hooks']         = array();
@@ -65,7 +68,9 @@ class WP_REST_Response {
 	public function header( $key, $value ) { $this->headers[ $key ] = $value; }
 }
 class WP_REST_Request {
-	public function get_header( $key ) { return 'good-nonce'; }
+	private $nonce;
+	public function __construct( $nonce = 'good-nonce' ) { $this->nonce = $nonce; }
+	public function get_header( $key ) { return 'X-WP-Nonce' === $key ? $this->nonce : ''; }
 	public function get_json_params() { return null; }
 }
 
@@ -79,10 +84,15 @@ const AFTER        = '2026-11-01 00:00:01';
 const NEW_USER     = 7;
 const OLD_USER     = 8;
 const EXACT_USER   = 9;
+const STAFF_USER   = 10;
+const INFLUENCER   = array( 'influencer' );
+const STAFF        = array( 'administrator' );
 
 function reset_world() {
 	$GLOBALS['wp_options']    = array( 'ihq_portal_onboarding_release_date' => RELEASE );
-	$GLOBALS['users']         = array( NEW_USER => AFTER, OLD_USER => BEFORE, EXACT_USER => AT_RELEASE );
+	$GLOBALS['users']         = array( NEW_USER => AFTER, OLD_USER => BEFORE, EXACT_USER => AT_RELEASE, STAFF_USER => AFTER );
+	$GLOBALS['roles']         = array( NEW_USER => INFLUENCER, OLD_USER => INFLUENCER, EXACT_USER => INFLUENCER, STAFF_USER => STAFF );
+	$GLOBALS['role_checks']   = array();
 	$GLOBALS['user_meta']     = array();
 	$GLOBALS['actions_fired'] = array();
 	$GLOBALS['current_user']  = NEW_USER;
@@ -90,6 +100,27 @@ function reset_world() {
 }
 
 check( 'option and action names', 'ihq_portal_onboarding_release_date' === IHQ_PORTAL_ONBOARDING_RELEASE_OPTION && 'ihq_portal_onboarding_render_layer' === IHQ_PORTAL_ONBOARDING_RENDER_ACTION );
+
+check( 'earliest accepted release instant is 2026-01-01T00:00:00Z', 1767225600 === IHQ_PORTAL_ONBOARDING_EARLIEST_RELEASE );
+
+// --- Influencer role helper absent: nobody is an Influencer, nobody is launched ---
+
+reset_world();
+check( 'without the role helper nobody reads as an Influencer', false === ihq_portal_onboarding_is_influencer( NEW_USER ) );
+check( 'without the role helper an eligible user is not launched', false === ihq_portal_onboarding_should_launch( NEW_USER ) );
+
+// inc/portal-username.php defines this; stubbed from here on.
+if ( ! function_exists( 'ihq_user_has_influencer_role_id' ) ) {
+	function ihq_user_has_influencer_role_id( $user_id ) {
+		$GLOBALS['role_checks'][] = $user_id;
+		return in_array( 'influencer', $GLOBALS['roles'][ $user_id ] ?? array(), true );
+	}
+}
+
+reset_world();
+check( 'an Influencer account reads as an Influencer', true === ihq_portal_onboarding_is_influencer( NEW_USER ) );
+check( 'an administrator account does not read as an Influencer', false === ihq_portal_onboarding_is_influencer( STAFF_USER ) );
+check( 'the role helper is asked about the given user ids', array( NEW_USER, STAFF_USER ) === $GLOBALS['role_checks'] );
 
 // --- Kill switch module absent (this PR merged before ENGR-7561): nobody is launched ---
 
@@ -112,6 +143,10 @@ $dates = array(
 	'2026-11-01T02:00:00+02:00' => 1793491200,
 	'  2026-11-01  '            => 1793491200,
 	'1793491200'                => 1793491200,
+	'2026-11-01T00:00Z'         => 1793491200, // no seconds
+	'2026-11-01T02:00:00+0200'  => 1793491200, // offset without a colon
+	'1767225600'                => 1767225600, // the earliest accepted instant
+	'2026-01-01'                => 1767225600,
 );
 foreach ( $dates as $raw => $expected ) {
 	$GLOBALS['wp_options']['ihq_portal_onboarding_release_date'] = $raw;
@@ -119,7 +154,27 @@ foreach ( $dates as $raw => $expected ) {
 }
 $GLOBALS['wp_options']['ihq_portal_onboarding_release_date'] = 1793491200;
 check( 'an integer release date is used as is', 1793491200 === ihq_portal_onboarding_release_timestamp() );
-foreach ( array( '', '   ', 'soon', array( '2026-11-01' ), 0, -5, null, false ) as $bad ) {
+$unreadable = array(
+	'', '   ', 'soon', array( '2026-11-01' ), 0, -5, null, false,
+	'20261101',                  // compact date: would be 1970-08-23 as a timestamp
+	'1767225599',                // one second before the earliest accepted instant
+	1767225599,
+	'2025-12-31T23:59:59Z',
+	'1970-01-01T00:00:00Z',
+	'tomorrow',                  // relative values move with every request
+	'next monday',
+	'yesterday',
+	'+1 week',
+	'2026-02-30',                // impossible date strtotime() would roll into March
+	'2026-13-01',
+	'2026-11-01T24:00:00Z',
+	'2026-11-01T00:60:00Z',
+	'2026-11-01 UTC',            // a zone needs a time
+	'2026-11-01T00:00:00 GMT',   // not an ISO-8601 zone
+	'01/11/2026',
+	'2026-11-01T00:00:00Z extra',
+);
+foreach ( $unreadable as $bad ) {
 	$GLOBALS['wp_options']['ihq_portal_onboarding_release_date'] = $bad;
 	check( 'release date ' . var_export( $bad, true ) . ' reads as unset', null === ihq_portal_onboarding_release_timestamp() );
 }
@@ -130,6 +185,11 @@ check( 'a missing release date reads as unset', null === ihq_portal_onboarding_r
 
 reset_world();
 check( 'eligible: created after the release, not complete, switch on', true === ihq_portal_onboarding_should_launch( NEW_USER ) );
+
+reset_world();
+check( 'not launched: post-release account without the Influencer role (administrator)', false === ihq_portal_onboarding_should_launch( STAFF_USER ) );
+$GLOBALS['roles'][ NEW_USER ] = array();
+check( 'not launched: post-release account with no role', false === ihq_portal_onboarding_should_launch( NEW_USER ) );
 
 reset_world();
 check( 'not launched: account created before the release (treated as complete)', false === ihq_portal_onboarding_should_launch( OLD_USER ) );
@@ -179,6 +239,7 @@ $not_rendered = array(
 	'pre-release account' => function () { $GLOBALS['current_user'] = OLD_USER; },
 	'kill switch off'     => function () { $GLOBALS['switch_value'] = false; },
 	'logged out'          => function () { $GLOBALS['current_user'] = 0; },
+	'non-Influencer account (administrator)' => function () { $GLOBALS['current_user'] = STAFF_USER; },
 );
 foreach ( $not_rendered as $label => $setup ) {
 	reset_world();
@@ -200,11 +261,15 @@ reset_world();
 $response = ihq_portal_onboarding_handle_complete();
 check( 'completing returns 200', 200 === $response->status );
 check( 'completing is never cached', array( 'Cache-Control' => 'no-store, private' ) === $response->headers );
-check( 'completing stores the flag', true === $GLOBALS['user_meta'][ NEW_USER ]['_ihq_portal_onboarding']['completed'] );
+check( 'completing stores the flag', true === ihq_portal_onboarding_is_complete( NEW_USER ) );
 check( 'completing returns the completed state', true === $response->data['completed'] );
 $GLOBALS['actions_fired'] = array();
 ihq_portal_onboarding_maybe_render();
 check( 'reopening the Coach page after completing does not start onboarding', array() === $GLOBALS['actions_fired'] );
+
+check( 'the completion route accepts a logged-in request with a good nonce', true === ihq_portal_onboarding_permission_check( new WP_REST_Request() ) );
+check( 'the completion route refuses a bad nonce with 403', array( 'status' => 403 ) === ihq_portal_onboarding_permission_check( new WP_REST_Request( 'bad-nonce' ) )->data );
+check( 'the completion route refuses a missing nonce with 403', array( 'status' => 403 ) === ihq_portal_onboarding_permission_check( new WP_REST_Request( '' ) )->data );
 
 $GLOBALS['current_user'] = 0;
 check( 'the completion route refuses a logged-out request with 401', array( 'status' => 401 ) === ihq_portal_onboarding_permission_check( new WP_REST_Request() )->data );
@@ -212,7 +277,7 @@ check( 'the completion route refuses a logged-out request with 401', array( 'sta
 // --- The Coach page calls the gate ---
 
 $page = file_get_contents( __DIR__ . '/../page-portal-home.php' );
-check( 'page-portal-home.php calls ihq_portal_onboarding_maybe_render()', false !== strpos( $page, "if ( function_exists( 'ihq_portal_onboarding_maybe_render' ) ) { ihq_portal_onboarding_maybe_render(); }" ) );
+check( 'page-portal-home.php calls ihq_portal_onboarding_maybe_render()', false !== strpos( $page, 'ihq_portal_onboarding_maybe_render()' ) );
 check( 'the call comes right after the portal header', strpos( $page, "get_template_part( 'template-parts/portal-header' )" ) < strpos( $page, 'ihq_portal_onboarding_maybe_render();' ) );
 
 echo "\n" . ( 0 === $fail ? 'All checks passed.' : $fail . ' check(s) FAILED.' ) . "\n";

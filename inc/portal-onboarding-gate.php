@@ -8,17 +8,20 @@
  * or resume at the saved stage; the onboarding shell (ENGR-7565) renders on that action.
  * Anyone else sees the Coach page exactly as before: nothing is printed.
  *
- * Who is onboarded (evaluation OQ7, pending Product confirmation): an account created after
- * the release date that has not completed onboarding, whatever path it registered through,
- * and only while the kill switch (ENGR-7561) is on. Accounts created before the release date
- * are treated as complete.
+ * Who is onboarded (evaluation OQ7, pending Product confirmation): an account with the
+ * Influencer role created after the release date that has not completed onboarding, whatever
+ * path it registered through, and only while the kill switch (ENGR-7561) is on. Accounts
+ * created before the release date are treated as complete. Staff accounts (administrators,
+ * editors) are never onboarded.
  *
  * The release date is a WordPress option set once at release:
  *
  *     wp option update ihq_portal_onboarding_release_date "2026-11-01T00:00:00Z"
  *
  * Without it nobody is onboarded, so a deploy alone never launches onboarding for existing
- * accounts.
+ * accounts. Only an ISO-8601 date or date-time (UTC when it has no zone) or a Unix timestamp is
+ * read; anything else, and any instant before IHQ_PORTAL_ONBOARDING_EARLIEST_RELEASE, reads as
+ * unset.
  *
  * POST /wp-json/ihq/v1/onboarding/complete marks onboarding complete (CONTINUE TO IHQ PORTAL
  * on the closing screen, ENGR-7571). The browser then removes the onboarding layer, which
@@ -31,36 +34,77 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-/** Option holding the release date (anything strtotime() reads; a timezone-less value is UTC). */
+/** Option holding the release date (ISO-8601, UTC when it has no zone, or a Unix timestamp). */
 const IHQ_PORTAL_ONBOARDING_RELEASE_OPTION = 'ihq_portal_onboarding_release_date';
+
+/**
+ * The ISO-8601 forms the release date may take: a date, or a date and time with an optional
+ * zone. Relative values strtotime() would accept (`tomorrow`, `next monday`) do not match.
+ */
+const IHQ_PORTAL_ONBOARDING_RELEASE_PATTERN = '/^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})(?:[T ](?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?(?<zone>Z|[+-](?:0\d|1[0-4]):?[0-5]\d)?)?$/';
+
+/**
+ * Earliest release instant accepted: 2026-01-01T00:00:00Z, before this feature existed. An
+ * earlier value is a misconfiguration (a compact `20261101` read as a 1970 timestamp, say)
+ * that would onboard every existing account, so it reads as unset and onboarding stays off.
+ */
+const IHQ_PORTAL_ONBOARDING_EARLIEST_RELEASE = 1767225600;
 
 /** Action the onboarding shell renders on. */
 const IHQ_PORTAL_ONBOARDING_RENDER_ACTION = 'ihq_portal_onboarding_render_layer';
 
 /**
- * The release date as a Unix timestamp.
+ * An ISO-8601 release date as a Unix timestamp.
  *
- * @return int|null Null when the option is missing or unreadable.
+ * @param string $value Trimmed option value.
+ * @return int|null Null unless the value is a real calendar date in one of the accepted forms.
  */
-function ihq_portal_onboarding_release_timestamp() {
-	$value = get_option( IHQ_PORTAL_ONBOARDING_RELEASE_OPTION, '' );
+function ihq_portal_onboarding_parse_iso_release( $value ) {
+	if ( 1 !== preg_match( IHQ_PORTAL_ONBOARDING_RELEASE_PATTERN, $value, $parts ) ) {
+		return null;
+	}
+	// strtotime() would roll an impossible date such as 2026-02-30 over into March.
+	if ( ! checkdate( (int) $parts['month'], (int) $parts['day'], (int) $parts['year'] ) ) {
+		return null;
+	}
+	// A date without a zone is read as UTC, like user_registered, not in the server's zone.
+	$has_zone  = ! empty( $parts['zone'] );
+	$timestamp = strtotime( $has_zone ? $value : $value . ' UTC' );
+	if ( false === $timestamp ) {
+		return null;
+	}
+	return $timestamp;
+}
+
+/**
+ * The raw option value as a Unix timestamp, before the earliest-release check.
+ *
+ * @param mixed $value
+ * @return int|null Null when the value is not in an accepted form.
+ */
+function ihq_portal_onboarding_parse_release( $value ) {
 	if ( is_int( $value ) ) {
-		return $value > 0 ? $value : null;
+		return $value;
 	}
 	if ( ! is_string( $value ) ) {
 		return null;
 	}
 	$value = trim( $value );
-	if ( '' === $value ) {
-		return null;
-	}
-	if ( ctype_digit( $value ) ) {
+	if ( '' !== $value && ctype_digit( $value ) ) {
 		return (int) $value;
 	}
-	// A date without a zone is read as UTC, like user_registered, not in the server's zone.
-	$has_zone  = 1 === preg_match( '/(Z|[+-]\d{2}:?\d{2}|UTC|GMT)$/i', $value );
-	$timestamp = strtotime( $has_zone ? $value : $value . ' UTC' );
-	if ( false === $timestamp ) {
+	return ihq_portal_onboarding_parse_iso_release( $value );
+}
+
+/**
+ * The release date as a Unix timestamp.
+ *
+ * @return int|null Null when the option is missing, unreadable or earlier than
+ *                  IHQ_PORTAL_ONBOARDING_EARLIEST_RELEASE.
+ */
+function ihq_portal_onboarding_release_timestamp() {
+	$timestamp = ihq_portal_onboarding_parse_release( get_option( IHQ_PORTAL_ONBOARDING_RELEASE_OPTION, '' ) );
+	if ( null === $timestamp || $timestamp < IHQ_PORTAL_ONBOARDING_EARLIEST_RELEASE ) {
 		return null;
 	}
 	return $timestamp;
@@ -86,6 +130,18 @@ function ihq_portal_onboarding_created_after_release( $user_id ) {
 }
 
 /**
+ * Whether the account has the Influencer role, through ihq_user_has_influencer_role_id()
+ * (inc/portal-username.php). Checked by name like the kill switch: without the helper nobody
+ * is onboarded.
+ *
+ * @param int $user_id
+ * @return bool
+ */
+function ihq_portal_onboarding_is_influencer( $user_id ) {
+	return function_exists( 'ihq_user_has_influencer_role_id' ) && ihq_user_has_influencer_role_id( $user_id );
+}
+
+/**
  * Whether the kill switch (ENGR-7561) is on. Checked by name so this file works whichever of
  * the two PRs merges first: without the switch module, onboarding stays off.
  *
@@ -104,6 +160,9 @@ function ihq_portal_onboarding_switch_on() {
 function ihq_portal_onboarding_should_launch( $user_id ) {
 	$user_id = (int) $user_id;
 	if ( $user_id <= 0 ) {
+		return false;
+	}
+	if ( ! ihq_portal_onboarding_is_influencer( $user_id ) ) {
 		return false;
 	}
 	if ( ! ihq_portal_onboarding_switch_on() ) {
