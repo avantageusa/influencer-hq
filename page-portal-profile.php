@@ -745,6 +745,9 @@ if ( $full_name === '' ) {
     $full_name = $display_name;
 }
 $user_email      = $user->user_email;
+// ENGR-7611 — never show the stand-in address; show the registered channel instead.
+$profile_email      = ihq_profile_email_row_value( $user_email );
+$registered_channel = ihq_profile_registered_channel( $user->ID, $user_email );
 $portal_username = function_exists( 'ihq_get_portal_username' ) ? ihq_get_portal_username( $user->ID ) : '';
 $needs_portal_username_setup = function_exists( 'ihq_user_needs_portal_username' ) && ihq_user_needs_portal_username( $user->ID );
 $ihq_referral_nonce = wp_create_nonce( 'request_live_appearance_nonce' );
@@ -1096,19 +1099,34 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                     $country_is_listed = ( $user_country !== '' && in_array( $user_country, $country_options, true ) );
                     $city_is_listed    = ( $user_city !== '' && in_array( $user_city, $city_options, true ) );
                     $acct_rows = [
-                        [ 'key' => 'email',    'label' => 'Email',                  'value' => $user_email,    'type' => 'email'  ],
+                        [ 'key' => 'email',    'label' => 'Email',                  'value' => $profile_email, 'type' => 'email'  ],
                         [ 'key' => 'country',  'label' => 'Country',                'value' => $user_country,  'type' => 'place'  ],
                         [ 'key' => 'city',     'label' => 'City',                   'value' => $user_city,     'type' => 'place'  ],
                         [ 'key' => 'timezone', 'label' => 'Time Zone',              'value' => $user_timezone, 'type' => 'timezone' ],
                         [ 'key' => 'avatar',   'label' => 'Profile Photo or Avatar','value' => '',             'type' => 'avatar' ],
                     ];
+                    if ( $registered_channel !== null ) {
+                        $channel_row = [
+                            'key'   => 'channel',
+                            'label' => __( 'Registered with', 'influencer-hq' ),
+                            'value' => trim( $registered_channel['label'] . ' ' . $registered_channel['value'] ),
+                            'type'  => 'channel',
+                        ];
+                        array_splice( $acct_rows, 1, 0, [ $channel_row ] );
+                    }
                     foreach ( $acct_rows as $row ) :
                     ?>
                     <div class="sett-row">
                         <div class="sett-row-lbl"><?php echo esc_html( $row['label'] ); ?></div>
                         <div class="sett-row-val">
                             <?php if ( $row['type'] === 'email' ) : ?>
+                                <?php if ( $row['value'] === '' ) : ?>
+                                <span class="sett-editable sett-email-link" data-group="account" data-field="email" data-empty-label="<?php esc_attr_e( 'Add email', 'influencer-hq' ); ?>"><?php esc_html_e( 'Add email', 'influencer-hq' ); ?></span>
+                                <?php else : ?>
                                 <span class="sett-editable sett-email-link" data-group="account" data-field="email"><?php echo esc_html( $row['value'] ); ?></span>
+                                <?php endif; ?>
+                            <?php elseif ( $row['type'] === 'channel' ) : ?>
+                                <span class="sett-registered-channel"><?php echo esc_html( $row['value'] ); ?></span>
                             <?php elseif ( $row['type'] === 'avatar' ) : ?>
                                 <button type="button" class="sett-change-photo" id="sett-avatar-btn"><?php esc_html_e( 'Add or Change Photo', 'influencer-hq' ); ?></button>
                             <?php elseif ( $row['type'] === 'place' ) : ?>
@@ -1553,7 +1571,9 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
     document.querySelectorAll('.sett-editable').forEach(function(el){
         el.addEventListener('click', function(){
             if (el.querySelector('input,textarea')) return;
-            var val   = el.textContent.trim();
+            // ENGR-7611 — an empty Email row shows an "Add email" prompt, not a value.
+            var emptyLabel = el.dataset.emptyLabel;
+            var val   = emptyLabel ? '' : el.textContent.trim();
             var input = document.createElement('input');
             input.type  = 'text';
             input.value = val;
@@ -1563,6 +1583,15 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
             input.focus();
             function commit(){
                 var v = input.value.trim();
+                if (emptyLabel && v === '') {
+                    // Nothing typed: keep the prompt and leave the stored stand-in alone.
+                    el.textContent = emptyLabel;
+                    return;
+                }
+                if (emptyLabel) {
+                    delete el.dataset.emptyLabel;
+                    emptyLabel = '';
+                }
                 el.textContent = v;
                 var field = el.dataset.field;
                 if ( field === 'name' ) {
