@@ -16,6 +16,7 @@
 	--ihq-onb-green: #148942;
 	--ihq-onb-commentary-bg: #2d2b2b;
 	--ihq-onb-page-bg: #000;
+	--ihq-onb-error: #ff6b6b;
 	--ihq-onb-column-width: 100%;
 
 	position: fixed;
@@ -32,6 +33,15 @@
 html.ihq-onb-open,
 html.ihq-onb-open body {
 	overflow: hidden;
+}
+
+/*
+ * The dialog takes focus when it opens (onboarding-shell.js) so Tab
+ * starts inside it. The layer needs no focus ring; its controls keep
+ * theirs.
+ */
+.ihq-onb:focus {
+	outline: none;
 }
 
 .ihq-onb__column {
@@ -267,7 +277,7 @@ html.ihq-onb-open body {
 /* A question screen asked to advance without a valid answer. */
 .ihq-onb__error {
 	margin: 0;
-	color: #ff6b6b;
+	color: var(--ihq-onb-error);
 	font-size: 0.875rem;
 	font-weight: 600;
 }

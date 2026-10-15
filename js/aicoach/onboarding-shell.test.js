@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createFakeDocument, createEvent, build } from './fake-dom.js';
 import { createStringTable, SHELL_STRINGS_EN } from './onboarding-strings.js';
-import { createShell, part, OPEN_CLASS } from './onboarding-shell.js';
+import { createShell, part, makeOutsideInert, OPEN_CLASS, INERT_ATTRIBUTE } from './onboarding-shell.js';
 
 // The parts of template-parts/portal-onboarding.php the shell uses.
 function markup( document ) {
@@ -37,10 +37,21 @@ function fakeNarrator() {
 	};
 }
 
+// The Coach page around the layer: a link beside it, and a wrapper it sits in with an
+// element that was already inert before the layer opened.
+function coachPage( document, root ) {
+	const coachLink = build( document, [ 'a', { href: '/coach' }, 'Coach' ] );
+	const alreadyInert = build( document, [ 'div', { inert: true } ] );
+	const wrapper = build( document, [ 'main', {} ] );
+	wrapper.append( alreadyInert, root );
+	document.body.append( coachLink, wrapper );
+	return { coachLink, alreadyInert, wrapper };
+}
+
 function setup( { locale = 'en' } = {} ) {
 	const document = createFakeDocument();
 	const root = markup( document );
-	document.body.append( root );
+	const page = coachPage( document, root );
 	const scrolls = [];
 	const window = { scrollTo: ( x, y ) => scrolls.push( [ x, y ] ) };
 	const narrator = fakeNarrator();
@@ -49,7 +60,7 @@ function setup( { locale = 'en' } = {} ) {
 	strings.add( 'ja', { logOut: 'ログアウト' } );
 	let current = locale;
 	const shell = createShell( { root, document, window, narrator, strings, getLocale: () => current } );
-	return { document, root, window, scrolls, narrator, strings, shell, setLocale: ( next ) => {
+	return { document, root, page, window, scrolls, narrator, strings, shell, setLocale: ( next ) => {
 		current = next;
 	} };
 }
@@ -100,10 +111,80 @@ test( 'Escape closes an open menu and gives focus back to the hamburger', () => 
 test( 'Escape with the menu closed and other keys do nothing', () => {
 	const { document, root } = setup();
 	root.dispatchEvent( createEvent( 'keydown', { key: 'Escape' } ) );
-	assert.equal( document.activeElement, null );
+	assert.equal( document.activeElement, root );
 	part( root, 'menu-button' ).click();
 	root.dispatchEvent( createEvent( 'keydown', { key: 'Enter' } ) );
 	assert.equal( part( root, 'menu' ).hidden, false );
+} );
+
+test( 'opening the shell moves focus into the dialog', () => {
+	const { document, root } = setup();
+	assert.equal( root.getAttribute( 'tabindex' ), '-1' );
+	assert.equal( document.activeElement, root );
+} );
+
+test( 'opening the shell makes the Coach page behind it inert, and close() gives it back', () => {
+	const { root, page, shell } = setup();
+	assert.equal( INERT_ATTRIBUTE, 'inert' );
+	assert.equal( page.coachLink.hasAttribute( 'inert' ), true );
+	assert.equal( page.alreadyInert.hasAttribute( 'inert' ), true );
+	assert.equal( page.wrapper.hasAttribute( 'inert' ), false );
+	assert.equal( root.hasAttribute( 'inert' ), false );
+	shell.close();
+	assert.equal( page.coachLink.hasAttribute( 'inert' ), false );
+	assert.equal( page.alreadyInert.hasAttribute( 'inert' ), true, 'an element that was inert before stays inert' );
+} );
+
+test( 'makeOutsideInert stops at <body> and does nothing for a detached layer', () => {
+	const document = createFakeDocument();
+	const head = build( document, [ 'head', {} ] );
+	document.documentElement.append( head );
+	const root = build( document, [ 'div', {} ] );
+	document.body.append( root );
+	const restore = makeOutsideInert( root, document );
+	assert.equal( head.hasAttribute( 'inert' ), false );
+	restore();
+	const detached = build( document, [ 'div', {} ] );
+	makeOutsideInert( detached, document )();
+	assert.equal( detached.hasAttribute( 'inert' ), false );
+} );
+
+test( 'a click elsewhere in the layer closes the open menu; clicks on the menu or its button do not', () => {
+	const { root } = setup();
+	const button = part( root, 'menu-button' );
+	const menu = part( root, 'menu' );
+	button.click();
+	menu.querySelector( 'a' ).dispatchEvent( createEvent( 'click' ) );
+	assert.equal( menu.hidden, false );
+	part( root, 'content' ).click();
+	assert.equal( menu.hidden, true );
+	assert.equal( button.getAttribute( 'aria-expanded' ), 'false' );
+	part( root, 'content' ).click();
+	assert.equal( menu.hidden, true );
+} );
+
+test( 'focus moving to another control closes the open menu; within the menu or out of the window it stays open', () => {
+	const { root } = setup();
+	const button = part( root, 'menu-button' );
+	const menu = part( root, 'menu' );
+	const link = menu.querySelector( 'a' );
+	button.click();
+	button.dispatchEvent( createEvent( 'focusout', { relatedTarget: link } ) );
+	assert.equal( menu.hidden, false );
+	link.dispatchEvent( createEvent( 'focusout', { relatedTarget: button } ) );
+	assert.equal( menu.hidden, false );
+	link.dispatchEvent( createEvent( 'focusout', { relatedTarget: null } ) );
+	assert.equal( menu.hidden, false );
+	link.dispatchEvent( createEvent( 'focusout', { relatedTarget: part( root, 'sound' ) } ) );
+	assert.equal( menu.hidden, true );
+	assert.equal( button.getAttribute( 'aria-expanded' ), 'false' );
+} );
+
+test( 'focus moving with the menu closed changes nothing', () => {
+	const { root } = setup();
+	part( root, 'sound' ).dispatchEvent( createEvent( 'focusout', { relatedTarget: part( root, 'globe' ) } ) );
+	assert.equal( part( root, 'menu' ).hidden, true );
+	assert.equal( part( root, 'menu-button' ).getAttribute( 'aria-expanded' ), 'false' );
 } );
 
 test( 'the sound button mutes Sami and unmutes her, and says which', () => {
@@ -163,22 +244,27 @@ test( 'close() stops Sami, removes the layer and leaves the Coach page at its to
 	const { document, root, scrolls, narrator, shell } = setup();
 	shell.close();
 	assert.deepEqual( narrator.calls, [ [ 'stop' ] ] );
-	assert.equal( document.body.contains( root ), false );
+	assert.equal( document.documentElement.contains( root ), false );
 	assert.equal( document.documentElement.classList.contains( 'ihq-onb-open' ), false );
 	assert.deepEqual( scrolls, [ [ 0, 0 ] ] );
 } );
 
-test( 'the template has every part the shell looks for', () => {
+// Every value of an attribute in the template, sorted.
+function attributeValues( template, attribute ) {
+	const pattern = new RegExp( ' ' + attribute + '="([^"]*)"', 'g' );
+	return Array.from( template.matchAll( pattern ), ( match ) => match[ 1 ] ).sort();
+}
+
+test( 'the template has exactly the parts and strings the shell looks for', () => {
 	const template = readFileSync( new URL( '../../template-parts/portal-onboarding.php', import.meta.url ), 'utf8' );
-	for ( const name of [ 'menu-button', 'menu', 'sound', 'globe', 'languages', 'video', 'subtitle', 'transcript', 'content' ] ) {
-		assert.ok( template.includes( 'data-onb="' + name + '"' ), name );
-	}
-	assert.ok( template.includes( 'data-ihq-save-home' ) );
-	assert.ok( template.includes( 'id="ihq-onboarding-config"' ) );
-	assert.ok( ! /header-login-link|portal-header-auth-trigger|header-help-btn|header-logout-btn/.test( template ), 'no Login button, Help link or account control in the onboarding header' );
-	for ( const key of [ 'logOut', 'saveToHomeScreen', 'languageSelect' ] ) {
-		assert.ok( key in SHELL_STRINGS_EN, key );
-	}
+	assert.deepEqual( attributeValues( template, 'data-onb' ), [ 'content', 'globe', 'languages', 'menu', 'menu-button', 'sound', 'subtitle', 'transcript', 'video' ] );
+	assert.deepEqual( attributeValues( template, 'data-onb-string' ), [ 'logOut', 'saveToHomeScreen' ] );
+	assert.deepEqual( attributeValues( template, 'data-onb-label' ), [ 'languageSelect' ] );
+	assert.equal( template.match( / data-ihq-save-home[ >]/g ).length, 1 );
+	assert.equal( template.match( / id="ihq-onboarding-config"/g ).length, 1 );
+	assert.equal( /header-login-link|portal-header-auth-trigger|header-help-btn|header-logout-btn/.test( template ), false, 'no Login button, Help link or account control in the onboarding header' );
+	const keys = [ ...attributeValues( template, 'data-onb-string' ), ...attributeValues( template, 'data-onb-label' ) ];
+	assert.deepEqual( keys.filter( ( key ) => ! ( key in SHELL_STRINGS_EN ) ), [] );
 } );
 
 test( 'the stylesheet adds no media query width other than the portal 768/1025 px ones', () => {
