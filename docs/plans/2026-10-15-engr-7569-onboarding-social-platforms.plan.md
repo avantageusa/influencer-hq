@@ -53,7 +53,9 @@ keys) do not match the 19 platforms the onboarding uses.
   edited or cleared on Profile, and the onboarding never rewrites or deletes it again. Only handles
   that changed in a save are written; unticking removes only a handle the onboarding wrote and
   Profile left unchanged. A first onboarding handle for a platform replaces whatever was saved
-  before, so it shows on Profile.
+  before, so it shows on Profile; the replaced handle is kept in
+  `_ihq_portal_onboarding_previous_handles` (`key => handle`) and put back on untick instead of
+  deleting the key (PR #127 review).
 - Profile: the rendered list is `ihq_profile_social_platform_rows( $social_handles )`: the 19, then
   any platform from before them with a saved handle: Email, KICK, Twitch, and the registration grid's
   Naver Blog, Kakao Business, Telegram Channel and Ameba (`ihq_profile_legacy_platform_labels()`).

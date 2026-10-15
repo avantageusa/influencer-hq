@@ -16,7 +16,8 @@
  *
  * Precedence between onboarding and Profile: Profile edits are never overwritten by onboarding.
  * Once the onboarding has written a handle, a later Profile edit or clear of it wins, and the
- * onboarding never rewrites or deletes that handle again.
+ * onboarding never rewrites or deletes that handle again. A handle saved before the onboarding
+ * first replaced it (e.g. at registration) is kept aside and put back if the platform is unticked.
  *
  * @package influencer-hq
  */
@@ -34,6 +35,13 @@ const IHQ_PORTAL_ONBOARDING_SOCIAL_HANDLES_META = '_ihq_social_handles';
  * onboarding leaves it alone.
  */
 const IHQ_PORTAL_ONBOARDING_MIRRORED_META = '_ihq_portal_onboarding_mirrored_handles';
+
+/**
+ * The handle saved before the onboarding first replaced it, by platform, so unticking the
+ * platform puts it back instead of deleting it. Only platforms that had a saved handle at that
+ * moment have an entry. Kept in its own meta so the mirrored meta keeps its `key => handle` form.
+ */
+const IHQ_PORTAL_ONBOARDING_PREVIOUS_META = '_ihq_portal_onboarding_previous_handles';
 
 /**
  * The 19 platforms with the names shown for them, in screen order.
@@ -120,24 +128,45 @@ function ihq_profile_social_platform_rows( $saved_handles ) {
 }
 
 /**
- * The handles the onboarding last wrote, by platform. Unreadable meta, or entries that are not
- * a platform key with a handle, count as nothing written.
+ * A `platform => handle` map from user meta. Unreadable meta, or entries that are not a platform
+ * key with a handle, count as nothing stored.
+ *
+ * @param int    $user_id
+ * @param string $meta_key
+ * @return array<string, string>
+ */
+function ihq_portal_onboarding_handle_map( $user_id, $meta_key ) {
+	$stored  = get_user_meta( $user_id, $meta_key, true );
+	$handles = array();
+	if ( ! is_array( $stored ) ) {
+		return $handles;
+	}
+	foreach ( $stored as $key => $handle ) {
+		if ( is_string( $key ) && is_string( $handle ) ) {
+			$handles[ $key ] = $handle;
+		}
+	}
+	return $handles;
+}
+
+/**
+ * The handles the onboarding last wrote, by platform.
  *
  * @param int $user_id
  * @return array<string, string>
  */
 function ihq_portal_onboarding_mirrored_handles( $user_id ) {
-	$stored   = get_user_meta( $user_id, IHQ_PORTAL_ONBOARDING_MIRRORED_META, true );
-	$mirrored = array();
-	if ( ! is_array( $stored ) ) {
-		return $mirrored;
-	}
-	foreach ( $stored as $key => $handle ) {
-		if ( is_string( $key ) && is_string( $handle ) ) {
-			$mirrored[ $key ] = $handle;
-		}
-	}
-	return $mirrored;
+	return ihq_portal_onboarding_handle_map( $user_id, IHQ_PORTAL_ONBOARDING_MIRRORED_META );
+}
+
+/**
+ * The handles saved before the onboarding first replaced them, by platform.
+ *
+ * @param int $user_id
+ * @return array<string, string>
+ */
+function ihq_portal_onboarding_previous_handles( $user_id ) {
+	return ihq_portal_onboarding_handle_map( $user_id, IHQ_PORTAL_ONBOARDING_PREVIOUS_META );
 }
 
 /**
@@ -154,14 +183,15 @@ function ihq_portal_onboarding_owns_handle( array $saved, array $mirrored, $key 
 }
 
 /**
- * The `_ihq_social_handles` and mirrored maps after an onboarding save. Pure.
+ * The `_ihq_social_handles`, mirrored and previous maps after an onboarding save. Pure.
  *
- * - A platform unticked (or whose handle was removed) in onboarding loses its saved handle only
- *   if the onboarding wrote it and Profile has not changed it since.
+ * - A platform unticked (or whose handle was removed) in onboarding gets back the handle saved
+ *   before the onboarding first replaced it, or loses its saved handle if there was none. Either
+ *   way only if the onboarding wrote it and Profile has not changed it since.
  * - A handle that changed in this save is written, unless Profile changed the saved one since
  *   the onboarding last wrote it: Profile edits are never overwritten by onboarding. A handle
  *   for a platform the onboarding has not written yet replaces the saved one, so what was typed
- *   in onboarding shows on Profile.
+ *   in onboarding shows on Profile; the replaced handle is kept in the previous map.
  * - Every other saved handle, from registration or Profile, is left alone.
  *
  * A Profile-edited platform stays in the mirrored map, so ticking it again later still does not
@@ -170,14 +200,16 @@ function ihq_portal_onboarding_owns_handle( array $saved, array $mirrored, $key 
  * @param array $saved    `_ihq_social_handles`.
  * @param array $mirrored What the onboarding last wrote, by platform.
  * @param array $handles  The onboarding's handles after the save, by platform.
- * @return array{saved: array, mirrored: array}
+ * @param array $previous The handles saved before the onboarding first replaced them, by platform.
+ * @return array{saved: array, mirrored: array, previous: array}
  */
-function ihq_portal_onboarding_plan_mirror( array $saved, array $mirrored, array $handles ) {
-	foreach ( $mirrored as $key => $written ) {
+function ihq_portal_onboarding_plan_mirror( array $saved, array $mirrored, array $handles, array $previous = array() ) {
+	foreach ( array_keys( $mirrored ) as $key ) {
 		if ( isset( $handles[ $key ] ) || ! ihq_portal_onboarding_owns_handle( $saved, $mirrored, $key ) ) {
 			continue;
 		}
-		unset( $saved[ $key ], $mirrored[ $key ] );
+		$saved = ihq_portal_onboarding_release_handle( $saved, $previous, $key );
+		unset( $mirrored[ $key ], $previous[ $key ] );
 	}
 	foreach ( $handles as $key => $handle ) {
 		if ( isset( $mirrored[ $key ] ) && ! ihq_portal_onboarding_owns_handle( $saved, $mirrored, $key ) ) {
@@ -186,13 +218,35 @@ function ihq_portal_onboarding_plan_mirror( array $saved, array $mirrored, array
 		if ( isset( $mirrored[ $key ] ) && $mirrored[ $key ] === $handle ) {
 			continue;
 		}
+		if ( ! isset( $mirrored[ $key ] ) && isset( $saved[ $key ] ) && is_string( $saved[ $key ] ) ) {
+			$previous[ $key ] = $saved[ $key ];
+		}
 		$saved[ $key ]    = $handle;
 		$mirrored[ $key ] = $handle;
 	}
 	return array(
 		'saved'    => $saved,
 		'mirrored' => $mirrored,
+		'previous' => $previous,
 	);
+}
+
+/**
+ * `_ihq_social_handles` once the onboarding gives a platform back: the handle saved before the
+ * onboarding first replaced it, or no entry if there was none. Pure.
+ *
+ * @param array  $saved    `_ihq_social_handles`.
+ * @param array  $previous The handles saved before the onboarding first replaced them.
+ * @param string $key      The platform key.
+ * @return array
+ */
+function ihq_portal_onboarding_release_handle( array $saved, array $previous, $key ) {
+	if ( array_key_exists( $key, $previous ) ) {
+		$saved[ $key ] = $previous[ $key ];
+		return $saved;
+	}
+	unset( $saved[ $key ] );
+	return $saved;
 }
 
 /**
@@ -219,13 +273,17 @@ function ihq_portal_onboarding_mirror_handles( $user_id, $partial, $state ) {
 		$saved = array();
 	}
 	$mirrored = ihq_portal_onboarding_mirrored_handles( $user_id );
+	$previous = ihq_portal_onboarding_previous_handles( $user_id );
 
-	$plan = ihq_portal_onboarding_plan_mirror( $saved, $mirrored, $handles );
+	$plan = ihq_portal_onboarding_plan_mirror( $saved, $mirrored, $handles, $previous );
 	if ( $plan['saved'] !== $saved ) {
 		update_user_meta( $user_id, IHQ_PORTAL_ONBOARDING_SOCIAL_HANDLES_META, $plan['saved'] );
 	}
 	if ( $plan['mirrored'] !== $mirrored ) {
 		update_user_meta( $user_id, IHQ_PORTAL_ONBOARDING_MIRRORED_META, $plan['mirrored'] );
+	}
+	if ( $plan['previous'] !== $previous ) {
+		update_user_meta( $user_id, IHQ_PORTAL_ONBOARDING_PREVIOUS_META, $plan['previous'] );
 	}
 }
 add_action( IHQ_PORTAL_ONBOARDING_SAVED_ACTION, 'ihq_portal_onboarding_mirror_handles', 10, 3 );

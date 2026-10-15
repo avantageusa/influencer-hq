@@ -53,6 +53,7 @@ function save( $partial, $user_id = 7 ) {
 	return ihq_portal_onboarding_merge( $user_id, $result['partial'] );
 }
 function mirrored( $user_id = 7 ) { return $GLOBALS['user_meta'][ $user_id ]['_ihq_portal_onboarding_mirrored_handles'] ?? null; }
+function previous( $user_id = 7 ) { return $GLOBALS['user_meta'][ $user_id ]['_ihq_portal_onboarding_previous_handles'] ?? null; }
 /** A Profile edit of one social row, as page-portal-profile.php sends it. */
 function profile_save( $field, $value ) {
 	$_POST = array( 'group' => 'social', 'field' => $field, 'value' => $value, 'nonce' => 'n' );
@@ -76,14 +77,45 @@ check( 'the mirror runs on the store\'s saved action with all three arguments', 
 save( array( 'platforms' => array( 'x', 'youtube' ), 'handles' => array( 'x' => '@me', 'youtube' => 'youtube.com/@me' ) ) );
 check( 'saved handles appear in _ihq_social_handles', array( 'x' => '@me', 'youtube' => 'youtube.com/@me' ) === social() );
 check( 'the onboarding remembers the handle it wrote for each key', array( 'x' => '@me', 'youtube' => 'youtube.com/@me' ) === mirrored() );
+check( 'with nothing saved before, there is no handle to put back', null === previous() );
+save( array( 'platforms' => array( 'youtube' ), 'handles' => array( 'youtube' => 'youtube.com/@me' ) ) );
+check( 'unticking a platform with no handle saved before onboarding deletes its handle', array( 'youtube' => 'youtube.com/@me' ) === social() );
+check( 'and forgets it wrote it', array( 'youtube' => 'youtube.com/@me' ) === mirrored() );
+check( 'and writes no previous handles', null === previous() );
 
 $GLOBALS['user_meta'] = array( 7 => array( '_ihq_social_handles' => array( 'whatsapp' => '+381600000', 'x' => '@old', 'kick' => 'kicker' ) ) );
 save( array( 'platforms' => array( 'x' ), 'handles' => array( 'x' => '@new' ) ) );
 check( 'an onboarding handle replaces that platform\'s saved one and keeps every other saved handle', array( 'whatsapp' => '+381600000', 'x' => '@new', 'kick' => 'kicker' ) === social() );
+check( 'the replaced handle is kept aside', array( 'x' => '@old' ) === previous() );
+save( array( 'platforms' => array( 'x' ), 'handles' => array( 'x' => '@newer' ) ) );
+check( 'changing the onboarding handle rewrites it', array( 'whatsapp' => '+381600000', 'x' => '@newer', 'kick' => 'kicker' ) === social() );
+check( 'and keeps the handle from before onboarding, not the onboarding\'s first one', array( 'x' => '@old' ) === previous() );
 
 save( array( 'platforms' => array() ) );
-check( 'unticking takes back only what the onboarding wrote', array( 'whatsapp' => '+381600000', 'kick' => 'kicker' ) === social() );
+check( 'unticking puts back the handle saved before onboarding, in its place', array( 'whatsapp' => '+381600000', 'x' => '@old', 'kick' => 'kicker' ) === social() );
 check( 'and forgets it wrote it', array() === mirrored() );
+check( 'and forgets the handle it put back', array() === previous() );
+save( array( 'platforms' => array( 'whatsapp' ) ) );
+check( 'a later save leaves the restored handle alone', array( 'whatsapp' => '+381600000', 'x' => '@old', 'kick' => 'kicker' ) === social() );
+
+$GLOBALS['user_meta'] = array( 7 => array( '_ihq_social_handles' => array( 'x' => '' ) ) );
+save( array( 'platforms' => array( 'x' ), 'handles' => array( 'x' => '@new' ) ) );
+check( 'a blank handle saved before onboarding is kept aside too', array( 'x' => '' ) === previous() );
+save( array( 'platforms' => array() ) );
+check( 'and put back on untick', array( 'x' => '' ) === social() );
+
+$GLOBALS['user_meta'] = array( 7 => array( '_ihq_social_handles' => array( 'x' => '@old' ) ) );
+save( array( 'platforms' => array( 'x' ), 'handles' => array( 'x' => '@new' ) ) );
+$GLOBALS['user_meta'][7]['_ihq_social_handles']['x'] = '@profile';
+save( array( 'platforms' => array() ) );
+check( 'unticking a platform edited on Profile after onboarding leaves the Profile handle, not the one from before', array( 'x' => '@profile' ) === social() );
+check( 'and still remembers both, so ticking it again leaves it alone', array( 'x' => '@new' ) === mirrored() && array( 'x' => '@old' ) === previous() );
+
+$GLOBALS['user_meta'] = array( 7 => array( '_ihq_social_handles' => array( 'x' => '@a', 'qq' => '111' ), '_ihq_portal_onboarding_mirrored_handles' => array( 'x' => '@a', 'qq' => '111' ) ) );
+save( array( 'platforms' => array( 'qq' ), 'handles' => array( 'qq' => '111' ) ) );
+check( 'mirrored meta written before previous handles were kept still reads: unticking deletes what it wrote', array( 'qq' => '111' ) === social() );
+check( 'and forgets it wrote it', array( 'qq' => '111' ) === mirrored() );
+check( 'with no previous handles meta written', null === previous() );
 
 $GLOBALS['user_meta'] = array( 7 => array( '_ihq_social_handles' => array( 'whatsapp' => '+381600000' ) ) );
 save( array( 'platforms' => array( 'whatsapp' ) ) );
@@ -122,23 +154,43 @@ check( 'a save that changes no handle writes no meta', 0 === $GLOBALS['meta_writ
 
 check(
 	'plan: an unchanged handle the onboarding owns is not rewritten',
-	array( 'saved' => array( 'x' => '@a' ), 'mirrored' => array( 'x' => '@a' ) ) === ihq_portal_onboarding_plan_mirror( array( 'x' => '@a' ), array( 'x' => '@a' ), array( 'x' => '@a' ) )
+	array( 'saved' => array( 'x' => '@a' ), 'mirrored' => array( 'x' => '@a' ), 'previous' => array() ) === ihq_portal_onboarding_plan_mirror( array( 'x' => '@a' ), array( 'x' => '@a' ), array( 'x' => '@a' ) )
 );
 check(
 	'plan: a changed handle the onboarding owns is rewritten',
-	array( 'saved' => array( 'x' => '@z' ), 'mirrored' => array( 'x' => '@z' ) ) === ihq_portal_onboarding_plan_mirror( array( 'x' => '@a' ), array( 'x' => '@a' ), array( 'x' => '@z' ) )
+	array( 'saved' => array( 'x' => '@z' ), 'mirrored' => array( 'x' => '@z' ), 'previous' => array() ) === ihq_portal_onboarding_plan_mirror( array( 'x' => '@a' ), array( 'x' => '@a' ), array( 'x' => '@z' ) )
 );
 check(
 	'plan: a remembered key missing from the saved handles is not recreated',
-	array( 'saved' => array(), 'mirrored' => array( 'x' => '@a' ) ) === ihq_portal_onboarding_plan_mirror( array(), array( 'x' => '@a' ), array( 'x' => '@z' ) )
+	array( 'saved' => array(), 'mirrored' => array( 'x' => '@a' ), 'previous' => array() ) === ihq_portal_onboarding_plan_mirror( array(), array( 'x' => '@a' ), array( 'x' => '@z' ) )
+);
+check(
+	'plan: a first onboarding handle keeps the saved one aside',
+	array( 'saved' => array( 'x' => '@z' ), 'mirrored' => array( 'x' => '@z' ), 'previous' => array( 'x' => '@a' ) ) === ihq_portal_onboarding_plan_mirror( array( 'x' => '@a' ), array(), array( 'x' => '@z' ) )
+);
+check(
+	'plan: a saved value that is not a handle is not kept aside',
+	array( 'saved' => array( 'x' => '@z' ), 'mirrored' => array( 'x' => '@z' ), 'previous' => array() ) === ihq_portal_onboarding_plan_mirror( array( 'x' => array( 'odd' ) ), array(), array( 'x' => '@z' ) )
+);
+check(
+	'plan: unticking puts the kept handle back',
+	array( 'saved' => array( 'x' => '@a' ), 'mirrored' => array(), 'previous' => array() ) === ihq_portal_onboarding_plan_mirror( array( 'x' => '@z' ), array( 'x' => '@z' ), array(), array( 'x' => '@a' ) )
+);
+check(
+	'plan: unticking a Profile-edited handle keeps the Profile one and the kept handle',
+	array( 'saved' => array( 'x' => '@p' ), 'mirrored' => array( 'x' => '@z' ), 'previous' => array( 'x' => '@a' ) ) === ihq_portal_onboarding_plan_mirror( array( 'x' => '@p' ), array( 'x' => '@z' ), array(), array( 'x' => '@a' ) )
 );
 
 $GLOBALS['user_meta'] = array( 7 => array( '_ihq_portal_onboarding_mirrored_handles' => array( 'x', 'qq' => 5, 'line' => 'ln' ) ) );
 check( 'mirrored entries that are not a key and a handle are ignored', array( 'line' => 'ln' ) === ihq_portal_onboarding_mirrored_handles( 7 ) );
+$GLOBALS['user_meta'] = array( 7 => array( '_ihq_portal_onboarding_previous_handles' => array( 'x', 'qq' => 5, 'line' => 'ln' ) ) );
+check( 'previous entries that are not a key and a handle are ignored', array( 'line' => 'ln' ) === ihq_portal_onboarding_previous_handles( 7 ) );
 
-$GLOBALS['user_meta'] = array( 7 => array( '_ihq_social_handles' => 'corrupt', '_ihq_portal_onboarding_mirrored_handles' => 'corrupt' ) );
+$GLOBALS['user_meta'] = array( 7 => array( '_ihq_social_handles' => 'corrupt', '_ihq_portal_onboarding_mirrored_handles' => 'corrupt', '_ihq_portal_onboarding_previous_handles' => 'corrupt' ) );
 save( array( 'platforms' => array( 'qq' ), 'handles' => array( 'qq' => '12345' ) ) );
 check( 'unreadable meta is treated as empty', array( 'qq' => '12345' ) === social() );
+save( array( 'platforms' => array() ) );
+check( 'and unreadable previous handles mean there is nothing to put back', array() === social() );
 
 $GLOBALS['user_meta'] = array();
 save( array( 'stage' => 'classic', 'answers' => array( 'baccarat_experience' => 'played_some' ) ) );
