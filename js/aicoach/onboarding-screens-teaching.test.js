@@ -18,6 +18,14 @@ import {
 
 const STATE = { stage: '', answers: {}, platforms: [], handles: {}, language: '', completed: false, completed_at: '' };
 
+function relabel( root, t ) {
+	root.querySelectorAll( '[data-onb-string]' ).forEach( ( element ) => {
+		element.textContent = t( element.getAttribute( 'data-onb-string' ) );
+	} );
+}
+
+const englishOf = ( key ) => TEACHING_STRINGS_EN[ key ];
+
 // The engine with this module installed, on the fake DOM.
 function setup( { stage = 'game_of_kings', images = {}, answers = {} } = {} ) {
 	const document = createFakeDocument();
@@ -28,6 +36,8 @@ function setup( { stage = 'game_of_kings', images = {}, answers = {} } = {} ) {
 	strings.add( 'en', ENGINE_STRINGS_EN );
 	const api = createApi( { config: { state: { ...STATE, stage, answers }, images, progressUrl: '/p', completeUrl: '/c', nonce: 'n' }, events, strings } );
 	api.shell = { content, say: () => Promise.resolve(), close: () => {} };
+	// What onboarding-main wires up: a language change re-labels every data-onb-string element.
+	events.on( 'locale', () => relabel( content, ( key ) => strings.t( api.getLocale(), key ) ) );
 	const engine = createEngine( {
 		api,
 		sequence: { SEQUENCE, startStage, nextStage },
@@ -115,46 +125,61 @@ test( 'screen 10, Equity: the title and both charts, in order, with their titles
 	const charts = screen.querySelectorAll( 'img[data-chart]' );
 	assert.deepEqual( charts.map( ( chart ) => chart.getAttribute( 'data-chart' ) ), [ 'shares', 'value' ] );
 	assert.deepEqual( charts.map( ( chart ) => chart.getAttribute( 'alt' ) ), [ 'Earned Equity Shares', 'Value of Shares' ] );
-	assert.ok( charts.every( ( chart ) => chart.getAttribute( 'src' ).startsWith( 'data:image/svg+xml;charset=utf-8,' ) ) );
+	assert.deepEqual( charts.map( ( chart ) => chart.getAttribute( 'src' ) ), EQUITY_CHARTS.map( ( chart ) => chartImageSrc( chart, englishOf ) ) );
 } );
 
 test( 'the charts have the PO-3209 axes', () => {
 	const [ shares, value ] = EQUITY_CHARTS;
-	const t = ( key ) => TEACHING_STRINGS_EN[ key ];
-	assert.deepEqual( shares.xKeys.map( t ), [ 'SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT' ] );
-	assert.deepEqual( [ shares.yTicks[ 0 ], shares.yTicks.at( -1 ) ], [ 0, 400 ] );
-	assert.deepEqual( value.xKeys.map( t ), [ 'START', '6 MOS', '12 MOS', '18 MOS', '24 MOS' ] );
-	assert.deepEqual( [ value.yLabels[ 0 ], value.yLabels.at( -1 ) ], [ '$.20', '$4' ] );
-	assert.deepEqual( [ value.yTicks[ 0 ], value.yTicks.at( -1 ) ], [ 0.2, 4 ] );
+	assert.deepEqual( shares.xKeys.map( englishOf ), [ 'SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT' ] );
+	assert.deepEqual( shares.yTicks, [ 0, 100, 200, 300, 400 ] );
+	assert.deepEqual( shares.yKeys.map( englishOf ), [ '0', '100', '200', '300', '400' ] );
+	assert.deepEqual( value.xKeys.map( englishOf ), [ 'START', '6 MOS', '12 MOS', '18 MOS', '24 MOS' ] );
+	assert.deepEqual( value.yTicks, [ 0.2, 1, 2, 3, 4 ] );
+	assert.deepEqual( value.yKeys.map( englishOf ), [ '$.20', '$1', '$2', '$3', '$4' ] );
 	EQUITY_CHARTS.forEach( ( chart ) => {
 		assert.equal( chart.values.length, chart.xKeys.length, chart.id );
-		assert.equal( chart.yLabels.length, chart.yTicks.length, chart.id );
-		assert.ok( chart.values.every( ( point ) => point >= chart.yTicks[ 0 ] && point <= chart.yTicks.at( -1 ) ), chart.id );
+		const outOfRange = chart.values.filter( ( point ) => point < chart.yTicks[ 0 ] || point > chart.yTicks.at( -1 ) );
+		assert.deepEqual( outOfRange, [], chart.id );
 	} );
 } );
 
+const SVG_OPEN = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 200" font-family="sans-serif">';
+const svgTitle = ( text ) => `<text x="170" y="16" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">${ text }</text>`;
+const svgGridline = ( y, label ) => `<line x1="44" y1="${ y }" x2="328" y2="${ y }" stroke="#3a3a3a"/>` +
+	`<text x="38" y="${ y + 4 }" text-anchor="end" font-size="11" fill="#ffffff">${ label }</text>`;
+const svgXLabel = ( x, label ) => `<text x="${ x }" y="192" text-anchor="middle" font-size="11" fill="#ffffff">${ label }</text>`;
+const svgLine = ( points ) => `<polyline points="${ points }" fill="none" stroke="#fdd65b" stroke-width="3" stroke-linejoin="round"/>`;
+
 test( 'lineChartSvg draws the title, every axis label and one line through every value', () => {
-	const svg = lineChartSvg( { title: 'T & <x>', xLabels: [ 'A', 'B', 'C' ], yTicks: [ 0, 10 ], yLabels: [ '0', '10' ], values: [ 0, 5, 10 ] } );
-	assert.ok( svg.startsWith( '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 200"' ) );
-	assert.ok( svg.includes( '>T &#38; &#60;x&#62;</text>' ) );
-	for ( const label of [ '>A<', '>B<', '>C<', '>0<', '>10<' ] ) {
-		assert.ok( svg.includes( label ), label );
-	}
-	// Plot: x from 44 to 328, y from 172 (min) to 28 (max).
-	assert.ok( svg.includes( '<polyline points="44,172 186,100 328,28"' ) );
+	const svg = lineChartSvg( { title: 'T & <x>', xLabels: [ 'A', 'B', 'C' ], yTicks: [ 0, 10 ], yLabels: [ '0', '10' ], values: [ 0, 3.3, 10 ] } );
+	// Plot: x from 44 to 328, y from 172 (min) to 28 (max); 3.3 lands on 124.48, rounded to 124.5.
+	assert.equal( svg, SVG_OPEN +
+		svgTitle( 'T &#38; &#60;x&#62;' ) +
+		svgGridline( 172, '0' ) +
+		svgGridline( 28, '10' ) +
+		svgXLabel( 44, 'A' ) +
+		svgXLabel( 186, 'B' ) +
+		svgXLabel( 328, 'C' ) +
+		svgLine( '44,172 186,124.5 328,28' ) +
+		'</svg>' );
 } );
 
 test( 'lineChartSvg with one point puts it on the left axis', () => {
 	const svg = lineChartSvg( { title: '', xLabels: [ 'A' ], yTicks: [ 0, 1 ], yLabels: [ '0', '1' ], values: [ 1 ] } );
-	assert.ok( svg.includes( '<polyline points="44,28"' ) );
+	assert.equal( svg, SVG_OPEN + svgTitle( '' ) + svgGridline( 172, '0' ) + svgGridline( 28, '1' ) + svgXLabel( 44, 'A' ) + svgLine( '44,28' ) + '</svg>' );
 } );
 
 test( 'chart text follows the language, English where a translation is missing', () => {
-	const t = ( key ) => ( { daySun: '日', sharesChartTitle: '株' }[ key ] || TEACHING_STRINGS_EN[ key ] );
-	const svg = decodeURIComponent( chartImageSrc( EQUITY_CHARTS[ 0 ], t ).split( ',' ).slice( 1 ).join( ',' ) );
-	assert.ok( svg.includes( '>株</text>' ) );
-	assert.ok( svg.includes( '>日</text>' ) );
-	assert.ok( svg.includes( '>MON</text>' ) );
+	const t = ( key ) => ( { daySun: '日', sharesChartTitle: '株', sharesAxis400: '四百' }[ key ] || TEACHING_STRINGS_EN[ key ] );
+	const [ shares ] = EQUITY_CHARTS;
+	const expectedSvg = lineChartSvg( {
+		title: '株',
+		xLabels: [ '日', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT' ],
+		yTicks: shares.yTicks,
+		yLabels: [ '0', '100', '200', '300', '四百' ],
+		values: shares.values,
+	} );
+	assert.equal( chartImageSrc( shares, t ), 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent( expectedSvg ) );
 } );
 
 test( 'a language change redraws the charts; leaving the screen stops listening', () => {
@@ -163,7 +188,7 @@ test( 'a language change redraws the charts; leaving the screen stops listening'
 	api.setLocale( 'ja' );
 	const chart = screenOf( content ).querySelector( 'img[data-chart="shares"]' );
 	assert.equal( chart.getAttribute( 'alt' ), '獲得株式' );
-	assert.ok( decodeURIComponent( chart.getAttribute( 'src' ) ).includes( '>獲得株式</text>' ) );
+	assert.equal( chart.getAttribute( 'src' ), chartImageSrc( EQUITY_CHARTS[ 0 ], ( key ) => strings.t( 'ja', key ) ) );
 	engine.advance();
 	const before = chart.getAttribute( 'src' );
 	api.setLocale( 'en' );
@@ -216,15 +241,28 @@ test( 'screen 13 shows the same figures whatever the follower answer', () => {
 	assert.deepEqual( steps[ 1 ], steps[ 2 ] );
 } );
 
-test( 'every piece of copy is a string-table key, so it can be translated', () => {
-	const { content, api, strings } = setup( { stage: 'world_tour' } );
-	const screen = screenOf( content );
-	screen.querySelectorAll( 'h2, p' ).forEach( ( element ) => {
-		assert.ok( element.getAttribute( 'data-onb-string' ) in TEACHING_STRINGS_EN );
+test( 'every piece of copy on every screen is a string-table key, so it can be translated', () => {
+	const chartKeys = EQUITY_CHARTS.flatMap( ( chart ) => [ chart.titleKey, ...chart.xKeys, ...chart.yKeys ] );
+	const renderedKeys = teachingScreens().flatMap( ( definition ) => {
+		const { content } = setup( { stage: definition.id } );
+		return screenOf( content ).querySelectorAll( 'h2, p, li' ).map( ( element ) => {
+			const key = element.getAttribute( 'data-onb-string' );
+			assert.equal( element.textContent, TEACHING_STRINGS_EN[ key ], definition.id + ' ' + key );
+			return key;
+		} );
 	} );
+	// Every key but the chart labels (drawn into the chart images) is on a screen as text.
+	assert.deepEqual( renderedKeys, Object.keys( TEACHING_STRINGS_EN ).filter( ( key ) => ! chartKeys.includes( key ) ) );
+} );
+
+test( 'a language change re-labels the rendered screen copy', () => {
+	const { content, api, strings } = setup( { stage: 'world_tour' } );
 	strings.add( 'ko', { tourTitle: '월드 투어' } );
 	api.setLocale( 'ko' );
-	assert.equal( strings.t( 'ko', 'tourTitle' ), '월드 투어' );
+	const screen = screenOf( content );
+	assert.deepEqual( texts( screen, 'h2' ), [ '월드 투어' ] );
+	// Keys without a Korean entry fall back to English.
+	assert.deepEqual( texts( screen, 'p' ), [ 'tourBody1', 'tourBody2', 'tourBody3', 'tourBody4' ].map( englishOf ) );
 } );
 
 test( 'a hero image is shown when the server gives one for the screen, and none otherwise', () => {

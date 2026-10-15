@@ -59,7 +59,10 @@
 }
 
 .ihq-onb-teach__step + .ihq-onb-teach__step::before {
+	/* Decorative: the empty alt text keeps screen readers from announcing "downwards arrow".
+	   Browsers without alt-text support drop the second declaration and keep the first. */
 	content: "↓";
+	content: "↓" / "";
 	display: block;
 	color: var(--ihq-onb-yellow);
 	font-size: 1.25rem;

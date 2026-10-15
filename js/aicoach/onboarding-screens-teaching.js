@@ -54,6 +54,16 @@ export const TEACHING_STRINGS_EN = {
 	period12: '12 MOS',
 	period18: '18 MOS',
 	period24: '24 MOS',
+	sharesAxis0: '0',
+	sharesAxis100: '100',
+	sharesAxis200: '200',
+	sharesAxis300: '300',
+	sharesAxis400: '400',
+	valueAxis020: '$.20',
+	valueAxis1: '$1',
+	valueAxis2: '$2',
+	valueAxis3: '$3',
+	valueAxis4: '$4',
 
 	howTitle: 'HOW THIS WORKS',
 	howBullet1: 'You, your followers, and everyone your followers refer',
@@ -78,7 +88,8 @@ export const TEACHING_STRINGS_EN = {
 };
 
 /**
- * The two sample charts of screen 10 (PO-3209). The axes are the story's. The plotted values
+ * The two sample charts of screen 10 (PO-3209). The axes are the story's; every axis label
+ * is a string-table key. The plotted values
  * are illustrative sample data, NOT the Influencer's: placeholders until they are read off
  * frame 46497:79385, which was not readable when this was built. Replace the `values` only.
  */
@@ -88,7 +99,7 @@ export const EQUITY_CHARTS = Object.freeze( [
 		titleKey: 'sharesChartTitle',
 		xKeys: Object.freeze( [ 'daySun', 'dayMon', 'dayTue', 'dayWed', 'dayThu', 'dayFri', 'daySat' ] ),
 		yTicks: Object.freeze( [ 0, 100, 200, 300, 400 ] ),
-		yLabels: Object.freeze( [ '0', '100', '200', '300', '400' ] ),
+		yKeys: Object.freeze( [ 'sharesAxis0', 'sharesAxis100', 'sharesAxis200', 'sharesAxis300', 'sharesAxis400' ] ),
 		values: Object.freeze( [ 40, 90, 140, 200, 250, 320, 390 ] ),
 	} ),
 	Object.freeze( {
@@ -96,7 +107,7 @@ export const EQUITY_CHARTS = Object.freeze( [
 		titleKey: 'valueChartTitle',
 		xKeys: Object.freeze( [ 'periodStart', 'period6', 'period12', 'period18', 'period24' ] ),
 		yTicks: Object.freeze( [ 0.2, 1, 2, 3, 4 ] ),
-		yLabels: Object.freeze( [ '$.20', '$1', '$2', '$3', '$4' ] ),
+		yKeys: Object.freeze( [ 'valueAxis020', 'valueAxis1', 'valueAxis2', 'valueAxis3', 'valueAxis4' ] ),
 		values: Object.freeze( [ 0.2, 0.6, 1.2, 2.2, 4 ] ),
 	} ),
 ] );
@@ -113,8 +124,29 @@ const TEXT_SCREENS = Object.freeze( {
 /** Screen 13, step by step, top to bottom. */
 export const EXAMPLE_STEP_KEYS = Object.freeze( Array.from( { length: 15 }, ( unused, index ) => 'exampleStep' + ( index + 1 ) ) );
 
-// Chart geometry, in SVG user units (the image scales to the column width).
-const CHART = Object.freeze( { width: 340, height: 200, left: 44, right: 12, top: 28, bottom: 28 } );
+// Chart geometry and type, in SVG user units (the image scales to the column width).
+const CHART = Object.freeze( {
+	width: 340,
+	height: 200,
+	left: 44,
+	right: 12,
+	top: 28,
+	bottom: 28,
+	// Gap between a y label's right edge and the plot.
+	yLabelGap: 6,
+	// Drops a y label so its middle, not its baseline, sits on the gridline.
+	yLabelBaselineShift: 4,
+	// Distance from the bottom edge to the x labels' baseline.
+	xLabelBottomOffset: 8,
+	titleBaseline: 16,
+	axisFontSize: 11,
+	titleFontSize: 13,
+	lineWidth: 3,
+	// Coordinates are rounded to one decimal place (1 / 10 of a unit).
+	coordinateScale: 10,
+} );
+// A data: SVG cannot read CSS custom properties: keep `line` in step with
+// --ihq-onb-yellow in css/portal-onboarding.css.
 const CHART_COLOURS = Object.freeze( { line: '#fdd65b', grid: '#3a3a3a', text: '#ffffff' } );
 
 function escapeXml( value ) {
@@ -139,23 +171,23 @@ export function lineChartSvg( { title, xLabels, yTicks, yLabels, values } ) {
 	const max = yTicks[ yTicks.length - 1 ];
 	const xAt = ( index ) => CHART.left + ( xLabels.length > 1 ? ( index / ( xLabels.length - 1 ) ) * plotWidth : 0 );
 	const yAt = ( value ) => CHART.top + plotHeight - ( ( ( value - min ) / ( max - min ) ) * plotHeight );
-	const round = ( number ) => Math.round( number * 10 ) / 10;
+	const round = ( number ) => Math.round( number * CHART.coordinateScale ) / CHART.coordinateScale;
 
 	const grid = yTicks.map( ( tick, index ) => {
 		const y = round( yAt( tick ) );
 		return `<line x1="${ CHART.left }" y1="${ y }" x2="${ CHART.width - CHART.right }" y2="${ y }" stroke="${ CHART_COLOURS.grid }"/>` +
-			`<text x="${ CHART.left - 6 }" y="${ y + 4 }" text-anchor="end" font-size="11" fill="${ CHART_COLOURS.text }">${ escapeXml( yLabels[ index ] ) }</text>`;
+			`<text x="${ CHART.left - CHART.yLabelGap }" y="${ y + CHART.yLabelBaselineShift }" text-anchor="end" font-size="${ CHART.axisFontSize }" fill="${ CHART_COLOURS.text }">${ escapeXml( yLabels[ index ] ) }</text>`;
 	} ).join( '' );
 	const xAxis = xLabels.map( ( label, index ) =>
-		`<text x="${ round( xAt( index ) ) }" y="${ CHART.height - 8 }" text-anchor="middle" font-size="11" fill="${ CHART_COLOURS.text }">${ escapeXml( label ) }</text>`,
+		`<text x="${ round( xAt( index ) ) }" y="${ CHART.height - CHART.xLabelBottomOffset }" text-anchor="middle" font-size="${ CHART.axisFontSize }" fill="${ CHART_COLOURS.text }">${ escapeXml( label ) }</text>`,
 	).join( '' );
 	const points = values.map( ( value, index ) => `${ round( xAt( index ) ) },${ round( yAt( value ) ) }` ).join( ' ' );
 
 	return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${ CHART.width } ${ CHART.height }" font-family="sans-serif">` +
-		`<text x="${ CHART.width / 2 }" y="16" text-anchor="middle" font-size="13" font-weight="700" fill="${ CHART_COLOURS.text }">${ escapeXml( title ) }</text>` +
+		`<text x="${ CHART.width / 2 }" y="${ CHART.titleBaseline }" text-anchor="middle" font-size="${ CHART.titleFontSize }" font-weight="700" fill="${ CHART_COLOURS.text }">${ escapeXml( title ) }</text>` +
 		grid +
 		xAxis +
-		`<polyline points="${ points }" fill="none" stroke="${ CHART_COLOURS.line }" stroke-width="3" stroke-linejoin="round"/>` +
+		`<polyline points="${ points }" fill="none" stroke="${ CHART_COLOURS.line }" stroke-width="${ CHART.lineWidth }" stroke-linejoin="round"/>` +
 		'</svg>';
 }
 
@@ -171,7 +203,7 @@ export function chartImageSrc( chart, t ) {
 		title: t( chart.titleKey ),
 		xLabels: chart.xKeys.map( ( key ) => t( key ) ),
 		yTicks: chart.yTicks,
-		yLabels: chart.yLabels,
+		yLabels: chart.yKeys.map( ( key ) => t( key ) ),
 		values: chart.values,
 	} );
 	return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent( svg );
