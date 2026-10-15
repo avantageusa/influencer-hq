@@ -89,9 +89,9 @@ export const TEACHING_STRINGS_EN = {
 
 /**
  * The two sample charts of screen 10 (PO-3209). The axes are the story's; every axis label
- * is a string-table key. The plotted values
- * are illustrative sample data, NOT the Influencer's: placeholders until they are read off
- * frame 46497:79385, which was not readable when this was built. Replace the `values` only.
+ * is a string-table key. The plotted values are the design's sample data, NOT the
+ * Influencer's: read off the drawn line in Figma 46893:117629, frame "10 Equity 3". The design
+ * line is hand-drawn, so the points between the first and the last are a reading of it.
  */
 export const EQUITY_CHARTS = Object.freeze( [
 	Object.freeze( {
@@ -100,7 +100,7 @@ export const EQUITY_CHARTS = Object.freeze( [
 		xKeys: Object.freeze( [ 'daySun', 'dayMon', 'dayTue', 'dayWed', 'dayThu', 'dayFri', 'daySat' ] ),
 		yTicks: Object.freeze( [ 0, 100, 200, 300, 400 ] ),
 		yKeys: Object.freeze( [ 'sharesAxis0', 'sharesAxis100', 'sharesAxis200', 'sharesAxis300', 'sharesAxis400' ] ),
-		values: Object.freeze( [ 40, 90, 140, 200, 250, 320, 390 ] ),
+		values: Object.freeze( [ 0, 70, 70, 130, 250, 275, 400 ] ),
 	} ),
 	Object.freeze( {
 		id: 'value',
@@ -108,7 +108,7 @@ export const EQUITY_CHARTS = Object.freeze( [
 		xKeys: Object.freeze( [ 'periodStart', 'period6', 'period12', 'period18', 'period24' ] ),
 		yTicks: Object.freeze( [ 0.2, 1, 2, 3, 4 ] ),
 		yKeys: Object.freeze( [ 'valueAxis020', 'valueAxis1', 'valueAxis2', 'valueAxis3', 'valueAxis4' ] ),
-		values: Object.freeze( [ 0.2, 0.6, 1.2, 2.2, 4 ] ),
+		values: Object.freeze( [ 0.2, 0.9, 1.2, 2.2, 4 ] ),
 	} ),
 ] );
 

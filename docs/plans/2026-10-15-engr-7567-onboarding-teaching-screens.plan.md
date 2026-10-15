@@ -15,9 +15,15 @@ todos:
   - id: tests
     content: copy character for character per screen, chart axes, fixed example, language redraw
     status: completed
-  - id: design-check
-    content: Compare each screen with its frame at 398 px; read the chart sample values and hero images off the design
+  - id: design-values
+    content: Chart sample values and the hero images of screens 1 and 2 from Figma 46893:117629
+    status: completed
+  - id: heroes-7-9
+    content: Hero images for screens 7, 8 and 9 (the design reuses screen 2's picture there)
     status: blocked
+  - id: design-check
+    content: Compare each screen with its frame at 398 px
+    status: pending
   - id: verify
     content: test:js, lint on touched files
     status: completed
@@ -44,7 +50,11 @@ The engine (ENGR-7566) shows whatever screens are registered; the teaching scree
   item is one step, except "COMPANY VALUE: $0.20 → $2.00", which is kept whole because it is one value
   going from one figure to another.
 - Hero images come from the shell's `ihq_portal_onboarding_images` filter (`api.imageUrl( stage )`);
-  a screen without one shows no image.
+  a screen without one shows no image. `inc/portal-onboarding-teaching.php` hooks the filter with the
+  heroes of screens 1 and 2 (`images/aicoach/design/onboarding-*.webp`, versioned by file time).
+- Screen 10's chart values are the design's: Figma 46893:117629 → "10 Equity 3", read from the drawn
+  line (shares SUN..SAT `0, 70, 70, 130, 250, 275, 400`; value of shares START..24 MOS
+  `0.2, 0.9, 1.2, 2.2, 4`). The design line is hand-drawn, so the middle points are a reading of it.
 
 ## Alternatives considered
 - Charts as a canvas or a chart library: a new dependency for two static sample lines.
@@ -55,8 +65,13 @@ A new plug-in module and stylesheet; nothing else changes. Nothing renders until
 kill switch let the layer show.
 
 ## Notes
-- The current design (node 46497:79245 and the frames listed in the ticket) returned "node not found"
-  through the Figma MCP in this session. Not done from the design, and still needed:
-  the hero images (none are in the repo), the chart sample values (placeholders in `EQUITY_CHARTS.values`,
-  marked as such), and a visual check at 398 px.
+- The first build could not read the design (node 46497:79245 returned "node not found"). The current
+  design, Figma file 0AHxJw6p2LoHzEiJW8wT2T instance 46893:117629 ("Coaching Center Portal -
+  Onboarding Process"), gave the chart values and the heroes of screens 1 and 2 ("Baccarat Oil
+  Painting 4" and "Modern pic", drawn 240.6 x 156.3 above the title, object-fit cover). They ship
+  as WebP at 482 x 313 (2x); the Modern pic's design crop (top -2.49%, height 102.49%) is baked in.
+- Screens 7, 8 and 9 reuse screen 2's picture in the design, which looks like a placeholder: they ship
+  without a hero until Design gives them their own.
+- Still open: the 398 px visual check per frame, the chart alt text, and the legal review of the copy
+  and charts on 7, 10 and 13 (OQ18).
 - Copy on 7, 10 and 13 may change after the legal review (OQ18); it lives only in `TEACHING_STRINGS_EN`.

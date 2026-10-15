@@ -164,6 +164,53 @@ test( 'lineChartSvg draws the title, every axis label and one line through every
 		'</svg>' );
 } );
 
+test( 'the charts plot the design\'s sample values (Figma 46893:117629, "10 Equity 3")', () => {
+	const [ shares, value ] = EQUITY_CHARTS;
+	assert.deepEqual( shares.values, [ 0, 70, 70, 130, 250, 275, 400 ] );
+	assert.deepEqual( value.values, [ 0.2, 0.9, 1.2, 2.2, 4 ] );
+} );
+
+const SHARES_SVG = SVG_OPEN +
+	svgTitle( 'Earned Equity Shares' ) +
+	svgGridline( 172, '0' ) +
+	svgGridline( 136, '100' ) +
+	svgGridline( 100, '200' ) +
+	svgGridline( 64, '300' ) +
+	svgGridline( 28, '400' ) +
+	svgXLabel( 44, 'SUN' ) +
+	svgXLabel( 91.3, 'MON' ) +
+	svgXLabel( 138.7, 'TUE' ) +
+	svgXLabel( 186, 'WED' ) +
+	svgXLabel( 233.3, 'THU' ) +
+	svgXLabel( 280.7, 'FRI' ) +
+	svgXLabel( 328, 'SAT' ) +
+	svgLine( '44,172 91.3,146.8 138.7,146.8 186,125.2 233.3,82 280.7,73 328,28' ) +
+	'</svg>';
+const VALUE_SVG = SVG_OPEN +
+	svgTitle( 'Value of Shares' ) +
+	svgGridline( 172, '$.20' ) +
+	svgGridline( 141.7, '$1' ) +
+	svgGridline( 103.8, '$2' ) +
+	svgGridline( 65.9, '$3' ) +
+	svgGridline( 28, '$4' ) +
+	svgXLabel( 44, 'START' ) +
+	svgXLabel( 115, '6 MOS' ) +
+	svgXLabel( 186, '12 MOS' ) +
+	svgXLabel( 257, '18 MOS' ) +
+	svgXLabel( 328, '24 MOS' ) +
+	svgLine( '44,172 115,145.5 186,134.1 257,96.2 328,28' ) +
+	'</svg>';
+const dataUrl = ( svg ) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent( svg );
+
+test( 'screen 10 draws the design\'s two lines', () => {
+	const [ shares, value ] = EQUITY_CHARTS;
+	assert.equal( chartImageSrc( shares, englishOf ), dataUrl( SHARES_SVG ) );
+	assert.equal( chartImageSrc( value, englishOf ), dataUrl( VALUE_SVG ) );
+	const { content } = setup( { stage: 'equity' } );
+	const charts = screenOf( content ).querySelectorAll( 'img[data-chart]' );
+	assert.deepEqual( charts.map( ( chart ) => chart.getAttribute( 'src' ) ), [ dataUrl( SHARES_SVG ), dataUrl( VALUE_SVG ) ] );
+} );
+
 test( 'lineChartSvg with one point puts it on the left axis', () => {
 	const svg = lineChartSvg( { title: '', xLabels: [ 'A' ], yTicks: [ 0, 1 ], yLabels: [ '0', '1' ], values: [ 1 ] } );
 	assert.equal( svg, SVG_OPEN + svgTitle( '' ) + svgGridline( 172, '0' ) + svgGridline( 28, '1' ) + svgXLabel( 44, 'A' ) + svgLine( '44,28' ) + '</svg>' );
@@ -273,6 +320,38 @@ test( 'a hero image is shown when the server gives one for the screen, and none 
 	assert.equal( screenOf( withImage.content ).children[ 0 ], hero );
 	const without = setup( { stage: 'classic' } );
 	assert.equal( screenOf( without.content ).querySelector( 'img' ), null );
+} );
+
+// What inc/portal-onboarding-teaching.php sends: heroes for screens 1 and 2 only.
+const SERVER_IMAGES = Object.freeze( {
+	game_of_kings: 'https://example.test/wp-content/themes/influencer-hq/images/aicoach/design/onboarding-game-of-kings.webp?v=1',
+	modern_era: 'https://example.test/wp-content/themes/influencer-hq/images/aicoach/design/onboarding-modern-era.webp?v=2',
+} );
+const heroesOf = ( stage ) => {
+	const { content } = setup( { stage, images: SERVER_IMAGES } );
+	const screen = screenOf( content );
+	return screen.querySelectorAll( 'img.ihq-onb-teach__hero' ).map( ( hero ) => ( {
+		src: hero.getAttribute( 'src' ),
+		alt: hero.getAttribute( 'alt' ),
+		first: screen.children[ 0 ] === hero,
+	} ) );
+};
+
+test( 'screens 1 and 2 show their hero above the title, decorative (empty alt)', () => {
+	assert.deepEqual( heroesOf( 'game_of_kings' ), [ { src: SERVER_IMAGES.game_of_kings, alt: '', first: true } ] );
+	assert.deepEqual( heroesOf( 'modern_era' ), [ { src: SERVER_IMAGES.modern_era, alt: '', first: true } ] );
+} );
+
+test( 'screens 7, 8 and 9 show no hero (the design reuses screen 2\'s picture there, pending Design)', () => {
+	[ 'world_championship', 'world_tour', 'classic' ].forEach( ( stage ) => {
+		assert.deepEqual( heroesOf( stage ), [], stage );
+	} );
+} );
+
+test( 'the other teaching screens show no hero either', () => {
+	[ 'equity', 'how_this_works', 'equity_example' ].forEach( ( stage ) => {
+		assert.deepEqual( heroesOf( stage ), [], stage );
+	} );
 } );
 
 test( 'teaching screens always let the flow advance', () => {

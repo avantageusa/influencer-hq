@@ -3,10 +3,16 @@
  * Loaded after css/portal-onboarding.css by the shell.
  */
 
+/* The design draws the hero 240.6 x 156.3, centred above the title
+   (Figma 46893:117629). */
 .ihq-onb-teach__hero {
 	display: block;
 	width: 100%;
+	max-width: 241px;
 	height: auto;
+	aspect-ratio: 240.6 / 156.3;
+	margin: 0 auto;
+	object-fit: cover;
 	border-radius: 4px;
 }
 
