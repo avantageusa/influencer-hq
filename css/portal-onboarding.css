@@ -188,6 +188,13 @@ html.ihq-onb-open body {
 
 .ihq-onb__language-option[aria-current="true"]::after {
 	content: " ✓";
+
+	/*
+	 * Empty alt text: aria-current already tells a screen reader which
+	 * one is active. Browsers without alt text for generated content
+	 * ignore this line and keep the one above.
+	 */
+	content: " ✓" / "";
 }
 
 .ihq-onb__language-option:focus-visible {

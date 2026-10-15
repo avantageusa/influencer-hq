@@ -6,7 +6,7 @@
  * `_ihq_aicoach_language`).
  */
 import { SUPPORTED_LOCALES, detectLocale } from '@ihq/aicoach/locales';
-import { installLanguage } from '@ihq/aicoach/onboarding-language';
+import { installLanguage, browserLanguageTags, createLanguageSaver } from '@ihq/aicoach/onboarding-language';
 
 /**
  * @param {Object} api The onboarding API.
@@ -15,17 +15,13 @@ export function install( api ) {
 	installLanguage( api, {
 		locales: SUPPORTED_LOCALES,
 		detectLocale,
-		browserTags: window.navigator.languages || [ window.navigator.language ],
-		saveLanguage: ( code ) => {
-			window.fetch( api.config.progressUrl, {
-				method: 'POST',
-				credentials: 'same-origin',
-				headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': api.config.nonce },
-				body: JSON.stringify( { language: code } ),
-			} ).catch( ( error ) => {
-				// eslint-disable-next-line no-console -- a failed save must be visible; the switch itself already happened.
-				console.error( error );
-			} );
-		},
+		browserTags: browserLanguageTags( window.navigator ),
+		saveLanguage: createLanguageSaver( {
+			fetchFn: ( ...args ) => window.fetch( ...args ),
+			url: api.config.progressUrl,
+			nonce: api.config.nonce,
+			// eslint-disable-next-line no-console -- a failed save must be visible; the switch itself already happened.
+			logError: ( ...args ) => console.error( ...args ),
+		} ),
 	} );
 }

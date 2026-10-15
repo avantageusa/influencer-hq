@@ -33,6 +33,15 @@ export const ONBOARDING_TRANSLATIONS = Object.freeze( {
 	vi: Object.freeze( { continue: 'TIẾP TỤC' } ),
 } );
 
+/** The key that closes the language list. */
+const ESCAPE_KEY = 'Escape';
+
+/**
+ * What the console shows when a language choice was not saved. A fixed message plus the HTTP
+ * status at most: the error object or the response can carry request details.
+ */
+export const SAVE_FAILED_MESSAGE = 'IHQ onboarding: the language choice was not saved.';
+
 /**
  * The language onboarding opens in.
  *
@@ -115,13 +124,20 @@ export function createLanguageSelector( { api, globe, list, locales, saveLanguag
 		saveLanguage( code );
 	}
 
-	globe.addEventListener( 'click', () => setOpen( list.hidden ) );
-	list.addEventListener( 'keydown', ( event ) => {
-		if ( 'Escape' === event.key ) {
-			setOpen( false );
-			globe.focus();
+	// Escape closes the list whether focus is on the globe (just clicked) or inside the list.
+	// It stops there, so the shell's own Escape handler on the root does not also move focus.
+	function closeOnEscape( event ) {
+		if ( ESCAPE_KEY !== event.key || list.hidden ) {
+			return;
 		}
-	} );
+		event.stopPropagation();
+		setOpen( false );
+		globe.focus();
+	}
+
+	globe.addEventListener( 'click', () => setOpen( list.hidden ) );
+	globe.addEventListener( 'keydown', closeOnEscape );
+	list.addEventListener( 'keydown', closeOnEscape );
 	api.events.on( 'locale', mark );
 	mark();
 	setOpen( false );
@@ -130,6 +146,64 @@ export function createLanguageSelector( { api, globe, list, locales, saveLanguag
 		open: () => setOpen( true ),
 		close: () => setOpen( false ),
 		isOpen: () => ! list.hidden,
+	};
+}
+
+/**
+ * The browser's preferred language tags. Pure.
+ *
+ * @param {Object}   navigator           window.navigator, or a replacement in tests.
+ * @param {string[]} [navigator.languages] The preferred tags, most preferred first.
+ * @param {string}   [navigator.language]  The UI language, for browsers without `languages`.
+ * @return {string[]} The tags; empty when the browser reports none.
+ */
+export function browserLanguageTags( navigator ) {
+	if ( Array.isArray( navigator.languages ) && navigator.languages.length > 0 ) {
+		return [ ...navigator.languages ];
+	}
+	if ( 'string' === typeof navigator.language && '' !== navigator.language ) {
+		return [ navigator.language ];
+	}
+	return [];
+}
+
+/**
+ * Saves language choices to the account store, one request at a time in the order they were
+ * made, so a quick second choice cannot be overwritten by a slower first request finishing
+ * last. A refused save (an HTTP error such as an expired nonce) and a network failure are both
+ * logged; the switch on screen has already happened either way.
+ *
+ * @param {Object}   options
+ * @param {Function} options.fetchFn  fetch, or a replacement in tests.
+ * @param {string}   options.url      The progress route (POST /ihq/v1/onboarding/progress).
+ * @param {string}   options.nonce    The REST nonce.
+ * @param {Function} options.logError console.error, or a replacement in tests.
+ * @return {Function} ( code ) => Promise that settles (never rejects) once that choice is sent.
+ */
+export function createLanguageSaver( { fetchFn, url, nonce, logError } ) {
+	let queue = Promise.resolve();
+
+	async function send( code ) {
+		let response;
+		try {
+			response = await fetchFn( url, {
+				method: 'POST',
+				credentials: 'same-origin',
+				headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': nonce },
+				body: JSON.stringify( { language: code } ),
+			} );
+		} catch ( error ) {
+			logError( SAVE_FAILED_MESSAGE );
+			return;
+		}
+		if ( ! response.ok ) {
+			logError( SAVE_FAILED_MESSAGE, response.status );
+		}
+	}
+
+	return ( code ) => {
+		queue = queue.then( () => send( code ) );
+		return queue;
 	};
 }
 
