@@ -26,31 +26,37 @@ $ihq_onb_portrait = isset( $args['portrait_url'] ) ? $args['portrait_url'] : '';
 <div class="ihq-onb" id="ihq-onboarding" role="dialog" aria-modal="true" aria-label="<?php esc_attr_e( 'Getting started with Sami', 'influencer-hq' ); ?>">
 	<div class="ihq-onb__column">
 
-		<?php /* OQ9 — hamburger, logo, sound, globe. No Help link, account control or Login button; Log out is in the hamburger menu. */ ?>
+		<?php /* OQ9 — hamburger, brand, sound, globe, as the design's IHQ_Mobile_Header draws them (the landing flow's brand, template-parts/portal-header.php). No Help link, account control or Login button; Log out is in the hamburger menu. */ ?>
 		<header class="ihq-onb__header">
 			<div class="ihq-onb__header-side">
 				<button type="button" class="ihq-onb__icon-button" data-onb="menu-button" aria-expanded="false" aria-controls="ihq-onb-menu" aria-label="<?php esc_attr_e( 'Open menu', 'influencer-hq' ); ?>">
-					<svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-						<line x1="3" y1="6" x2="21" y2="6" stroke="#b7962f" stroke-width="2" stroke-linecap="round"/>
-						<line x1="3" y1="12" x2="21" y2="12" stroke="#b7962f" stroke-width="2" stroke-linecap="round"/>
-						<line x1="3" y1="18" x2="21" y2="18" stroke="#b7962f" stroke-width="2" stroke-linecap="round"/>
+					<svg width="20.24" height="11.34" viewBox="0 0 20.24 11.34" fill="#fff" aria-hidden="true">
+						<rect y="0" width="20.24" height="1.62" rx="0.81"/>
+						<rect y="4.86" width="20.24" height="1.62" rx="0.81"/>
+						<rect y="9.72" width="20.24" height="1.62" rx="0.81"/>
 					</svg>
 				</button>
 				<nav class="ihq-onb__menu" id="ihq-onb-menu" data-onb="menu" hidden>
 					<a class="ihq-onb__menu-link" href="<?php echo esc_url( $ihq_onb_logout ); ?>" data-onb-string="logOut"><?php esc_html_e( 'Log out', 'influencer-hq' ); ?></a>
 				</nav>
 			</div>
-			<span class="ihq-onb__logo">
-				<img src="<?php echo esc_url( get_template_directory_uri() . '/images/logo-home-lander.jpg' ); ?>" alt="influencerHQ" width="769" height="98">
+			<span class="ihq-onb__brand" role="img" aria-label="influencerHQ">
+				<span class="ihq-onb__brand-name" aria-hidden="true">influencer headquarters</span>
+				<span class="ihq-onb__brand-mark" aria-hidden="true">
+					<img class="ihq-onb__brand-lines" src="<?php echo esc_url( $ihq_onb_design . '/red-lines.svg' ); ?>" alt="" width="38" height="39">
+					<span class="ihq-onb__brand-ih">ih</span>
+					<span class="ihq-onb__brand-tm">TM</span>
+				</span>
+				<span class="ihq-onb__brand-domain" aria-hidden="true">ihq.global</span>
 			</span>
 			<div class="ihq-onb__header-side ihq-onb__header-side--end">
 				<button type="button" class="ihq-onb__icon-button" data-onb="sound" aria-pressed="false" aria-label="<?php esc_attr_e( 'Mute Sami', 'influencer-hq' ); ?>">
-					<img src="<?php echo esc_url( $ihq_onb_design . '/sound.svg' ); ?>" alt="" width="20" height="17">
+					<img src="<?php echo esc_url( $ihq_onb_design . '/sound.svg' ); ?>" alt="" width="15" height="13">
 				</button>
 				<?php /* The globe's language list is filled by the language selector (ENGR-7572). */ ?>
 				<div class="ihq-onb__language">
 					<button type="button" class="ihq-onb__icon-button" data-onb="globe" aria-haspopup="true" aria-expanded="false" aria-controls="ihq-onb-languages" aria-label="<?php esc_attr_e( 'Select language', 'influencer-hq' ); ?>" data-onb-label="languageSelect">
-						<img src="<?php echo esc_url( $ihq_onb_design . '/globe.webp' ); ?>" alt="" width="22" height="22">
+						<img src="<?php echo esc_url( $ihq_onb_design . '/globe.webp' ); ?>" alt="" width="18" height="18">
 					</button>
 					<ul class="ihq-onb__languages" id="ihq-onb-languages" data-onb="languages" hidden></ul>
 				</div>
