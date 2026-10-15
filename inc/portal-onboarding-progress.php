@@ -11,16 +11,19 @@
  *      state when nothing has been saved).
  * POST /wp-json/ihq/v1/onboarding/progress — merge a partial update. Every key and every
  *      value is checked against a fixed allowlist first; one bad key or value rejects the
- *      whole request with 400 and nothing is stored.
+ *      whole request with 400 and nothing is stored. A handle is only accepted for a
+ *      selected platform (posted in the same request or already stored), so send
+ *      `platforms` with or before `handles`.
  *
  * Both routes need a logged-in user (401 otherwise) and the wp_rest nonce.
  *
- * Other tasks of the epic use the PHP API below rather than the meta key:
+ * Other tasks of the epic use the PHP API below rather than the meta keys:
  * ihq_portal_onboarding_get_state(), ihq_portal_onboarding_merge(),
- * ihq_portal_onboarding_mark_complete(), ihq_portal_onboarding_is_complete(). Every
- * stored change fires `ihq_portal_onboarding_saved` and completion fires
- * `ihq_portal_onboarding_completed`, so the Braze sync (ENGR-7573) can listen without
- * this file knowing about Braze.
+ * ihq_portal_onboarding_mark_complete(), ihq_portal_onboarding_is_complete(). merge()
+ * applies the same allowlist as the POST route. Every stored change fires
+ * IHQ_PORTAL_ONBOARDING_SAVED_ACTION and completion fires
+ * IHQ_PORTAL_ONBOARDING_COMPLETED_ACTION, so the Braze sync (ENGR-7573) can listen
+ * without this file knowing about Braze.
  *
  * Stored values are snake_case enums (evaluation EQ1). They are shared with the screens
  * (js/aicoach/onboarding-*.js) and the Braze attribute values, so treat them as a
@@ -36,8 +39,30 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-/** User meta key holding the whole onboarding record. */
+/** User meta key holding the onboarding record: everything except completion. */
 const IHQ_PORTAL_ONBOARDING_META_KEY = '_ihq_portal_onboarding';
+
+/**
+ * User meta key holding the completion time (ISO-8601 UTC), written only by
+ * ihq_portal_onboarding_mark_complete(). It is kept apart from the record so a save that
+ * read the record before completion can never write `completed => false` back over it.
+ */
+const IHQ_PORTAL_ONBOARDING_COMPLETED_META_KEY = '_ihq_portal_onboarding_completed_at';
+
+/** The state fields that come from IHQ_PORTAL_ONBOARDING_COMPLETED_META_KEY, never from the record. */
+const IHQ_PORTAL_ONBOARDING_COMPLETION_FIELDS = array( 'completed', 'completed_at' );
+
+/** Fires after an onboarding update is stored: ( int $user_id, array $partial, array $state ). */
+const IHQ_PORTAL_ONBOARDING_SAVED_ACTION = 'ihq_portal_onboarding_saved';
+
+/** Fires once, when onboarding is marked complete: ( int $user_id, array $state ). */
+const IHQ_PORTAL_ONBOARDING_COMPLETED_ACTION = 'ihq_portal_onboarding_completed';
+
+/** WP_Error code ihq_portal_onboarding_merge() returns for an update it rejects. */
+const IHQ_PORTAL_ONBOARDING_INVALID_ERROR = 'ihq_onboarding_invalid';
+
+/** HTTP status of a rejected update. */
+const IHQ_PORTAL_ONBOARDING_INVALID_STATUS = 400;
 
 /**
  * The AI Coach language preference the registration flow already writes
@@ -154,17 +179,37 @@ function ihq_portal_onboarding_default_state() {
 }
 
 /**
- * A user's onboarding state, always with every field present.
+ * The part of a state stored in the record: the state without its completion fields.
+ *
+ * @param array $state
+ * @return array
+ */
+function ihq_portal_onboarding_record( array $state ) {
+	return array_diff_key( $state, array_flip( IHQ_PORTAL_ONBOARDING_COMPLETION_FIELDS ) );
+}
+
+/**
+ * A user's onboarding state, always with every field present. Completion comes from its
+ * own meta key; a `completed` or `completed_at` left in the record is ignored.
  *
  * @param int $user_id
  * @return array
  */
 function ihq_portal_onboarding_get_state( $user_id ) {
-	$stored = get_user_meta( (int) $user_id, IHQ_PORTAL_ONBOARDING_META_KEY, true );
+	$user_id = (int) $user_id;
+	$stored  = get_user_meta( $user_id, IHQ_PORTAL_ONBOARDING_META_KEY, true );
 	if ( ! is_array( $stored ) ) {
 		$stored = array();
 	}
-	return array_merge( ihq_portal_onboarding_default_state(), array_intersect_key( $stored, ihq_portal_onboarding_default_state() ) );
+	$defaults = ihq_portal_onboarding_default_state();
+	$state    = array_merge( $defaults, array_intersect_key( $stored, ihq_portal_onboarding_record( $defaults ) ) );
+
+	$completed_at = get_user_meta( $user_id, IHQ_PORTAL_ONBOARDING_COMPLETED_META_KEY, true );
+	if ( is_string( $completed_at ) && '' !== $completed_at ) {
+		$state['completed']    = true;
+		$state['completed_at'] = $completed_at;
+	}
+	return $state;
 }
 
 /**
@@ -217,6 +262,8 @@ function ihq_portal_onboarding_validate_partial( $params ) {
 }
 
 /**
+ * The validation result for a rejected update.
+ *
  * @param string $message
  * @return array{partial: array, error: string}
  */
@@ -228,6 +275,8 @@ function ihq_portal_onboarding_invalid( $message ) {
 }
 
 /**
+ * The validation result for one field.
+ *
  * @param mixed  $value
  * @param string $error Empty when valid.
  * @return array{value: mixed, error: string}
@@ -240,6 +289,8 @@ function ihq_portal_onboarding_field_result( $value, $error = '' ) {
 }
 
 /**
+ * The stage: one of ihq_portal_onboarding_stages().
+ *
  * @param mixed $value
  * @return array{value: mixed, error: string}
  */
@@ -323,6 +374,8 @@ function ihq_portal_onboarding_validate_handles( $value ) {
 }
 
 /**
+ * The language: one of ihq_portal_onboarding_languages().
+ *
  * @param mixed $value
  * @return array{value: mixed, error: string}
  */
@@ -367,16 +420,61 @@ function ihq_portal_onboarding_apply( array $state, array $partial ) {
 }
 
 /**
- * Merge a validated partial update into the user's record and store it.
+ * The platforms of posted handles that are not selected once the update is applied
+ * (the posted platforms, else the stored ones). Such a handle would be dropped, so the
+ * update is rejected instead of losing it silently: send platforms with or before handles.
+ *
+ * @param array $state   A full state from ihq_portal_onboarding_get_state().
+ * @param array $partial A validated partial.
+ * @return string[]
+ */
+function ihq_portal_onboarding_unselected_handles( array $state, array $partial ) {
+	if ( ! isset( $partial['handles'] ) ) {
+		return array();
+	}
+	$platforms = $state['platforms'];
+	if ( isset( $partial['platforms'] ) ) {
+		$platforms = $partial['platforms'];
+	}
+	return array_values( array_diff( array_keys( $partial['handles'] ), $platforms ) );
+}
+
+/**
+ * The WP_Error for a rejected update.
+ *
+ * @param string $message
+ * @return WP_Error
+ */
+function ihq_portal_onboarding_invalid_error( $message ) {
+	return new WP_Error( IHQ_PORTAL_ONBOARDING_INVALID_ERROR, $message, array( 'status' => IHQ_PORTAL_ONBOARDING_INVALID_STATUS ) );
+}
+
+/**
+ * Check a partial update against the allowlist, merge it into the user's record and
+ * store it. This is the same check the POST route makes: one bad key or value, or a
+ * handle for a platform that is not selected, rejects the whole update and nothing is
+ * stored or fired.
  *
  * @param int   $user_id
- * @param array $partial A partial from ihq_portal_onboarding_validate_partial().
- * @return array The full state after the merge.
+ * @param mixed $partial An update in the POST body's shape.
+ * @return array|WP_Error The full state after the merge, or a WP_Error (status 400).
  */
-function ihq_portal_onboarding_merge( $user_id, array $partial ) {
+function ihq_portal_onboarding_merge( $user_id, $partial ) {
 	$user_id = (int) $user_id;
-	$state   = ihq_portal_onboarding_apply( ihq_portal_onboarding_get_state( $user_id ), $partial );
-	update_user_meta( $user_id, IHQ_PORTAL_ONBOARDING_META_KEY, $state );
+	$result  = ihq_portal_onboarding_validate_partial( $partial );
+	if ( '' !== $result['error'] ) {
+		return ihq_portal_onboarding_invalid_error( $result['error'] );
+	}
+	$partial = $result['partial'];
+	$current = ihq_portal_onboarding_get_state( $user_id );
+
+	$unselected = ihq_portal_onboarding_unselected_handles( $current, $partial );
+	if ( array() !== $unselected ) {
+		return ihq_portal_onboarding_invalid_error( 'Handle for a platform that is not selected: ' . implode( ', ', $unselected ) . '.' );
+	}
+
+	$state = ihq_portal_onboarding_apply( $current, $partial );
+	update_user_meta( $user_id, IHQ_PORTAL_ONBOARDING_META_KEY, ihq_portal_onboarding_record( $state ) );
 	if ( isset( $partial['language'] ) ) {
 		update_user_meta( $user_id, IHQ_PORTAL_ONBOARDING_LANGUAGE_META_KEY, $partial['language'] );
 	}
@@ -388,13 +486,14 @@ function ihq_portal_onboarding_merge( $user_id, array $partial ) {
 	 * @param array $partial The validated update, as sent.
 	 * @param array $state   The full state after the merge.
 	 */
-	do_action( 'ihq_portal_onboarding_saved', $user_id, $partial, $state );
+	do_action( IHQ_PORTAL_ONBOARDING_SAVED_ACTION, $user_id, $partial, $state );
 	return $state;
 }
 
 /**
  * Mark the user's onboarding complete. Completing twice keeps the first timestamp and
- * fires the action only once.
+ * fires the action only once. Only the completion meta key is written, so the record and
+ * any save in flight are left alone.
  *
  * @param int $user_id
  * @return array The full state.
@@ -407,7 +506,7 @@ function ihq_portal_onboarding_mark_complete( $user_id ) {
 	}
 	$state['completed']    = true;
 	$state['completed_at'] = gmdate( 'c' );
-	update_user_meta( $user_id, IHQ_PORTAL_ONBOARDING_META_KEY, $state );
+	update_user_meta( $user_id, IHQ_PORTAL_ONBOARDING_COMPLETED_META_KEY, $state['completed_at'] );
 
 	/**
 	 * Fires once, when a user's onboarding is marked complete.
@@ -415,7 +514,7 @@ function ihq_portal_onboarding_mark_complete( $user_id ) {
 	 * @param int   $user_id
 	 * @param array $state
 	 */
-	do_action( 'ihq_portal_onboarding_completed', $user_id, $state );
+	do_action( IHQ_PORTAL_ONBOARDING_COMPLETED_ACTION, $user_id, $state );
 	return $state;
 }
 
@@ -477,15 +576,16 @@ function ihq_portal_onboarding_handle_get() {
  * @return WP_REST_Response
  */
 function ihq_portal_onboarding_handle_post( WP_REST_Request $request ) {
-	$result = ihq_portal_onboarding_validate_partial( $request->get_json_params() );
-	if ( '' !== $result['error'] ) {
-		return ihq_portal_onboarding_response( array( 'error' => $result['error'] ), 400 );
+	$state = ihq_portal_onboarding_merge( get_current_user_id(), $request->get_json_params() );
+	if ( is_wp_error( $state ) ) {
+		return ihq_portal_onboarding_response( array( 'error' => $state->get_error_message() ), IHQ_PORTAL_ONBOARDING_INVALID_STATUS );
 	}
-	$state = ihq_portal_onboarding_merge( get_current_user_id(), $result['partial'] );
 	return ihq_portal_onboarding_response( ihq_portal_onboarding_public_state( $state ) );
 }
 
 /**
+ * Register GET and POST /ihq/v1/onboarding/progress.
+ *
  * @return void
  */
 function ihq_portal_onboarding_register_progress_routes() {
