@@ -48,10 +48,12 @@ function coachPage( document, root ) {
 	return { coachLink, alreadyInert, wrapper };
 }
 
-function setup( { locale = 'en' } = {} ) {
+// focusedBeforeOpen picks the Coach page element that has focus when the layer opens.
+function setup( { locale = 'en', focusedBeforeOpen = () => null } = {} ) {
 	const document = createFakeDocument();
 	const root = markup( document );
 	const page = coachPage( document, root );
+	document.activeElement = focusedBeforeOpen( page );
 	const scrolls = [];
 	const window = { scrollTo: ( x, y ) => scrolls.push( [ x, y ] ) };
 	const narrator = fakeNarrator();
@@ -247,6 +249,62 @@ test( 'close() stops Sami, removes the layer and leaves the Coach page at its to
 	assert.equal( document.documentElement.contains( root ), false );
 	assert.equal( document.documentElement.classList.contains( 'ihq-onb-open' ), false );
 	assert.deepEqual( scrolls, [ [ 0, 0 ] ] );
+} );
+
+// Records the options of every focus() call on the element, still moving focus to it.
+function spyOnFocus( element ) {
+	const calls = [];
+	const focus = element.focus.bind( element );
+	element.focus = ( options ) => {
+		calls.push( options );
+		focus( options );
+	};
+	return calls;
+}
+
+test( 'close() gives focus back to the element that had it before the layer opened, without scrolling to it', () => {
+	const { document, root, page, scrolls, shell } = setup( { focusedBeforeOpen: ( coach ) => coach.coachLink } );
+	const focusCalls = spyOnFocus( page.coachLink );
+	assert.equal( document.activeElement, root );
+	shell.close();
+	assert.equal( document.activeElement, page.coachLink );
+	assert.deepEqual( focusCalls, [ { preventScroll: true } ] );
+	assert.equal( page.coachLink.hasAttribute( 'inert' ), false );
+	assert.deepEqual( scrolls, [ [ 0, 0 ] ] );
+} );
+
+test( 'close() leaves focus alone when the element that had it is no longer in the page', () => {
+	const { document, root, page, shell } = setup( { focusedBeforeOpen: ( coach ) => coach.coachLink } );
+	const focusCalls = spyOnFocus( page.coachLink );
+	page.coachLink.remove();
+	shell.close();
+	assert.deepEqual( focusCalls, [] );
+	assert.equal( document.activeElement, root );
+} );
+
+test( 'close() leaves focus alone when the element that had it cannot take focus', () => {
+	const { document, root, page, shell } = setup( { focusedBeforeOpen: ( coach ) => coach.wrapper } );
+	page.wrapper.focus = undefined;
+	shell.close();
+	assert.equal( document.activeElement, root );
+} );
+
+test( 'close() leaves focus alone when nothing had it before the layer opened', () => {
+	const { document, root, page, shell } = setup();
+	const focusCalls = spyOnFocus( page.coachLink );
+	shell.close();
+	assert.deepEqual( focusCalls, [] );
+	assert.equal( document.activeElement, root );
+} );
+
+test( 'the fake DOM reports whether an element is in the document', () => {
+	const document = createFakeDocument();
+	const element = build( document, [ 'div', {} ] );
+	assert.equal( element.isConnected, false );
+	document.body.append( element );
+	assert.equal( element.isConnected, true );
+	element.remove();
+	assert.equal( element.isConnected, false );
 } );
 
 // Every value of an attribute in the template, sorted.

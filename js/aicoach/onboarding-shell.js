@@ -50,6 +50,19 @@ export function makeOutsideInert( root, document ) {
 }
 
 /**
+ * Whether focus can go back to an element: it is still in the page and can take focus.
+ *
+ * @param {Element|null} element
+ * @return {boolean} True when focus can be returned to it.
+ */
+function canTakeFocusBack( element ) {
+	if ( ! element || ! element.isConnected ) {
+		return false;
+	}
+	return 'function' === typeof element.focus;
+}
+
+/**
  * @param {Object}   deps
  * @param {Element}  deps.root      The #ihq-onboarding element.
  * @param {Document} deps.document
@@ -69,6 +82,8 @@ export function createShell( { root, document, window, narrator, strings, getLoc
 
 	document.documentElement.classList.add( OPEN_CLASS );
 	const restoreOutside = makeOutsideInert( root, document );
+	// Kept so close() can give focus back; otherwise it would fall to <body> when the layer goes.
+	const focusBeforeOpen = document.activeElement;
 	// The dialog itself takes focus, so a screen reader announces it and Tab starts inside it.
 	root.setAttribute( 'tabindex', '-1' );
 	root.focus();
@@ -147,7 +162,8 @@ export function createShell( { root, document, window, narrator, strings, getLoc
 	}
 
 	/**
-	 * Removes the layer, leaving the Coach page at its top and usable again.
+	 * Removes the layer, leaving the Coach page at its top and usable again, with focus back
+	 * where it was before the layer opened when that element is still there.
 	 */
 	function close() {
 		narrator.stop();
@@ -155,6 +171,10 @@ export function createShell( { root, document, window, narrator, strings, getLoc
 		root.remove();
 		document.documentElement.classList.remove( OPEN_CLASS );
 		window.scrollTo( 0, 0 );
+		if ( canTakeFocusBack( focusBeforeOpen ) ) {
+			// preventScroll keeps the Coach page at its top rather than jumping to the element.
+			focusBeforeOpen.focus( { preventScroll: true } );
+		}
 	}
 
 	return {
