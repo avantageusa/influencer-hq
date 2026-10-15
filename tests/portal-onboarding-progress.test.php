@@ -22,6 +22,8 @@ $GLOBALS['hooks']          = array();
 $GLOBALS['routes']         = array();
 $GLOBALS['current_user']   = 0;
 $GLOBALS['valid_nonce']    = 'good-nonce';
+$GLOBALS['on_meta_write']  = null; // one-shot callback run just before a write lands, to interleave requests
+
 
 function add_action( $hook, $cb ) { $GLOBALS['hooks'][] = array( $hook, $cb ); }
 function do_action( $hook, ...$args ) { $GLOBALS['actions_fired'][] = array_merge( array( $hook ), $args ); }
@@ -29,6 +31,11 @@ function get_user_meta( $user_id, $key, $single = false ) {
 	return isset( $GLOBALS['user_meta'][ $user_id ][ $key ] ) ? $GLOBALS['user_meta'][ $user_id ][ $key ] : '';
 }
 function update_user_meta( $user_id, $key, $value ) {
+	$on_write = $GLOBALS['on_meta_write'];
+	if ( null !== $on_write ) {
+		$GLOBALS['on_meta_write'] = null;
+		$on_write( $user_id, $key );
+	}
 	$GLOBALS['meta_writes'][]                   = array( $user_id, $key, $value );
 	$GLOBALS['user_meta'][ $user_id ][ $key ] = $value;
 	return true;
@@ -44,7 +51,9 @@ class WP_Error {
 	public $message;
 	public $data;
 	public function __construct( $code = '', $message = '', $data = array() ) { $this->code = $code; $this->message = $message; $this->data = $data; }
+	public function get_error_message() { return $this->message; }
 }
+function is_wp_error( $thing ) { return $thing instanceof WP_Error; }
 class WP_REST_Server {
 	const READABLE  = 'GET';
 	const CREATABLE = 'POST';
@@ -69,12 +78,21 @@ function reset_world( $user_id = 7 ) {
 	$GLOBALS['meta_writes']   = array();
 	$GLOBALS['actions_fired'] = array();
 	$GLOBALS['current_user']  = $user_id;
+	$GLOBALS['on_meta_write'] = null;
 }
 function post_request( $body, $nonce = 'good-nonce' ) { return new WP_REST_Request( array( 'X-WP-Nonce' => $nonce ), $body ); }
 function stored( $user_id = 7 ) { return $GLOBALS['user_meta'][ $user_id ]['_ihq_portal_onboarding'] ?? null; }
+function completed_meta( $user_id = 7 ) { return $GLOBALS['user_meta'][ $user_id ]['_ihq_portal_onboarding_completed_at'] ?? null; }
 
 require __DIR__ . '/../inc/portal-onboarding-progress.php';
 
+$empty_record = array(
+	'stage'     => '',
+	'answers'   => array(),
+	'platforms' => array(),
+	'handles'   => array(),
+	'language'  => '',
+);
 $empty_state = array(
 	'stage'        => '',
 	'answers'      => array(),
@@ -88,6 +106,11 @@ $empty_state = array(
 // --- Contract: names and enum values ---
 
 check( 'meta key', '_ihq_portal_onboarding' === IHQ_PORTAL_ONBOARDING_META_KEY );
+check( 'completion has its own meta key', '_ihq_portal_onboarding_completed_at' === IHQ_PORTAL_ONBOARDING_COMPLETED_META_KEY );
+check( 'completion fields', array( 'completed', 'completed_at' ) === IHQ_PORTAL_ONBOARDING_COMPLETION_FIELDS );
+check( 'saved action name', 'ihq_portal_onboarding_saved' === IHQ_PORTAL_ONBOARDING_SAVED_ACTION );
+check( 'completed action name', 'ihq_portal_onboarding_completed' === IHQ_PORTAL_ONBOARDING_COMPLETED_ACTION );
+check( 'invalid error code and status', 'ihq_onboarding_invalid' === IHQ_PORTAL_ONBOARDING_INVALID_ERROR && 400 === IHQ_PORTAL_ONBOARDING_INVALID_STATUS );
 check( 'language meta key is the registration one', '_ihq_aicoach_language' === IHQ_PORTAL_ONBOARDING_LANGUAGE_META_KEY );
 check( 'sixteen stages in screen order', array( 'game_of_kings', 'modern_era', 'baccarat_experience', 'streaming_experience', 'equity_knowledge', 'social_platforms', 'world_championship', 'world_tour', 'classic', 'equity', 'how_this_works', 'active_followers', 'equity_example', 'draft_posts', 'post_action', 'closing' ) === ihq_portal_onboarding_stages() );
 check( 'answer fields and values', array(
@@ -102,6 +125,7 @@ check( 'answer fields and values', array(
 check( 'the 19 platforms', array( 'instagram', 'facebook', 'tiktok', 'youtube', 'bilibili', 'douyin', 'kakaotalk', 'line', 'linkedin', 'pinterest', 'qq', 'reddit', 'rednote', 'snapchat', 'telegram', 'wechat', 'weibo', 'whatsapp', 'x' ) === ihq_portal_onboarding_platforms() );
 check( 'seven languages', array( 'en', 'zh', 'yue', 'ja', 'ko', 'th', 'vi' ) === ihq_portal_onboarding_languages() );
 check( 'default state', $empty_state === ihq_portal_onboarding_default_state() );
+check( 'the record is the state without completion', $empty_record === ihq_portal_onboarding_record( $empty_state ) );
 
 // --- Routes ---
 
@@ -192,7 +216,7 @@ check( 'a 190-character multi-byte handle is accepted', 190 === mb_strlen( store
 reset_world( 7 );
 ihq_portal_onboarding_handle_post( post_request( array( 'stage' => 'streaming_experience', 'answers' => array( 'baccarat_experience' => 'played_a_lot' ) ) ) );
 ihq_portal_onboarding_handle_post( post_request( array( 'answers' => array( 'streaming_experience' => 'new_to_streaming', 'streaming_learning_intent' => 'new_ready_to_learn' ) ) ) );
-check( 'answers merge per field; the stage is kept', array( 'stage' => 'streaming_experience', 'answers' => array( 'baccarat_experience' => 'played_a_lot', 'streaming_experience' => 'new_to_streaming', 'streaming_learning_intent' => 'new_ready_to_learn' ), 'platforms' => array(), 'handles' => array(), 'language' => '', 'completed' => false, 'completed_at' => '' ) === stored() );
+check( 'answers merge per field; the stage is kept', array( 'stage' => 'streaming_experience', 'answers' => array( 'baccarat_experience' => 'played_a_lot', 'streaming_experience' => 'new_to_streaming', 'streaming_learning_intent' => 'new_ready_to_learn' ), 'platforms' => array(), 'handles' => array(), 'language' => '' ) === stored() );
 ihq_portal_onboarding_handle_post( post_request( array( 'answers' => array( 'streaming_experience' => 'streamed_some', 'streaming_learning_intent' => null ) ) ) );
 check( 'null clears an answer; a changed answer replaces the old one', array( 'baccarat_experience' => 'played_a_lot', 'streaming_experience' => 'streamed_some' ) === stored()['answers'] );
 
@@ -200,14 +224,21 @@ reset_world( 7 );
 ihq_portal_onboarding_handle_post( post_request( array( 'platforms' => array( 'x', 'line' ), 'handles' => array( 'x' => '@a', 'line' => 'b' ) ) ) );
 ihq_portal_onboarding_handle_post( post_request( array( 'platforms' => array( 'line' ) ) ) );
 check( 'unticking a platform drops its handle', array( 'line' ) === stored()['platforms'] && array( 'line' => 'b' ) === stored()['handles'] );
-ihq_portal_onboarding_handle_post( post_request( array( 'handles' => array( 'line' => 'c', 'x' => '@z' ) ) ) );
-check( 'handles for platforms that are not selected are not kept', array( 'line' => 'c' ) === stored()['handles'] );
+ihq_portal_onboarding_handle_post( post_request( array( 'handles' => array( 'line' => 'c' ) ) ) );
+check( 'handles alone are accepted for platforms already stored', array( 'line' ) === stored()['platforms'] && array( 'line' => 'c' ) === stored()['handles'] );
+$GLOBALS['meta_writes']   = array();
+$GLOBALS['actions_fired'] = array();
+$res = ihq_portal_onboarding_handle_post( post_request( array( 'handles' => array( 'line' => 'd', 'x' => '@z' ) ) ) );
+check( 'a handle for a platform that is not selected is a 400 naming it', 400 === $res->status && array( 'error' => 'Handle for a platform that is not selected: x.' ) === $res->data );
+check( 'and nothing is stored or fired', array() === $GLOBALS['meta_writes'] && array() === $GLOBALS['actions_fired'] && array( 'line' => 'c' ) === stored()['handles'] );
+$res = ihq_portal_onboarding_handle_post( post_request( array( 'platforms' => array( 'x' ), 'handles' => array( 'line' => 'd' ) ) ) );
+check( 'a handle for a platform unticked in the same request is a 400', 400 === $res->status && array( 'error' => 'Handle for a platform that is not selected: line.' ) === $res->data && array( 'line' ) === stored()['platforms'] );
 
 reset_world( 7 );
 $res = ihq_portal_onboarding_handle_post( post_request( array( 'stage' => 'equity' ) ) );
 check( 'POST answers with the full state as JSON', '{"stage":"equity","answers":{},"platforms":[],"handles":{},"language":"","completed":false,"completed_at":""}' === json_encode( $res->data ) );
 check( 'POST is never cached', array( 'Cache-Control' => 'no-store, private' ) === $res->headers );
-check( 'POST writes the record once and nothing else', array( array( 7, '_ihq_portal_onboarding', array( 'stage' => 'equity', 'answers' => array(), 'platforms' => array(), 'handles' => array(), 'language' => '', 'completed' => false, 'completed_at' => '' ) ) ) === $GLOBALS['meta_writes'] );
+check( 'POST writes the record once, without completion, and nothing else', array( array( 7, '_ihq_portal_onboarding', array( 'stage' => 'equity', 'answers' => array(), 'platforms' => array(), 'handles' => array(), 'language' => '' ) ) ) === $GLOBALS['meta_writes'] );
 check( 'a stored change fires ihq_portal_onboarding_saved with the user, the partial and the state', array( array( 'ihq_portal_onboarding_saved', 7, array( 'stage' => 'equity' ), array( 'stage' => 'equity', 'answers' => array(), 'platforms' => array(), 'handles' => array(), 'language' => '', 'completed' => false, 'completed_at' => '' ) ) ) === $GLOBALS['actions_fired'] );
 
 // --- POST: every rejected input returns 400 and stores nothing ---
@@ -242,6 +273,7 @@ $rejected = array(
 	'empty handle'                  => array( 'handles' => array( 'x' => '' ) ),
 	'whitespace-only handle'        => array( 'handles' => array( 'x' => '   ' ) ),
 	'handle too long'               => array( 'handles' => array( 'x' => str_repeat( 'a', 191 ) ) ),
+	'handle for unselected platform' => array( 'handles' => array( 'x' => '@a' ) ),
 	'unknown language'              => array( 'language' => 'fr' ),
 	'language in upper case'        => array( 'language' => 'EN' ),
 	'bad value next to good ones'   => array( 'stage' => 'equity', 'language' => 'xx' ),
@@ -260,27 +292,69 @@ $validated = ihq_portal_onboarding_validate_partial( array( 'answers' => array( 
 check( 'validate_partial names the bad field', array( 'partial' => array(), 'error' => 'Unknown answer: favourite_colour.' ) === $validated );
 check( 'validate_partial names unknown keys', array( 'partial' => array(), 'error' => 'Unknown field: admin.' ) === ihq_portal_onboarding_validate_partial( array( 'admin' => 1 ) ) );
 
+// --- PHP API: merge() applies the same allowlist as the POST route ---
+
+reset_world( 7 );
+$GLOBALS['user_meta'][7]['_ihq_portal_onboarding'] = array( 'stage' => 'classic' );
+$merge_rejected = array(
+	'a non-enum answer'                 => array( array( 'answers' => array( 'baccarat_experience' => 'Played a lot' ) ), 'Invalid value for baccarat_experience.' ),
+	'answers not an array'              => array( array( 'answers' => 'played_a_lot' ), 'Invalid answers.' ),
+	'a partial that is not an array'    => array( 'stage', 'Nothing to save.' ),
+	'an empty partial'                  => array( array(), 'Nothing to save.' ),
+	'completion is not writable'        => array( array( 'completed' => true ), 'Unknown field: completed.' ),
+	'a handle for an unselected platform' => array( array( 'handles' => array( 'x' => '@a' ) ), 'Handle for a platform that is not selected: x.' ),
+);
+foreach ( $merge_rejected as $label => $case ) {
+	$error = ihq_portal_onboarding_merge( 7, $case[0] );
+	check( 'merge() rejects ' . $label . ' with a 400 WP_Error', $error instanceof WP_Error && 'ihq_onboarding_invalid' === $error->code && $case[1] === $error->message && array( 'status' => 400 ) === $error->data );
+	check( 'merge() stores and fires nothing for ' . $label, array() === $GLOBALS['meta_writes'] && array() === $GLOBALS['actions_fired'] && array( 'stage' => 'classic' ) === stored() );
+}
+$merged = ihq_portal_onboarding_merge( '7', array( 'platforms' => array( 'x' ), 'handles' => array( 'x' => " @me\n" ) ) );
+check( 'merge() sanitizes like the route and returns the full state', array( 'stage' => 'classic', 'answers' => array(), 'platforms' => array( 'x' ), 'handles' => array( 'x' => '@me' ), 'language' => '', 'completed' => false, 'completed_at' => '' ) === $merged );
+check( 'merge() fires the saved action with the sanitized partial', array( array( 'ihq_portal_onboarding_saved', 7, array( 'platforms' => array( 'x' ), 'handles' => array( 'x' => '@me' ) ), $merged ) ) === $GLOBALS['actions_fired'] );
+
 // --- Completion API ---
 
 reset_world( 7 );
 check( 'is_complete is false for a new user', false === ihq_portal_onboarding_is_complete( 7 ) );
 $done = ihq_portal_onboarding_mark_complete( 7 );
-check( 'mark_complete sets the flag', true === $done['completed'] && true === stored()['completed'] );
-check( 'mark_complete stamps an ISO-8601 UTC time', 1 === preg_match( '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+00:00$/', stored()['completed_at'] ) );
+check( 'mark_complete sets the flag in the returned state', true === $done['completed'] && completed_meta() === $done['completed_at'] );
+check( 'mark_complete stamps an ISO-8601 UTC time', 1 === preg_match( '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+00:00$/', completed_meta() ) );
+check( 'mark_complete writes only the completion key', array( array( 7, '_ihq_portal_onboarding_completed_at', $done['completed_at'] ) ) === $GLOBALS['meta_writes'] );
 check( 'is_complete is true afterwards', true === ihq_portal_onboarding_is_complete( 7 ) );
+check( 'get_state reads completion from its key', array_merge( $empty_state, array( 'completed' => true, 'completed_at' => $done['completed_at'] ) ) === ihq_portal_onboarding_get_state( 7 ) );
 check( 'completion fires ihq_portal_onboarding_completed once', array( array( 'ihq_portal_onboarding_completed', 7, $done ) ) === $GLOBALS['actions_fired'] );
-$stamp = stored()['completed_at'];
+$stamp = completed_meta();
 $GLOBALS['meta_writes'] = array();
 ihq_portal_onboarding_mark_complete( 7 );
-check( 'completing again writes nothing, keeps the first time and fires nothing more', array() === $GLOBALS['meta_writes'] && $stamp === stored()['completed_at'] && 1 === count( $GLOBALS['actions_fired'] ) );
-check( 'is_complete only for a real true', ( function () {
-	$GLOBALS['user_meta'][9]['_ihq_portal_onboarding'] = array( 'completed' => '1' );
-	return false === ihq_portal_onboarding_is_complete( 9 );
+check( 'completing again writes nothing, keeps the first time and fires nothing more', array() === $GLOBALS['meta_writes'] && $stamp === completed_meta() && 1 === count( $GLOBALS['actions_fired'] ) );
+check( 'a completed flag left in the record is ignored', ( function () {
+	$GLOBALS['user_meta'][9]['_ihq_portal_onboarding'] = array( 'completed' => true, 'completed_at' => '2026-01-01T00:00:00+00:00' );
+	return false === ihq_portal_onboarding_is_complete( 9 ) && $GLOBALS['empty_state'] === ihq_portal_onboarding_get_state( 9 );
+} )() );
+check( 'a non-string completion value is not completion', ( function () {
+	$GLOBALS['user_meta'][10]['_ihq_portal_onboarding_completed_at'] = array( 'x' );
+	return false === ihq_portal_onboarding_is_complete( 10 );
 } )() );
 
-// A later answer save keeps completion (it is merged, not replaced).
-ihq_portal_onboarding_merge( 7, array( 'language' => 'ja' ) );
-check( 'saving after completion keeps the completed flag', true === stored()['completed'] );
+// A later answer save keeps completion and does not touch its key.
+$GLOBALS['meta_writes'] = array();
+$after = ihq_portal_onboarding_merge( 7, array( 'language' => 'ja' ) );
+check( 'saving after completion keeps the completed flag', true === $after['completed'] && $stamp === $after['completed_at'] && true === ihq_portal_onboarding_is_complete( 7 ) );
+check( 'saving after completion writes the record and the language only', array( array( 7, '_ihq_portal_onboarding', array_merge( $empty_record, array( 'language' => 'ja' ) ) ), array( 7, '_ihq_aicoach_language', 'ja' ) ) === $GLOBALS['meta_writes'] );
+
+// A save that read the record before completion and writes after it cannot undo it.
+reset_world( 7 );
+$GLOBALS['on_meta_write'] = function ( $user_id, $key ) {
+	ihq_portal_onboarding_mark_complete( $user_id );
+};
+$stale = ihq_portal_onboarding_merge( 7, array( 'stage' => 'closing' ) );
+check( 'the interleaved save reports the state it read (not yet complete)', false === $stale['completed'] && 'closing' === $stale['stage'] );
+check( 'the interleaved save does not undo the completion', true === ihq_portal_onboarding_is_complete( 7 ) && 'closing' === ihq_portal_onboarding_get_state( 7 )['stage'] );
+check( 'completion fired once, then the save', array( 'ihq_portal_onboarding_completed', 'ihq_portal_onboarding_saved' ) === array_column( $GLOBALS['actions_fired'], 0 ) );
+$GLOBALS['actions_fired'] = array();
+ihq_portal_onboarding_mark_complete( 7 );
+check( 'a later completion does not fire again', array() === $GLOBALS['actions_fired'] );
 
 // --- Account scope: the record is user meta, so it is the same for the user anywhere ---
 
