@@ -44,11 +44,16 @@ The portal has no manifest, so browsers cannot install it, and the Save button d
 - `js/aicoach/save-home.js`: one handler on the document for every `[data-ihq-save-home]`, so buttons
   rendered later (onboarding screens) work. With a captured `beforeinstallprompt` → `prompt()`;
   otherwise a small dialog: iOS (incl. iPadOS posing as a Mac) "Tap the Share button, then Add to Home
-  Screen."; other browsers, the browser-menu instruction. Accepting hides the buttons; dismissing the
-  prompt or closing the sheet hides them and is remembered in localStorage (`ihq_save_home_dismissed`).
+  Screen."; other browsers, the browser-menu instruction. A prompt the browser refuses (stale event)
+  falls back to the sheet. Accepting hides the buttons and is remembered (`ihq_save_home_installed`, also
+  on `appinstalled`); dismissing the prompt or closing the sheet (Close, or Escape anywhere on the page)
+  hides them and is remembered (`ihq_save_home_dismissed`). The sheet is a non-modal dialog.
   Standalone display mode (or iOS `navigator.standalone`) hides them from the start. Hiding is one class
   on `<html>`, so later buttons are hidden too. Storage failures never throw.
-- `save-home-page.js` wires it to the page and injects the few styles it needs.
+- `save-home-page.js` calls `mountSaveHome()`, which injects the sheet's styles and passes in the page's
+  localStorage.
+- This PR renders no button: the `data-ihq-save-home` buttons come from ENGR-7565 (onboarding frame,
+  PR #123) and ENGR-7571 (closing screen, PR #128).
 
 ## Alternatives considered
 - A static `manifest.json` in the theme: start URL and scope would be hard-coded per environment, and
