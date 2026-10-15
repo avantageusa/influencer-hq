@@ -20,9 +20,32 @@ function get_option( $key, $default = false ) {
 	return array_key_exists( $key, $GLOBALS['wp_options'] ) ? $GLOBALS['wp_options'][ $key ] : $default;
 }
 
-require __DIR__ . '/../inc/portal-onboarding-switch.php';
+// The theme loads the module. Runs before anything else requires the module,
+// so a missing or broken line in functions.php cannot be masked. functions.php
+// as a whole needs a full WordPress bootstrap, so the test runs only its
+// require_once statement for this module, with get_template_directory()
+// stubbed to the theme root.
+function get_template_directory() {
+	return dirname( __DIR__ );
+}
+$switch_require_pattern = '/require_once\s+get_template_directory\(\)\s*\.\s*\'\/inc\/portal-onboarding-switch\.php\'\s*;/';
+$functions_source       = file_get_contents( __DIR__ . '/../functions.php' );
+$switch_require_count   = preg_match_all( $switch_require_pattern, $functions_source, $switch_require_matches );
+check( 'functions.php has exactly one require_once for inc/portal-onboarding-switch.php', 1 === $switch_require_count );
+check( 'the switch is not defined before the functions.php line runs', false === function_exists( 'ihq_portal_onboarding_enabled' ) );
+if ( 1 === $switch_require_count ) {
+	// Execute the statement exactly as written in functions.php.
+	eval( $switch_require_matches[0][0] );
+}
+check( 'running the functions.php line defines ihq_portal_onboarding_enabled()', true === function_exists( 'ihq_portal_onboarding_enabled' ) );
+check( 'running the functions.php line reads no option', array() === $GLOBALS['option_reads'] );
+
+// No-op when the line above loaded it; keeps the unit checks below running
+// (and reporting) when the loader check failed.
+require_once __DIR__ . '/../inc/portal-onboarding-switch.php';
 
 check( 'the option name is the one in the DEPLOYMENT NOTE', 'ihq_portal_onboarding_enabled' === IHQ_PORTAL_ONBOARDING_ENABLED_OPTION );
+check( 'the on values are exactly 1, true, yes, on', array( '1', 'true', 'yes', 'on' ) === IHQ_PORTAL_ONBOARDING_ON_VALUES );
 
 // Default after deploy: the option does not exist.
 check( 'off when the option has never been set (default after deploy)', false === ihq_portal_onboarding_enabled() );
@@ -39,10 +62,6 @@ foreach ( $off_values as $value ) {
 	$GLOBALS['wp_options']['ihq_portal_onboarding_enabled'] = $value;
 	check( 'off for ' . var_export( $value, true ), false === ihq_portal_onboarding_enabled() );
 }
-
-// The theme loads the module.
-$functions = file_get_contents( __DIR__ . '/../functions.php' );
-check( 'functions.php loads every inc/portal-onboarding-*.php module, this one included', false !== strpos( $functions, "glob( get_template_directory() . '/inc/portal-onboarding-*.php' )" ) );
 
 echo "\n" . ( 0 === $fail ? 'All checks passed.' : $fail . ' check(s) FAILED.' ) . "\n";
 exit( 0 === $fail ? 0 : 1 );

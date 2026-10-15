@@ -7,7 +7,7 @@ overview: >
   calls it is ENGR-7564; per-user targeting is out of scope.
 todos:
   - id: switch-module
-    content: Add inc/portal-onboarding-switch.php with the option name and a fail-closed reader, loaded from functions.php by file name
+    content: Add inc/portal-onboarding-switch.php with the option name and a fail-closed reader, loaded from functions.php by an explicit require_once
     status: completed
   - id: tests
     content: Add tests/portal-onboarding-switch.test.php covering absent, on and off values
@@ -30,9 +30,10 @@ needs a way to keep it dark after deploy and switch it on per environment after 
 - `inc/portal-onboarding-switch.php`: `IHQ_PORTAL_ONBOARDING_ENABLED_OPTION = 'ihq_portal_onboarding_enabled'`
   and `ihq_portal_onboarding_enabled()`. Only explicit on values (`1`, `true`, `yes`, `on`) count;
   a missing option or any other value is off, so a mistyped WP-CLI command fails closed.
-- Loaded by a `glob( inc/portal-onboarding-*.php )` loop added to `functions.php`. Every base-`main`
-  ticket of the epic adds the same block, so merging them together does not conflict on a list of
-  `require_once` lines.
+- Loaded by one explicit `require_once` in `functions.php`, like every other module there. Each later
+  ticket of the epic adds its own `require_once` line, after any module it depends on. (A
+  `glob( inc/portal-onboarding-*.php )` loop was tried first and dropped in review: it made load order
+  depend on file names and would run any stray file matching the pattern.)
 - ENGR-7564 (entry gate) checks `function_exists( 'ihq_portal_onboarding_enabled' ) && ihq_portal_onboarding_enabled()`,
   so either PR can merge first and the gate stays closed until both are in and the option is set.
 
@@ -41,7 +42,7 @@ needs a way to keep it dark after deploy and switch it on per environment after 
 - A PHP constant in wp-config: needs a config deploy per environment instead of one WP-CLI command.
 
 ## Blast radius
-New file plus the loader loop in `functions.php` (it only matches `inc/portal-onboarding-*.php`). Nothing reads the function until ENGR-7564 lands.
+New file plus one `require_once` line in `functions.php`. Nothing reads the function until ENGR-7564 lands.
 
 ## Notes
 DEPLOYMENT NOTE (from the ticket): leave the switch off on deploy; turn it on per environment

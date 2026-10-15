@@ -26,6 +26,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 /** WordPress option that turns the onboarding auto-launch on. */
 const IHQ_PORTAL_ONBOARDING_ENABLED_OPTION = 'ihq_portal_onboarding_enabled';
 
+/** Option values (lower-cased, trimmed) that count as "on"; anything else is off. */
+const IHQ_PORTAL_ONBOARDING_ON_VALUES = array( '1', 'true', 'yes', 'on' );
+
 /**
  * Whether the onboarding auto-launch is switched on.
  *
@@ -47,5 +50,5 @@ function ihq_portal_onboarding_enabled() {
 	if ( ! is_string( $value ) ) {
 		return false;
 	}
-	return in_array( strtolower( trim( $value ) ), array( '1', 'true', 'yes', 'on' ), true );
+	return in_array( strtolower( trim( $value ) ), IHQ_PORTAL_ONBOARDING_ON_VALUES, true );
 }
