@@ -16,6 +16,9 @@ todos:
   - id: verify
     content: test:js; PHP tests in CI
     status: completed
+  - id: review-fixes
+    content: PR #130 review — send on shutdown after fastcgi_finish_request(), log status code only, assert log lines, named constants, idempotent completion documented and tested
+    status: completed
 ---
 
 # [ENGR-7573] Sync onboarding answers to Braze
@@ -36,18 +39,31 @@ out part-way. Only `language_preference` reaches Braze today, at registration.
 - `ihq_portal_onboarding_braze_send()`: POST to `ihq_braze_rest_endpoint() . '/users/track'` with
   `ihq_braze_track_api_key()`, the user's `wp_influencer_guid` as `external_id`, a 5-second timeout.
   A missing external_id is logged and skipped (no id is minted here; registration owns that). A
-  `WP_Error` or non-2xx is logged and returns false; nothing throws.
-- Hooked at priority 20 on `ihq_portal_onboarding_saved` and `ihq_portal_onboarding_completed`; the
-  store fires completion once, so `onboarding_completed: true` is sent once.
+  `WP_Error` or non-2xx is logged (status code only, never Braze's response body, which could echo
+  handles) and returns false; nothing throws.
+- Hooked at priority 20 on `IHQ_PORTAL_ONBOARDING_SAVED_ACTION` and
+  `IHQ_PORTAL_ONBOARDING_COMPLETED_ACTION`. The listeners only queue the attributes. On `shutdown`
+  (last, at `PHP_INT_MAX`) the queue is sent in order, after `fastcgi_finish_request()` where it exists,
+  so under PHP-FPM the Influencer's save response does not wait for Braze. A request that queued
+  nothing does not end the response early.
+- Completion is idempotent: it sets `onboarding_completed: true` and nothing that changes between
+  calls (no timestamp, event or counter). The store fires completion once per user in normal use, but
+  two concurrent completions can both fire it (user meta has no compare-and-set); Braze then receives
+  the same value twice and ends in the same state.
 
 ## Alternatives considered
 - Sending everything at completion: drop-outs' answers would never reach Braze (the ticket's point).
 - A non-blocking request (`blocking => false`): faster, but failures could not be logged.
-- WP-Cron: the save would not wait, but delivery would depend on site traffic; the 5-second cap keeps
-  the wait bounded instead.
+- WP-Cron: the save would not wait, but delivery would depend on site traffic.
+- A synchronous send inside the save (the first version): simplest, but each answer save could wait
+  up to 5 s on a slow Braze (PR #130 review). Sending on `shutdown` after `fastcgi_finish_request()`
+  keeps the logging and takes the wait off the response.
 
 ## Blast radius
-One more `/users/track` call per answer save. The Influencer's save waits up to 5 s if Braze is slow.
+One more `/users/track` call per answer save, made after the response. Under PHP-FPM the PHP worker
+stays busy up to 5 s more when Braze is slow, but the Influencer does not wait. Without
+`fastcgi_finish_request()` (mod_php, CLI) the call still runs at shutdown and the response can wait up
+to 5 s, as before. Delivery is best effort: a failed send is logged, not retried.
 
 ## Notes
 - OQ17 is pending Product, and Jenna is to confirm privacy for sending handles to Braze; the handle
