@@ -10,6 +10,9 @@
 /** Class on <html> while the layer is open, so the Coach page behind it does not scroll. */
 export const OPEN_CLASS = 'ihq-onb-open';
 
+/** Set on everything outside the layer while it is open, so focus and clicks stay in the dialog. */
+export const INERT_ATTRIBUTE = 'inert';
+
 /**
  * Finds a part of the frame.
  *
@@ -19,6 +22,31 @@ export const OPEN_CLASS = 'ihq-onb-open';
  */
 export function part( root, name ) {
 	return root.querySelector( '[data-onb="' + name + '"]' );
+}
+
+/**
+ * Makes everything outside the layer inert: each sibling of the layer and of every ancestor
+ * up to <body>. aria-modal alone hides the Coach page from assistive tech but leaves its
+ * links in the Tab order behind the overlay.
+ *
+ * @param {Element}  root
+ * @param {Document} document
+ * @return {Function} Gives back what it took: removes inert from the elements it set it on.
+ */
+export function makeOutsideInert( root, document ) {
+	const madeInert = [];
+	for ( let node = root; node.parentNode && node !== document.body; node = node.parentNode ) {
+		Array.from( node.parentNode.children ).forEach( ( sibling ) => {
+			if ( sibling === node || sibling.hasAttribute( INERT_ATTRIBUTE ) ) {
+				return;
+			}
+			sibling.setAttribute( INERT_ATTRIBUTE, '' );
+			madeInert.push( sibling );
+		} );
+	}
+	return () => {
+		madeInert.forEach( ( element ) => element.removeAttribute( INERT_ATTRIBUTE ) );
+	};
 }
 
 /**
@@ -40,6 +68,10 @@ export function createShell( { root, document, window, narrator, strings, getLoc
 	const content = part( root, 'content' );
 
 	document.documentElement.classList.add( OPEN_CLASS );
+	const restoreOutside = makeOutsideInert( root, document );
+	// The dialog itself takes focus, so a screen reader announces it and Tab starts inside it.
+	root.setAttribute( 'tabindex', '-1' );
+	root.focus();
 
 	function label( key ) {
 		return strings.t( getLocale(), key );
@@ -56,7 +88,24 @@ export function createShell( { root, document, window, narrator, strings, getLoc
 		soundButton.setAttribute( 'aria-label', label( muted ? 'soundUnmute' : 'soundMute' ) );
 	}
 
+	function isInMenu( element ) {
+		return menu.contains( element ) || menuButton.contains( element );
+	}
+
 	menuButton.addEventListener( 'click', () => setMenuOpen( menu.hidden ) );
+	// A click anywhere else in the layer closes the menu (outside it, everything is inert).
+	root.addEventListener( 'click', ( event ) => {
+		if ( ! menu.hidden && ! isInMenu( event.target ) ) {
+			setMenuOpen( false );
+		}
+	} );
+	// So does focus moving on to another control. No relatedTarget means focus left the
+	// page (another window), and the menu stays as it was.
+	root.addEventListener( 'focusout', ( event ) => {
+		if ( ! menu.hidden && event.relatedTarget && ! isInMenu( event.relatedTarget ) ) {
+			setMenuOpen( false );
+		}
+	} );
 	root.addEventListener( 'keydown', ( event ) => {
 		if ( 'Escape' === event.key && ! menu.hidden ) {
 			setMenuOpen( false );
@@ -98,10 +147,11 @@ export function createShell( { root, document, window, narrator, strings, getLoc
 	}
 
 	/**
-	 * Removes the layer, leaving the Coach page at its top.
+	 * Removes the layer, leaving the Coach page at its top and usable again.
 	 */
 	function close() {
 		narrator.stop();
+		restoreOutside();
 		root.remove();
 		document.documentElement.classList.remove( OPEN_CLASS );
 		window.scrollTo( 0, 0 );
