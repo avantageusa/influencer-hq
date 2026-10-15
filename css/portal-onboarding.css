@@ -34,6 +34,15 @@ html.ihq-onb-open body {
 	overflow: hidden;
 }
 
+/*
+ * The dialog takes focus when it opens (onboarding-shell.js) so Tab
+ * starts inside it. The layer needs no focus ring; its controls keep
+ * theirs.
+ */
+.ihq-onb:focus {
+	outline: none;
+}
+
 .ihq-onb__column {
 	box-sizing: border-box;
 	display: flex;

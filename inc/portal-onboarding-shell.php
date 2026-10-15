@@ -29,6 +29,9 @@ const IHQ_PORTAL_ONBOARDING_SHARED_MODULES = array( 'commentary', 'stall-watchdo
 /** File names of plug-in modules, which the entry imports on demand. */
 const IHQ_PORTAL_ONBOARDING_PLUGIN_PATTERN = '/^onboarding-(screens|addon)-[a-z0-9-]+$/';
 
+/** Where Log out in the onboarding menu sends the Influencer: the portal home (the Coach page). */
+const IHQ_PORTAL_ONBOARDING_LOGOUT_REDIRECT_PATH = '/portal/portal-home/';
+
 /**
  * Module names (file names without .js) of every onboarding-*.js under js/aicoach/, tests
  * excluded, sorted so the order is the same on every server.
@@ -125,7 +128,7 @@ function ihq_portal_onboarding_shell_config( array $context, array $plugin_ids )
 			'clips'     => apply_filters( 'ihq_portal_onboarding_clips', array() ),
 			/** Hero images per screen: [ stage => url ]. */
 			'images'    => apply_filters( 'ihq_portal_onboarding_images', array() ),
-			'logoutUrl' => wp_logout_url( home_url( '/portal/portal-home/' ) ),
+			'logoutUrl' => wp_logout_url( home_url( IHQ_PORTAL_ONBOARDING_LOGOUT_REDIRECT_PATH ) ),
 			/** The registration language (ENGR-7572): onboarding opens in it when it is one of the seven. */
 			'savedLanguage' => (string) get_user_meta( get_current_user_id(), '_ihq_aicoach_language', true ),
 		)
