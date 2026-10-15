@@ -9,8 +9,8 @@
  * Each answer is saved to the account store as soon as it is given, as its enum value (the
  * values ihq_portal_onboarding_answer_values() accepts, inc/portal-onboarding-progress.php),
  * so a drop-out's answers are kept and reach Braze (ENGR-7573). A screen does not advance
- * until it has a complete answer. Answer saves are sent one at a time: the store merges by
- * read-modify-write, so two overlapping saves could drop an answer or revive a cleared one.
+ * until it has a complete answer. The engine's api.save() sends every progress save one at a
+ * time in call order (answers and stages alike), so answers are saved in click order.
  *
  * A plug-in module: the entry installs it, and it registers its screens with the engine.
  */
@@ -324,28 +324,12 @@ function listenToGroup( group, pick ) {
 }
 
 /**
- * A queue that runs tasks one after another, each once the one before has settled.
- *
- * @return {Function} enqueue( task ): runs task() after the earlier tasks; returns its promise.
- */
-export function createSerialQueue() {
-	let previous = Promise.resolve();
-	return function enqueue( task ) {
-		const run = previous.then( task );
-		// A failed task must not stop the ones queued after it; the caller still gets its rejection.
-		previous = run.catch( () => undefined );
-		return run;
-	};
-}
-
-/**
  * The renderer of one question screen.
  *
- * @param {Object}   question    One of QUESTIONS.
- * @param {Function} enqueueSave From createSerialQueue(), shared by the screens.
+ * @param {Object} question One of QUESTIONS.
  * @return {Function} An engine render().
  */
-function renderQuestion( question, enqueueSave ) {
+function renderQuestion( question ) {
 	return function( { container, api, text } ) {
 		const document = container.ownerDocument;
 		const headingId = 'ihq-onb-q-' + question.id;
@@ -389,8 +373,7 @@ function renderQuestion( question, enqueueSave ) {
 			answer = result.answer;
 			error.hidden = true;
 			paint();
-			const partial = { answers: result.save };
-			enqueueSave( () => api.save( partial ) );
+			api.save( { answers: result.save } );
 		}
 
 		listenToGroup( main, ( value ) => apply( pickMain( question, answer, value ) ) );
@@ -417,8 +400,7 @@ function renderQuestion( question, enqueueSave ) {
  * @return {Object[]} Engine screen definitions.
  */
 export function questionScreens() {
-	const enqueueSave = createSerialQueue();
-	return QUESTIONS.map( ( question ) => ( { id: question.id, render: renderQuestion( question, enqueueSave ) } ) );
+	return QUESTIONS.map( ( question ) => ( { id: question.id, render: renderQuestion( question ) } ) );
 }
 
 /**

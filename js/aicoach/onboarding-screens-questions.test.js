@@ -16,12 +16,11 @@ import {
 	storedAnswer,
 	questionScreens,
 	install,
-	createSerialQueue,
 } from './onboarding-screens-questions.js';
 
 const STATE = { stage: '', answers: {}, platforms: [], handles: {}, language: '', completed: false, completed_at: '' };
 const question = ( id ) => QUESTIONS.find( ( entry ) => entry.id === id );
-// Saves go out on a queue, a microtask or more after the click.
+// The engine's save queue sends each POST a microtask or more after the call.
 const flush = () => new Promise( ( resolve ) => setTimeout( resolve, 0 ) );
 const SAVED = { ok: true, status: 200, data: null };
 const REJECTED = { ok: false, status: 400, data: { error: 'Invalid answers.' } };
@@ -336,7 +335,7 @@ test( 'every label is a string-table key', () => {
 	}
 } );
 
-test( 'answer saves go out one at a time, each after the one before has answered', async () => {
+test( 'answer saves go out one at a time, in click order, each after the one before has answered', async () => {
 	const pending = [];
 	const respond = () => new Promise( ( resolve ) => pending.push( resolve ) );
 	const { option, posts } = setup( { stage: 'streaming_experience', respond } );
@@ -358,23 +357,24 @@ test( 'answer saves go out one at a time, each after the one before has answered
 	assert.equal( pending.length, 3 );
 } );
 
-test( 'the four screens share one queue: a pick on the next screen waits for the last one', async () => {
+test( 'answers and the stage share the engine queue: answer, then stage, then the next answer, in click order', async () => {
 	const pending = [];
-	const respond = ( body ) => {
-		if ( body.stage ) {
-			return SAVED;
-		}
-		return new Promise( ( resolve ) => pending.push( resolve ) );
-	};
+	const respond = () => new Promise( ( resolve ) => pending.push( resolve ) );
 	const { option, posts, engine } = setup( { stage: 'streaming_experience', respond } );
 	option( 'main', 'streamed_a_lot' ).click();
 	assert.equal( engine.advance(), true );
 	option( 'main', 'understands_equity' ).click();
 	await flush();
-	assert.deepEqual( posts, [ { answers: { streaming_experience: 'streamed_a_lot' } }, { stage: 'equity_knowledge' } ] );
+	assert.deepEqual( posts, [ { answers: { streaming_experience: 'streamed_a_lot' } } ] );
 	pending[ 0 ]( SAVED );
 	await flush();
+	assert.deepEqual( posts, [ { answers: { streaming_experience: 'streamed_a_lot' } }, { stage: 'equity_knowledge' } ] );
+	pending[ 1 ]( SAVED );
+	await flush();
 	assert.deepEqual( posts, [ { answers: { streaming_experience: 'streamed_a_lot' } }, { stage: 'equity_knowledge' }, { answers: { equity_knowledge: 'understands_equity' } } ] );
+	pending[ 2 ]( SAVED );
+	await flush();
+	assert.equal( pending.length, 3 );
 } );
 
 test( 'a failed save is reported, keeps the choice on screen, and the next save still goes out', async () => {
@@ -389,23 +389,6 @@ test( 'a failed save is reported, keeps the choice on screen, and the next save 
 	assert.deepEqual( errors, [ 'Onboarding: saving progress failed (400)', 'Onboarding: saving progress failed (400)' ] );
 	assert.equal( engine.advance(), true );
 	assert.equal( engine.current(), 'streaming_experience' );
-} );
-
-test( 'createSerialQueue: tasks run in order; a rejected task reaches its caller and does not stop the next', async () => {
-	const enqueue = createSerialQueue();
-	const ran = [];
-	const first = enqueue( () => {
-		ran.push( 'first' );
-		throw new Error( 'boom' );
-	} );
-	const second = enqueue( () => {
-		ran.push( 'second' );
-		return 'done';
-	} );
-	assert.deepEqual( ran, [] );
-	await assert.rejects( first, { message: 'boom' } );
-	assert.equal( await second, 'done' );
-	assert.deepEqual( ran, [ 'first', 'second' ] );
 } );
 
 test( 'each group has one Tab stop: the selected option, or the first when none is selected', () => {

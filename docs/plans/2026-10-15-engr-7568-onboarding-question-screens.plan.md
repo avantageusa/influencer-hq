@@ -23,7 +23,7 @@ todos:
     content: test:js, lint on touched files
     status: completed
   - id: review-fixes
-    content: PR #126 review — serial answer-save queue, radio keyboard pattern, sub group named by its revealing option, no write on re-pick, named diamond token and glyph, failed-save test
+    content: PR #126 review — answer saves in click order on the engine's save queue (ENGR-7566 000fa74; the screen-level queue was dropped), radio keyboard pattern, sub group named by its revealing option, no write on re-pick, named diamond token and glyph, failed-save test
     status: completed
 ---
 
