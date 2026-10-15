@@ -1,0 +1,40 @@
+/*
+ * Onboarding screen 16, closing (ENGR-7571).
+ * Loaded after css/portal-onboarding.css by the shell.
+ */
+
+.ihq-onb-closing__avatar {
+	display: block;
+	width: 200px;
+	max-width: 70%;
+	height: auto;
+	margin: 0 auto;
+	border: 3px solid var(--ihq-onb-gold);
+	border-radius: 50%;
+	aspect-ratio: 1;
+	object-fit: cover;
+	object-position: center 15%;
+}
+
+.ihq-onb-closing__message {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	font-size: 1.125rem;
+	line-height: 1.5;
+	text-align: center;
+}
+
+.ihq-onb-closing__message p {
+	margin: 0;
+}
+
+.ihq-onb-closing__actions {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.ihq-onb__cta[hidden] {
+	display: none;
+}
