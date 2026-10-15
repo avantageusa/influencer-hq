@@ -63,6 +63,52 @@ function ihq_generate_visitor_verification_code() {
 }
 
 /**
+ * Keyed hash stored in place of the code; the per-record token stops one
+ * precomputed table of 10^6 hashes from covering every record.
+ *
+ * @param string $code         Six-digit code.
+ * @param string $verify_token Random per-record token.
+ * @return string
+ */
+function ihq_visitor_verification_code_hash( $code, $verify_token ) {
+	return hash_hmac( 'sha256', (string) $code, wp_salt( 'ihq_visitor_verify' ) . (string) $verify_token );
+}
+
+/** Environments (IHQ_ENVIRONMENT) where IHQ_VISITOR_CODE_DEBUG may echo codes. */
+const IHQ_VISITOR_CODE_DEBUG_ENVIRONMENTS = array( 'dev', 'qa' );
+
+/** IHQ_VISITOR_CODE_DEBUG value that switches the code echo on. */
+const IHQ_VISITOR_CODE_DEBUG_ON = '1';
+
+/** Prefix shared with the login-code fail counters so their cleanup sweep covers these too. */
+const IHQ_VISITOR_VERIFY_FAIL_PREFIX = 'ihq_login_verify_fail_';
+
+/** Prefix shared with the login-code fail-counter expiry options. */
+const IHQ_VISITOR_VERIFY_FAIL_TIMEOUT_PREFIX = 'ihq_login_verify_fail_timeout_';
+
+/**
+ * Whether AJAX responses may include the visitor code (ENGR-7634).
+ *
+ * Developers use the echoed code to sign in as test accounts without reading
+ * the mailbox. Echoing it to a logged-out caller is an account takeover, so it
+ * needs IHQ_VISITOR_CODE_DEBUG = '1' in wp-config AND a non-production
+ * IHQ_ENVIRONMENT. Never define the constant on prod.
+ *
+ * @return bool
+ */
+function ihq_visitor_code_debug_enabled() {
+	if ( ihq_env_get( 'IHQ_VISITOR_CODE_DEBUG', '' ) !== IHQ_VISITOR_CODE_DEBUG_ON ) {
+		return false;
+	}
+
+	$environment = strtolower( (string) ihq_env_get( 'IHQ_ENVIRONMENT', '' ) );
+	return in_array( $environment, IHQ_VISITOR_CODE_DEBUG_ENVIRONMENTS, true );
+}
+
+/**
+ * Option name of a pre-ENGR-7634 record keyed by the plaintext code. Only
+ * used to delete leftovers.
+ *
  * @param string $code Raw 6-digit code.
  * @return string
  */
@@ -119,12 +165,39 @@ function ihq_build_registration_data_from_visitor_intent( array $intent ) {
 }
 
 /**
+ * Whether a visitor code proves control of an existing account (ENGR-7634).
+ *
+ * Only a code emailed to the account's own address counts, and only for an
+ * influencer — the same rule as the login-code verify. A caller who merely
+ * typed someone else's email into the intent never sees that code.
+ *
+ * @param WP_User|false $user            Existing account for the intent email.
+ * @param string        $delivered_email Address the code was emailed to.
+ * @return bool
+ */
+function ihq_visitor_code_may_sign_in_existing_user( $user, $delivered_email ) {
+	if ( ! $user instanceof WP_User || ! ihq_user_has_influencer_role( $user ) ) {
+		return false;
+	}
+
+	$delivered = strtolower( trim( (string) $delivered_email ) );
+	if ( $delivered === '' ) {
+		return false;
+	}
+
+	return hash_equals( strtolower( trim( (string) $user->user_email ) ), $delivered );
+}
+
+/**
  * Create or log in user from visitor intent; apply competition ratings meta.
  *
- * @param array $intent Visitor intent.
+ * @param array  $intent          Visitor intent.
+ * @param string $delivered_email Address the verified code was emailed to. An
+ *                                existing account is signed in only when this
+ *                                is that account's email (ENGR-7634).
  * @return array{ok:bool,user_id?:int,existing?:bool,message?:string}
  */
-function ihq_complete_visitor_intent_registration( array $intent ) {
+function ihq_complete_visitor_intent_registration( array $intent, $delivered_email = '' ) {
 	$registration = ihq_build_registration_data_from_visitor_intent( $intent );
 	$email        = $registration['email'];
 	$ratings        = $registration['ratings'];
@@ -139,6 +212,12 @@ function ihq_complete_visitor_intent_registration( array $intent ) {
 
 	if ( email_exists( $email ) ) {
 		$existing = get_user_by( 'email', $email );
+		if ( ! ihq_visitor_code_may_sign_in_existing_user( $existing, $delivered_email ) ) {
+			return array(
+				'ok'      => false,
+				'message' => __( 'We could not sign you in with this code. Please sign in from the login page.', 'influencer-hq' ),
+			);
+		}
 		if ( $existing ) {
 			wp_set_current_user( $existing->ID );
 			wp_set_auth_cookie( $existing->ID, false );
@@ -505,55 +584,32 @@ function ihq_issue_visitor_verification_code( array $intent, $button_press_url =
 	$fp_key      = ihq_visitor_verification_fingerprint_option_key( $fingerprint );
 	$existing    = get_option( $fp_key );
 
-	if ( is_array( $existing ) && ! empty( $existing['code'] ) && time() < (int) ( $existing['expires'] ?? 0 ) ) {
-		$code          = (string) $existing['code'];
-		$braze_payload = ihq_build_braze_track_payload_for_visitor_intent( $intent, $button_press_url, $code );
-		$minutes_left  = max( 1, (int) ceil( ( (int) $existing['expires'] - time() ) / MINUTE_IN_SECONDS ) );
-
-		// Resend rather than assume the earlier attempt arrived — a code issued
-		// while delivery was broken would otherwise block the visitor for its
-		// whole 15-minute lifetime.
-		$delivery = ihq_deliver_visitor_verification_code( $intent, $code, $minutes_left );
-		if ( ! $delivery['ok'] ) {
-			return $delivery;
-		}
-
-		return array(
-			'ok'                  => true,
-			'code'                => $code,
-			'braze_track_payload' => $braze_payload,
-			'expires_minutes'     => $minutes_left,
-			'reused'              => true,
-		);
-	}
-
+	// Pre-ENGR-7634 records kept the plaintext code here and a second record
+	// under an option named after the code; drop that one when we pass by.
 	if ( is_array( $existing ) && ! empty( $existing['code'] ) ) {
 		delete_option( ihq_visitor_verification_code_option_key( (string) $existing['code'] ) );
 	}
 
-	$code         = ihq_generate_visitor_verification_code();
-	$verify_token = wp_generate_password( 32, false, false );
-	$expires      = time() + ihq_visitor_verification_code_ttl_seconds();
-	$code_hash    = hash_hmac( 'sha256', $code, wp_salt( 'ihq_visitor_verify' ) . $verify_token );
+	// Only a hash is stored, so a repeat request cannot resend the earlier
+	// code: it issues a fresh one and the earlier code stops working. That
+	// still covers a code issued while delivery was broken.
+	$code            = ihq_generate_visitor_verification_code();
+	$verify_token    = wp_generate_password( 32, false, false );
+	$expires         = time() + ihq_visitor_verification_code_ttl_seconds();
+	$code_hash       = ihq_visitor_verification_code_hash( $code, $verify_token );
+	$delivered_email = ihq_visitor_intent_extract_email( $intent );
 
 	$record = array(
-		'verify_token' => $verify_token,
-		'code_hash'    => $code_hash,
-		'fingerprint'  => $fingerprint,
-		'intent'       => $intent,
-		'created'      => time(),
-		'expires'      => $expires,
+		'verify_token'    => $verify_token,
+		'code_hash'       => $code_hash,
+		'fingerprint'     => $fingerprint,
+		'delivered_email' => $delivered_email,
+		'intent'          => $intent,
+		'created'         => time(),
+		'expires'         => $expires,
 	);
 
-	update_option( ihq_visitor_verification_code_option_key( $code ), $record, false );
-	update_option(
-		$fp_key,
-		array(
-			'code'    => $code,
-			'expires' => $expires,
-		),
-		false
-	);
+	update_option( $fp_key, $record, false );
 
 	$braze_payload = ihq_build_braze_track_payload_for_visitor_intent( $intent, $button_press_url, $code );
 	$minutes_left  = (int) ( ihq_visitor_verification_code_ttl_seconds() / MINUTE_IN_SECONDS );
@@ -604,19 +660,107 @@ function ihq_handle_issue_visitor_verification_ajax() {
 	}
 
 	$response = array(
-		'braze_track_payload' => $result['braze_track_payload'] ?? array(),
-		'expires_minutes'     => $result['expires_minutes'] ?? (int) ( ihq_visitor_verification_code_ttl_seconds() / MINUTE_IN_SECONDS ),
-		'reused'              => ! empty( $result['reused'] ),
-		'redirect_url'        => ihq_visitor_intent_portal_account_url(),
+		'expires_minutes' => $result['expires_minutes'] ?? (int) ( ihq_visitor_verification_code_ttl_seconds() / MINUTE_IN_SECONDS ),
+		'reused'          => ! empty( $result['reused'] ),
+		'redirect_url'    => ihq_visitor_intent_portal_account_url(),
 	);
 	if ( ! empty( $result['braze_response'] ) ) {
 		$response['braze_response'] = $result['braze_response'];
 	}
-	if ( defined( 'WP_DEBUG' ) && WP_DEBUG && ! empty( $result['code'] ) ) {
-		$response['registration_code_debug'] = $result['code'];
+	// The Braze payload carries the code, so it only goes out with the code echo.
+	if ( ihq_visitor_code_debug_enabled() ) {
+		$response['braze_track_payload']     = $result['braze_track_payload'] ?? array();
+		$response['registration_code_debug'] = $result['code'] ?? '';
 	}
 
 	wp_send_json_success( $response );
+}
+
+/**
+ * Keys for one visitor-verify attempt counter (ENGR-7634).
+ *
+ * Same option family as the per-IP login-code counters, so
+ * ihq_login_verify_increment_failures() and the daily expiry sweep apply.
+ *
+ * @param string $scope `fingerprint` or `email`.
+ * @param string $value Fingerprint or lower-cased email.
+ * @return array{fail:string,fail_timeout:string}
+ */
+function ihq_visitor_verify_attempt_keys( $scope, $value ) {
+	$hash = md5( 'visitor_' . $scope . '|' . $value );
+
+	return array(
+		'fail'         => IHQ_VISITOR_VERIFY_FAIL_PREFIX . $hash,
+		'fail_timeout' => IHQ_VISITOR_VERIFY_FAIL_TIMEOUT_PREFIX . $hash,
+	);
+}
+
+/**
+ * Attempt counters for a code: one per comm fingerprint, one per email.
+ *
+ * The email counter stops an attacker spreading guesses over fingerprints that
+ * differ only in other comm methods but name the same inbox.
+ *
+ * @param string $fingerprint Comm fingerprint.
+ * @param string $email       Email from the intent ('' when none).
+ * @return array<int, array{fail:string,fail_timeout:string}>
+ */
+function ihq_visitor_verify_attempt_counters( $fingerprint, $email ) {
+	$counters = array( ihq_visitor_verify_attempt_keys( 'fingerprint', $fingerprint ) );
+	if ( $email !== '' ) {
+		$counters[] = ihq_visitor_verify_attempt_keys( 'email', strtolower( $email ) );
+	}
+
+	return $counters;
+}
+
+/**
+ * Count this attempt against every counter BEFORE the code is compared, so
+ * concurrent requests from many IPs cannot all slip under the cap. A
+ * successful verify clears the counters.
+ *
+ * @param array<int, array{fail:string,fail_timeout:string}> $counters Counter keys.
+ * @return bool False when any counter is over IHQ_LOGIN_CODE_MAX_FAILURES.
+ */
+function ihq_visitor_verify_reserve_attempt( array $counters ) {
+	$allowed = true;
+	foreach ( $counters as $keys ) {
+		if ( ihq_login_verify_increment_failures( $keys ) > IHQ_LOGIN_CODE_MAX_FAILURES ) {
+			$allowed = false;
+		}
+	}
+
+	return $allowed;
+}
+
+/**
+ * @param array<int, array{fail:string,fail_timeout:string}> $counters Counter keys.
+ * @return void
+ */
+function ihq_visitor_verify_clear_attempts( array $counters ) {
+	foreach ( $counters as $keys ) {
+		delete_option( $keys['fail'] );
+		delete_option( $keys['fail_timeout'] );
+	}
+}
+
+/**
+ * Whether the caller holds the portal Turnstile pass (cookie or server-side
+ * store). The code prompt only appears on Turnstile-gated portal pages, so a
+ * real visitor always has one; instances without Turnstile keys skip this.
+ *
+ * @return bool
+ */
+function ihq_visitor_verify_turnstile_passed() {
+	if ( ! function_exists( 'ihq_turnstile_is_configured' ) || ! ihq_turnstile_is_configured() ) {
+		return true;
+	}
+	if ( ! function_exists( 'ihq_portal_turnstile_pass_status' ) ) {
+		return false;
+	}
+
+	$status = ihq_portal_turnstile_pass_status();
+	return ! empty( $status['valid'] );
 }
 add_action( 'wp_ajax_ihq_issue_visitor_verification', 'ihq_handle_issue_visitor_verification_ajax' );
 add_action( 'wp_ajax_nopriv_ihq_issue_visitor_verification', 'ihq_handle_issue_visitor_verification_ajax' );
@@ -637,50 +781,80 @@ function ihq_handle_verify_visitor_code_ajax() {
 		return;
 	}
 
-	$opt_key = ihq_visitor_verification_code_option_key( $code_raw );
-	$record  = get_option( $opt_key );
+	if ( ! ihq_visitor_verify_turnstile_passed() ) {
+		wp_send_json_error( array( 'message' => __( 'Human verification failed. Please refresh the page and try again.', 'influencer-hq' ) ) );
+		return;
+	}
+
+	// Same per-IP mutex and lockout as the login-code verify (PO-3262).
+	$mutex = ihq_login_verify_acquire_ip_mutex();
+	if ( empty( $mutex['acquired'] ) ) {
+		wp_send_json_error( array( 'message' => __( 'Please wait a moment and try again.', 'influencer-hq' ) ) );
+		return;
+	}
+	$lock_name = $mutex['name'];
+
+	if ( ihq_login_verify_is_locked_out() ) {
+		ihq_login_verify_json_error_releasing_mutex( $lock_name, array( 'message' => ihq_login_verify_lockout_message() ) );
+		return;
+	}
+
+	$intent      = $parsed['intent'];
+	$fingerprint = ihq_visitor_intent_comm_fingerprint( $intent );
+	$counters    = ihq_visitor_verify_attempt_counters( $fingerprint, ihq_visitor_intent_extract_email( $intent ) );
+	if ( ! ihq_visitor_verify_reserve_attempt( $counters ) ) {
+		ihq_login_verify_json_error_releasing_mutex( $lock_name, array( 'message' => ihq_login_verify_lockout_message() ) );
+		return;
+	}
+
+	$fp_key = ihq_visitor_verification_fingerprint_option_key( $fingerprint );
+	$record = get_option( $fp_key );
 	if ( ! is_array( $record ) || empty( $record['code_hash'] ) || empty( $record['verify_token'] ) ) {
-		wp_send_json_error( array( 'message' => __( 'Invalid or expired code. Check your communication method and try again.', 'influencer-hq' ) ) );
+		ihq_login_verify_json_error_releasing_mutex(
+			$lock_name,
+			array( 'message' => __( 'Invalid or expired code. Check your communication method and try again.', 'influencer-hq' ) )
+		);
 		return;
 	}
 
 	if ( time() > (int) ( $record['expires'] ?? 0 ) ) {
-		delete_option( $opt_key );
-		$fp_key = ihq_visitor_verification_fingerprint_option_key( (string) ( $record['fingerprint'] ?? '' ) );
 		delete_option( $fp_key );
-		wp_send_json_error( array( 'message' => __( 'This code has expired. Please request a new code from the lander.', 'influencer-hq' ) ) );
+		ihq_login_verify_json_error_releasing_mutex(
+			$lock_name,
+			array( 'message' => __( 'This code has expired. Please request a new code from the lander.', 'influencer-hq' ) )
+		);
 		return;
 	}
 
-	$expected_hash = (string) $record['code_hash'];
-	$try_hash      = hash_hmac( 'sha256', $code_raw, wp_salt( 'ihq_visitor_verify' ) . (string) $record['verify_token'] );
-	if ( ! hash_equals( $expected_hash, $try_hash ) ) {
-		wp_send_json_error( array( 'message' => __( 'That code does not match. Check your communication method and try again.', 'influencer-hq' ) ) );
+	$try_hash = ihq_visitor_verification_code_hash( $code_raw, (string) $record['verify_token'] );
+	if ( ! hash_equals( (string) $record['code_hash'], $try_hash ) ) {
+		$failure = ihq_login_verify_record_failure();
+		$message = ! empty( $failure['locked'] )
+			? ihq_login_verify_lockout_message()
+			: __( 'That code does not match. Check your communication method and try again.', 'influencer-hq' );
+		ihq_login_verify_json_error_releasing_mutex( $lock_name, array( 'message' => $message ) );
 		return;
 	}
 
-	$cookie_fingerprint = ihq_visitor_intent_comm_fingerprint( $parsed['intent'] );
-	$stored_fingerprint = isset( $record['fingerprint'] ) ? (string) $record['fingerprint'] : '';
-	if ( $stored_fingerprint === '' || ! hash_equals( $stored_fingerprint, $cookie_fingerprint ) ) {
-		wp_send_json_error( array( 'message' => __( 'This code does not match your saved communication details.', 'influencer-hq' ) ) );
-		return;
-	}
-
-	$intent = $parsed['intent'];
 	if ( $parsed['country_iso'] !== '' ) {
 		$intent['country_iso'] = function_exists( 'ihq_normalize_country_iso_alpha2' )
 			? ihq_normalize_country_iso_alpha2( $parsed['country_iso'] )
 			: strtoupper( $parsed['country_iso'] );
 	}
 
-	$result = ihq_complete_visitor_intent_registration( $intent );
+	$result = ihq_complete_visitor_intent_registration( $intent, (string) ( $record['delivered_email'] ?? '' ) );
 	if ( empty( $result['ok'] ) ) {
-		wp_send_json_error( array( 'message' => $result['message'] ?? __( 'Registration failed.', 'influencer-hq' ) ) );
+		ihq_login_verify_json_error_releasing_mutex(
+			$lock_name,
+			array( 'message' => $result['message'] ?? __( 'Registration failed.', 'influencer-hq' ) )
+		);
 		return;
 	}
 
-	delete_option( $opt_key );
-	delete_option( ihq_visitor_verification_fingerprint_option_key( $stored_fingerprint ) );
+	delete_option( $fp_key );
+	ihq_visitor_verify_clear_attempts( $counters );
+	ihq_login_verify_clear_failures();
+	ihq_login_verify_release_ip_mutex( $lock_name );
 
 	$redirect_url = ihq_visitor_intent_portal_account_url();
 	if ( ! empty( $result['existing'] ) ) {
@@ -700,9 +874,16 @@ add_action( 'wp_ajax_ihq_verify_visitor_code', 'ihq_handle_verify_visitor_code_a
 add_action( 'wp_ajax_nopriv_ihq_verify_visitor_code', 'ihq_handle_verify_visitor_code_ajax' );
 
 /**
- * AJAX: TEST REGISTRY — alias for issue visitor verification (debug panel).
+ * AJAX: TEST REGISTRY — alias for issue visitor verification that echoes the
+ * code (developer sign-in as test accounts). Off unless
+ * ihq_visitor_code_debug_enabled() (ENGR-7634); nothing in the theme calls it.
  */
 function ihq_handle_test_registry_braze_ajax() {
+	if ( ! ihq_visitor_code_debug_enabled() ) {
+		wp_send_json_error( array( 'message' => __( 'Not available.', 'influencer-hq' ) ) );
+		return;
+	}
+
 	$parsed = ihq_parse_visitor_intent_ajax_request();
 	if ( $parsed === null ) {
 		wp_send_json_error( array( 'message' => __( 'Invalid security token.', 'influencer-hq' ) ) );
