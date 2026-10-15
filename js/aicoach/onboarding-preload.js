@@ -9,34 +9,57 @@
  * A clip is preloaded with a detached, muted <video preload="auto">: the browser fetches it the
  * way the real player will (range requests), so the cache serves the player. Only the latest
  * clip is kept loading; the previous one is released, so preloads never pile up on a phone.
- * Each URL is requested once.
+ * A clip is skipped only while it is the one loading: a released clip stopped downloading, so
+ * switching back to its language must request it again. An image is requested once.
  *
  * Everything is passed in, so it is tested with the fake DOM; onboarding-addon-preload.js wires it.
  */
 
 /**
+ * The onboarding event names this module listens to. They must match what the screen engine
+ * (onboarding-engine.js, ENGR-7566) and the boot module (onboarding-boot.js, ENGR-7565) emit.
+ */
+export const ONBOARDING_EVENTS = Object.freeze( {
+	SCREEN: 'screen',
+	LOCALE: 'locale',
+} );
+
+/**
  * @param {Object}   deps
  * @param {Object}   deps.api      The onboarding API: events, clipUrl( stage ), imageUrl( stage ).
  * @param {Document} deps.document
- * @return {Object} { preload, requested } — preload( stage ) for the current language.
+ * @return {{ preload: Function, requested: Function, currentClip: Function }}
+ *   preload( stage ) requests a stage's clip (active language) and hero image; requested()
+ *   returns every URL requested so far, in order; currentClip() returns the <video> still
+ *   loading, or null.
  */
 export function createPreloader( { api, document } ) {
-	const requested = new Set();
+	const requested = [];
+	const requestedImages = new Set();
 	let clip = null;
 	let nextStage = null;
 
-	function preloadClip( url ) {
-		if ( ! url || requested.has( url ) ) {
+	function releaseClip() {
+		if ( ! clip ) {
 			return;
 		}
-		requested.add( url );
-		if ( clip ) {
-			// Dropping src and calling load() is how a media element is told to stop fetching.
-			clip.removeAttribute( 'src' );
-			if ( 'function' === typeof clip.load ) {
-				clip.load();
-			}
+		// Dropping src and calling load() is how a media element is told to stop fetching.
+		clip.removeAttribute( 'src' );
+		if ( 'function' === typeof clip.load ) {
+			clip.load();
 		}
+	}
+
+	function preloadClip( url ) {
+		if ( ! url ) {
+			return;
+		}
+		const isAlreadyLoading = null !== clip && clip.getAttribute( 'src' ) === url;
+		if ( isAlreadyLoading ) {
+			return;
+		}
+		requested.push( url );
+		releaseClip();
 		clip = document.createElement( 'video' );
 		clip.setAttribute( 'preload', 'auto' );
 		clip.setAttribute( 'muted', '' );
@@ -46,10 +69,11 @@ export function createPreloader( { api, document } ) {
 	}
 
 	function preloadImage( url ) {
-		if ( ! url || requested.has( url ) ) {
+		if ( ! url || requestedImages.has( url ) ) {
 			return;
 		}
-		requested.add( url );
+		requestedImages.add( url );
+		requested.push( url );
 		const image = document.createElement( 'img' );
 		image.setAttribute( 'src', url );
 	}
@@ -67,11 +91,11 @@ export function createPreloader( { api, document } ) {
 		preloadImage( api.imageUrl( stage ) );
 	}
 
-	api.events.on( 'screen', ( detail ) => {
+	api.events.on( ONBOARDING_EVENTS.SCREEN, ( detail ) => {
 		nextStage = detail && detail.next ? detail.next : null;
 		preload( nextStage );
 	} );
-	api.events.on( 'locale', () => preload( nextStage ) );
+	api.events.on( ONBOARDING_EVENTS.LOCALE, () => preload( nextStage ) );
 
 	return {
 		preload,

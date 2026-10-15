@@ -5,8 +5,15 @@
 import { createPreloader } from '@ihq/aicoach/onboarding-preload';
 
 /**
- * @param {Object} api The onboarding API.
+ * The entry calls install( api ) (installModules in onboarding-boot.js); the options exist so a
+ * test can pass its fake document.
+ *
+ * @param {Object}   api                The onboarding API.
+ * @param {Object}   [options]
+ * @param {Document} [options.document] Defaults to the page's document.
+ * @return {Object} The preloader.
  */
-export function install( api ) {
-	createPreloader( { api, document } );
+export function install( api, options = {} ) {
+	const targetDocument = options.document || document;
+	return createPreloader( { api, document: targetDocument } );
 }

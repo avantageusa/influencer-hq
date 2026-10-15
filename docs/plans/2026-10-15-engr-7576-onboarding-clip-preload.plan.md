@@ -15,6 +15,12 @@ todos:
   - id: baseline
     content: Lighthouse/WebPageTest run of today's Coach page on dev from Singapore, numbers and settings in the ticket and PR
     status: blocked
+  - id: device-network-log
+    content: Done-when 1 on iOS Safari and Android Chrome (Data Saver on and off) - network log shows the next clip's request starting during the current screen, and the player served from cache or a 206 with no second full download
+    status: blocked
+  - id: preload-timing
+    content: In the same lab run, compare starting the preload on 'screen' (today) with starting it once the current clip plays through, on 4G; keep the faster start-up
+    status: blocked
   - id: verify
     content: test:js, lint on touched files
     status: completed
@@ -35,7 +41,9 @@ per screen, worst on 4G in Asia. And there is no measurement to compare PO-3223'
   and `api.imageUrl( next )`; on `locale` it requests the next clip in the new language.
 - A clip is preloaded with a detached, muted `<video preload="auto">`, so the request is the same kind
   the player makes and the cache serves it. Only the latest preload keeps loading: the previous one is
-  released (`src` removed, `load()`), so preloads never pile up on a phone. Each URL once.
+  released (`src` removed, `load()`), so preloads never pile up on a phone. A clip is skipped only
+  while it is the one loading, so switching back to a language requests its clip again (a released
+  clip stopped downloading); a hero image is requested once.
 - Plug-in `onboarding-addon-preload.js`, picked up by the shell's `onboarding-addon-*` pattern
   (ENGR-7565). This PR is based on `main`, where the shell does not exist yet, so it is inert until
   ENGR-7565/7566 are merged.
@@ -56,3 +64,7 @@ New plug-in files only; nothing runs until the onboarding layer renders.
   or Lighthouse from a Singapore host), which this build session cannot do. The settings to use:
   mid-range Android emulation (Moto G Power class), 4G throttling, Singapore, Coach page
   `/portal/portal-home/` while logged in, median of 3 runs, LCP and FCP.
+- ENGR-7576 cannot close on this PR alone: Done-when 1 (device network log) and Done-when 3
+  (baseline) are owed, see the `device-network-log`, `preload-timing` and `baseline` todos. The
+  preload starts on `screen`, right after the current clip starts; whether it then competes with the
+  current clip on 4G is to be measured in the same lab run before changing the order.
