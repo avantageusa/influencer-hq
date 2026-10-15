@@ -208,6 +208,90 @@ test( 'stage saves are sent one at a time, in order, and the last answer is the 
 	assert.deepEqual( api.state, { ...STATE, stage: 'baccarat_experience' } );
 } );
 
+// Answers each progress POST only when the test says so: held[ n ]( result ) answers the nth.
+function holdSaves() {
+	const held = [];
+	const answer = ( request ) => new Promise( ( resolve ) => {
+		held.push( ( result ) => resolve( result || { ok: true, status: 200, data: { ...STATE, ...request.body } } ) );
+	} );
+	return { held, answer };
+}
+
+test( 'an answer save waits behind a stage save still in flight', async () => {
+	const { held, answer } = holdSaves();
+	const { engine, api, posts } = setup( { answer } );
+	registerAll( engine, [] );
+	engine.start();
+	engine.advance();
+	const answerSaved = engine.save( { answers: { baccarat_experience: 'played_some' } } );
+	await flush();
+	assert.deepEqual( posts.map( ( post ) => post.body ), [ { stage: 'modern_era' } ] );
+	held[ 0 ]();
+	await flush();
+	assert.deepEqual( posts.map( ( post ) => post.body ), [ { stage: 'modern_era' }, { answers: { baccarat_experience: 'played_some' } } ] );
+	held[ 1 ]();
+	assert.equal( await answerSaved, true );
+	assert.deepEqual( api.state, { ...STATE, answers: { baccarat_experience: 'played_some' } } );
+} );
+
+test( 'a stage save from CONTINUE waits behind an answer save still in flight', async () => {
+	const { held, answer } = holdSaves();
+	const { engine, api, posts } = setup( { stage: 'baccarat_experience', answer } );
+	registerAll( engine, [] );
+	engine.start();
+	const answerSaved = engine.save( { answers: { baccarat_experience: 'played_some' } } );
+	assert.equal( engine.advance(), true );
+	assert.equal( engine.current(), 'streaming_experience', 'advancing does not wait for the saves' );
+	await flush();
+	assert.deepEqual( posts.map( ( post ) => post.body ), [ { answers: { baccarat_experience: 'played_some' } } ] );
+	held[ 0 ]();
+	assert.equal( await answerSaved, true );
+	await flush();
+	assert.deepEqual( posts.map( ( post ) => post.body ), [ { answers: { baccarat_experience: 'played_some' } }, { stage: 'streaming_experience' } ] );
+	held[ 1 ]();
+	await flush();
+	assert.deepEqual( api.state, { ...STATE, stage: 'streaming_experience' } );
+} );
+
+test( 'a failed save answers false to its caller, is reported, and the next save still goes out', async () => {
+	const { held, answer } = holdSaves();
+	const { engine, api, posts, errors } = setup( { answer } );
+	const failed = engine.save( { answers: { baccarat_experience: 'played_some' } } );
+	const next = engine.save( { answers: { baccarat_experience: 'played_lots' } } );
+	await flush();
+	held[ 0 ]( { ok: false, status: 500, data: null } );
+	assert.equal( await failed, false );
+	await flush();
+	assert.deepEqual( posts.map( ( post ) => post.body ), [ { answers: { baccarat_experience: 'played_some' } }, { answers: { baccarat_experience: 'played_lots' } } ] );
+	held[ 1 ]();
+	assert.equal( await next, true );
+	assert.deepEqual( errors, [ 'Onboarding: saving progress failed (500)' ] );
+	assert.deepEqual( api.state, { ...STATE, answers: { baccarat_experience: 'played_lots' } } );
+} );
+
+test( 'a save that rejects rejects only for its caller and does not block the queue', async () => {
+	const answers = [
+		() => Promise.reject( new Error( 'boom' ) ),
+		() => Promise.resolve( { ok: true, status: 200, data: null } ),
+	];
+	const { engine, posts } = setup( { answer: () => answers.shift()() } );
+	const first = engine.save( { stage: 'modern_era' } );
+	const second = engine.save( { stage: 'baccarat_experience' } );
+	await assert.rejects( first, /boom/ );
+	assert.equal( await second, true );
+	assert.deepEqual( posts.map( ( post ) => post.body ), [ { stage: 'modern_era' }, { stage: 'baccarat_experience' } ] );
+} );
+
+test( 'complete() is still sent at once, without waiting for the save queue', () => {
+	const { held, answer } = holdSaves();
+	const { engine, posts } = setup( { stage: 'closing', answer } );
+	registerAll( engine, [] );
+	engine.start();
+	engine.complete();
+	assert.deepEqual( posts.map( ( post ) => post.url ), [ '/complete' ] );
+	assert.equal( held.length, 1 );
+} );
+
 test( 'a question screen with no valid answer does not advance and shows its validation state', async () => {
 	const { engine, posts } = setup( { stage: 'baccarat_experience' } );
 	const log = [];
