@@ -17,8 +17,8 @@ todos:
     content: every option and stored value, reveal and clear, required sub-option, resume, enum cross-check against the PHP store
     status: completed
   - id: design-check
-    content: Compare with frames 46497:79353, :79698, :79730, :79465 at 398 px
-    status: blocked
+    content: Compare with instance 46893:117629 frames 3, 4, 5 and 12 at 398 px; restyle to the design (white 14 px ExtraBold, green squares, red ih diamonds); open design questions in Notes
+    status: completed
   - id: verify
     content: test:js, lint on touched files
     status: completed
@@ -62,5 +62,16 @@ A new plug-in and stylesheet. The branch also carries ENGR-7563 (merged in), so 
 ## Notes
 - The two validation messages ("Choose an answer to continue.", "Choose one of the options below your
   answer to continue.") are new copy; they are in the string table for review and translation.
-- The design frames could not be opened through the Figma MCP in this session; visual match is
-  unchecked.
+- 398 px design check (Figma instance 46893:117629, frames "3 XP level", "4 Streaming Experience",
+  "5 Streaming Experience", "12 Your Followers"), CSS only: question and answers in white Be Vietnam
+  Pro ExtraBold 14 px (answers uppercase); each answer a 20 px square with a 2 px green border that
+  fills green when picked, not a bordered row; answers 88 px from the edge, 56 px apart; sub-answers
+  under their parent's label; screen 3's levels drawn as the red ih diamond
+  (images/logo-hero-red-small.png, 26 x 32, 41 px apart) with only the lit ones shown. The unlit
+  diamonds and the glyph stay in the markup, so the tests and data hooks are unchanged.
+- Open for design: screen 3's first answer is 23 px higher than on 4 and 5 (frame 4 used); screen 12's
+  question is 12 px SemiBold and screen 5's answers 11 to 13 px with uneven spacing (14 px ExtraBold
+  and frame 4's spacing used); screen 5 draws the sub-answers under I CURRENTLY OWN EQUITY, but they
+  are a separate radio group after the three answers, so they show after the third (moving them needs
+  a markup and ARIA decision); the design has no CONTINUE on these screens, and the engine's CONTINUE
+  pushes the Save button below the fold.
