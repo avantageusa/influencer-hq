@@ -435,7 +435,7 @@ add_action( 'wp_ajax_nopriv_ihq_verify_telegram_id_token', 'ihq_handle_verify_te
  * The domain is the reserved stand-in one (inc/placeholder-email.php), so the
  * address can never reach a real mail server and every placeholder check
  * recognises it (ENGR-7549). Accounts made before that keep their
- * @email_telegram.com address.
+ * @email_telegram.com address, which the same check also recognises.
  *
  * @param string $telegram_username Username with/without @.
  * @param int    $telegram_user_id  Numeric Telegram user id.

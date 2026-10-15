@@ -66,6 +66,7 @@ function build_email( $username, array $taken = array() ) {
 // --- Writer: ihq_telegram_build_fake_email ---
 check( 'writer: handle on the stand-in domain', build_email( '@Ann_Lee' ), 'ann_lee@chat.invalid' );
 check( 'writer: stand-in is recognised as a placeholder', ihq_is_placeholder_email( build_email( '@Ann_Lee' ) ), true );
+check( 'legacy: an existing @email_telegram.com account is a placeholder', ihq_is_placeholder_email( 'old_handle@email_telegram.com' ), true );
 check( 'writer: unusable handle falls back to tg<id>', build_email( '@!!!' ), 'tg424242@chat.invalid' );
 check( 'writer: taken address gets the next free index', build_email( 'ann', array( 'ann@chat.invalid', 'ann2@chat.invalid' ) ), 'ann3@chat.invalid' );
 check(

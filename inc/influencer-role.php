@@ -474,7 +474,7 @@ function ihq_resolve_user_registration_method( $user_id ) {
         $at_pos = strrpos( $user->user_email, '@' );
         if ( $at_pos !== false ) {
             $domain = strtolower( substr( $user->user_email, $at_pos + 1 ) );
-            if ( $domain === 'email_telegram.com' ) {
+            if ( $domain === IHQ_LEGACY_TELEGRAM_EMAIL_DOMAIN ) {
                 return 'telegram';
             }
         }

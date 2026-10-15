@@ -9,6 +9,9 @@ todos:
   - id: reader
     content: "inc/influencer-role.php ihq_resolve_user_registration_method: unchanged; docblock says new Telegram accounts are recognised by telegram_user_id"
     status: completed
+  - id: legacy-reader
+    content: "inc/placeholder-email.php: IHQ_LEGACY_TELEGRAM_EMAIL_DOMAIN; ihq_is_placeholder_email() matches it too (coordinator, 2026-10-15), so existing Telegram accounts are hidden on Profile (ENGR-7611) and not sent to Braze; influencer-role.php reads the constant"
+    status: completed
   - id: tests
     content: "tests/telegram-placeholder-email.test.php: writer (domain, fallback, index loop, old-domain twin) and registration-method reader"
     status: completed
@@ -37,6 +40,8 @@ share that domain; new Telegram accounts always carry `telegram_user_id`, which 
 
 ## Not in scope
 
-- Existing `@email_telegram.com` accounts are not migrated, and `ihq_is_placeholder_email()` is
-  not widened to the old domain (its ENGR-7511 test asserts the old address is not a stand-in).
+- Existing `@email_telegram.com` accounts are not migrated. Instead `ihq_is_placeholder_email()`
+  also matches the legacy domain (requested by the coordinator so ENGR-7611 hides it on Profile).
+  This reverses one ENGR-7511 assertion in tests/placeholder-email.test.php ("old Telegram fake
+  email is not a stand-in"), an intent change flagged in the PR.
 - account-api's Telegram writer is in account-api#564; the guest placeholder waits for PO-3155.

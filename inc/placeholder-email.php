@@ -22,14 +22,25 @@ if ( ! defined( 'ABSPATH' ) ) {
 const IHQ_PLACEHOLDER_EMAIL_DOMAIN = 'chat.invalid';
 
 /**
+ * Telegram registrations made before ENGR-7549 got <handle>@email_telegram.com.
+ * Nothing mints it any more; it is still read so those accounts count as
+ * stand-ins too.
+ */
+const IHQ_LEGACY_TELEGRAM_EMAIL_DOMAIN = 'email_telegram.com';
+
+/**
  * Whether an address is a stand-in rather than one the influencer gave us.
  *
  * @param string $email Email address.
  * @return bool
  */
 function ihq_is_placeholder_email( $email ) {
-	$suffix = '@' . IHQ_PLACEHOLDER_EMAIL_DOMAIN;
-	$email  = strtolower( trim( (string) $email ) );
-	return strlen( $email ) > strlen( $suffix )
-		&& substr( $email, -strlen( $suffix ) ) === $suffix;
+	$email = strtolower( trim( (string) $email ) );
+	foreach ( array( IHQ_PLACEHOLDER_EMAIL_DOMAIN, IHQ_LEGACY_TELEGRAM_EMAIL_DOMAIN ) as $domain ) {
+		$suffix = '@' . $domain;
+		if ( strlen( $email ) > strlen( $suffix ) && substr( $email, -strlen( $suffix ) ) === $suffix ) {
+			return true;
+		}
+	}
+	return false;
 }

@@ -139,7 +139,10 @@ check( 'helper: case and whitespace ignored', ihq_is_placeholder_email( '  ABC@C
 check( 'helper: real email is not a stand-in', ihq_is_placeholder_email( REAL_EMAIL ), false );
 check( 'helper: bare domain is not a stand-in', ihq_is_placeholder_email( '@chat.invalid' ), false );
 check( 'helper: look-alike domain is not a stand-in', ihq_is_placeholder_email( 'ann@notchat.invalid' ), false );
-check( 'helper: old Telegram fake email is not a stand-in', ihq_is_placeholder_email( 'ann@email_telegram.com' ), false );
+check( 'helper: old Telegram fake email is a stand-in (ENGR-7549)', ihq_is_placeholder_email( 'ann@email_telegram.com' ), true );
+check( 'helper: old Telegram domain is case-insensitive', ihq_is_placeholder_email( ' Ann@Email_Telegram.COM ' ), true );
+check( 'helper: bare old Telegram domain is not a stand-in', ihq_is_placeholder_email( '@email_telegram.com' ), false );
+check( 'helper: look-alike old Telegram domain is not a stand-in', ihq_is_placeholder_email( 'ann@myemail_telegram.com' ), false );
 check( 'helper: non-string is not a stand-in', ihq_is_placeholder_email( null ), false );
 
 // --- Stand-in: not verified, not sent to Braze, not looked up in Braze. ---
