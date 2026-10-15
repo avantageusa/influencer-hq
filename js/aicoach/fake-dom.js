@@ -187,6 +187,10 @@ export class FakeElement {
 		siblings.splice( siblings.indexOf( this ), 1 );
 		this.parentNode = null;
 	}
+	// True while the element is in the document, as the DOM's isConnected is.
+	get isConnected() {
+		return this.ownerDocument.documentElement.contains( this );
+	}
 	contains( node ) {
 		let current = node;
 		while ( current ) {
