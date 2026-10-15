@@ -432,29 +432,36 @@ add_action( 'wp_ajax_nopriv_ihq_verify_telegram_id_token', 'ihq_handle_verify_te
 /**
  * Build a deterministic fake email from Telegram username/id.
  *
+ * The domain is the reserved stand-in one (inc/placeholder-email.php), so the
+ * address can never reach a real mail server and every placeholder check
+ * recognises it (ENGR-7549). Accounts made before that keep their
+ * @email_telegram.com address.
+ *
  * @param string $telegram_username Username with/without @.
  * @param int    $telegram_user_id  Numeric Telegram user id.
  * @return string
  */
 function ihq_telegram_build_fake_email( $telegram_username, $telegram_user_id ) {
+	$suffix = '@' . IHQ_PLACEHOLDER_EMAIL_DOMAIN;
+
 	$base = strtolower( ltrim( (string) $telegram_username, '@' ) );
 	$base = preg_replace( '/[^a-z0-9._-]/', '', $base );
 	if ( '' === $base ) {
 		$base = 'tg' . (int) $telegram_user_id;
 	}
-	$candidate = $base . '@email_telegram.com';
+	$candidate = $base . $suffix;
 	if ( ! email_exists( $candidate ) ) {
 		return $candidate;
 	}
 	$index = 2;
 	while ( $index < 10000 ) {
-		$try = $base . $index . '@email_telegram.com';
+		$try = $base . $index . $suffix;
 		if ( ! email_exists( $try ) ) {
 			return $try;
 		}
 		++$index;
 	}
-	return 'tg' . (int) $telegram_user_id . '@email_telegram.com';
+	return 'tg' . (int) $telegram_user_id . $suffix;
 }
 
 /**

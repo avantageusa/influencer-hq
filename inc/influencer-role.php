@@ -451,6 +451,9 @@ add_action('save_post_challenge', 'save_challenge_meta_box');
  * Resolve how an influencer signed up: Telegram or email.
  *
  * Telegram users store telegram_user_id and/or use a faux @email_telegram.com address.
+ * Telegram accounts made since ENGR-7549 get the shared stand-in domain instead
+ * (inc/placeholder-email.php), which chat-only AI Coach accounts share, so they
+ * are recognised by telegram_user_id alone; the domain check is for older accounts.
  *
  * @param int $user_id WordPress user ID.
  * @return string 'telegram', 'email', or 'unknown'.
