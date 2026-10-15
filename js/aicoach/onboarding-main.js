@@ -4,7 +4,7 @@
  * Runs only when inc/portal-onboarding-shell.php has rendered the layer over the Coach page.
  * Builds the frame (narrator, string table, shell), then installs the plug-in modules the
  * server listed (screens, language selector, preloading) and tells them the onboarding is
- * ready. The screen engine (ENGR-7566) starts the first screen on 'ready'.
+ * ready, then the screen engine (ENGR-7566) opens the saved stage or screen 1.
  *
  * Bare specifiers resolve through the import map WordPress prints from the modules
  * registered in inc/portal-onboarding-shell.php.
@@ -17,6 +17,10 @@ import { createStringTable, SHELL_STRINGS_EN, FALLBACK_LOCALE } from '@ihq/aicoa
 import { createEmitter } from '@ihq/aicoach/onboarding-events';
 import { createShell } from '@ihq/aicoach/onboarding-shell';
 import { CONFIG_ELEMENT_ID, parseConfig, createApi, installModules } from '@ihq/aicoach/onboarding-boot';
+import { SEQUENCE, startStage, nextStage } from '@ihq/aicoach/onboarding-sequence';
+import { createHistoryGuard } from '@ihq/aicoach/onboarding-history';
+import { postJson } from '@ihq/aicoach/onboarding-request';
+import { createEngine, ENGINE_STRINGS_EN } from '@ihq/aicoach/onboarding-engine';
 
 async function start() {
 	const root = document.getElementById( 'ihq-onboarding' );
@@ -28,6 +32,7 @@ async function start() {
 
 	const strings = createStringTable();
 	strings.add( FALLBACK_LOCALE, SHELL_STRINGS_EN );
+	strings.add( FALLBACK_LOCALE, ENGINE_STRINGS_EN );
 	const events = createEmitter();
 	const api = createApi( { config, events, strings } );
 
@@ -48,9 +53,23 @@ async function start() {
 	api.shell = shell;
 	events.on( 'locale', () => shell.applyStrings() );
 
+	const engine = createEngine( {
+		api,
+		sequence: { SEQUENCE, startStage, nextStage },
+		document,
+		postJson,
+		fetchFn: window.fetch.bind( window ),
+		historyGuard: createHistoryGuard( { history: window.history, window } ),
+	} );
+	api.screens = { register: engine.register };
+	api.advance = engine.advance;
+	api.save = engine.save;
+	api.complete = engine.complete;
+
 	await installModules( { ids: config.modules, importFn: ( id ) => import( id ), api } );
 	shell.applyStrings();
 	events.emit( 'ready', api );
+	engine.start();
 }
 
 start();

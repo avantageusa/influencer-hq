@@ -153,15 +153,36 @@ function ihq_portal_onboarding_render_shell( $context ) {
 		return;
 	}
 	$plugin_ids = ihq_portal_onboarding_enqueue_modules();
-	$css_path   = get_template_directory() . '/css/portal-onboarding.css';
 	get_template_part(
 		'template-parts/portal-onboarding',
 		null,
 		array(
 			'config'       => ihq_portal_onboarding_shell_config( $context, $plugin_ids ),
 			'portrait_url' => ihq_portal_onboarding_portrait_url(),
-			'css_url'      => add_query_arg( 'ver', file_exists( $css_path ) ? filemtime( $css_path ) : _S_VERSION, get_template_directory_uri() . '/css/portal-onboarding.css' ),
+			'css_urls'     => ihq_portal_onboarding_stylesheet_urls(),
 		)
 	);
+}
+
+/**
+ * The onboarding stylesheets, versioned by file time: css/portal-onboarding.css (the frame)
+ * first, then each screen group's css/portal-onboarding-*.css in name order. Like the
+ * plug-in modules, a screen group adds its own file instead of editing a shared one.
+ *
+ * @return string[]
+ */
+function ihq_portal_onboarding_stylesheet_urls() {
+	$dir   = get_template_directory() . '/css/';
+	$uri   = get_template_directory_uri() . '/css/';
+	$files = glob( $dir . 'portal-onboarding-*.css' ) ?: array();
+	sort( $files );
+	if ( file_exists( $dir . 'portal-onboarding.css' ) ) {
+		array_unshift( $files, $dir . 'portal-onboarding.css' );
+	}
+	$urls = array();
+	foreach ( $files as $path ) {
+		$urls[] = add_query_arg( 'ver', (string) filemtime( $path ), $uri . basename( $path ) );
+	}
+	return $urls;
 }
 add_action( 'ihq_portal_onboarding_render_layer', 'ihq_portal_onboarding_render_shell' );

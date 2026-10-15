@@ -5,7 +5,7 @@
  * js/aicoach/onboarding-main.js. Elements the scripts use carry a data-onb name; text the
  * string table can translate carries data-onb-string (text) or data-onb-label (aria-label).
  *
- * Expects $args: config (array), portrait_url (string), css_url (string).
+ * Expects $args: config (array), portrait_url (string), css_urls (string[]).
  *
  * @package influencer-hq
  */
@@ -20,7 +20,9 @@ $ihq_onb_logout   = isset( $ihq_onb_config['logoutUrl'] ) ? $ihq_onb_config['log
 $ihq_onb_portrait = isset( $args['portrait_url'] ) ? $args['portrait_url'] : '';
 ?>
 <?php /* In the body on purpose: the layer is only rendered for the few page views that need it. A body stylesheet holds rendering of what follows until it has loaded, so the Coach page does not flash first. */ ?>
-<link rel="stylesheet" href="<?php echo esc_url( isset( $args['css_url'] ) ? $args['css_url'] : '' ); ?>">
+<?php foreach ( isset( $args['css_urls'] ) && is_array( $args['css_urls'] ) ? $args['css_urls'] : array() as $ihq_onb_css_url ) : ?>
+<link rel="stylesheet" href="<?php echo esc_url( $ihq_onb_css_url ); ?>">
+<?php endforeach; ?>
 <?php /* The design's ExtraBold and Black weights, which the shared portal fonts link does not load (same link as page-home-aicoach.php). */ ?>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;600;800&family=Inter:ital,wght@1,300;0,800;0,900&display=swap" rel="stylesheet">
 <div class="ihq-onb" id="ihq-onboarding" role="dialog" aria-modal="true" aria-label="<?php esc_attr_e( 'Getting started with Sami', 'influencer-hq' ); ?>">
