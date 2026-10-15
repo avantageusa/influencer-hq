@@ -3,6 +3,10 @@
  * Loaded after css/portal-onboarding.css by the shell.
  */
 
+.ihq-onb {
+	--ihq-onb-diamond-off: #555;
+}
+
 .ihq-onb-q__question {
 	margin: 0;
 	color: var(--ihq-onb-yellow);
@@ -58,7 +62,7 @@
 .ihq-onb-q__diamonds {
 	display: inline-flex;
 	gap: 4px;
-	color: #555;
+	color: var(--ihq-onb-diamond-off);
 }
 
 .ihq-onb-q__diamond.is-on {

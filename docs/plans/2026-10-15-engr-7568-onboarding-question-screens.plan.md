@@ -22,6 +22,9 @@ todos:
   - id: verify
     content: test:js, lint on touched files
     status: completed
+  - id: review-fixes
+    content: PR #126 review — serial answer-save queue, radio keyboard pattern, sub group named by its revealing option, no write on re-pick, named diamond token and glyph, failed-save test
+    status: completed
 ---
 
 # [ENGR-7568] Question screens 3, 4, 5 and 12 with conditional sub-options

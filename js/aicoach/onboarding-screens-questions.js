@@ -9,7 +9,8 @@
  * Each answer is saved to the account store as soon as it is given, as its enum value (the
  * values ihq_portal_onboarding_answer_values() accepts, inc/portal-onboarding-progress.php),
  * so a drop-out's answers are kept and reach Braze (ENGR-7573). A screen does not advance
- * until it has a complete answer.
+ * until it has a complete answer. Answer saves are sent one at a time: the store merges by
+ * read-modify-write, so two overlapping saves could drop an answer or revive a cleared one.
  *
  * A plug-in module: the entry installs it, and it registers its screens with the engine.
  */
@@ -48,6 +49,13 @@ export const QUESTION_STRINGS_EN = {
 
 /** The diamonds shown next to a baccarat answer, as its XP level. */
 const MAX_DIAMONDS = 3;
+const DIAMOND_GLYPH = '◆';
+
+/** The radio keyboard pattern: these keys move the choice to the next or previous option. */
+const NEXT_OPTION_KEYS = Object.freeze( [ 'ArrowDown', 'ArrowRight' ] );
+const PREVIOUS_OPTION_KEYS = Object.freeze( [ 'ArrowUp', 'ArrowLeft' ] );
+
+const GROUP = Object.freeze( { main: 'main', sub: 'sub' } );
 
 /**
  * The four questions as data: the stored field, the text, and each option's stored value.
@@ -131,13 +139,18 @@ export function pickMain( question, answer, value ) {
 	if ( ! option ) {
 		return { answer, save: null };
 	}
+	const keepsSub = Boolean( option.reveals ) && answer.main === value;
+	const next = { main: value, sub: keepsSub ? answer.sub : '' };
+	// Re-picking the current answer changes nothing, so it is not stored again.
+	if ( next.main === answer.main && next.sub === answer.sub ) {
+		return { answer, save: null };
+	}
 	const save = { [ question.field ]: value };
 	const subField = revealedField( question );
-	const keepsSub = Boolean( option.reveals ) && answer.main === value;
-	if ( subField && ! keepsSub && '' !== answer.sub ) {
+	if ( subField && '' !== answer.sub ) {
 		save[ subField ] = null;
 	}
-	return { answer: { main: value, sub: keepsSub ? answer.sub : '' }, save };
+	return { answer: next, save };
 }
 
 /**
@@ -152,6 +165,9 @@ export function pickSub( question, answer, value ) {
 	const option = question.options.find( ( candidate ) => candidate.value === answer.main );
 	const valid = option && option.reveals && option.reveals.options.some( ( candidate ) => candidate.value === value );
 	if ( ! valid ) {
+		return { answer, save: null };
+	}
+	if ( value === answer.sub ) {
 		return { answer, save: null };
 	}
 	return { answer: { main: answer.main, sub: value }, save: { [ option.reveals.field ]: value } };
@@ -195,7 +211,18 @@ export function storedAnswer( question, answers ) {
 	return { main, sub };
 }
 
-function optionButton( { document, text, option, group } ) {
+/**
+ * The id of the label of an option that reveals sub-options; the sub group is named by it.
+ *
+ * @param {string} headingId The question heading's id.
+ * @param {Object} option    The revealing option.
+ * @return {string} The id.
+ */
+function revealingLabelId( headingId, option ) {
+	return headingId + '-' + option.value;
+}
+
+function optionButton( { document, text, option, group, headingId } ) {
 	const button = document.createElement( 'button' );
 	button.setAttribute( 'type', 'button' );
 	button.setAttribute( 'role', 'radio' );
@@ -203,7 +230,11 @@ function optionButton( { document, text, option, group } ) {
 	button.setAttribute( 'data-group', group );
 	button.setAttribute( 'data-value', option.value );
 	button.className = 'ihq-onb-q__option';
-	button.append( text( 'span', option.labelKey, 'ihq-onb-q__label' ) );
+	const label = text( 'span', option.labelKey, 'ihq-onb-q__label' );
+	if ( option.reveals ) {
+		label.setAttribute( 'id', revealingLabelId( headingId, option ) );
+	}
+	button.append( label );
 	if ( option.diamonds ) {
 		const level = document.createElement( 'span' );
 		level.className = 'ihq-onb-q__diamonds';
@@ -211,7 +242,7 @@ function optionButton( { document, text, option, group } ) {
 		for ( let index = 0; index < MAX_DIAMONDS; index++ ) {
 			const diamond = document.createElement( 'span' );
 			diamond.className = index < option.diamonds ? 'ihq-onb-q__diamond is-on' : 'ihq-onb-q__diamond';
-			diamond.textContent = '◆';
+			diamond.textContent = DIAMOND_GLYPH;
 			level.append( diamond );
 		}
 		button.append( level );
@@ -219,23 +250,102 @@ function optionButton( { document, text, option, group } ) {
 	return button;
 }
 
-function optionGroup( { document, text, options, group, labelledBy } ) {
+function optionGroup( { document, text, options, group, labelledBy, headingId } ) {
 	const element = document.createElement( 'div' );
 	element.setAttribute( 'role', 'radiogroup' );
 	element.setAttribute( 'aria-labelledby', labelledBy );
 	element.className = 'ihq-onb-q__options';
 	element.setAttribute( 'data-group', group );
-	options.forEach( ( option ) => element.append( optionButton( { document, text, option, group } ) ) );
+	options.forEach( ( option ) => element.append( optionButton( { document, text, option, group, headingId } ) ) );
 	return element;
+}
+
+/**
+ * Marks the selected option of a group, and makes it the group's one Tab stop (the first
+ * option when none is selected), as the radio pattern expects.
+ *
+ * @param {Element} group    A radiogroup from optionGroup().
+ * @param {string}  selected The selected value ('' for none).
+ */
+function paintGroup( group, selected ) {
+	const buttons = Array.from( group.querySelectorAll( 'button' ) );
+	const hasSelected = buttons.some( ( button ) => button.getAttribute( 'data-value' ) === selected );
+	buttons.forEach( ( button, index ) => {
+		const isChecked = button.getAttribute( 'data-value' ) === selected;
+		const isTabStop = isChecked || ( ! hasSelected && 0 === index );
+		button.setAttribute( 'aria-checked', isChecked ? 'true' : 'false' );
+		button.setAttribute( 'tabindex', isTabStop ? '0' : '-1' );
+	} );
+}
+
+/**
+ * How far an arrow key moves the choice.
+ *
+ * @param {string} key KeyboardEvent.key.
+ * @return {number} 1, -1, or 0 for a key that does not move it.
+ */
+function arrowStep( key ) {
+	if ( NEXT_OPTION_KEYS.includes( key ) ) {
+		return 1;
+	}
+	if ( PREVIOUS_OPTION_KEYS.includes( key ) ) {
+		return -1;
+	}
+	return 0;
+}
+
+/**
+ * Wires a group's clicks and arrow keys to pick(value). Arrows wrap around and move focus
+ * with the choice.
+ *
+ * @param {Element}  group A radiogroup from optionGroup().
+ * @param {Function} pick  Called with the picked value.
+ */
+function listenToGroup( group, pick ) {
+	group.addEventListener( 'click', ( event ) => {
+		const button = event.target.closest( 'button' );
+		if ( button ) {
+			pick( button.getAttribute( 'data-value' ) );
+		}
+	} );
+	group.addEventListener( 'keydown', ( event ) => {
+		const step = arrowStep( event.key );
+		const current = event.target.closest( 'button' );
+		if ( 0 === step || ! current ) {
+			return;
+		}
+		event.preventDefault();
+		const buttons = Array.from( group.querySelectorAll( 'button' ) );
+		const index = ( buttons.indexOf( current ) + step + buttons.length ) % buttons.length;
+		const target = buttons[ index ];
+		pick( target.getAttribute( 'data-value' ) );
+		target.focus();
+	} );
+}
+
+/**
+ * A queue that runs tasks one after another, each once the one before has settled.
+ *
+ * @return {Function} enqueue( task ): runs task() after the earlier tasks; returns its promise.
+ */
+export function createSerialQueue() {
+	let previous = Promise.resolve();
+	return function enqueue( task ) {
+		const run = previous.then( task );
+		// A failed task must not stop the ones queued after it; the caller still gets its rejection.
+		previous = run.catch( () => undefined );
+		return run;
+	};
 }
 
 /**
  * The renderer of one question screen.
  *
- * @param {Object} question One of QUESTIONS.
+ * @param {Object}   question    One of QUESTIONS.
+ * @param {Function} enqueueSave From createSerialQueue(), shared by the screens.
  * @return {Function} An engine render().
  */
-function renderQuestion( question ) {
+function renderQuestion( question, enqueueSave ) {
 	return function( { container, api, text } ) {
 		const document = container.ownerDocument;
 		const headingId = 'ihq-onb-q-' + question.id;
@@ -243,12 +353,14 @@ function renderQuestion( question ) {
 		heading.setAttribute( 'id', headingId );
 		container.append( heading );
 
-		const main = optionGroup( { document, text, options: question.options, group: 'main', labelledBy: headingId } );
+		const main = optionGroup( { document, text, options: question.options, group: GROUP.main, labelledBy: headingId, headingId } );
 		container.append( main );
 
 		const revealing = question.options.find( ( option ) => option.reveals );
-		const sub = revealing ? optionGroup( { document, text, options: revealing.reveals.options, group: 'sub', labelledBy: headingId } ) : null;
-		if ( sub ) {
+		let sub = null;
+		if ( revealing ) {
+			// Named by the option that reveals it, not the question, so it is announced as its follow-up.
+			sub = optionGroup( { document, text, options: revealing.reveals.options, group: GROUP.sub, labelledBy: revealingLabelId( headingId, revealing ), headingId } );
 			sub.classList.add( 'ihq-onb-q__options--sub' );
 			container.append( sub );
 		}
@@ -262,16 +374,12 @@ function renderQuestion( question ) {
 		let answer = storedAnswer( question, api.state.answers );
 
 		function paint() {
-			main.querySelectorAll( 'button' ).forEach( ( button ) => {
-				button.setAttribute( 'aria-checked', button.getAttribute( 'data-value' ) === answer.main ? 'true' : 'false' );
-			} );
+			paintGroup( main, answer.main );
 			if ( ! sub ) {
 				return;
 			}
 			sub.hidden = answer.main !== revealing.value;
-			sub.querySelectorAll( 'button' ).forEach( ( button ) => {
-				button.setAttribute( 'aria-checked', button.getAttribute( 'data-value' ) === answer.sub ? 'true' : 'false' );
-			} );
+			paintGroup( sub, answer.sub );
 		}
 
 		function apply( result ) {
@@ -281,22 +389,13 @@ function renderQuestion( question ) {
 			answer = result.answer;
 			error.hidden = true;
 			paint();
-			api.save( { answers: result.save } );
+			const partial = { answers: result.save };
+			enqueueSave( () => api.save( partial ) );
 		}
 
-		main.addEventListener( 'click', ( event ) => {
-			const button = event.target.closest( 'button' );
-			if ( button ) {
-				apply( pickMain( question, answer, button.getAttribute( 'data-value' ) ) );
-			}
-		} );
+		listenToGroup( main, ( value ) => apply( pickMain( question, answer, value ) ) );
 		if ( sub ) {
-			sub.addEventListener( 'click', ( event ) => {
-				const button = event.target.closest( 'button' );
-				if ( button ) {
-					apply( pickSub( question, answer, button.getAttribute( 'data-value' ) ) );
-				}
-			} );
+			listenToGroup( sub, ( value ) => apply( pickSub( question, answer, value ) ) );
 		}
 		paint();
 
@@ -318,7 +417,8 @@ function renderQuestion( question ) {
  * @return {Object[]} Engine screen definitions.
  */
 export function questionScreens() {
-	return QUESTIONS.map( ( question ) => ( { id: question.id, render: renderQuestion( question ) } ) );
+	const enqueueSave = createSerialQueue();
+	return QUESTIONS.map( ( question ) => ( { id: question.id, render: renderQuestion( question, enqueueSave ) } ) );
 }
 
 /**
