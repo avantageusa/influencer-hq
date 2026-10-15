@@ -376,8 +376,31 @@
 
     showCodeEntry();
 
-    if (!brazeAlreadySent() && typeof window.ihqVisitorIntentIssueVerification === 'function') {
-      window.ihqVisitorIntentIssueVerification({ gateId: gateId });
+    // Header Login is the way back in after logout. The 30-day "code already
+    // issued" cookie would otherwise open this prompt and send nothing.
+    // Force a send, the same email path the portal login page uses, when a
+    // preferred email is on file.
+    var forceSend = gateId === 'header_login';
+    if ((forceSend || !brazeAlreadySent()) && typeof window.ihqVisitorIntentIssueVerification === 'function') {
+      var issued = window.ihqVisitorIntentIssueVerification({
+        gateId: gateId,
+        force: forceSend,
+      });
+      if (forceSend && issued && typeof issued.then === 'function') {
+        issued.then(function (data) {
+          if (!data) {
+            showCodeError('We could not send your code. Please try again.');
+            return;
+          }
+          if (data.success || data.skipped) {
+            return;
+          }
+          var msg = (data.data && data.data.message)
+            ? data.data.message
+            : 'We could not send your code. Please try again.';
+          showCodeError(msg);
+        });
+      }
     }
   }
 
