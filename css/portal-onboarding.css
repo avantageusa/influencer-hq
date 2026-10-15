@@ -2,9 +2,10 @@
  * Portal onboarding layer (ENGR-7565, PO-3063): the frame every
  * onboarding screen shares. Markup: template-parts/portal-onboarding.php.
  *
- * Sizes and colours follow the landing flow's version of the same frame
- * (PO-3062 design alignment, page-home-aicoach.php), drawn for a 398 px
- * wide phone. On tablet and desktop the phone layout is kept as a centred
+ * Sizes and colours are the design's at 398 px wide (Figma instance
+ * 46893:117629, checked at 398 px for ENGR-7565), the same frame the
+ * landing flow draws (PO-3062 design alignment, page-home-aicoach.php).
+ * On tablet and desktop the phone layout is kept as a centred
  * fixed-width column (evaluation OQ11), switching at the portal's existing
  * 767 px and 1024 px queries: min-width 768px and 1025px below are their
  * complements. Do not add another width here.
@@ -72,15 +73,20 @@ html.ihq-onb-open body {
 	}
 }
 
-/* Header: hamburger, logo, sound, globe. */
+/*
+ * Header: hamburger, brand, sound, globe, 70 px high (the design's
+ * IHQ_Mobile_Header). The icons are centred 22 px from the top, so each
+ * button is 44 px high from the top edge. The two sides share what the
+ * brand leaves equally, which puts the brand where the design does at
+ * 398 px; their spacing is margin, not padding, so the split stays equal.
+ */
 .ihq-onb__header {
 	position: sticky;
 	top: 0;
 	z-index: 2;
+	box-sizing: border-box;
 	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 12px 16px;
+	height: 70px;
 	background: var(--ihq-onb-page-bg);
 }
 
@@ -88,23 +94,109 @@ html.ihq-onb-open body {
 	position: relative;
 	display: flex;
 	flex: 1;
-	align-items: center;
-	gap: 12px;
+	align-items: flex-start;
+	min-width: 0;
 }
 
+/* The hamburger's bars start 22 px from the edge: a 44 px button 10 px in. */
+.ihq-onb__header-side:not(.ihq-onb__header-side--end) > .ihq-onb__icon-button {
+	margin-left: 10px;
+}
+
+/*
+ * The sound and globe icons sit 27 px apart, centre to centre, with the
+ * globe 22 px from the edge. Two 44 px buttons do not fit there, so these
+ * two are 26 px wide (still above the 24 px minimum target size).
+ */
 .ihq-onb__header-side--end {
 	justify-content: flex-end;
+	gap: 1px;
 }
 
-.ihq-onb__logo {
-	flex: 0 1 180px;
-	text-align: center;
+/*
+ * 18 px at 398 px wide and up. On a narrower phone the side is narrower
+ * than the icons plus 18 px, so the margin gives way first, keeping the
+ * icons clear of the brand: half the brand's 256 px plus the 53 px icon
+ * pair is 181 px, the half-width below which the margin shrinks to 0.
+ */
+.ihq-onb__header-side--end > :last-child {
+	margin-right: clamp(0px, 50vw - 181px, 18px);
 }
 
-.ihq-onb__logo img {
+.ihq-onb__header-side--end .ihq-onb__icon-button {
+	width: 26px;
+	min-width: 26px;
+}
+
+/*
+ * Full header height, so the language list opens under the header, as
+ * the menu does.
+ */
+.ihq-onb__header-side--end > .ihq-onb__language {
+	align-self: stretch;
+}
+
+.ihq-onb__icon-button img,
+.ihq-onb__icon-button svg {
 	display: block;
-	width: 100%;
-	height: auto;
+}
+
+/*
+ * The brand as the design draws it: the name, the "ih" mark with its red
+ * lines, and the domain, in Inter. The offsets inside it are the design's.
+ */
+.ihq-onb__brand {
+	display: flex;
+	flex: 0 0 252px;
+	align-items: flex-start;
+	gap: 10px;
+	margin-left: 4px;
+	color: #fff;
+	font-family: Inter, "Be Vietnam Pro", sans-serif;
+	font-size: 15px;
+	font-weight: 600;
+	line-height: normal;
+}
+
+.ihq-onb__brand-name {
+	flex: 0 0 107px;
+	margin-top: 20px;
+}
+
+.ihq-onb__brand-domain {
+	flex: 0 0 73px;
+	margin-top: 30px;
+	text-align: right;
+}
+
+.ihq-onb__brand-mark {
+	position: relative;
+	flex: 0 0 52px;
+	height: 70px;
+}
+
+.ihq-onb__brand-lines {
+	position: absolute;
+	top: 18px;
+	left: 13px;
+}
+
+.ihq-onb__brand-ih,
+.ihq-onb__brand-tm {
+	position: absolute;
+	font-weight: 800;
+}
+
+.ihq-onb__brand-ih {
+	top: 36px;
+	left: 0;
+	font-size: 29px;
+}
+
+.ihq-onb__brand-tm {
+	top: 59px;
+	left: 37px;
+	font-size: 5px;
 }
 
 .ihq-onb__icon-button {
@@ -207,6 +299,7 @@ html.ihq-onb-open body {
 	position: relative;
 	width: 100%;
 	overflow: hidden;
+	margin-top: 14px;
 	background: #12131a;
 	aspect-ratio: 398 / 182;
 }
@@ -240,7 +333,12 @@ html.ihq-onb-open body {
 	background: var(--ihq-onb-commentary-bg);
 }
 
+/*
+ * The design's text box is 197 px wide, so a line breaks where the
+ * design's does.
+ */
 .ihq-onb__subtitle {
+	max-width: 197px;
 	margin: 0;
 	font-family: Inter, "Be Vietnam Pro", sans-serif;
 	font-size: 14px;
@@ -286,6 +384,20 @@ html.ihq-onb-open body {
 	text-align: center;
 	text-decoration: none;
 	cursor: pointer;
+}
+
+/*
+ * The design's Save button: 230 by 36 px, Inter SemiBold 14 px, centred.
+ * It grows wider for a longer translation rather than wrapping.
+ */
+.ihq-onb__button--save {
+	width: max-content;
+	min-width: 230px;
+	max-width: 100%;
+	padding: 9px 12px;
+	font-family: Inter, "Be Vietnam Pro", sans-serif;
+	font-size: 14px;
+	line-height: 18px;
 }
 
 .ihq-onb__button:disabled {
