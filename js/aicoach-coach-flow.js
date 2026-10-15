@@ -312,7 +312,10 @@ function tightenAicoachTopPadding() {
         bottom = stickyHeader.getBoundingClientRect().bottom;
     }
     if ( bottom > 0 ) {
-        content.style.setProperty( 'padding-top', ( bottom + AICOACH_HEADER_GAP_PX ) + 'px', 'important' );
+        // The stylesheet can set its own gap (the wide layout has none); otherwise the phone value.
+        const cssGap = parseFloat( getComputedStyle( content ).getPropertyValue( '--aicoach-header-gap' ) );
+        const gap = Number.isNaN( cssGap ) ? AICOACH_HEADER_GAP_PX : cssGap;
+        content.style.setProperty( 'padding-top', ( bottom + gap ) + 'px', 'important' );
     }
 }
 window.addEventListener( 'load', tightenAicoachTopPadding );

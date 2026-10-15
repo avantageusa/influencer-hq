@@ -51,6 +51,8 @@ $aicoach_img = array(
 	'back-arrow'         => $aicoach_design_dir . '/back-arrow.svg',
 	'globe'              => $aicoach_design_dir . '/globe.webp',
 	'sound'              => $aicoach_design_dir . '/sound.svg',
+	'banner-desktop'     => $aicoach_design_dir . '/banner-desktop.webp',
+	'banner-tablet'      => $aicoach_design_dir . '/banner-tablet.webp',
 );
 
 $aicoach_tiers = array(
@@ -163,15 +165,20 @@ $aicoach_channels = array(
                 <?php /* PO-3062 (design alignment) — Sami is a full-width banner under the header, with the commentary box right under it. The Ask Sami button is added to .aicoach-banner by js/aicoach-coach-flow.js. */ ?>
                 <div class="aicoach-banner">
                     <div class="aicoach-avatar-wrap" id="aicoach-avatar-wrap" data-status="idle">
-                        <img
-                            class="aicoach-portrait"
-                            id="aicoach-portrait"
-                            src="<?php echo esc_url( $aicoach_img['portrait'] ); ?>"
-                            alt="<?php esc_attr_e( 'AI Coach', 'influencer-hq' ); ?>"
-                            width="600"
-                            height="400"
-                            fetchpriority="high"
-                        >
+                        <?php /* The banner is the design's wide picture on a desktop (1025 px is the desktop breakpoint the portal pages already use), the tablet picture from 600 px up, and the 3:2 portrait on a phone. */ ?>
+                        <picture>
+                            <source media="(min-width: 1025px)" srcset="<?php echo esc_url( $aicoach_img['banner-desktop'] ); ?>">
+                            <source media="(min-width: 600px)" srcset="<?php echo esc_url( $aicoach_img['banner-tablet'] ); ?>">
+                            <img
+                                class="aicoach-portrait"
+                                id="aicoach-portrait"
+                                src="<?php echo esc_url( $aicoach_img['portrait'] ); ?>"
+                                alt="<?php esc_attr_e( 'AI Coach', 'influencer-hq' ); ?>"
+                                width="600"
+                                height="400"
+                                fetchpriority="high"
+                            >
+                        </picture>
                         <video class="aicoach-avatar-video" id="aicoach-avatar-video" autoplay playsinline muted></video>
                         <div class="aicoach-avatar-loading" aria-hidden="true"><div class="aicoach-avatar-spinner"></div></div>
                     </div>
@@ -1990,6 +1997,734 @@ $aicoach_channels = array(
     body.page-template-page-home-aicoach-php .aicoach-lang-dropdown {
         left: auto;
         right: 0;
+    }
+
+    /* PO-3062 (tablet and desktop) — from 600 px wide the header is the wide design's: a top row with
+    the icons and the brand row under it, drawn at 1920 px and scaled with the window (one unit is
+    1 px at 1920 wide, and never more). 600 px is a width the portal pages already use as a
+    boundary; the phone layout above stays below it. */
+    @media (min-width: 600px) {
+        body.page-template-page-home-aicoach-php {
+            --px: min(0.052083vw, 1px);
+        }
+
+        #portal-content.aicoach-page {
+            --aicoach-header-gap: 0px;
+            max-width: none;
+        }
+
+        .aicoach {
+            max-width: none;
+        }
+
+        /* Header: a top row with the icons, the brand row under it, 218 px high at 1920. */
+        body.page-template-page-home-aicoach-php .sticky-header .container {
+            max-width: none !important;
+            padding: 0 !important;
+        }
+
+        body.page-template-page-home-aicoach-php .sticky-header .container > .d-flex {
+            position: relative;
+            height: calc(218 * var(--px));
+            padding: 0;
+        }
+
+        body.page-template-page-home-aicoach-php .sticky-header .container > .d-flex > div:first-child {
+            position: absolute;
+            left: calc(164 * var(--px));
+            top: calc(11 * var(--px));
+            flex: none;
+        }
+
+        body.page-template-page-home-aicoach-php .sticky-header .container > .d-flex > div:last-child {
+            position: absolute;
+            right: calc(164 * var(--px));
+            top: calc(9 * var(--px));
+            flex: none;
+        }
+
+        body.page-template-page-home-aicoach-php .logo-container {
+            position: absolute;
+            left: calc(158 * var(--px));
+            top: calc(66 * var(--px));
+            text-align: left;
+        }
+
+        body.page-template-page-home-aicoach-php .hamburger-menu {
+            width: calc(41 * var(--px));
+            height: calc(26 * var(--px));
+        }
+
+        body.page-template-page-home-aicoach-php .hamburger-menu::before {
+            width: 100%;
+            height: calc(3 * var(--px));
+            box-shadow: 0 calc(11.5 * var(--px)) 0 #fff, 0 calc(23 * var(--px)) 0 #fff;
+        }
+
+        body.page-template-page-home-aicoach-php .desktop-header-right-items {
+            gap: calc(30 * var(--px));
+        }
+
+        body.page-template-page-home-aicoach-php .header-volume-btn,
+        body.page-template-page-home-aicoach-php .header-volume-wrap {
+            width: calc(36 * var(--px));
+            height: calc(32 * var(--px));
+        }
+
+        body.page-template-page-home-aicoach-php .aicoach-lang-btn {
+            width: calc(40 * var(--px));
+            height: calc(40 * var(--px));
+        }
+
+        /* Brand row: name, mark and domain sit at fixed places of the design; the mark is drawn
+        here at 150 x 140 at design size (the phone version has its own pixel sizes). */
+        .ihq-landing-brand {
+            margin-left: 0;
+            padding-top: 0;
+            justify-content: flex-start;
+            gap: 0;
+            font-size: calc(55 * var(--px));
+        }
+
+        .ihq-landing-brand-name {
+            flex: 0 0 calc(780 * var(--px));
+            white-space: nowrap;
+        }
+
+        .ihq-landing-brand-mark {
+            flex: 0 0 calc(150 * var(--px));
+            height: calc(140 * var(--px));
+            margin-right: calc(152 * var(--px));
+        }
+
+        .logo-container .ihq-landing-brand-lines {
+            left: calc(32 * var(--px));
+            width: calc(114 * var(--px));
+            height: calc(84 * var(--px));
+            max-height: none;
+        }
+
+        .ihq-landing-brand-ih {
+            top: calc(56 * var(--px));
+            font-size: calc(60 * var(--px));
+            line-height: calc(70 * var(--px));
+        }
+
+        .ihq-landing-brand-tm {
+            left: calc(102 * var(--px));
+            top: calc(112 * var(--px));
+            font-size: calc(10 * var(--px));
+        }
+
+        .ihq-landing-brand-domain {
+            flex: 0 0 auto;
+            text-align: left;
+            white-space: nowrap;
+        }
+    }
+
+    /* PO-3062 (tablet, portrait) — the iPad frames (mini 744, iPad 810, Pro 11 834 wide) are one
+    design scaled to the screen, so a unit here is 1 px at 744 wide and grows with the window. The
+    screens keep the phone's structure in a centred column under a full-width banner; the header is
+    the shared wide one above, 101 px high at 744 (the 84.5 px of the header plus a gap to the
+    banner). Landscape iPads are 1025 px or wider and take the desktop layout below, which the
+    landscape frames are a scaled copy of. */
+    @media (min-width: 600px) and (max-width: 1024px) {
+        body.page-template-page-home-aicoach-php {
+            --tp: 0.134409vw;
+        }
+
+        body.page-template-page-home-aicoach-php .sticky-header .container > .d-flex {
+            height: calc(260 * var(--px));
+        }
+
+        .aicoach-commentary {
+            position: relative;
+            z-index: 1;
+            width: calc(366 * var(--tp));
+            min-height: calc(100 * var(--tp));
+            margin-top: calc(-11 * var(--tp));
+            padding: calc(8 * var(--tp)) calc(16 * var(--tp));
+        }
+
+        .aicoach-commentary-text {
+            max-width: calc(228 * var(--tp));
+            font-size: calc(17 * var(--tp));
+            line-height: calc(28.4 * var(--tp));
+        }
+
+        .aicoach-ask-wrap {
+            right: calc(24 * var(--tp));
+            bottom: calc(24 * var(--tp));
+        }
+
+        /* The identity frame shows the commentary box, unlike the phone one. */
+        .aicoach:has(.aicoach-panel[data-panel="identity"].is-active) .aicoach-commentary {
+            display: flex;
+        }
+
+        /* The screens are drawn in a column as wide as the phone frame (398 at 744), centred. */
+        .aicoach-panel {
+            box-sizing: border-box;
+            width: calc(398 * var(--tp));
+            margin-inline: auto;
+        }
+
+        .aicoach-panel[data-panel^="competition-"] {
+            width: auto;
+            margin-inline: 0;
+        }
+
+        /* The time ask. */
+        .aicoach-tiers {
+            gap: 0;
+            padding-top: calc(30 * var(--tp));
+        }
+
+        .aicoach-tier + .aicoach-tier {
+            margin-top: calc(23 * var(--tp));
+        }
+
+        .aicoach-tier-head {
+            gap: calc(15 * var(--tp));
+            padding-left: calc(31 * var(--tp));
+        }
+
+        .aicoach-tier-box {
+            width: calc(24 * var(--tp));
+            height: calc(24 * var(--tp));
+        }
+
+        .aicoach-tier-duration {
+            font-size: calc(19.5 * var(--tp));
+        }
+
+        .aicoach-tier-list {
+            margin: calc(11 * var(--tp)) 0 0;
+            padding-left: calc(37 * var(--tp));
+        }
+
+        .aicoach-tier-list li {
+            font-size: calc(13.4 * var(--tp));
+            line-height: calc(20 * var(--tp));
+        }
+
+        /* BTS, Alix, Magic. */
+        .aicoach-story--bts {
+            padding-top: calc(24 * var(--tp));
+        }
+
+        .aicoach-story--bts .aicoach-story-title {
+            font-size: calc(29 * var(--tp));
+        }
+
+        .aicoach-story--bts .aicoach-story-media {
+            width: 69.6%;
+            margin-top: calc(21 * var(--tp));
+        }
+
+        .aicoach-story--bts .aicoach-story-points {
+            padding-left: 13.6%;
+        }
+
+        /* The three competitions: the name in one line, the flag, the lines. */
+        .aicoach-competition {
+            padding-top: calc(13 * var(--tp));
+        }
+
+        .aicoach-competition-name {
+            max-width: none;
+            font-size: calc(28 * var(--tp));
+        }
+
+        .aicoach-flag {
+            width: calc(105 * var(--tp));
+            height: calc(104 * var(--tp));
+            margin-top: calc(31 * var(--tp));
+        }
+
+        .aicoach-competition-format {
+            max-width: calc(262 * var(--tp));
+            margin-top: calc(32 * var(--tp));
+            font-size: calc(24 * var(--tp));
+            line-height: calc(41 * var(--tp));
+        }
+
+        /* We Believe: the coin and the chart in a row, the certificate under them. */
+        .aicoach-believe {
+            padding-top: calc(36 * var(--tp));
+        }
+
+        .aicoach-believe-title {
+            font-size: calc(25.5 * var(--tp));
+        }
+
+        .aicoach-believe-icons {
+            padding: 0 calc(37 * var(--tp));
+            margin-top: calc(50 * var(--tp));
+            row-gap: calc(60 * var(--tp));
+        }
+
+        .aicoach-believe-coin {
+            width: calc(112.5 * var(--tp));
+            height: calc(110.5 * var(--tp));
+        }
+
+        .aicoach-believe-chart {
+            width: calc(99 * var(--tp));
+            height: calc(81 * var(--tp));
+        }
+
+        .aicoach-believe-certificate {
+            width: calc(127 * var(--tp));
+            height: calc(93 * var(--tp));
+        }
+
+        /* Identity and channels. */
+        .aicoach-identity {
+            padding-top: calc(32 * var(--tp));
+        }
+
+        .aicoach-belief {
+            margin-bottom: calc(20 * var(--tp));
+            font-size: calc(15 * var(--tp));
+        }
+
+        .aicoach-identity-title {
+            max-width: calc(260 * var(--tp));
+            margin-bottom: calc(14 * var(--tp));
+            font-size: calc(23 * var(--tp));
+            line-height: calc(35.4 * var(--tp));
+        }
+
+        .aicoach-identity-subtitle {
+            margin-bottom: calc(18 * var(--tp));
+            font-size: calc(11.8 * var(--tp));
+        }
+
+        .aicoach-identity-form {
+            gap: calc(15.3 * var(--tp));
+            width: calc(227 * var(--tp));
+        }
+
+        .aicoach-identity-field {
+            grid-template-columns: calc(72 * var(--tp)) minmax(0, 1fr);
+            height: calc(38 * var(--tp));
+        }
+
+        .aicoach-form-continue,
+        .aicoach-channels .aicoach-form-continue,
+        .aicoach-final .aicoach-form-continue {
+            width: calc(227 * var(--tp));
+            height: calc(38 * var(--tp));
+            margin-top: calc(38 * var(--tp));
+            font-size: calc(17.5 * var(--tp));
+        }
+
+        .aicoach-channels {
+            padding-top: calc(22 * var(--tp));
+        }
+
+        .aicoach-volume-note {
+            margin-bottom: calc(8 * var(--tp));
+            font-size: calc(19 * var(--tp));
+            line-height: calc(36 * var(--tp));
+        }
+
+        .aicoach-channels .aicoach-identity-title {
+            max-width: calc(300 * var(--tp));
+            font-size: calc(31 * var(--tp));
+            line-height: calc(48.6 * var(--tp));
+        }
+
+        .aicoach-channel-list {
+            grid-template-columns: calc(212 * var(--tp)) 1fr;
+            row-gap: calc(30 * var(--tp));
+            padding: calc(24 * var(--tp)) 0 0 calc(8 * var(--tp));
+        }
+
+        .aicoach-channel-toggle {
+            gap: calc(33 * var(--tp));
+        }
+
+        .aicoach-channel-box {
+            width: calc(26.6 * var(--tp));
+            height: calc(26.6 * var(--tp));
+        }
+
+        .aicoach-channel-label {
+            font-size: calc(24 * var(--tp));
+        }
+    }
+
+    /* PO-3062 (desktop) — the wide layout, from the design drawn at 1920 px. 1025 px is the desktop
+    breakpoint the portal pages already use, so no new one is added. Every size below is written as
+    N * var(--px): one unit is 1 px at 1920 wide and shrinks with the window (and never grows past
+    1920), so the layout keeps the design's proportions on a smaller desktop. Text that would become
+    too small to read has a floor with max(). The header shows the same items as on a phone
+    (hamburger, brand, sound, globe), not the Help / Login / Register links of the frames (Ivan,
+    2026-10-14). The wide banner is a still picture; the 3:2 clips are shown in its middle with soft
+    edges until it is decided how they should fill it. */
+    @media (min-width: 1025px) {
+        /* The design's frames are about 1030 px high at 1920 wide and its tallest common screens
+        (identity, channels) a little more, so on a window lower than that the unit also follows the
+        height (1170 units, never below 0.45 px), and the header, the stage and the banner's Ask
+        Sami button sit in a column 1920 units wide, centred. */
+        body.page-template-page-home-aicoach-php {
+            --px: min(0.052083vw, max(0.08547vh, 0.45px), 1px);
+            --aicoach-column: min(100%, calc(1920 * var(--px)));
+        }
+
+        body.page-template-page-home-aicoach-php .sticky-header .container {
+            width: var(--aicoach-column);
+            margin-inline: auto;
+        }
+
+        .aicoach {
+            padding-bottom: 0;
+        }
+
+        /* Banner: the whole width, 1920 x 387 at design size. */
+        .aicoach-avatar-wrap {
+            aspect-ratio: 1920 / 387;
+        }
+
+        /* The clip is a 3:2 box in the middle of the banner, so the wide picture stays behind it
+        instead of fading out when playback starts (the base rule hides it for the phone, where
+        the clip fills the banner). */
+        .aicoach-avatar-wrap[data-status="live"] .aicoach-portrait {
+            opacity: 1;
+        }
+
+        .aicoach-avatar-video {
+            inset: 0 auto 0 50%;
+            width: auto;
+            height: 100%;
+            aspect-ratio: 3 / 2;
+            transform: translateX(-50%);
+            -webkit-mask-image: linear-gradient(to right, transparent, #000 14%, #000 86%, transparent);
+            mask-image: linear-gradient(to right, transparent, #000 14%, #000 86%, transparent);
+        }
+
+        .aicoach-ask-wrap {
+            right: calc((100% - var(--aicoach-column)) / 2 + 164 * var(--px));
+            bottom: calc(24 * var(--px));
+        }
+
+        /* The commentary box overlaps the bottom edge of the banner. */
+        .aicoach-commentary {
+            display: flex;
+            position: relative;
+            z-index: 1;
+            width: calc(628 * var(--px));
+            min-height: calc(134 * var(--px));
+            margin-top: calc(-11 * var(--px));
+            padding: calc(12 * var(--px)) calc(24 * var(--px));
+            border-width: max(1px, calc(2 * var(--px)));
+        }
+
+        .aicoach:has(.aicoach-panel[data-panel="identity"].is-active) .aicoach-commentary {
+            display: flex;
+        }
+
+        .aicoach-commentary-text {
+            max-width: none;
+            font-family: 'Be Vietnam Pro', sans-serif;
+            font-style: normal;
+            font-weight: 600;
+            font-size: max(14px, calc(28 * var(--px)));
+            line-height: 1.43;
+        }
+
+        .aicoach-panel {
+            box-sizing: border-box;
+            padding-inline: calc(136 * var(--px));
+        }
+
+        /* We Believe: the title, then the three pictures in a row. */
+        .aicoach-believe {
+            padding-top: calc(41 * var(--px));
+        }
+
+        .aicoach-believe-title {
+            min-height: calc(50 * var(--px));
+            font-size: max(18px, calc(40 * var(--px)));
+        }
+
+        .aicoach-believe-icons {
+            flex-wrap: nowrap;
+            justify-content: center;
+            gap: calc(117 * var(--px));
+            padding: 0;
+            margin-top: calc(37 * var(--px));
+            row-gap: 0;
+        }
+
+        .aicoach-believe-coin {
+            width: calc(125 * var(--px));
+            height: calc(123 * var(--px));
+        }
+
+        .aicoach-believe-chart {
+            width: calc(141 * var(--px));
+            height: calc(115 * var(--px));
+        }
+
+        .aicoach-believe-certificate {
+            width: calc(132 * var(--px));
+            height: calc(96 * var(--px));
+            margin: 0;
+        }
+
+        /* The time ask: three columns that start where the design puts them (x 172, 826 and 1378 of
+        1920). The rows are staggered: the 10-minute one rises beside the commentary box. */
+        .aicoach-panel[data-panel="home"] {
+            padding-inline: 0;
+        }
+
+        /* Some pictures and rows of the design start level with the commentary box. The stage clips
+        what sticks out of it (PO-3343), so it reaches up behind the box by this much and pads itself
+        back down, which leaves the panels where they were. */
+        .aicoach-stage {
+            width: var(--aicoach-column);
+            margin: calc(-100 * var(--px)) auto 0;
+            padding-top: calc(100 * var(--px));
+        }
+
+        .aicoach-panel:not(.is-active) {
+            top: calc(100 * var(--px));
+        }
+
+        .aicoach-tiers {
+            display: grid;
+            grid-template-columns: calc(826 * var(--px)) calc(552 * var(--px)) 1fr;
+            align-items: start;
+            gap: 0;
+            padding: 0;
+        }
+
+        .aicoach-tier:nth-child(1) {
+            margin-top: calc(72 * var(--px));
+            padding-left: calc(172 * var(--px));
+        }
+
+        .aicoach-tier:nth-child(2) {
+            margin-top: calc(64 * var(--px));
+        }
+
+        .aicoach-tier:nth-child(3) {
+            margin-top: calc(-24 * var(--px));
+        }
+
+        .aicoach-tier-head {
+            gap: calc(24 * var(--px));
+            padding-left: 0;
+        }
+
+        .aicoach-tier-box {
+            width: calc(38 * var(--px));
+            height: calc(38 * var(--px));
+            border-width: max(2px, calc(3 * var(--px)));
+        }
+
+        .aicoach-tier-duration {
+            font-size: max(16px, calc(32 * var(--px)));
+        }
+
+        .aicoach-tier-list {
+            margin-left: calc(30 * var(--px));
+        }
+
+        .aicoach-tier-list li {
+            font-size: max(13px, calc(22 * var(--px)));
+            line-height: calc(34 * var(--px));
+        }
+
+        /* BTS, Alix Earle, Magic Johnson: the picture on the left, the name in the middle, the ticks on the right. */
+        .aicoach-story {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-areas: "media title points";
+            align-items: start;
+            padding: 0;
+        }
+
+        .aicoach-story--bts,
+        .aicoach-story--alix,
+        .aicoach-story--magic {
+            padding-top: 0;
+        }
+
+        .aicoach-story-title {
+            grid-area: title;
+            margin-top: calc(19 * var(--px));
+            font-size: max(20px, calc(44 * var(--px)));
+        }
+
+        .aicoach-story-media,
+        .aicoach-story--alix .aicoach-story-media {
+            grid-area: media;
+            left: 0;
+            width: calc(404 * var(--px));
+            margin: calc(-59 * var(--px)) 0 0;
+        }
+
+        .aicoach-magic {
+            grid-area: media;
+            width: calc(300 * var(--px));
+            margin: 0;
+        }
+
+        .aicoach-story-points,
+        .aicoach-story--alix .aicoach-story-points,
+        .aicoach-story--magic .aicoach-story-points {
+            grid-area: points;
+            gap: calc(16 * var(--px));
+            margin: calc(-15 * var(--px)) 0 0;
+            padding-left: calc(138 * var(--px));
+        }
+
+        .aicoach-story-point,
+        .aicoach-story--magic .aicoach-story-point {
+            gap: calc(24 * var(--px));
+        }
+
+        .aicoach-story-icon--check {
+            width: calc(72 * var(--px));
+            margin-right: calc(-9 * var(--px));
+        }
+
+        .aicoach-story-icon--cross {
+            width: calc(70 * var(--px));
+            margin-right: calc(-7 * var(--px));
+        }
+
+        .aicoach-story-point > span,
+        .aicoach-story--alix .aicoach-story-point > span,
+        .aicoach-story--magic .aicoach-story-point > span {
+            max-width: calc(330 * var(--px));
+            padding-left: calc(30 * var(--px));
+            font-size: max(12px, calc(22 * var(--px)));
+        }
+
+        .aicoach-story-point > span::before {
+            left: calc(8 * var(--px));
+        }
+
+        /* The three competitions: the flag on the left, the name in the middle, the lines on the right. */
+        .aicoach-panel[data-panel^="competition-"] {
+            padding-inline: 0;
+        }
+
+        .aicoach-competition {
+            display: grid;
+            grid-template-columns: calc(680 * var(--px)) calc(560 * var(--px)) calc(680 * var(--px));
+            grid-template-areas: "flag name format";
+            align-items: start;
+            padding-top: 0;
+        }
+
+        .aicoach-flag {
+            grid-area: flag;
+            width: calc(190 * var(--px));
+            height: calc(190 * var(--px));
+            margin: calc(-19 * var(--px)) 0 0 calc(210 * var(--px));
+        }
+
+        .aicoach-competition-name {
+            grid-area: name;
+            max-width: none;
+            margin-top: calc(19 * var(--px));
+            font-size: max(20px, calc(42 * var(--px)));
+        }
+
+        .aicoach-competition-format {
+            grid-area: format;
+            max-width: none;
+            margin: calc(-36 * var(--px)) 0 0;
+            font-size: max(14px, calc(30 * var(--px)));
+            line-height: calc(52 * var(--px));
+        }
+
+        /* Identity and channels: the title under the box, the fields in a row. */
+        .aicoach-identity,
+        .aicoach-channels {
+            padding-top: calc(21 * var(--px));
+        }
+
+        .aicoach-identity-title {
+            max-width: none;
+            margin-bottom: calc(60 * var(--px));
+            font-size: max(20px, calc(45.5 * var(--px)));
+            line-height: 1.2;
+        }
+
+        .aicoach-belief,
+        .aicoach-identity-subtitle,
+        .aicoach-volume-note {
+            display: none;
+        }
+
+        .aicoach-identity-form {
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-start;
+            gap: calc(36 * var(--px));
+            width: calc(807 * var(--px));
+            min-width: 240px;
+            margin-inline: auto;
+        }
+
+        .aicoach-identity-field {
+            width: calc(245 * var(--px));
+            min-width: 0;
+            height: calc(60 * var(--px));
+            min-height: 44px;
+            grid-template-columns: max(76px, calc(100 * var(--px))) minmax(0, 1fr);
+        }
+
+        .aicoach-identity-label {
+            font-size: max(11px, calc(15 * var(--px)));
+        }
+
+        .aicoach-form-continue,
+        .aicoach-channels .aicoach-form-continue,
+        .aicoach-final .aicoach-form-continue {
+            width: calc(245 * var(--px));
+            min-width: 160px;
+            margin-top: calc(40 * var(--px));
+        }
+
+        .aicoach-channel-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: calc(30 * var(--px)) calc(40 * var(--px));
+            padding: 0;
+        }
+
+        /* A channel is its box above its name, as in the design's row of tiles. */
+        .aicoach-channel-toggle {
+            flex-direction: column;
+            gap: calc(14 * var(--px));
+        }
+
+        .aicoach-channel-box {
+            width: max(18px, calc(40 * var(--px)));
+            height: max(18px, calc(40 * var(--px)));
+        }
+
+        .aicoach-channel-label {
+            font-size: max(14px, calc(36 * var(--px)));
+        }
+
+        .aicoach-channel-field {
+            flex-basis: 100%;
+            max-width: calc(560 * var(--px));
+            min-width: 280px;
+            margin: 0 auto;
+        }
     }
 </style>
 
