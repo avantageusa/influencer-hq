@@ -857,20 +857,37 @@ function get_referral_link_ajax() {
 
 add_action( 'wp_ajax_save_settings_field',  'save_settings_field_ajax' );
 
+/**
+ * Keys allowed in `_ihq_social_handles` and `_ihq_comm_prefs`. A Profile save drops any other
+ * key, so this is the 19 onboarding platforms (ENGR-7569, OQ15; see
+ * ihq_portal_onboarding_platform_labels()) plus the methods Profile offered before them.
+ *
+ * @return string[]
+ */
 function ihq_allowed_contact_keys() {
     return array(
+        'bilibili',
+        'douyin',
         'email',
         'facebook',
         'instagram',
         'kakaotalk',
         'kick',
         'line',
+        'linkedin',
+        'pinterest',
+        'qq',
+        'reddit',
+        'rednote',
+        'snapchat',
         'telegram',
         'tiktok',
         'twitch',
         'wechat',
+        'weibo',
         'whatsapp',
         'x',
+        'youtube',
     );
 }
 
