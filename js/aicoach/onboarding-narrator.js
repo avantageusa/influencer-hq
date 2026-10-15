@@ -21,6 +21,34 @@ export const CAPTION_TICK_MS = 100;
 export const CLIP_STALL_MS = 8000;
 
 /**
+ * Which sentence had been reached at a moment of a clip: the last one that had started,
+ * or 0 before the first (or when the clip had no cues yet).
+ *
+ * @param {Array<Object>} cues   From buildSentenceCues().
+ * @param {number}        timeMs Time into the clip.
+ * @return {number} The sentence index.
+ */
+export function sentenceIndexAt( cues, timeMs ) {
+	const started = cues.filter( ( cue ) => timeMs >= cue.startMs ).length;
+	return Math.max( 0, started - 1 );
+}
+
+/**
+ * How far into the caption timeline a sentence starts.
+ *
+ * @param {Array<Object>} cues     From buildSentenceCues().
+ * @param {number}        sentence Index of the sentence.
+ * @return {number} Milliseconds, 0 when there is no such sentence.
+ */
+export function captionOffsetMs( cues, sentence ) {
+	const cue = cues[ sentence ];
+	if ( ! cue ) {
+		return 0;
+	}
+	return cue.startMs;
+}
+
+/**
  * @param {Object}   deps
  * @param {Object}   deps.video               An HTMLVideoElement (or a fake with the same members).
  * @param {Function} deps.onSubtitle          Receives the sentence to show ('' to clear).
@@ -94,11 +122,17 @@ export function createNarrator( deps ) {
 		return run;
 	}
 
-	function playCaptions( run, script ) {
+	/**
+	 * @param {Object} run
+	 * @param {string} script
+	 * @param {number} [fromSentence] Index of the sentence to start at (a clip that broke
+	 *                                off mid-line carries on from where Sami got to).
+	 */
+	function playCaptions( run, script, fromSentence = 0 ) {
 		run.mode = 'captions';
 		const durationMs = deps.estimateDurationMs( script );
 		const cues = buildSentenceCues( script, durationMs );
-		const startedAt = deps.now();
+		const startedAt = deps.now() - captionOffsetMs( cues, fromSentence );
 		let timerId = null;
 		run.onCleanup( () => clearTimeout( timerId ) );
 
@@ -131,13 +165,14 @@ export function createNarrator( deps ) {
 				return;
 			}
 			fellBack = true;
+			const fromSentence = sentenceIndexAt( cues, video.currentTime * 1000 );
 			detach();
 			video.pause();
-			playCaptions( run, script );
+			playCaptions( run, script, fromSentence );
 		}
 
 		function onMetadata() {
-			cues = buildSentenceCues( script, video.duration * 1000 );
+			cues = buildSentenceCues( script, clipDurationMs( script ) );
 		}
 		function onTime() {
 			watchdog.arm();
@@ -164,6 +199,16 @@ export function createNarrator( deps ) {
 		video.src = clipUrl;
 		watchdog.arm();
 		startPlayback( run, fallBack );
+	}
+
+	// A streamed clip can report its duration as Infinity, and any clip as NaN before its
+	// metadata is in. Then the sentences are spread over the reading-pace length instead, so
+	// the subtitles still show.
+	function clipDurationMs( script ) {
+		if ( Number.isFinite( video.duration ) ) {
+			return video.duration * 1000;
+		}
+		return deps.estimateDurationMs( script );
 	}
 
 	// Browsers refuse to start a clip with sound before the user has interacted with the
