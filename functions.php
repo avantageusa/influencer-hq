@@ -416,11 +416,13 @@ require_once get_template_directory() . '/inc/aicoach-appointment-page.php';
 require_once get_template_directory() . '/inc/aicoach-register.php';
 
 /**
- * AI Coach portal onboarding (PO-3063): kill switch for the auto-launch (ENGR-7561).
- * Each later onboarding module adds its own require_once line here, after any
- * module it depends on.
+ * AI Coach portal onboarding (PO-3063): every inc/portal-onboarding-*.php module.
+ * Loaded by file name so the epic's tasks, which are built on separate branches,
+ * do not each add a line here.
  */
-require_once get_template_directory() . '/inc/portal-onboarding-switch.php';
+foreach ( glob( get_template_directory() . '/inc/portal-onboarding-*.php' ) ?: array() as $ihq_portal_onboarding_module ) {
+	require_once $ihq_portal_onboarding_module;
+}
 
 
 /**

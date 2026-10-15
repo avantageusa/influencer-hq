@@ -20,27 +20,41 @@ function get_option( $key, $default = false ) {
 	return array_key_exists( $key, $GLOBALS['wp_options'] ) ? $GLOBALS['wp_options'][ $key ] : $default;
 }
 
-// The theme loads the module. Runs before anything else requires the module,
-// so a missing or broken line in functions.php cannot be masked. functions.php
-// as a whole needs a full WordPress bootstrap, so the test runs only its
-// require_once statement for this module, with get_template_directory()
-// stubbed to the theme root.
+// The theme loads the module through the onboarding glob block in functions.php.
+// Runs before anything else requires the module, so a missing or broken block
+// cannot be masked. functions.php as a whole needs a full WordPress bootstrap,
+// so the test runs only that block. get_template_directory() points at a fixture
+// theme whose inc/ holds just a symlink to this module: the other onboarding
+// modules the glob would also pick up need WordPress stubs this test doesn't
+// have. The symlink resolves to the real file, so the require_once below sees
+// the same path and doesn't load it twice.
+$GLOBALS['fixture_theme'] = sys_get_temp_dir() . '/ihq-onboarding-switch-test-' . getmypid();
+$fixture_module           = $GLOBALS['fixture_theme'] . '/inc/portal-onboarding-switch.php';
+mkdir( dirname( $fixture_module ), 0700, true );
+symlink( realpath( __DIR__ . '/../inc/portal-onboarding-switch.php' ), $fixture_module );
+register_shutdown_function(
+	function () use ( $fixture_module ) {
+		unlink( $fixture_module );
+		rmdir( dirname( $fixture_module ) );
+		rmdir( $GLOBALS['fixture_theme'] );
+	}
+);
 function get_template_directory() {
-	return dirname( __DIR__ );
+	return $GLOBALS['fixture_theme'];
 }
-$switch_require_pattern = '/require_once\s+get_template_directory\(\)\s*\.\s*\'\/inc\/portal-onboarding-switch\.php\'\s*;/';
-$functions_source       = file_get_contents( __DIR__ . '/../functions.php' );
-$switch_require_count   = preg_match_all( $switch_require_pattern, $functions_source, $switch_require_matches );
-check( 'functions.php has exactly one require_once for inc/portal-onboarding-switch.php', 1 === $switch_require_count );
-check( 'the switch is not defined before the functions.php line runs', false === function_exists( 'ihq_portal_onboarding_enabled' ) );
-if ( 1 === $switch_require_count ) {
-	// Execute the statement exactly as written in functions.php.
-	eval( $switch_require_matches[0][0] );
+$onboarding_loader_pattern = '/foreach\s*\(\s*glob\(\s*get_template_directory\(\)\s*\.\s*\'\/inc\/portal-onboarding-\*\.php\'\s*\).*?\{.*?\}/s';
+$functions_source          = file_get_contents( __DIR__ . '/../functions.php' );
+$onboarding_loader_count   = preg_match_all( $onboarding_loader_pattern, $functions_source, $onboarding_loader_matches );
+check( 'functions.php has exactly one glob loader for inc/portal-onboarding-*.php', 1 === $onboarding_loader_count );
+check( 'the switch is not defined before the functions.php loader runs', false === function_exists( 'ihq_portal_onboarding_enabled' ) );
+if ( 1 === $onboarding_loader_count ) {
+	// Execute the block exactly as written in functions.php.
+	eval( $onboarding_loader_matches[0][0] );
 }
-check( 'running the functions.php line defines ihq_portal_onboarding_enabled()', true === function_exists( 'ihq_portal_onboarding_enabled' ) );
-check( 'running the functions.php line reads no option', array() === $GLOBALS['option_reads'] );
+check( 'running the functions.php loader defines ihq_portal_onboarding_enabled()', true === function_exists( 'ihq_portal_onboarding_enabled' ) );
+check( 'running the functions.php loader reads no option', array() === $GLOBALS['option_reads'] );
 
-// No-op when the line above loaded it; keeps the unit checks below running
+// No-op when the loader above loaded it; keeps the unit checks below running
 // (and reporting) when the loader check failed.
 require_once __DIR__ . '/../inc/portal-onboarding-switch.php';
 
