@@ -10,13 +10,19 @@ import { CLOSING_STRINGS_EN, install } from './onboarding-screens-closing.js';
 
 const STATE = { stage: 'closing', answers: {}, platforms: [], handles: {}, language: '', completed: false, completed_at: '' };
 
-function setup( { completeResults = [ { ok: true, status: 200, data: { completed: true } } ], stage = 'closing' } = {} ) {
+const PORTRAIT = [ 'img', { class: 'ihq-onb__portrait', src: 'https://example.test/sami.webp' } ];
+
+// The frame's Save button as template-parts/portal-onboarding.php renders it.
+const FRAME_SAVE = [ 'button', { type: 'button', class: 'ihq-onb__button ihq-onb__button--save', 'data-ihq-save-home': '', 'data-onb-string': 'saveToHomeScreen' }, 'SAVE IHQ TO HOME SCREEN' ];
+
+function setup( { completeResults = [ { ok: true, status: 200, data: { completed: true } } ], stage = 'closing', portrait = PORTRAIT } = {} ) {
 	const document = createFakeDocument();
-	const root = build( document, [ 'div', { id: 'ihq-onboarding' },
-		[ 'img', { class: 'ihq-onb__portrait', src: 'https://example.test/sami.webp' } ],
-		[ 'div', { 'data-onb': 'content' } ],
-		[ 'div', { class: 'ihq-onb__cta' }, [ 'button', { 'data-ihq-save-home': true } ] ],
-	] );
+	const frame = [ 'div', { id: 'ihq-onboarding' } ];
+	if ( portrait ) {
+		frame.push( portrait );
+	}
+	frame.push( [ 'div', { 'data-onb': 'content' } ], [ 'div', { class: 'ihq-onb__cta' }, FRAME_SAVE ] );
+	const root = build( document, frame );
 	document.body.append( root );
 	const content = root.querySelector( '[data-onb="content"]' );
 	const events = createEmitter();
@@ -48,28 +54,34 @@ function setup( { completeResults = [ { ok: true, status: 200, data: { completed
 		onError: () => {},
 	} );
 	api.screens = { register: engine.register };
-	api.complete = engine.complete;
+	// Each completion's promise, so a test can wait for exactly that request instead of a timer.
+	const completions = [];
+	api.complete = () => {
+		const completion = engine.complete();
+		completions.push( completion );
+		return completion;
+	};
 	install( api );
 	engine.register( { id: 'post_action', render: () => ( {} ) } );
 	engine.start();
 	const screen = () => content.querySelector( 'section' );
-	return { document, root, engine, posts, closes, guard, screen, api };
+	const frameSave = root.querySelector( '[data-ihq-save-home]' );
+	// The click handler awaited the same promise first, so it has finished once this resolves.
+	const settled = () => completions[ completions.length - 1 ];
+	return { document, root, engine, posts, closes, guard, screen, api, frameSave, settled };
 }
-
-const flush = () => new Promise( ( resolve ) => setTimeout( resolve, 0 ) );
 
 test( 'the closing copy', () => {
 	assert.deepEqual( CLOSING_STRINGS_EN, {
 		closingAlwaysHere: "I'll always be here for you 24 hours a day, 7 days a week.",
 		closingSaveReminder: 'If you have not saved the IHQ portal address already, make sure to do that now.',
 		closingContinue: 'CONTINUE TO IHQ PORTAL',
-		closingSave: 'SAVE IHQ TO HOME SCREEN',
 		closingFailed: 'Something went wrong. Please try again.',
 	} );
 } );
 
 test( 'the screen shows the enlarged avatar, both message points and both buttons, CONTINUE first', () => {
-	const { screen } = setup();
+	const { screen, frameSave } = setup();
 	const avatar = screen().querySelector( 'img.ihq-onb-closing__avatar' );
 	assert.equal( avatar.getAttribute( 'src' ), 'https://example.test/sami.webp' );
 	assert.equal( avatar.getAttribute( 'alt' ), '' );
@@ -79,8 +91,20 @@ test( 'the screen shows the enlarged avatar, both message points and both button
 	] );
 	const buttons = screen().querySelector( '.ihq-onb-closing__actions' ).querySelectorAll( 'button' );
 	assert.deepEqual( buttons.map( ( button ) => button.textContent ), [ 'CONTINUE TO IHQ PORTAL', 'SAVE IHQ TO HOME SCREEN' ] );
+	assert.equal( buttons[ 1 ], frameSave );
 	assert.equal( buttons[ 1 ].hasAttribute( 'data-ihq-save-home' ), true );
-	assert.ok( buttons.every( ( button ) => 'button' === button.getAttribute( 'type' ) ) );
+	assert.deepEqual( buttons.map( ( button ) => button.getAttribute( 'type' ) ), [ 'button', 'button' ] );
+} );
+
+test( 'without a banner portrait the screen shows no avatar, not an empty ring', () => {
+	const { screen } = setup( { portrait: null } );
+	assert.equal( screen().querySelector( 'img' ), null );
+	assert.deepEqual( screen().querySelector( '.ihq-onb-closing__actions' ).querySelectorAll( 'button' ).map( ( button ) => button.textContent ), [ 'CONTINUE TO IHQ PORTAL', 'SAVE IHQ TO HOME SCREEN' ] );
+} );
+
+test( 'a portrait with an empty src shows no avatar either', () => {
+	const { screen } = setup( { portrait: [ 'img', { class: 'ihq-onb__portrait', src: '' } ] } );
+	assert.equal( screen().querySelector( 'img' ), null );
 } );
 
 test( 'the engine adds no CONTINUE of its own here', () => {
@@ -88,20 +112,24 @@ test( 'the engine adds no CONTINUE of its own here', () => {
 	assert.equal( screen().querySelector( '[data-onb="continue"]' ), null );
 } );
 
-test( 'the frame Save button is hidden while the closing screen shows, so there is one', () => {
-	const { root } = setup();
-	assert.equal( root.querySelector( '.ihq-onb__cta' ).hidden, true );
+test( 'the frame Save button moves into the closing screen, so there is one and it keeps its behaviour hook', () => {
+	const { root, frameSave } = setup();
+	assert.equal( root.querySelectorAll( '[data-ihq-save-home]' ).length, 1 );
+	assert.equal( root.querySelector( '.ihq-onb__cta' ).querySelector( '[data-ihq-save-home]' ), null );
+	assert.equal( frameSave.parentNode, root.querySelector( '.ihq-onb-closing__actions' ) );
+	assert.equal( frameSave.getAttribute( 'data-onb-string' ), 'saveToHomeScreen' );
+	assert.equal( root.querySelector( '.ihq-onb__cta' ).hidden, false );
 } );
 
 test( 'CONTINUE TO IHQ PORTAL marks onboarding complete and closes the layer onto the Coach page', async () => {
-	const { screen, posts, closes, guard, document, root } = setup();
+	const { screen, posts, closes, guard, document, root, frameSave, settled } = setup();
 	screen().querySelector( '[data-onb="complete"]' ).click();
-	await flush();
+	assert.equal( await settled(), true );
 	assert.deepEqual( posts, [ '/complete' ] );
 	assert.deepEqual( closes, [ true ] );
 	assert.deepEqual( guard, [ 'install', 'uninstall' ] );
 	assert.equal( document.body.contains( root ), false );
-	assert.equal( root.querySelector( '.ihq-onb__cta' ).hidden, false, 'the frame Save button is restored on leaving' );
+	assert.equal( frameSave.parentNode, root.querySelector( '.ihq-onb__cta' ), 'the frame Save button is put back on leaving' );
 } );
 
 test( 'CONTINUE is disabled while completing, so it cannot be sent twice', () => {
@@ -114,10 +142,10 @@ test( 'CONTINUE is disabled while completing, so it cannot be sent twice', () =>
 } );
 
 test( 'a failed completion keeps the user on the screen with a message, and CONTINUE works again', async () => {
-	const { screen, closes, posts, engine } = setup( { completeResults: [ { ok: false, status: 500, data: null }, { ok: true, status: 200, data: {} } ] } );
+	const { screen, closes, posts, engine, settled } = setup( { completeResults: [ { ok: false, status: 500, data: null }, { ok: true, status: 200, data: {} } ] } );
 	const button = screen().querySelector( '[data-onb="complete"]' );
 	button.click();
-	await flush();
+	assert.equal( await settled(), false );
 	const error = screen().querySelector( 'p.ihq-onb__error' );
 	assert.equal( error.hidden, false );
 	assert.equal( error.textContent, 'Something went wrong. Please try again.' );
@@ -127,7 +155,7 @@ test( 'a failed completion keeps the user on the screen with a message, and CONT
 	assert.equal( engine.current(), 'closing' );
 	button.click();
 	assert.equal( error.hidden, true );
-	await flush();
+	assert.equal( await settled(), true );
 	assert.deepEqual( posts, [ '/complete', '/complete' ] );
 	assert.deepEqual( closes, [ true ] );
 } );
@@ -144,7 +172,7 @@ test( 'reaching the closing screen from the post action screen', () => {
 	const { engine, screen } = setup( { stage: 'post_action' } );
 	assert.equal( engine.advance(), true );
 	assert.equal( engine.current(), 'closing' );
-	assert.ok( screen().querySelector( '[data-onb="complete"]' ) );
+	assert.equal( screen().querySelector( '[data-onb="complete"]' ).textContent, 'CONTINUE TO IHQ PORTAL' );
 } );
 
 test( 'without a frame (no root) the screen still renders', () => {
@@ -167,6 +195,7 @@ test( 'without a frame (no root) the screen still renders', () => {
 		return element;
 	};
 	const controller = registered[ 0 ].render( { container, api: { shell: {}, strings }, text } );
-	assert.equal( container.querySelector( 'img' ).getAttribute( 'src' ), '' );
+	assert.equal( container.querySelector( 'img' ), null );
+	assert.deepEqual( container.querySelectorAll( 'button' ).map( ( button ) => button.textContent ), [ 'CONTINUE TO IHQ PORTAL' ] );
 	assert.doesNotThrow( () => controller.destroy() );
 } );
