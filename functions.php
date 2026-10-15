@@ -358,6 +358,7 @@ require_once get_template_directory() . '/inc/braze-integration.php';
  * Visitor intent cookie, test registry, magic-link registration.
  */
 require_once get_template_directory() . '/inc/visitor-intent-handler.php';
+require_once get_template_directory() . '/inc/visitor-intent-logout.php';
 
 /**
  * Portal registry gates (guest privileged actions → Braze registry flow).
