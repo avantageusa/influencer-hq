@@ -28,6 +28,9 @@ todos:
   - id: review-fixes
     content: PR #124 review — onboarding-launch.js (close on failed screen module / no screen), serial stage saves, no guard pile-up on reload, --ihq-onb-error token
     status: completed
+  - id: serial-saves
+    content: answer saves (api.save) share the stage saves' serial chain (CodeRabbit, PR 126); complete() still posts at once
+    status: completed
 ---
 
 # [ENGR-7566] Forward-only onboarding screen engine with edit-return branch
@@ -50,7 +53,8 @@ comes next, saves the position, or stops the Influencer skipping or going back.
   `continue`) unless `hideContinue`.
 - Advancing: blocked while `isValid()` is false (and `showValidation()` is called); otherwise moves
   to `nextStage()`, saves `{ stage }` to the store (not awaited; a failure is logged and never
-  blocks; stage saves are chained so they reach the store one at a time, in order), destroys the old screen and renders the new one. Each screen emits `screen`
+  blocks; every progress save, stage or answers through `api.save()`, is chained so they reach
+  the store one at a time, in call order, because the server's merge has no lock), destroys the old screen and renders the new one. Each screen emits `screen`
   `{ stage, next }` for preloading (ENGR-7576).
 - A screen whose module is not installed is passed over. Screens 14 and 15 wait on ENGR-7570, so until
   then the flow goes from 13 to 16; the edit branch is only taken when screen 14 exists.
