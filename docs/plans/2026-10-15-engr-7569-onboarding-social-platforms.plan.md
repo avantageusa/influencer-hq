@@ -16,6 +16,9 @@ todos:
   - id: profile
     content: Profile list from ihq_profile_social_platform_rows(); ihq_allowed_contact_keys() keeps the 19
     status: completed
+  - id: review-fixes
+    content: "PR #127 review: allowlist derived from the platform lists incl. registration keys; mirror never overwrites Profile edits"
+    status: completed
   - id: tests
     content: JS screen tests and tests/portal-onboarding-social.test.php
     status: completed
@@ -44,15 +47,22 @@ keys) do not match the 19 platforms the onboarding uses.
   Zero platforms is allowed (the story says "any number"). Every tick, untick and handle change saves
   `{ platforms, handles }` (blank handles left out, since the store refuses them).
 - Server: `ihq_portal_onboarding_mirror_handles()` on `ihq_portal_onboarding_saved` copies the
-  onboarding's handles into `_ihq_social_handles`. It records which keys it wrote
-  (`_ihq_portal_onboarding_mirrored_handles`), so unticking later removes only those, never a handle
-  that came from registration or Profile.
+  onboarding's handles into `_ihq_social_handles`. It records the handle it last wrote per key
+  (`_ihq_portal_onboarding_mirrored_handles`, `key => handle`). Precedence: Profile edits are never
+  overwritten by onboarding. A key whose saved value no longer equals what the onboarding wrote was
+  edited or cleared on Profile, and the onboarding never rewrites or deletes it again. Only handles
+  that changed in a save are written; unticking removes only a handle the onboarding wrote and
+  Profile left unchanged. A first onboarding handle for a platform replaces whatever was saved
+  before, so it shows on Profile.
 - Profile: the rendered list is `ihq_profile_social_platform_rows( $social_handles )`: the 19, then
-  any other platform with a saved handle (Email, KICK, Twitch and anything unknown). The ticket points
+  any platform from before them with a saved handle: Email, KICK, Twitch, and the registration grid's
+  Naver Blog, Kakao Business, Telegram Channel and Ameba (`ihq_profile_legacy_platform_labels()`).
+  A saved key that is none of these is not shown, since Profile could not save it. The ticket points
   at `page-portal-profile.php:768` (`$ihq_profile_social_platforms`), but that array is never used;
   the list on screen is `$contact_platforms` (line 809), which is what changed.
-- `ihq_allowed_contact_keys()` (Profile's save allowlist, which strips other keys on every save) now
-  holds the 19 plus email, kick and twitch, so a Profile save never deletes an onboarding handle.
+- `ihq_allowed_contact_keys()` (Profile's save allowlist, which strips other keys on every save) is
+  derived: `ihq_portal_onboarding_platforms()` plus the keys of `ihq_profile_legacy_platform_labels()`.
+  So it accepts and keeps exactly the keys Profile can list, and still refuses arbitrary keys.
 
 ## Alternatives considered
 - Writing `_ihq_social_handles` from the browser through Profile's AJAX action: two writes per change,
@@ -63,8 +73,11 @@ keys) do not match the 19 platforms the onboarding uses.
 ## Blast radius
 - `_ihq_social_handles` is also read by the Luna export (`inc/luna-users-rest.php`) and by Braze's
   OAuth registration payload at sign-up; onboarding handles now reach the Luna export too.
-- Profile's "Communicate with Me" toggles (`_ihq_comm_prefs`) use the same allowlist, so the 19 can
-  now be toggled there as well.
+- Profile's "Communicate with Me" toggles (`_ihq_comm_prefs`) use the same allowlist, so the 19 and
+  the registration platforms can now be toggled there as well.
+- `ihq_allowed_contact_keys()` calls functions from the `inc/portal-onboarding-*.php` modules, which
+  functions.php loads after `inc/api-ajax-calls.php`; it is only called inside AJAX handlers, after
+  every module has loaded.
 - Profile shows 19 rows plus saved extras instead of 11; Email/KICK/Twitch rows disappear for users
   with nothing saved there.
 

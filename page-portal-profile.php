@@ -765,22 +765,6 @@ if ( ! is_array( $social_handles ) )  { $social_handles  = []; }
 $platform_handle_raw    = get_user_meta( $user->ID, 'platform_handle', true );
 $platform_handle_pairs  = ihq_parse_platform_handle_pairs( $platform_handle_raw );
 $ihq_profile_social_placeholder = __( 'handle or URL', 'influencer-hq' );
-$ihq_profile_social_platforms   = array(
-	array( 'key' => 'facebook', 'label' => 'Facebook' ),
-	array( 'key' => 'reddit', 'label' => 'Reddit' ),
-	array( 'key' => 'tiktok', 'label' => 'TikTok' ),
-	array( 'key' => 'naver-blog', 'label' => 'Naver Blog' ),
-	array( 'key' => 'rednote', 'label' => 'Rednote' ),
-	array( 'key' => 'bilibili', 'label' => 'Bilibili' ),
-	array( 'key' => 'x', 'label' => 'X' ),
-	array( 'key' => 'kakao-business', 'label' => 'Kakao B' ),
-	array( 'key' => 'twitch', 'label' => 'Twitch' ),
-	array( 'key' => 'instagram', 'label' => 'Instagram' ),
-	array( 'key' => 'telegram-channel', 'label' => 'Telegram' ),
-	array( 'key' => 'ameba', 'label' => 'Ameba' ),
-	array( 'key' => 'line', 'label' => 'LINE' ),
-	array( 'key' => 'youtube', 'label' => 'YouTube' ),
-);
 
 $comm_prefs      = get_user_meta( $user->ID, '_ihq_comm_prefs',      true );
 if ( ! is_array( $comm_prefs ) )      { $comm_prefs      = []; }
