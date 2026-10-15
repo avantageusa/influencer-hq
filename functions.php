@@ -335,6 +335,11 @@ require_once get_template_directory() . '/inc/turnstile-verify.php';
 require_once get_template_directory() . '/inc/portal-turnstile-gate.php';
 
 /**
+ * Installable portal: web app manifest and SAVE IHQ TO HOME SCREEN (ENGR-7575).
+ */
+require_once get_template_directory() . '/inc/portal-install.php';
+
+/**
  * Portal zone crawl control (noindex, X-Robots-Tag, sitemap exclusion).
  */
 require_once get_template_directory() . '/inc/portal-sitemap-exclusion.php';
