@@ -17,8 +17,9 @@
  * branch, e.g. the post action screen) and destroy().
  *
  * Advancing saves the new stage to the account store, so a returning Influencer resumes
- * there. Browser back is held by the history guard. Everything the engine uses is passed
- * in, so it is tested with the fake DOM.
+ * there. Stage saves are sent one at a time, in order, without holding up the flow.
+ * Browser back is held by the history guard. Everything the engine uses is passed in, so
+ * it is tested with the fake DOM.
  */
 
 /** The engine's own text. */
@@ -43,6 +44,9 @@ export function createEngine( deps ) {
 	const definitions = new Map();
 	let stage = null;
 	let controller = {};
+	// Stage saves run one after another. Two quick advances must not race: if the older save
+	// finished last, the store (and api.state) would keep the earlier stage.
+	let stageSaves = Promise.resolve();
 
 	function t( key ) {
 		return api.strings.t( api.getLocale(), key );
@@ -167,7 +171,7 @@ export function createEngine( deps ) {
 		if ( null === next ) {
 			return false;
 		}
-		save( { stage: next } );
+		stageSaves = stageSaves.then( () => save( { stage: next } ) );
 		show( next );
 		return true;
 	}
