@@ -1588,7 +1588,9 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                     el.textContent = emptyLabel;
                     return;
                 }
-                if (emptyLabel) {
+                var addedToEmptyRow = !!emptyLabel;
+                var promptLabel     = emptyLabel;
+                if (addedToEmptyRow) {
                     delete el.dataset.emptyLabel;
                     emptyLabel = '';
                 }
@@ -1597,8 +1599,11 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                 if ( field === 'name' ) {
                     save('save_settings_field', { group: el.dataset.group, field: 'name', value: v });
                     saveFullnameFromDisplay(v);
-                } else {
-                    save('save_settings_field', { group: el.dataset.group, field: field, value: v });
+                    return;
+                }
+                var request = save('save_settings_field', { group: el.dataset.group, field: field, value: v });
+                if (addedToEmptyRow) {
+                    request.then(function(res){ afterEmailAdded(el, v, promptLabel, res); });
                 }
             }
             input.addEventListener('blur', commit);
@@ -1736,12 +1741,31 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
             .catch(function(){});
     }
 
+    // Resolves to the parsed AJAX response, or null when the request fails.
     function save(action, params){
         var fd = new FormData();
         fd.append('action', action);
         fd.append('nonce',  _nonce);
         Object.keys(params).forEach(function(k){ fd.append(k, params[k]); });
-        fetch(_ajax, { method:'POST', body:fd }).catch(function(){});
+        return fetch(_ajax, { method:'POST', body:fd })
+            .then(function(r){ return r.json(); })
+            .catch(function(){ return null; });
+    }
+
+    // ENGR-7611 — an email typed into the empty Email row: on success the
+    // "Registered with" row goes (the account now has a real email); on failure
+    // the "Add email" prompt comes back unless the user has edited again since.
+    function afterEmailAdded(el, value, promptLabel, res) {
+        if (res && res.success) {
+            var channelEl = document.querySelector('.sett-registered-channel');
+            var channelRow = channelEl ? channelEl.closest('.sett-row') : null;
+            if (channelRow) { channelRow.remove(); }
+            return;
+        }
+        var stillCurrent = !el.querySelector('input') && el.textContent === value;
+        if (!stillCurrent) { return; }
+        el.dataset.emptyLabel = promptLabel;
+        el.textContent = promptLabel;
     }
 
     // Read first/last name from API on load
