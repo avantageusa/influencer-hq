@@ -1,0 +1,66 @@
+/*
+ * Onboarding question screens (ENGR-7568): 3, 4, 5 and 12.
+ * Loaded after css/portal-onboarding.css by the shell.
+ */
+
+.ihq-onb-q__question {
+	margin: 0;
+	color: var(--ihq-onb-yellow);
+	font-size: 1.375rem;
+	font-weight: 800;
+	line-height: 1.25;
+	text-align: center;
+}
+
+.ihq-onb-q__options {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.ihq-onb-q__options[hidden] {
+	display: none;
+}
+
+.ihq-onb-q__options--sub {
+	padding-left: 24px;
+}
+
+.ihq-onb-q__option {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	width: 100%;
+	min-height: 48px;
+	padding: 12px 16px;
+	border: 1px solid var(--ihq-onb-gold);
+	border-radius: 2px;
+	background: transparent;
+	color: #fff;
+	font-family: inherit;
+	font-size: 1rem;
+	font-weight: 600;
+	text-align: left;
+	cursor: pointer;
+}
+
+.ihq-onb-q__option[aria-checked="true"] {
+	border-color: var(--ihq-onb-yellow);
+	background: var(--ihq-onb-green);
+}
+
+.ihq-onb-q__option:focus-visible {
+	outline: 3px solid var(--ihq-onb-yellow);
+	outline-offset: 2px;
+}
+
+.ihq-onb-q__diamonds {
+	display: inline-flex;
+	gap: 4px;
+	color: #555;
+}
+
+.ihq-onb-q__diamond.is-on {
+	color: var(--ihq-onb-yellow);
+}
