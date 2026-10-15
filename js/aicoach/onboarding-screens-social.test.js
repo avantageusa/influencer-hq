@@ -59,6 +59,9 @@ function setup( state = {} ) {
 	return { document, api, engine, posts, strings, screen, row, tick, field, error, type };
 }
 
+// The engine sends each progress save on its serial chain, a microtask or more after api.save().
+const flush = () => new Promise( ( resolve ) => setTimeout( resolve, 0 ) );
+
 test( 'the 19 platforms, in the story order, are the store keys', () => {
 	assert.deepEqual( PLATFORMS, [ 'instagram', 'facebook', 'tiktok', 'youtube', 'bilibili', 'douyin', 'kakaotalk', 'line', 'linkedin', 'pinterest', 'qq', 'reddit', 'rednote', 'snapchat', 'telegram', 'wechat', 'weibo', 'whatsapp', 'x' ] );
 	const php = readFileSync( new URL( '../../inc/portal-onboarding-progress.php', import.meta.url ), 'utf8' );
@@ -92,7 +95,7 @@ test( 'nothing is pre-ticked from registration channels (only the onboarding rec
 	assert.equal( tick( 'whatsapp' ).getAttribute( 'aria-checked' ), 'false' );
 } );
 
-test( 'ticking a platform shows its handle field with the platform placeholder, and saves', () => {
+test( 'ticking a platform shows its handle field with the platform placeholder, and saves', async () => {
 	const { tick, field, posts, document } = setup();
 	tick( 'youtube' ).click();
 	assert.equal( tick( 'youtube' ).getAttribute( 'aria-checked' ), 'true' );
@@ -101,6 +104,7 @@ test( 'ticking a platform shows its handle field with the platform placeholder, 
 	assert.equal( field( 'youtube' ).getAttribute( 'maxlength' ), '190' );
 	assert.equal( field( 'youtube' ).getAttribute( 'aria-label' ), 'YouTube' );
 	assert.equal( document.activeElement, field( 'youtube' ) );
+	await flush();
 	assert.deepEqual( posts, [ { platforms: [ 'youtube' ], handles: {} } ] );
 } );
 
@@ -114,23 +118,26 @@ test( 'every platform has a placeholder', () => {
 	assert.equal( field( 'linkedin' ).getAttribute( 'placeholder' ), 'linkedin.com/in/' );
 } );
 
-test( 'typing a handle saves the ticked platforms with their handles, trimmed, in screen order', () => {
+test( 'typing a handle saves the ticked platforms with their handles, trimmed, in screen order', async () => {
 	const { tick, type, posts } = setup();
 	tick( 'x' ).click();
 	tick( 'instagram' ).click();
 	type( 'x', '  @me  ' );
+	await flush();
 	assert.deepEqual( posts.at( -1 ), { platforms: [ 'instagram', 'x' ], handles: { x: '@me' } } );
 	type( 'instagram', '@insta' );
+	await flush();
 	assert.deepEqual( posts.at( -1 ), { platforms: [ 'instagram', 'x' ], handles: { x: '@me', instagram: '@insta' } } );
 } );
 
-test( 'unticking hides and clears the handle, and saves without it', () => {
+test( 'unticking hides and clears the handle, and saves without it', async () => {
 	const { tick, field, type, posts } = setup();
 	tick( 'reddit' ).click();
 	type( 'reddit', 'reddit.com/u/me' );
 	tick( 'reddit' ).click();
 	assert.equal( field( 'reddit' ).hidden, true );
 	assert.equal( field( 'reddit' ).value, '' );
+	await flush();
 	assert.deepEqual( posts.at( -1 ), { platforms: [], handles: {} } );
 	tick( 'reddit' ).click();
 	assert.equal( field( 'reddit' ).value, '', 'the cleared handle does not come back' );
