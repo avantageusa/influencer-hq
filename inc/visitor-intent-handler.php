@@ -602,6 +602,7 @@ function ihq_issue_visitor_verification_code( array $intent, $button_press_url =
 	// Each issue now invalidates the previous code, so without a throttle anyone
 	// could cancel the code a visitor is about to type (and flood the inbox).
 	$throttle_email = strtolower( ihq_visitor_intent_extract_email( $intent ) );
+	$throttle_key   = '';
 	if ( $throttle_email !== '' ) {
 		$throttle_key = 'ihq_visitor_issue_' . md5( $throttle_email );
 		if ( get_transient( $throttle_key ) ) {
@@ -664,6 +665,11 @@ function ihq_issue_visitor_verification_code( array $intent, $button_press_url =
 
 	$delivery = ihq_deliver_visitor_verification_code( $intent, $code, $minutes_left );
 	if ( ! $delivery['ok'] ) {
+		// Nothing was sent, so let the visitor retry straight away. The throttle
+		// is set before sending (not after) to keep concurrent requests out.
+		if ( $throttle_key !== '' ) {
+			delete_transient( $throttle_key );
+		}
 		return $delivery;
 	}
 

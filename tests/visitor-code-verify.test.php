@@ -92,6 +92,7 @@ function reset_state() {
 	$GLOBALS['options']         = array();
 	$GLOBALS['transients']      = array();
 	$GLOBALS['mail']            = array();
+	$GLOBALS['mail_fails']      = false;
 	$GLOBALS['auth_cookies']    = array();
 	$GLOBALS['requests']        = array();
 	$GLOBALS['responses']       = array();
@@ -168,6 +169,9 @@ function delete_transient( $key ) { unset( $GLOBALS['transients'][ $key ] ); ret
 function wp_cache_delete( ...$args ) { return true; }
 function wp_verify_nonce( $nonce, $action ) { return $nonce === 'good-nonce' && $action === 'ihq_visitor_intent_nonce'; }
 function wp_mail( $to, $subject, $message, $headers = array() ) {
+	if ( $GLOBALS['mail_fails'] ) {
+		return false;
+	}
 	$GLOBALS['mail'][] = array( 'to' => $to, 'message' => $message );
 	return true;
 }
@@ -486,6 +490,13 @@ check( 'throttle: second code within 45s refused', issue( VICTIM_EMAIL ), error_
 check( 'throttle: only one email sent', count( $GLOBALS['mail'] ), 1 );
 check( 'throttle: first code still verifies', verify( VICTIM_EMAIL, last_code() )['success'], true );
 check( 'throttle: other emails unaffected', issue( NEW_EMAIL )['success'], true );
+reset_state();
+$GLOBALS['mail_fails'] = true;
+check( 'throttle: failed send reports the error', issue( VICTIM_EMAIL ), error_with( 'We could not send your code. Please try again in a moment.' ) );
+check( 'throttle: failed send leaves no throttle', $GLOBALS['transients'], array() );
+$GLOBALS['mail_fails'] = false;
+check( 'throttle: retry after a failed send goes out', issue( VICTIM_EMAIL )['success'], true );
+check( 'throttle: retry mailed once', count( $GLOBALS['mail'] ), 1 );
 
 // === 20. Records without delivered_email or intent (pre-fix shape) are not usable. ===
 check( 'record: complete', ihq_visitor_verification_record_is_usable( array( 'code_hash' => 'h', 'verify_token' => 't', 'delivered_email' => VICTIM_EMAIL, 'intent' => array() ) ), true );
