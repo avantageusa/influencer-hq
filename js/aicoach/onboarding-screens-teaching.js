@@ -124,70 +124,118 @@ const TEXT_SCREENS = Object.freeze( {
 /** Screen 13, step by step, top to bottom. */
 export const EXAMPLE_STEP_KEYS = Object.freeze( Array.from( { length: 15 }, ( unused, index ) => 'exampleStep' + ( index + 1 ) ) );
 
-// Chart geometry and type, in SVG user units (the image scales to the column width).
+// Chart geometry and type, in SVG user units: the design's chart box ("Earned Equity Shares
+// with graph", Figma 46893:117629, "10 Equity 3"), 198.5 x 149.8 px, drawn at that size.
 const CHART = Object.freeze( {
-	width: 340,
-	height: 200,
-	left: 44,
-	right: 12,
-	top: 28,
-	bottom: 28,
-	// Gap between a y label's right edge and the plot.
-	yLabelGap: 6,
-	// Drops a y label so its middle, not its baseline, sits on the gridline.
-	yLabelBaselineShift: 4,
-	// Distance from the bottom edge to the x labels' baseline.
-	xLabelBottomOffset: 8,
-	titleBaseline: 16,
-	axisFontSize: 11,
-	titleFontSize: 13,
-	lineWidth: 3,
+	width: 198.5,
+	height: 149.8,
+	cornerRadius: 3.8,
+	titleBaseline: 14,
+	titleFontSize: 10,
+	// The dark plot area inside the box.
+	frame: Object.freeze( { x: 6, y: 20.3, width: 186.6, height: 119.7 } ),
+	// The y axis, and the first and last x positions of the line.
+	plotLeft: 19.5,
+	plotRight: 177,
+	// The gridlines and the x axis run on past the last point.
+	gridRight: 191,
+	// Where the y axis and the vertical gridlines start, and where the first and last y ticks sit.
+	gridTop: 21,
+	plotTop: 28.9,
+	plotBottom: 126.4,
+	// Gap between a y label's right edge and the y axis.
+	yLabelGap: 2.2,
+	xLabelBaseline: 134.6,
+	axisFontSize: 5,
+	thinLineWidth: 0.5,
+	lineWidth: 1.5,
+	gridDash: '1 1',
 	// Coordinates are rounded to one decimal place (1 / 10 of a unit).
 	coordinateScale: 10,
 } );
-// A data: SVG cannot read CSS custom properties: keep `line` in step with
-// --ihq-onb-yellow in css/portal-onboarding.css.
-const CHART_COLOURS = Object.freeze( { line: '#fdd65b', grid: '#3a3a3a', text: '#ffffff' } );
+// A data: SVG cannot read CSS custom properties, so the design's colours are written here.
+const CHART_COLOURS = Object.freeze( {
+	box: '#2a2b37',
+	frame: '#18181b',
+	frameBorder: '#5f5f5f',
+	grid: '#4b4b4b',
+	axis: '#ffffff',
+	line: '#ffffff',
+	text: '#ffffff',
+} );
 
 function escapeXml( value ) {
 	return String( value ).replace( /[&<>"']/g, ( character ) => `&#${ character.charCodeAt( 0 ) };` );
 }
 
+function roundCoordinate( number ) {
+	return Math.round( number * CHART.coordinateScale ) / CHART.coordinateScale;
+}
+
+function axisText( { x, y, anchor, label } ) {
+	return `<text x="${ x }" y="${ y }" text-anchor="${ anchor }" font-size="${ CHART.axisFontSize }" fill="${ CHART_COLOURS.text }">${ escapeXml( label ) }</text>`;
+}
+
 /**
- * One line chart as SVG markup. Pure, so it is tested as text.
+ * How far up the y axis a value sits, from 0 (the first tick) to 1 (the last). The design
+ * spaces the ticks evenly whatever their values ($.20, $1, $2 ... on the value chart), so a
+ * value is placed between the two ticks around it.
+ *
+ * @param {number}   value
+ * @param {number[]} yTicks Ascending, at least two.
+ * @return {number} The fraction of the axis height.
+ */
+export function tickFraction( value, yTicks ) {
+	const segments = yTicks.length - 1;
+	const below = yTicks.findLastIndex( ( tick ) => tick <= value );
+	const segment = Math.min( Math.max( below, 0 ), segments - 1 );
+	const low = yTicks[ segment ];
+	const high = yTicks[ segment + 1 ];
+	return ( segment + ( ( value - low ) / ( high - low ) ) ) / segments;
+}
+
+function gridLine( { x1, y1, x2, y2 } ) {
+	return `<line x1="${ x1 }" y1="${ y1 }" x2="${ x2 }" y2="${ y2 }" stroke="${ CHART_COLOURS.grid }" stroke-width="${ CHART.thinLineWidth }" stroke-dasharray="${ CHART.gridDash }"/>`;
+}
+
+/**
+ * One line chart as SVG markup, drawn as the design draws it: a title over a dark plot with
+ * dashed gridlines at every tick and every x position, white axes and a white line. Pure, so
+ * it is tested as text.
  *
  * @param {Object}   chart
  * @param {string}   chart.title
  * @param {string[]} chart.xLabels
- * @param {number[]} chart.yTicks  Ascending; the first and last are the axis range.
+ * @param {number[]} chart.yTicks  Ascending, at least two, drawn evenly spaced; the first and
+ *                                 last are the axis range.
  * @param {string[]} chart.yLabels One per tick.
  * @param {number[]} chart.values  One per x label, within the range.
  * @return {string} The SVG document.
  */
 export function lineChartSvg( { title, xLabels, yTicks, yLabels, values } ) {
-	const plotWidth = CHART.width - CHART.left - CHART.right;
-	const plotHeight = CHART.height - CHART.top - CHART.bottom;
-	const min = yTicks[ 0 ];
-	const max = yTicks[ yTicks.length - 1 ];
-	const xAt = ( index ) => CHART.left + ( xLabels.length > 1 ? ( index / ( xLabels.length - 1 ) ) * plotWidth : 0 );
-	const yAt = ( value ) => CHART.top + plotHeight - ( ( ( value - min ) / ( max - min ) ) * plotHeight );
-	const round = ( number ) => Math.round( number * CHART.coordinateScale ) / CHART.coordinateScale;
+	const plotWidth = CHART.plotRight - CHART.plotLeft;
+	const plotHeight = CHART.plotBottom - CHART.plotTop;
+	const xAt = ( index ) => roundCoordinate( CHART.plotLeft + ( xLabels.length > 1 ? ( index / ( xLabels.length - 1 ) ) * plotWidth : 0 ) );
+	const yAt = ( value ) => roundCoordinate( CHART.plotBottom - ( tickFraction( value, yTicks ) * plotHeight ) );
+	const { frame } = CHART;
 
-	const grid = yTicks.map( ( tick, index ) => {
-		const y = round( yAt( tick ) );
-		return `<line x1="${ CHART.left }" y1="${ y }" x2="${ CHART.width - CHART.right }" y2="${ y }" stroke="${ CHART_COLOURS.grid }"/>` +
-			`<text x="${ CHART.left - CHART.yLabelGap }" y="${ y + CHART.yLabelBaselineShift }" text-anchor="end" font-size="${ CHART.axisFontSize }" fill="${ CHART_COLOURS.text }">${ escapeXml( yLabels[ index ] ) }</text>`;
-	} ).join( '' );
-	const xAxis = xLabels.map( ( label, index ) =>
-		`<text x="${ round( xAt( index ) ) }" y="${ CHART.height - CHART.xLabelBottomOffset }" text-anchor="middle" font-size="${ CHART.axisFontSize }" fill="${ CHART_COLOURS.text }">${ escapeXml( label ) }</text>`,
-	).join( '' );
-	const points = values.map( ( value, index ) => `${ round( xAt( index ) ) },${ round( yAt( value ) ) }` ).join( ' ' );
+	// The lowest tick and the first x position are the axes, drawn solid below.
+	const horizontalGrid = yTicks.slice( 1 ).map( ( tick ) => gridLine( { x1: CHART.plotLeft, y1: yAt( tick ), x2: CHART.gridRight, y2: yAt( tick ) } ) ).join( '' );
+	const verticalGrid = xLabels.slice( 1 ).map( ( label, index ) => gridLine( { x1: xAt( index + 1 ), y1: CHART.gridTop, x2: xAt( index + 1 ), y2: CHART.plotBottom } ) ).join( '' );
+	const yAxisLabels = yTicks.map( ( tick, index ) => axisText( { x: roundCoordinate( CHART.plotLeft - CHART.yLabelGap ), y: yAt( tick ), anchor: 'end', label: yLabels[ index ] } ) ).join( '' );
+	const xAxisLabels = xLabels.map( ( label, index ) => axisText( { x: xAt( index ), y: CHART.xLabelBaseline, anchor: 'middle', label } ) ).join( '' );
+	const points = values.map( ( value, index ) => `${ xAt( index ) },${ yAt( value ) }` ).join( ' ' );
 
-	return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${ CHART.width } ${ CHART.height }" font-family="sans-serif">` +
+	return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${ CHART.width } ${ CHART.height }" font-family="Inter, sans-serif">` +
+		`<rect width="${ CHART.width }" height="${ CHART.height }" rx="${ CHART.cornerRadius }" fill="${ CHART_COLOURS.box }"/>` +
 		`<text x="${ CHART.width / 2 }" y="${ CHART.titleBaseline }" text-anchor="middle" font-size="${ CHART.titleFontSize }" font-weight="700" fill="${ CHART_COLOURS.text }">${ escapeXml( title ) }</text>` +
-		grid +
-		xAxis +
-		`<polyline points="${ points }" fill="none" stroke="${ CHART_COLOURS.line }" stroke-width="${ CHART.lineWidth }" stroke-linejoin="round"/>` +
+		`<rect x="${ frame.x }" y="${ frame.y }" width="${ frame.width }" height="${ frame.height }" fill="${ CHART_COLOURS.frame }" stroke="${ CHART_COLOURS.frameBorder }" stroke-width="${ CHART.thinLineWidth }"/>` +
+		horizontalGrid +
+		verticalGrid +
+		`<path d="M${ CHART.plotLeft } ${ CHART.gridTop }V${ CHART.plotBottom }H${ CHART.gridRight }" fill="none" stroke="${ CHART_COLOURS.axis }" stroke-width="${ CHART.thinLineWidth }"/>` +
+		yAxisLabels +
+		xAxisLabels +
+		`<polyline points="${ points }" fill="none" stroke="${ CHART_COLOURS.line }" stroke-width="${ CHART.lineWidth }" stroke-linecap="round" stroke-linejoin="round"/>` +
 		'</svg>';
 }
 
@@ -264,7 +312,7 @@ function renderHowItWorks( { container, api, text } ) {
 
 function renderExample( { container, api, text } ) {
 	addHero( container, api, 'equity_example' );
-	container.append( text( 'h2', 'exampleTitle', 'ihq-onb-teach__title' ) );
+	container.append( text( 'h2', 'exampleTitle', 'ihq-onb-teach__title ihq-onb-teach__title--plain' ) );
 	const list = container.ownerDocument.createElement( 'ol' );
 	list.className = 'ihq-onb-teach__steps';
 	EXAMPLE_STEP_KEYS.forEach( ( key ) => list.append( text( 'li', key, 'ihq-onb-teach__step' ) ) );

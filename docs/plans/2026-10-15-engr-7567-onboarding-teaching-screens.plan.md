@@ -22,8 +22,11 @@ todos:
     content: Hero images for screens 7, 8 and 9 (the design reuses screen 2's picture there)
     status: blocked
   - id: design-check
-    content: Compare each screen with its frame at 398 px
-    status: pending
+    content: Compare each screen with its frame at 398 px (1, 2, 7-11; 13 not yet)
+    status: completed
+  - id: design-decisions
+    content: Cross-screen differences in the design that need Design's call (see Notes)
+    status: blocked
   - id: verify
     content: test:js, lint on touched files
     status: completed
@@ -72,6 +75,18 @@ kill switch let the layer show.
   as WebP at 482 x 313 (2x); the Modern pic's design crop (top -2.49%, height 102.49%) is baked in.
 - Screens 7, 8 and 9 reuse screen 2's picture in the design, which looks like a placeholder: they ship
   without a hero until Design gives them their own.
-- Still open: the 398 px visual check per frame, the chart alt text, and the legal review of the copy
-  and charts on 7, 10 and 13 (OQ18).
+- 398 px check (screens 1, 2, 7-11, against the frames with the 132 px Safari bar taken off):
+  titles are Cinzel Bold 17 px white with a 242 px gold rule under them; body copy is Be Vietnam Pro
+  SemiBold 12 px on an 18 px line in a 240 px column, an empty line between paragraphs; heroes sit
+  35 px under the commentary box; screen 11's bullets are centred; screen 10's charts are drawn as the
+  design's 198.5 x 149.8 boxes (dark plot, dashed grid, white axes and line, ticks evenly spaced so
+  $.20 to $1 is as tall as $1 to $2), 7 px apart. Screen 13 keeps its own layout (no rule) until its
+  own check.
+- Left for Design: the design's titles are 17 px on 1, 2, 7 and 9, 15 px on 10 and 11 and 23 px on
+  8 (8 is a 1.35x scaled copy: 325 px hero and text, 16 px body); body 12 px except 11 px on 11; the
+  title sits 20 px under the commentary box on 10 but 35 px on 11; the design's text font is the
+  retired "Be Vietnam", ~5% narrower than the theme's Be Vietnam Pro (screen 7's last line wraps);
+  chart labels TUES / .20 against the story's TUE / $.20; 5 px chart labels; no CONTINUE button in
+  any frame; heroes for 7-9.
+- Still open: the chart alt text, and the legal review of the copy and charts on 7, 10 and 13 (OQ18).
 - Copy on 7, 10 and 13 may change after the legal review (OQ18); it lives only in `TEACHING_STRINGS_EN`.

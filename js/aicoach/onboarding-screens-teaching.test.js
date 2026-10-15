@@ -11,6 +11,7 @@ import {
 	EQUITY_CHARTS,
 	EXAMPLE_STEP_KEYS,
 	lineChartSvg,
+	tickFraction,
 	chartImageSrc,
 	teachingScreens,
 	install,
@@ -143,25 +144,50 @@ test( 'the charts have the PO-3209 axes', () => {
 	} );
 } );
 
-const SVG_OPEN = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 200" font-family="sans-serif">';
-const svgTitle = ( text ) => `<text x="170" y="16" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">${ text }</text>`;
-const svgGridline = ( y, label ) => `<line x1="44" y1="${ y }" x2="328" y2="${ y }" stroke="#3a3a3a"/>` +
-	`<text x="38" y="${ y + 4 }" text-anchor="end" font-size="11" fill="#ffffff">${ label }</text>`;
-const svgXLabel = ( x, label ) => `<text x="${ x }" y="192" text-anchor="middle" font-size="11" fill="#ffffff">${ label }</text>`;
-const svgLine = ( points ) => `<polyline points="${ points }" fill="none" stroke="#fdd65b" stroke-width="3" stroke-linejoin="round"/>`;
+// The design's chart box, Figma 46893:117629 "10 Equity 3": 198.5 x 149.8, the plot from x 19.5
+// to 177 and from y 126.4 (first tick) to 28.9 (last tick), gridlines dashed, axes and line white.
+const SVG_OPEN = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 198.5 149.8" font-family="Inter, sans-serif">' +
+	'<rect width="198.5" height="149.8" rx="3.8" fill="#2a2b37"/>';
+const svgTitle = ( text ) => `<text x="99.25" y="14" text-anchor="middle" font-size="10" font-weight="700" fill="#ffffff">${ text }</text>` +
+	'<rect x="6" y="20.3" width="186.6" height="119.7" fill="#18181b" stroke="#5f5f5f" stroke-width="0.5"/>';
+const svgGridRow = ( y ) => `<line x1="19.5" y1="${ y }" x2="191" y2="${ y }" stroke="#4b4b4b" stroke-width="0.5" stroke-dasharray="1 1"/>`;
+const svgGridColumn = ( x ) => `<line x1="${ x }" y1="21" x2="${ x }" y2="126.4" stroke="#4b4b4b" stroke-width="0.5" stroke-dasharray="1 1"/>`;
+const SVG_AXES = '<path d="M19.5 21V126.4H191" fill="none" stroke="#ffffff" stroke-width="0.5"/>';
+const svgYLabel = ( y, label ) => `<text x="17.3" y="${ y }" text-anchor="end" font-size="5" fill="#ffffff">${ label }</text>`;
+const svgXLabel = ( x, label ) => `<text x="${ x }" y="134.6" text-anchor="middle" font-size="5" fill="#ffffff">${ label }</text>`;
+const svgLine = ( points ) => `<polyline points="${ points }" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`;
 
-test( 'lineChartSvg draws the title, every axis label and one line through every value', () => {
+test( 'lineChartSvg draws the design\'s box: title, dashed grid, axes, every axis label and one line through every value', () => {
 	const svg = lineChartSvg( { title: 'T & <x>', xLabels: [ 'A', 'B', 'C' ], yTicks: [ 0, 10 ], yLabels: [ '0', '10' ], values: [ 0, 3.3, 10 ] } );
-	// Plot: x from 44 to 328, y from 172 (min) to 28 (max); 3.3 lands on 124.48, rounded to 124.5.
+	// x from 19.5 to 177, so B is at 98.25, rounded to 98.3; 3.3 is 0.33 of the 97.5 high plot
+	// above 126.4: 94.225, rounded to 94.2.
 	assert.equal( svg, SVG_OPEN +
 		svgTitle( 'T &#38; &#60;x&#62;' ) +
-		svgGridline( 172, '0' ) +
-		svgGridline( 28, '10' ) +
-		svgXLabel( 44, 'A' ) +
-		svgXLabel( 186, 'B' ) +
-		svgXLabel( 328, 'C' ) +
-		svgLine( '44,172 186,124.5 328,28' ) +
+		svgGridRow( 28.9 ) +
+		svgGridColumn( 98.3 ) +
+		svgGridColumn( 177 ) +
+		SVG_AXES +
+		svgYLabel( 126.4, '0' ) +
+		svgYLabel( 28.9, '10' ) +
+		svgXLabel( 19.5, 'A' ) +
+		svgXLabel( 98.3, 'B' ) +
+		svgXLabel( 177, 'C' ) +
+		svgLine( '19.5,126.4 98.3,94.2 177,28.9' ) +
 		'</svg>' );
+} );
+
+test( 'tickFraction spaces the ticks evenly and places a value between the two around it', () => {
+	// Uneven like the value chart's ($.20, $1, $2 ...), with values that are exact in binary.
+	const ticks = [ 0.5, 1, 2, 3, 4 ];
+	assert.equal( tickFraction( 0.5, ticks ), 0 );
+	assert.equal( tickFraction( 1, ticks ), 0.25 );
+	assert.equal( tickFraction( 0.75, ticks ), 0.125 );
+	assert.equal( tickFraction( 2.5, ticks ), 0.625 );
+	assert.equal( tickFraction( 4, ticks ), 1 );
+	// Outside the range it carries on the nearest segment's scale.
+	assert.equal( tickFraction( 5, ticks ), 1.25 );
+	assert.equal( tickFraction( 0, ticks ), -0.25 );
+	assert.equal( tickFraction( 5, [ 0, 10 ] ), 0.5 );
 } );
 
 test( 'the charts plot the design\'s sample values (Figma 46893:117629, "10 Equity 3")', () => {
@@ -170,35 +196,38 @@ test( 'the charts plot the design\'s sample values (Figma 46893:117629, "10 Equi
 	assert.deepEqual( value.values, [ 0.2, 0.9, 1.2, 2.2, 4 ] );
 } );
 
+// Ticks evenly spaced on both charts: 126.4, 102.025, 77.65, 53.275, 28.9.
+const SVG_GRID_ROWS = svgGridRow( 102 ) + svgGridRow( 77.7 ) + svgGridRow( 53.3 ) + svgGridRow( 28.9 );
+const svgYLabels = ( labels ) => [ 126.4, 102, 77.7, 53.3, 28.9 ].map( ( y, index ) => svgYLabel( y, labels[ index ] ) ).join( '' );
 const SHARES_SVG = SVG_OPEN +
 	svgTitle( 'Earned Equity Shares' ) +
-	svgGridline( 172, '0' ) +
-	svgGridline( 136, '100' ) +
-	svgGridline( 100, '200' ) +
-	svgGridline( 64, '300' ) +
-	svgGridline( 28, '400' ) +
-	svgXLabel( 44, 'SUN' ) +
-	svgXLabel( 91.3, 'MON' ) +
-	svgXLabel( 138.7, 'TUE' ) +
-	svgXLabel( 186, 'WED' ) +
-	svgXLabel( 233.3, 'THU' ) +
-	svgXLabel( 280.7, 'FRI' ) +
-	svgXLabel( 328, 'SAT' ) +
-	svgLine( '44,172 91.3,146.8 138.7,146.8 186,125.2 233.3,82 280.7,73 328,28' ) +
+	SVG_GRID_ROWS +
+	[ 45.8, 72, 98.3, 124.5, 150.8, 177 ].map( svgGridColumn ).join( '' ) +
+	SVG_AXES +
+	svgYLabels( [ '0', '100', '200', '300', '400' ] ) +
+	svgXLabel( 19.5, 'SUN' ) +
+	svgXLabel( 45.8, 'MON' ) +
+	svgXLabel( 72, 'TUE' ) +
+	svgXLabel( 98.3, 'WED' ) +
+	svgXLabel( 124.5, 'THU' ) +
+	svgXLabel( 150.8, 'FRI' ) +
+	svgXLabel( 177, 'SAT' ) +
+	svgLine( '19.5,126.4 45.8,109.3 72,109.3 98.3,94.7 124.5,65.5 150.8,59.4 177,28.9' ) +
 	'</svg>';
+// $.20 to $1 takes as much height as $1 to $2: 0.9 is 7/8 of the first quarter (105.1), 1.2
+// a fifth into the second (97.2), 2.2 a fifth into the third (72.8).
 const VALUE_SVG = SVG_OPEN +
 	svgTitle( 'Value of Shares' ) +
-	svgGridline( 172, '$.20' ) +
-	svgGridline( 141.7, '$1' ) +
-	svgGridline( 103.8, '$2' ) +
-	svgGridline( 65.9, '$3' ) +
-	svgGridline( 28, '$4' ) +
-	svgXLabel( 44, 'START' ) +
-	svgXLabel( 115, '6 MOS' ) +
-	svgXLabel( 186, '12 MOS' ) +
-	svgXLabel( 257, '18 MOS' ) +
-	svgXLabel( 328, '24 MOS' ) +
-	svgLine( '44,172 115,145.5 186,134.1 257,96.2 328,28' ) +
+	SVG_GRID_ROWS +
+	[ 58.9, 98.3, 137.6, 177 ].map( svgGridColumn ).join( '' ) +
+	SVG_AXES +
+	svgYLabels( [ '$.20', '$1', '$2', '$3', '$4' ] ) +
+	svgXLabel( 19.5, 'START' ) +
+	svgXLabel( 58.9, '6 MOS' ) +
+	svgXLabel( 98.3, '12 MOS' ) +
+	svgXLabel( 137.6, '18 MOS' ) +
+	svgXLabel( 177, '24 MOS' ) +
+	svgLine( '19.5,126.4 58.9,105.1 98.3,97.2 137.6,72.8 177,28.9' ) +
 	'</svg>';
 const dataUrl = ( svg ) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent( svg );
 
@@ -213,7 +242,7 @@ test( 'screen 10 draws the design\'s two lines', () => {
 
 test( 'lineChartSvg with one point puts it on the left axis', () => {
 	const svg = lineChartSvg( { title: '', xLabels: [ 'A' ], yTicks: [ 0, 1 ], yLabels: [ '0', '1' ], values: [ 1 ] } );
-	assert.equal( svg, SVG_OPEN + svgTitle( '' ) + svgGridline( 172, '0' ) + svgGridline( 28, '1' ) + svgXLabel( 44, 'A' ) + svgLine( '44,28' ) + '</svg>' );
+	assert.equal( svg, SVG_OPEN + svgTitle( '' ) + svgGridRow( 28.9 ) + SVG_AXES + svgYLabel( 126.4, '0' ) + svgYLabel( 28.9, '1' ) + svgXLabel( 19.5, 'A' ) + svgLine( '19.5,28.9' ) + '</svg>' );
 } );
 
 test( 'chart text follows the language, English where a translation is missing', () => {
