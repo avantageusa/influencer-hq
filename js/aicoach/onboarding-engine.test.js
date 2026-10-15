@@ -9,7 +9,7 @@ import { createEngine, ENGINE_STRINGS_EN } from './onboarding-engine.js';
 
 const STATE = { stage: '', answers: {}, platforms: [], handles: {}, language: '', completed: false, completed_at: '' };
 
-function setup( { stage = '', clips = {}, saveResult = { ok: true, status: 200, data: null }, completeResult = { ok: true, status: 200, data: { completed: true } } } = {} ) {
+function setup( { stage = '', clips = {}, saveResult = { ok: true, status: 200, data: null }, completeResult = { ok: true, status: 200, data: { completed: true } }, answer } = {} ) {
 	const document = createFakeDocument();
 	const content = document.createElement( 'div' );
 	document.body.append( content );
@@ -31,8 +31,12 @@ function setup( { stage = '', clips = {}, saveResult = { ok: true, status: 200, 
 		close: () => closes.push( true ),
 	};
 	const posts = [];
+	// answer( request ), when given, decides when and how each request is answered.
 	const postJson = async ( request ) => {
 		posts.push( request );
+		if ( answer ) {
+			return answer( request );
+		}
 		return '/complete' === request.url ? completeResult : saveResult;
 	};
 	const guardCalls = [];
@@ -155,9 +159,9 @@ test( 'advancing moves exactly one screen forward and saves the stage', async ()
 	assert.equal( engine.advance(), true );
 	assert.equal( engine.current(), 'modern_era' );
 	assert.deepEqual( log, [ [ 'render', 'game_of_kings' ], [ 'destroy', 'game_of_kings' ], [ 'render', 'modern_era' ] ] );
-	assert.deepEqual( posts, [ { url: '/progress', nonce: 'n1', body: { stage: 'modern_era' }, fetchFn } ] );
 	assert.equal( content.querySelectorAll( 'section' ).length, 1 );
 	await flush();
+	assert.deepEqual( posts, [ { url: '/progress', nonce: 'n1', body: { stage: 'modern_era' }, fetchFn } ] );
 } );
 
 test( 'clicking CONTINUE advances', () => {
@@ -168,7 +172,7 @@ test( 'clicking CONTINUE advances', () => {
 	assert.equal( engine.current(), 'modern_era' );
 } );
 
-test( 'walking the whole flow visits every screen once, in order, and stops at closing', () => {
+test( 'walking the whole flow visits every screen once, in order, and stops at closing', async () => {
 	const { engine, posts } = setup();
 	const log = [];
 	registerAll( engine, log );
@@ -178,10 +182,33 @@ test( 'walking the whole flow visits every screen once, in order, and stops at c
 	}
 	assert.deepEqual( log.filter( ( entry ) => 'render' === entry[ 0 ] ).map( ( entry ) => entry[ 1 ] ), SEQUENCE );
 	assert.equal( engine.current(), 'closing' );
+	await flush();
 	assert.deepEqual( posts.map( ( post ) => post.body.stage ), SEQUENCE.slice( 1 ) );
 } );
 
-test( 'a question screen with no valid answer does not advance and shows its validation state', () => {
+test( 'stage saves are sent one at a time, in order, and the last answer is the state kept', async () => {
+	const answers = [];
+	const answer = ( request ) => new Promise( ( resolve ) => {
+		answers.push( () => resolve( { ok: true, status: 200, data: { ...STATE, stage: request.body.stage } } ) );
+	} );
+	const { engine, api, posts } = setup( { answer } );
+	registerAll( engine, [] );
+	engine.start();
+	assert.equal( engine.advance(), true );
+	assert.equal( engine.advance(), true );
+	assert.equal( engine.current(), 'baccarat_experience', 'advancing does not wait for the save' );
+	await flush();
+	assert.deepEqual( posts.map( ( post ) => post.body ), [ { stage: 'modern_era' } ], 'the second save waits for the first' );
+	answers[ 0 ]();
+	await flush();
+	assert.deepEqual( posts.map( ( post ) => post.body ), [ { stage: 'modern_era' }, { stage: 'baccarat_experience' } ] );
+	assert.deepEqual( api.state, { ...STATE, stage: 'modern_era' } );
+	answers[ 1 ]();
+	await flush();
+	assert.deepEqual( api.state, { ...STATE, stage: 'baccarat_experience' } );
+} );
+
+test( 'a question screen with no valid answer does not advance and shows its validation state', async () => {
 	const { engine, posts } = setup( { stage: 'baccarat_experience' } );
 	const log = [];
 	let answered = false;
@@ -190,6 +217,7 @@ test( 'a question screen with no valid answer does not advance and shows its val
 	assert.equal( engine.advance(), false );
 	assert.equal( engine.current(), 'baccarat_experience' );
 	assert.deepEqual( log, [ [ 'render', 'baccarat_experience' ], [ 'validation', 'baccarat_experience' ] ] );
+	await flush();
 	assert.deepEqual( posts, [] );
 	answered = true;
 	assert.equal( engine.advance(), true );
@@ -207,13 +235,14 @@ test( 'an invalid screen with no showValidation still does not advance', () => {
 	assert.equal( engine.advance(), false );
 } );
 
-test( 'the post action edit option returns to the drafts; the other two go to closing', () => {
+test( 'the post action edit option returns to the drafts; the other two go to closing', async () => {
 	for ( const [ choice, expected ] of [ [ 'edit_together', 'draft_posts' ], [ 'post_now', 'closing' ], [ 'edit_later', 'closing' ] ] ) {
 		const { engine, posts } = setup( { stage: 'post_action' } );
 		registerAll( engine, [], { post_action: { choice: () => choice } } );
 		engine.start();
 		engine.advance();
 		assert.equal( engine.current(), expected, choice );
+		await flush();
 		assert.deepEqual( posts.map( ( post ) => post.body ), [ { stage: expected } ] );
 	}
 } );

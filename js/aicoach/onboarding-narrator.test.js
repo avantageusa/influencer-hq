@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createFakeClock } from './fake-clock.js';
 import { createStallWatchdog } from './stall-watchdog.js';
 import { buildSentenceCues, subtitleAt } from './onboarding-subtitles.js';
-import { createNarrator, CAPTION_TICK_MS, CLIP_STALL_MS } from './onboarding-narrator.js';
+import { createNarrator, sentenceIndexAt, captionOffsetMs, CAPTION_TICK_MS, CLIP_STALL_MS } from './onboarding-narrator.js';
 
 const SCRIPT = 'Aa. Bbbbbb.';
 
@@ -151,6 +151,59 @@ test( 'a clip that errors falls back to captions for the same line', async () =>
 	clock.tick( 1000 );
 	assert.deepEqual( await done, { mode: 'captions' } );
 	assert.equal( subtitles.at( -1 ), '' );
+} );
+
+for ( const duration of [ Infinity, NaN ] ) {
+	test( 'a clip reporting its duration as ' + duration + ' spreads the subtitles over the reading-pace length', () => {
+		const { video, subtitles, estimates, narrator } = setup();
+		narrator.play( { script: SCRIPT, clipUrl: 'live.m3u8' } );
+		video.duration = duration;
+		video.fire( 'loadedmetadata' );
+		assert.deepEqual( estimates, [ SCRIPT ] );
+		video.currentTime = 0.1;
+		video.fire( 'timeupdate' );
+		video.currentTime = 0.5;
+		video.fire( 'timeupdate' );
+		assert.deepEqual( subtitles, [ 'Aa.', 'Bbbbbb.' ] );
+	} );
+}
+
+test( 'a clip that breaks off mid-line carries on in captions from the sentence Sami had reached', async () => {
+	const { clock, video, subtitles, estimates, narrator } = setup();
+	const done = narrator.play( { script: SCRIPT, clipUrl: 'clip.mp4' } );
+	video.duration = 2;
+	video.fire( 'loadedmetadata' );
+	video.currentTime = 1;
+	video.fire( 'timeupdate' );
+	video.fire( 'error' );
+	assert.deepEqual( estimates, [ SCRIPT ] );
+	assert.deepEqual( subtitles, [ 'Bbbbbb.', 'Bbbbbb.' ] );
+	// 'Bbbbbb.' starts 300 ms into the 1000 ms caption line, so 700 ms are left.
+	clock.tick( 600 );
+	assert.equal( subtitles.at( -1 ), 'Bbbbbb.' );
+	assert.equal( clock.pendingCount(), 1 );
+	clock.tick( 100 );
+	assert.equal( subtitles.at( -1 ), '' );
+	assert.deepEqual( await done, { mode: 'captions' } );
+	assert.equal( clock.pendingCount(), 0 );
+} );
+
+test( 'sentenceIndexAt: the last sentence that had started, 0 before the first or with no cues', () => {
+	const cues = [ { text: 'A.', startMs: 0, endMs: 100 }, { text: 'B.', startMs: 100, endMs: 300 } ];
+	assert.equal( sentenceIndexAt( cues, 0 ), 0 );
+	assert.equal( sentenceIndexAt( cues, 99 ), 0 );
+	assert.equal( sentenceIndexAt( cues, 100 ), 1 );
+	assert.equal( sentenceIndexAt( cues, 5000 ), 1 );
+	assert.equal( sentenceIndexAt( cues, -1 ), 0 );
+	assert.equal( sentenceIndexAt( [], 50 ), 0 );
+} );
+
+test( 'captionOffsetMs: where a sentence starts, 0 for one that does not exist', () => {
+	const cues = [ { text: 'A.', startMs: 0, endMs: 100 }, { text: 'B.', startMs: 100, endMs: 300 } ];
+	assert.equal( captionOffsetMs( cues, 0 ), 0 );
+	assert.equal( captionOffsetMs( cues, 1 ), 100 );
+	assert.equal( captionOffsetMs( cues, 2 ), 0 );
+	assert.equal( captionOffsetMs( [], 0 ), 0 );
 } );
 
 test( 'a clip whose play() is rejected for another reason falls back to captions', async () => {

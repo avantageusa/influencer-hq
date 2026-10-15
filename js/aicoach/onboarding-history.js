@@ -26,12 +26,22 @@ export function createHistoryGuard( { history, window } ) {
 		pushGuard();
 	}
 
+	function isOnGuardEntry() {
+		return Boolean( history.state && history.state[ GUARD_STATE_KEY ] );
+	}
+
+	/**
+	 * Starts guarding. A reload during onboarding is already on a guard entry, so no second
+	 * one is pushed; otherwise guard entries would pile up across reloads.
+	 */
 	function install() {
 		if ( installed ) {
 			return;
 		}
 		installed = true;
-		pushGuard();
+		if ( ! isOnGuardEntry() ) {
+			pushGuard();
+		}
 		window.addEventListener( 'popstate', onPopState );
 	}
 
@@ -45,7 +55,7 @@ export function createHistoryGuard( { history, window } ) {
 		}
 		installed = false;
 		window.removeEventListener( 'popstate', onPopState );
-		if ( history.state && history.state[ GUARD_STATE_KEY ] ) {
+		if ( isOnGuardEntry() ) {
 			history.back();
 		}
 	}
