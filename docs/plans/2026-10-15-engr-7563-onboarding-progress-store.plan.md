@@ -16,7 +16,10 @@ todos:
     content: tests/portal-onboarding-progress.test.php covering every field and value, every rejection, 401/403, merge and completion
     status: completed
   - id: verify
-    content: test:js and lint; PHP tests run only in CI (no PHP on the build host)
+    content: npm run test:js, npm run test:php and php -l on the changed PHP files (PHP 8.3 via the php:8.3-cli Docker image, and in CI); npm run lint:js is broken on main (ESLint cannot parse ES2020), so it was not run
+    status: completed
+  - id: review-fixes
+    content: PR #121 review - completion in its own meta key, merge() validates, handle for an unselected platform is a 400, action names as constants
     status: completed
 ---
 
@@ -32,17 +35,24 @@ cannot do that.
 
 ## Approach
 - One user meta record, `_ihq_portal_onboarding`: `stage`, `answers`, `platforms`, `handles`,
-  `language`, `completed`, `completed_at`. No expiry.
+  `language`. Completion lives in its own key, `_ihq_portal_onboarding_completed_at` (ISO-8601 UTC),
+  written only by `mark_complete()`, so a save that read the record before completion cannot write
+  it back as not complete. `get_state()` returns both as one state with `completed` and
+  `completed_at`. No expiry.
 - `GET`/`POST /wp-json/ihq/v1/onboarding/progress`. `permission_callback`: 401 when logged out, 403
   without a valid `wp_rest` nonce. Responses are `no-store, private`.
 - POST is validated as a whole before anything is written; one unknown key or value is a 400 and
   nothing is stored. `completed` is not writable from the browser.
 - Merge: answers per field (null clears one, for a hidden sub-option), platforms and handles replace,
-  and only handles of selected platforms are kept. A language write also updates `_ihq_aicoach_language`
+  and only handles of selected platforms are kept (unticking a platform drops its handle). A posted
+  handle for a platform that is not selected after the update is a 400. A language write also updates `_ihq_aicoach_language`
   so the registration preference and Braze's `language_preference` stay one value.
 - PHP API: `ihq_portal_onboarding_get_state()`, `ihq_portal_onboarding_merge()`,
   `ihq_portal_onboarding_mark_complete()`, `ihq_portal_onboarding_is_complete()`; actions
-  `ihq_portal_onboarding_saved` and `ihq_portal_onboarding_completed` (fired once).
+  `ihq_portal_onboarding_saved` and `ihq_portal_onboarding_completed` (fired once), named by
+  `IHQ_PORTAL_ONBOARDING_SAVED_ACTION` / `IHQ_PORTAL_ONBOARDING_COMPLETED_ACTION`. `merge()` applies
+  the same allowlist as the route and returns a 400 `WP_Error` for a rejected update (nothing stored
+  or fired); a valid update returns the full state as before.
 
 ### Stored values (EQ1)
 
@@ -70,7 +80,7 @@ The sub-option fields follow the Braze attribute names in ENGR-7573 (`streaming_
 - Silently dropping unknown values (as the landing store does): the ticket asks for 400.
 
 ## Blast radius
-New REST namespace path `ihq/v1/onboarding/progress` and a new user meta key. The only existing data
+New REST namespace path `ihq/v1/onboarding/progress` and two new user meta keys. The only existing data
 written is `_ihq_aicoach_language`, and only when a language is posted.
 
 ## Notes
