@@ -29,6 +29,7 @@ const ADMIN_ID          = 6;
 const VICTIM_EMAIL      = 'victim@example.test';
 const ADMIN_EMAIL       = 'admin@example.test';
 const NEW_EMAIL         = 'newbie@example.test';
+const ATTACKER_EMAIL    = 'attacker@evil.example';
 const ACCOUNT_URL       = 'https://ihq.example.test/portal/account/';
 const LOCKOUT_MESSAGE   = 'You are temporarily locked out, try again in 15 minutes';
 const MISMATCH_MESSAGE  = 'That code does not match. Check your communication method and try again.';
@@ -135,7 +136,8 @@ function sanitize_user( $s, $strict = false ) {
 	}
 	return trim( $s );
 }
-function is_email( $s ) { return is_string( $s ) && strpos( $s, '@' ) !== false; }
+// Same shape as WordPress core is_email(): no spaces, a dotted domain.
+function is_email( $s ) { return is_string( $s ) && preg_match( '/^[a-z0-9!#$%&\'*+\/=?^_`{|}~.-]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/i', $s ) === 1; }
 function email_exists( $s ) { return isset( $GLOBALS['users'][ strtolower( $s ) ] ) ? $GLOBALS['users'][ strtolower( $s ) ]->ID : false; }
 function get_user_by( $field, $value ) {
 	if ( $field === 'email' ) {
@@ -240,6 +242,13 @@ function last_code() {
 	$codes = mailed_codes();
 	return end( $codes )['code'];
 }
+function clear_issue_throttle() {
+	foreach ( array_keys( $GLOBALS['transients'] ) as $key ) {
+		if ( strpos( $key, 'ihq_visitor_issue_' ) === 0 ) {
+			unset( $GLOBALS['transients'][ $key ] );
+		}
+	}
+}
 function wrong_code( $code ) { return str_pad( (string) ( ( (int) $code + 1 ) % 1000000 ), 6, '0', STR_PAD_LEFT ); }
 function fp_key( $email ) { return ihq_visitor_verification_fingerprint_option_key( ihq_visitor_intent_comm_fingerprint( intent_for( $email ) ) ); }
 function error_with( $message ) { return array( 'success' => false, 'data' => array( 'message' => $message ) ); }
@@ -268,6 +277,7 @@ foreach ( array( 'dev', 'qa' ) as $env ) {
 	$issued = issue( VICTIM_EMAIL );
 	check( "debug $env: issue echoes the mailed code", $issued['data']['registration_code_debug'], last_code() );
 	check( "debug $env: issue includes the Braze payload", $issued['data']['braze_track_payload']['attributes'][0]['registration_code'], last_code() );
+	clear_issue_throttle();
 	$test = issue( VICTIM_EMAIL, 'ihq_handle_test_registry_braze_ajax' );
 	check( "debug $env: test action echoes the mailed code", $test['data']['registration_code'], last_code() );
 }
@@ -276,6 +286,7 @@ foreach ( array( 'prod', 'PROD', '' ) as $env ) {
 	putenv( 'IHQ_ENVIRONMENT=' . $env );
 	putenv( 'IHQ_VISITOR_CODE_DEBUG=1' );
 	check( "debug flag ignored in env '$env': issue", array_keys( issue( VICTIM_EMAIL )['data'] ), array( 'expires_minutes', 'reused', 'redirect_url' ) );
+	clear_issue_throttle();
 	check( "debug flag ignored in env '$env': test action", issue( VICTIM_EMAIL, 'ihq_handle_test_registry_braze_ajax' ), error_with( 'Not available.' ) );
 }
 reset_state();
@@ -312,7 +323,7 @@ check( 'takeover/IP: guess 2 mismatches', verify( VICTIM_EMAIL, wrong_code( wron
 check( 'takeover/IP: guess 3 locks the IP', verify( VICTIM_EMAIL, wrong_code( wrong_code( wrong_code( $code ) ) ) ), error_with( LOCKOUT_MESSAGE ) );
 check( 'takeover/IP: even the right code is refused while locked', verify( VICTIM_EMAIL, $code ), error_with( LOCKOUT_MESSAGE ) );
 check( 'takeover/IP: no auth cookie set', $GLOBALS['auth_cookies'], array() );
-check( 'takeover/IP: IP lock transient set', array_values( $GLOBALS['transients'] ), array( 1 ) );
+check( 'takeover/IP: IP lock transient set', $GLOBALS['transients'][ ihq_login_verify_rate_limit_keys()['lock'] ], 1 );
 check( 'takeover/IP: mutex released on every attempt', $GLOBALS['mutex_releases'], 4 );
 
 // === 7. Takeover across many IPs: the per-fingerprint / per-email cap still holds. ===
@@ -327,6 +338,7 @@ foreach ( $guesses as $i => $guess ) {
 $_SERVER['REMOTE_ADDR'] = '198.51.100.99';
 check( 'takeover/IPs: 4th attempt locked even with the right code', verify( VICTIM_EMAIL, $code ), error_with( LOCKOUT_MESSAGE ) );
 check( 'takeover/IPs: no auth cookie set', $GLOBALS['auth_cookies'], array() );
+check( 'takeover/IPs: code burnt after the 3rd miss', isset( $GLOBALS['options'][ fp_key( VICTIM_EMAIL ) ] ), false );
 $fp_counter    = ihq_visitor_verify_attempt_keys( 'fingerprint', ihq_visitor_intent_comm_fingerprint( intent_for( VICTIM_EMAIL ) ) )['fail'];
 $email_counter = ihq_visitor_verify_attempt_keys( 'email', VICTIM_EMAIL )['fail'];
 check( 'takeover/IPs: fingerprint counter at 4', $GLOBALS['options'][ $fp_counter ], 4 );
@@ -393,15 +405,20 @@ verify( NEW_EMAIL, wrong_code( last_code() ) );
 $ip_keys    = ihq_login_verify_rate_limit_keys();
 $fp_keys    = ihq_visitor_verify_attempt_keys( 'fingerprint', ihq_visitor_intent_comm_fingerprint( intent_for( NEW_EMAIL ) ) );
 $email_keys = ihq_visitor_verify_attempt_keys( 'email', NEW_EMAIL );
-$expected   = array( $fp_keys['fail'], $fp_keys['fail_timeout'], $email_keys['fail'], $email_keys['fail_timeout'], $ip_keys['fail'], $ip_keys['fail_timeout'] );
-check( 'typo: fingerprint, email and IP counters after a miss', rate_limit_options(), $expected );
-check( 'typo: each counter at 1', array( $GLOBALS['options'][ $fp_keys['fail'] ], $GLOBALS['options'][ $email_keys['fail'] ], $GLOBALS['options'][ $ip_keys['fail'] ] ), array( 1, 1, 1 ) );
+$daily_keys = ihq_visitor_verify_attempt_keys( 'email_daily', NEW_EMAIL );
+$expected   = array( $fp_keys['fail'], $fp_keys['fail_timeout'], $email_keys['fail'], $email_keys['fail_timeout'], $daily_keys['fail'], $daily_keys['fail_timeout'], $ip_keys['fail'], $ip_keys['fail_timeout'] );
+check( 'typo: fingerprint, email, daily and IP counters after a miss', rate_limit_options(), $expected );
+check( 'typo: each counter at 1', array( $GLOBALS['options'][ $fp_keys['fail'] ], $GLOBALS['options'][ $email_keys['fail'] ], $GLOBALS['options'][ $daily_keys['fail'] ], $GLOBALS['options'][ $ip_keys['fail'] ] ), array( 1, 1, 1, 1 ) );
+$daily_ttl = (int) $GLOBALS['options'][ $daily_keys['fail_timeout'] ] - time();
+check( 'typo: daily counter lives a day', $daily_ttl > DAY_IN_SECONDS - 10 && $daily_ttl <= DAY_IN_SECONDS, true );
+check( 'typo: 15-minute counter lives 15 minutes', (int) $GLOBALS['options'][ $fp_keys['fail_timeout'] ] - time() <= 900, true );
 check( 'typo then right code: registered', verify( NEW_EMAIL, last_code() )['success'], true );
 check( 'typo then right code: counters cleared', rate_limit_options(), array() );
 
 // === 13. Re-request rotates the code: only the latest works. ===
 reset_state();
 issue( VICTIM_EMAIL );
+clear_issue_throttle();
 issue( VICTIM_EMAIL );
 $codes = mailed_codes();
 if ( $codes[0]['code'] !== $codes[1]['code'] ) {
@@ -436,7 +453,48 @@ check( 'short code refused', verify( VICTIM_EMAIL, '12345' ), error_with( 'Enter
 check( 'bad nonce refused', call_ajax( 'ihq_handle_verify_visitor_code_ajax', array( 'nonce' => 'bad', 'intent_json' => '{}', 'code' => '123456' ) ), error_with( 'Invalid security token or intent data.' ) );
 check( 'no record: invalid', verify( NEW_EMAIL, '123456' ), error_with( 'Invalid or expired code. Check your communication method and try again.' ) );
 
-// === 17. Counter keys share the login-code family (cleanup sweep). ===
+// === 17. Fingerprint collision: the caller's intent cannot redirect the registration (review Major). ===
+reset_state();
+$GLOBALS['responses'][ START_SESSION_URL ][] = array( 'status' => 200, 'body' => SUCCESS_BODY );
+issue( ATTACKER_EMAIL );
+$collision_json = '{"comm_methods":{"!email":"' . NEW_EMAIL . '","email":" ' . ATTACKER_EMAIL . '"}}';
+$collision      = json_decode( $collision_json, true );
+check( 'collision: same fingerprint as the issued intent', ihq_visitor_intent_comm_fingerprint( $collision ), ihq_visitor_intent_comm_fingerprint( intent_for( ATTACKER_EMAIL ) ) );
+check( 'collision: posted intent extracts the victim email', ihq_visitor_intent_extract_email( $collision ), NEW_EMAIL );
+$result = call_ajax( 'ihq_handle_verify_visitor_code_ajax', array( 'intent_json' => $collision_json, 'code' => last_code() ) );
+check( 'collision: verify registers from the stored intent', $result['success'], true );
+check( 'collision: account is for the mailed address, not the victim', $GLOBALS['created_users'], array( array( 'username' => 'attacker', 'email' => ATTACKER_EMAIL ) ) );
+reset_state();
+check( 'collision: new account for another address than delivered is refused', ihq_complete_visitor_intent_registration( intent_for( NEW_EMAIL ), ATTACKER_EMAIL ), array( 'ok' => false, 'message' => REFUSED_MESSAGE ) );
+check( 'collision: nothing created', array( $GLOBALS['created_users'], $GLOBALS['auth_cookies'] ), array( array(), array() ) );
+
+// === 18. Long-horizon per-email cap (keyed by the delivered address). ===
+reset_state();
+issue( VICTIM_EMAIL );
+$GLOBALS['options'][ ihq_visitor_verify_attempt_keys( 'email_daily', VICTIM_EMAIL )['fail'] ] = IHQ_VISITOR_VERIFY_DAILY_MAX_FAILURES;
+check( 'daily cap: right code refused once 10 misses are on record', verify( VICTIM_EMAIL, last_code() ), error_with( LOCKOUT_MESSAGE ) );
+check( 'daily cap: no auth cookie', $GLOBALS['auth_cookies'], array() );
+$GLOBALS['options'][ ihq_visitor_verify_attempt_keys( 'email_daily', VICTIM_EMAIL )['fail'] ] = IHQ_VISITOR_VERIFY_DAILY_MAX_FAILURES - 1;
+$GLOBALS['options'] = array_intersect_key( $GLOBALS['options'], array( fp_key( VICTIM_EMAIL ) => 1, ihq_visitor_verify_attempt_keys( 'email_daily', VICTIM_EMAIL )['fail'] => 1 ) );
+check( 'daily cap: one below the cap still signs in', verify( VICTIM_EMAIL, last_code() )['success'], true );
+check( 'daily cap: success clears the daily counter', rate_limit_options(), array() );
+
+// === 19. Issue throttle per email. ===
+reset_state();
+issue( VICTIM_EMAIL );
+check( 'throttle: second code within 45s refused', issue( VICTIM_EMAIL ), error_with( 'Please wait a moment before requesting another code.' ) );
+check( 'throttle: only one email sent', count( $GLOBALS['mail'] ), 1 );
+check( 'throttle: first code still verifies', verify( VICTIM_EMAIL, last_code() )['success'], true );
+check( 'throttle: other emails unaffected', issue( NEW_EMAIL )['success'], true );
+
+// === 20. Records without delivered_email or intent (pre-fix shape) are not usable. ===
+check( 'record: complete', ihq_visitor_verification_record_is_usable( array( 'code_hash' => 'h', 'verify_token' => 't', 'delivered_email' => VICTIM_EMAIL, 'intent' => array() ) ), true );
+check( 'record: no delivered_email', ihq_visitor_verification_record_is_usable( array( 'code_hash' => 'h', 'verify_token' => 't', 'intent' => array() ) ), false );
+check( 'record: no intent', ihq_visitor_verification_record_is_usable( array( 'code_hash' => 'h', 'verify_token' => 't', 'delivered_email' => VICTIM_EMAIL ) ), false );
+check( 'record: legacy plaintext', ihq_visitor_verification_record_is_usable( array( 'code' => '123456', 'expires' => 1 ) ), false );
+check( 'record: not an array', ihq_visitor_verification_record_is_usable( false ), false );
+
+// === 21. Counter keys share the login-code family (cleanup sweep). ===
 $keys = ihq_visitor_verify_attempt_keys( 'email', VICTIM_EMAIL );
 check( 'keys: fail prefix', strpos( $keys['fail'], 'ihq_login_verify_fail_' ), 0 );
 check( 'keys: timeout prefix', strpos( $keys['fail_timeout'], 'ihq_login_verify_fail_timeout_' ), 0 );

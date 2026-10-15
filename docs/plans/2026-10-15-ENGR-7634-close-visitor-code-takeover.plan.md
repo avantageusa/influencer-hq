@@ -7,6 +7,7 @@ todos:
   - { id: existing-user-gate, content: "Existing-user sign-in only when the code was emailed to that user's account email and the user is an influencer", status: completed }
   - { id: attempt-limits, content: "Verify: portal Turnstile pass when configured, per-IP lockout shared with login-code verify, per-fingerprint and per-email attempt caps", status: completed }
   - { id: hashed-storage, content: "One record per fingerprint holding only an HMAC of the code; constant-time compare", status: completed }
+  - { id: review-fixes, content: "Independent review: register from the stored intent and bind new accounts to delivered_email; 10-misses-per-day email cap keyed by delivered address; burn the code after 3 misses; 45s per-email issue throttle; IHQ_ENVIRONMENT docs", status: completed }
   - { id: tests, content: "tests/visitor-code-verify.test.php covers takeover, new-visitor flow, limits, storage", status: completed }
 ---
 
@@ -54,6 +55,14 @@ for any email and then sign in as the existing user who owns that email:
 4. **Storage.** One option per fingerprint holding an HMAC of the code with a
    per-record token. A re-request rotates the code (the old code cannot be
    recovered to resend). Pre-deploy records are cleaned up when touched.
+
+5. **Review follow-up.** Verify registers from the intent stored at issue
+   time (the posted intent only selects the record by fingerprint), and a new
+   account must also be for `delivered_email`. A per-email cap of 10 misses a
+   day, keyed by the delivered address, sits on top of the 15-minute caps;
+   after 3 misses on a fingerprint the code is deleted. Issue is throttled to
+   one code per email per 45 seconds, because each issue now cancels the
+   previous code.
 
 ## Alternatives considered
 

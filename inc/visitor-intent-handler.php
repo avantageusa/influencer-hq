@@ -86,6 +86,15 @@ const IHQ_VISITOR_VERIFY_FAIL_PREFIX = 'ihq_login_verify_fail_';
 /** Prefix shared with the login-code fail-counter expiry options. */
 const IHQ_VISITOR_VERIFY_FAIL_TIMEOUT_PREFIX = 'ihq_login_verify_fail_timeout_';
 
+/** Wrong visitor codes per email in IHQ_VISITOR_VERIFY_DAILY_WINDOW_SECONDS before a day-long lock. */
+const IHQ_VISITOR_VERIFY_DAILY_MAX_FAILURES = 10;
+
+/** Window of the long-horizon per-email failure cap: one day (literal, so the file loads before WordPress's DAY_IN_SECONDS in stub tests). */
+const IHQ_VISITOR_VERIFY_DAILY_WINDOW_SECONDS = 86400;
+
+/** Minimum gap between two codes for the same email (same as the registration send). */
+const IHQ_VISITOR_ISSUE_THROTTLE_SECONDS = 45;
+
 /**
  * Whether AJAX responses may include the visitor code (ENGR-7634).
  *
@@ -207,6 +216,16 @@ function ihq_complete_visitor_intent_registration( array $intent, $delivered_ema
 		return array(
 			'ok'      => false,
 			'message' => __( 'No email was found in your saved form data. Please complete the modal with an email address.', 'influencer-hq' ),
+		);
+	}
+
+	// A new account must also be for the address the code went to; otherwise
+	// a caller's own code could register someone else's email.
+	$delivered = strtolower( trim( (string) $delivered_email ) );
+	if ( $delivered !== '' && ! hash_equals( strtolower( trim( $email ) ), $delivered ) ) {
+		return array(
+			'ok'      => false,
+			'message' => __( 'We could not sign you in with this code. Please sign in from the login page.', 'influencer-hq' ),
 		);
 	}
 
@@ -580,6 +599,20 @@ function ihq_issue_visitor_verification_code( array $intent, $button_press_url =
 		);
 	}
 
+	// Each issue now invalidates the previous code, so without a throttle anyone
+	// could cancel the code a visitor is about to type (and flood the inbox).
+	$throttle_email = strtolower( ihq_visitor_intent_extract_email( $intent ) );
+	if ( $throttle_email !== '' ) {
+		$throttle_key = 'ihq_visitor_issue_' . md5( $throttle_email );
+		if ( get_transient( $throttle_key ) ) {
+			return array(
+				'ok'      => false,
+				'message' => __( 'Please wait a moment before requesting another code.', 'influencer-hq' ),
+			);
+		}
+		set_transient( $throttle_key, 1, IHQ_VISITOR_ISSUE_THROTTLE_SECONDS );
+	}
+
 	$fingerprint = ihq_visitor_intent_comm_fingerprint( $intent );
 	$fp_key      = ihq_visitor_verification_fingerprint_option_key( $fingerprint );
 	$existing    = get_option( $fp_key );
@@ -766,7 +799,24 @@ add_action( 'wp_ajax_ihq_issue_visitor_verification', 'ihq_handle_issue_visitor_
 add_action( 'wp_ajax_nopriv_ihq_issue_visitor_verification', 'ihq_handle_issue_visitor_verification_ajax' );
 
 /**
- * AJAX: verify 6-digit code and register from cookie intent.
+ * Whether a stored visitor-code record can be verified: hashed code, the
+ * address it was delivered to and the intent it was issued for. Pre-ENGR-7634
+ * records lack the last two and are treated as expired.
+ *
+ * @param mixed $record Option value.
+ * @return bool
+ */
+function ihq_visitor_verification_record_is_usable( $record ) {
+	return is_array( $record )
+		&& ! empty( $record['code_hash'] )
+		&& ! empty( $record['verify_token'] )
+		&& ! empty( $record['delivered_email'] )
+		&& isset( $record['intent'] )
+		&& is_array( $record['intent'] );
+}
+
+/**
+ * AJAX: verify 6-digit code and register from the intent the code was issued for.
  */
 function ihq_handle_verify_visitor_code_ajax() {
 	$parsed = ihq_parse_visitor_intent_ajax_request();
@@ -799,9 +849,8 @@ function ihq_handle_verify_visitor_code_ajax() {
 		return;
 	}
 
-	$intent      = $parsed['intent'];
-	$fingerprint = ihq_visitor_intent_comm_fingerprint( $intent );
-	$counters    = ihq_visitor_verify_attempt_counters( $fingerprint, ihq_visitor_intent_extract_email( $intent ) );
+	$fingerprint = ihq_visitor_intent_comm_fingerprint( $parsed['intent'] );
+	$counters    = ihq_visitor_verify_attempt_counters( $fingerprint, ihq_visitor_intent_extract_email( $parsed['intent'] ) );
 	if ( ! ihq_visitor_verify_reserve_attempt( $counters ) ) {
 		ihq_login_verify_json_error_releasing_mutex( $lock_name, array( 'message' => ihq_login_verify_lockout_message() ) );
 		return;
@@ -809,7 +858,7 @@ function ihq_handle_verify_visitor_code_ajax() {
 
 	$fp_key = ihq_visitor_verification_fingerprint_option_key( $fingerprint );
 	$record = get_option( $fp_key );
-	if ( ! is_array( $record ) || empty( $record['code_hash'] ) || empty( $record['verify_token'] ) ) {
+	if ( ! ihq_visitor_verification_record_is_usable( $record ) ) {
 		ihq_login_verify_json_error_releasing_mutex(
 			$lock_name,
 			array( 'message' => __( 'Invalid or expired code. Check your communication method and try again.', 'influencer-hq' ) )
@@ -826,8 +875,20 @@ function ihq_handle_verify_visitor_code_ajax() {
 		return;
 	}
 
+	$daily_keys = ihq_visitor_verify_attempt_keys( 'email_daily', strtolower( (string) $record['delivered_email'] ) );
+	if ( (int) get_option( $daily_keys['fail'], 0 ) >= IHQ_VISITOR_VERIFY_DAILY_MAX_FAILURES ) {
+		ihq_login_verify_json_error_releasing_mutex( $lock_name, array( 'message' => ihq_login_verify_lockout_message() ) );
+		return;
+	}
+
 	$try_hash = ihq_visitor_verification_code_hash( $code_raw, (string) $record['verify_token'] );
 	if ( ! hash_equals( (string) $record['code_hash'], $try_hash ) ) {
+		ihq_login_verify_increment_failures( $daily_keys, IHQ_VISITOR_VERIFY_DAILY_WINDOW_SECONDS );
+		// After the cap the code is burnt: the next try needs a fresh code,
+		// which lands in the owner's inbox and tells them someone is trying.
+		if ( (int) get_option( $counters[0]['fail'], 0 ) >= IHQ_LOGIN_CODE_MAX_FAILURES ) {
+			delete_option( $fp_key );
+		}
 		$failure = ihq_login_verify_record_failure();
 		$message = ! empty( $failure['locked'] )
 			? ihq_login_verify_lockout_message()
@@ -836,13 +897,17 @@ function ihq_handle_verify_visitor_code_ajax() {
 		return;
 	}
 
+	// Register from the intent the code was issued for. The posted intent only
+	// has to match its fingerprint, and different comm_methods (duplicate or
+	// unsanitized keys) can share one fingerprint yet yield another email.
+	$intent = $record['intent'];
 	if ( $parsed['country_iso'] !== '' ) {
 		$intent['country_iso'] = function_exists( 'ihq_normalize_country_iso_alpha2' )
 			? ihq_normalize_country_iso_alpha2( $parsed['country_iso'] )
 			: strtoupper( $parsed['country_iso'] );
 	}
 
-	$result = ihq_complete_visitor_intent_registration( $intent, (string) ( $record['delivered_email'] ?? '' ) );
+	$result = ihq_complete_visitor_intent_registration( $intent, (string) $record['delivered_email'] );
 	if ( empty( $result['ok'] ) ) {
 		ihq_login_verify_json_error_releasing_mutex(
 			$lock_name,
@@ -852,7 +917,7 @@ function ihq_handle_verify_visitor_code_ajax() {
 	}
 
 	delete_option( $fp_key );
-	ihq_visitor_verify_clear_attempts( $counters );
+	ihq_visitor_verify_clear_attempts( array_merge( $counters, array( $daily_keys ) ) );
 	ihq_login_verify_clear_failures();
 	ihq_login_verify_release_ip_mutex( $lock_name );
 

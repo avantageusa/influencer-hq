@@ -32,7 +32,7 @@ Add this block to `wp-config.php` on each instance:
 
 ```php
 // Influencer HQ — per-instance configuration (inc/ihq-env.php)
-define( 'IHQ_ENVIRONMENT',          'dev' );   // dev | qa | prod — diagnostics only
+define( 'IHQ_ENVIRONMENT',          'dev' );   // dev | qa | prod — exact; only dev/qa allow IHQ_VISITOR_CODE_DEBUG (ENGR-7634)
 define( 'IHQ_API_BASE_URL',         'https://<id>.execute-api.<region>.amazonaws.com/<stage>' );
 define( 'IHQ_GAME_PORTAL_BASE_URL', 'https://<portal-host>/av-baccarat' );
 define( 'IHQ_INFLUENCER_API_KEY',   '<value of SSM /<stage>/account-api-tf-api/INFLUENCER_HQ_SSO_API_KEY>' );
