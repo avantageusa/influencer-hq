@@ -559,10 +559,11 @@ function ihq_login_verify_purge_expired_failures( array $keys ) {
  * Uses MySQL INSERT ... ON DUPLICATE KEY UPDATE with LAST_INSERT_ID() so concurrent
  * requests cannot read-modify-write the same count and skip the lockout threshold.
  *
- * @param array{fail:string,fail_timeout:string} $keys Rate-limit keys.
+ * @param array{fail:string,fail_timeout:string} $keys           Rate-limit keys.
+ * @param int                                    $window_seconds Seconds until the counter expires.
  * @return int New failure count (>= 1).
  */
-function ihq_login_verify_increment_failures( array $keys ) {
+function ihq_login_verify_increment_failures( array $keys, $window_seconds = IHQ_LOGIN_CODE_LOCKOUT_SECONDS ) {
     global $wpdb;
 
     ihq_login_verify_purge_expired_failures( $keys );
@@ -589,7 +590,7 @@ function ihq_login_verify_increment_failures( array $keys ) {
     }
 
     wp_cache_delete( $keys['fail'], 'options' );
-    update_option( $keys['fail_timeout'], (string) ( time() + IHQ_LOGIN_CODE_LOCKOUT_SECONDS ), false );
+    update_option( $keys['fail_timeout'], (string) ( time() + (int) $window_seconds ), false );
 
     return max( 1, $failures );
 }
