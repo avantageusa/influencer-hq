@@ -49,13 +49,19 @@ export const MIN_READING_TIME_MS = 2000;
 
 /**
  * The words a screen shows, for its reading time: the text of its own section (not the
- * shell's commentary or footer), with runs of white space collapsed.
+ * shell's commentary or footer), plus the alt text of its images, with runs of white space
+ * collapsed. A chart drawn as an image carries its data only in its alt text, so without it a
+ * chart screen would get no more than the reading-time floor.
  *
  * @param {Element} container The screen's section.
  * @return {string} The text, trimmed.
  */
 export function screenText( container ) {
-	return container.textContent.replace( /\s+/g, ' ' ).trim();
+	const altTexts = Array.from( container.querySelectorAll( 'img' ) )
+		.map( ( image ) => image.getAttribute( 'alt' ) || '' )
+		.filter( ( alt ) => alt.trim() !== '' );
+	const words = [ container.textContent, ...altTexts ].join( ' ' );
+	return words.replace( /\s+/g, ' ' ).trim();
 }
 
 /**
