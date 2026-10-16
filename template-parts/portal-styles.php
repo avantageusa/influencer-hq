@@ -5669,6 +5669,7 @@
 }
 .sett-referral-inline .sett-referral-url {
     flex:1;
+    min-width:0;
     text-align:right;
     border:none;
     padding:0;

@@ -616,6 +616,24 @@ get_template_part( 'template-parts/portal-styles' );
     text-decoration: underline;
     text-underline-offset: 3px;
 }
+/* ENGR-7510 — title and URL were both sized to their nowrap content, so they
+   overlapped in the middle of the row. Grid gives the title its text width and
+   the URL the leftover column, which can shrink. */
+#portal-content .sett-account-card .sett-row--referral {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    justify-content: stretch;
+    align-items: center;
+}
+#portal-content .sett-account-card .sett-row--referral .sett-row-lbl {
+    flex: none;
+    min-width: 0;
+}
+#portal-content .sett-account-card .sett-row--referral .sett-row-val {
+    min-width: 0;
+    width: auto;
+    max-width: 100%;
+}
 #portal-content .sett-account-card .sett-referral-url {
     color: #828282;
     font-style: italic;
@@ -623,6 +641,9 @@ get_template_part( 'template-parts/portal-styles' );
     text-underline-offset: 3px;
     font-size: clamp(17px, 1.7vw, 32px);
     text-align: right;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 #portal-content .sett-account-card .sett-referral-url--has-value {
     color: #fff;
@@ -726,6 +747,13 @@ get_template_part( 'template-parts/portal-styles' );
     }
     #portal-content .sett-account-card .sett-portal-username-row {
         flex-wrap: nowrap;
+    }
+    #portal-content .sett-account-card .sett-row--referral {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    #portal-content .sett-account-card .sett-row--referral .sett-row-val {
+        justify-content: flex-start;
+        width: 100%;
     }
     #portal-content .sett-row {
         flex-wrap: wrap;
@@ -1073,14 +1101,14 @@ $ihq_resolved_oauth_session_url = function_exists( 'ihq_get_oauth_start_session_
                     </div>
                     <p class="sett-portal-username-feedback sett-portal-username-feedback--ok" id="portal-username-ok" hidden></p>
                     <p class="sett-portal-username-feedback sett-portal-username-feedback--err" id="portal-username-err" hidden></p>
-                    <div class="sett-row">
+                    <div class="sett-row sett-row--referral">
                         <div class="sett-row-lbl"><?php esc_html_e( 'Follower Referral link:', 'influencer-hq' ); ?></div>
                         <div class="sett-row-val sett-referral-inline">
                             <span class="sett-referral-url" id="profile-follower-referral-url"><?php esc_html_e( 'link appears here', 'influencer-hq' ); ?></span>
                             <button type="button" class="sett-referral-copy-btn" data-referral-target="profile-follower-referral-url"><?php esc_html_e( 'copy', 'influencer-hq' ); ?></button>
                         </div>
                     </div>
-                    <div class="sett-row">
+                    <div class="sett-row sett-row--referral">
                         <div class="sett-row-lbl"><?php esc_html_e( 'Influencer Referral link:', 'influencer-hq' ); ?></div>
                         <div class="sett-row-val sett-referral-inline">
                             <span class="sett-referral-url" id="profile-influencer-referral-url"><?php esc_html_e( 'link appears here', 'influencer-hq' ); ?></span>
