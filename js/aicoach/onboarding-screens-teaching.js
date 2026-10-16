@@ -184,6 +184,24 @@ function axisText( { x, y, anchor, label } ) {
 }
 
 /**
+ * The index of the last tick at or below a value, or -1 when the value is below them all.
+ * A loop, not Array.prototype.findLastIndex: this module is loaded as-is, with no build or
+ * polyfill, and findLastIndex is missing from browsers older than Safari 15.4 or Firefox 104.
+ *
+ * @param {number}   value
+ * @param {number[]} yTicks Ascending.
+ * @return {number} The tick index, or -1.
+ */
+function lastTickIndexAtOrBelow( value, yTicks ) {
+	for ( let index = yTicks.length - 1; index >= 0; index-- ) {
+		if ( yTicks[ index ] <= value ) {
+			return index;
+		}
+	}
+	return -1;
+}
+
+/**
  * How far up the y axis a value sits, from 0 (the first tick) to 1 (the last). The design
  * spaces the ticks evenly whatever their values ($.20, $1, $2 ... on the value chart), so a
  * value is placed between the two ticks around it.
@@ -194,7 +212,7 @@ function axisText( { x, y, anchor, label } ) {
  */
 export function tickFraction( value, yTicks ) {
 	const segments = yTicks.length - 1;
-	const below = yTicks.findLastIndex( ( tick ) => tick <= value );
+	const below = lastTickIndexAtOrBelow( value, yTicks );
 	const segment = Math.min( Math.max( below, 0 ), segments - 1 );
 	const low = yTicks[ segment ];
 	const high = yTicks[ segment + 1 ];

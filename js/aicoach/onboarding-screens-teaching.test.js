@@ -217,6 +217,26 @@ test( 'tickFraction spaces the ticks evenly and places a value between the two a
 	assert.equal( tickFraction( 5, [ 0, 10 ] ), 0.5 );
 } );
 
+test( 'tickFraction works in a browser without Array.prototype.findLastIndex (the module ships unpolyfilled)', () => {
+	const ticks = [ 0.5, 1, 2, 3, 4 ];
+	const descriptor = Object.getOwnPropertyDescriptor( Array.prototype, 'findLastIndex' );
+	delete Array.prototype.findLastIndex;
+	try {
+		assert.equal( Object.hasOwn( Array.prototype, 'findLastIndex' ), false );
+		assert.equal( tickFraction( 0.5, ticks ), 0 );
+		assert.equal( tickFraction( 0.75, ticks ), 0.125 );
+		assert.equal( tickFraction( 2.5, ticks ), 0.625 );
+		assert.equal( tickFraction( 4, ticks ), 1 );
+		// Below every tick: no tick matches, so the first segment's scale carries on down.
+		assert.equal( tickFraction( 0, ticks ), -0.25 );
+		// A repeated tick is matched at its last occurrence, as findLastIndex would match it.
+		assert.equal( tickFraction( 1, [ 0, 1, 1, 3 ] ), 2 / 3 );
+	} finally {
+		Object.defineProperty( Array.prototype, 'findLastIndex', descriptor );
+	}
+	assert.equal( typeof Array.prototype.findLastIndex, 'function' );
+} );
+
 test( 'the charts plot the design\'s sample values (Figma 46893:117629, "10 Equity 3")', () => {
 	const [ shares, value ] = EQUITY_CHARTS;
 	assert.deepEqual( shares.values, [ 0, 70, 70, 130, 250, 275, 400 ] );
