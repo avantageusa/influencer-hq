@@ -696,6 +696,26 @@ test( 'screenText() is the section text, white space collapsed and trimmed', () 
 	assert.equal( screenText( document.createElement( 'section' ) ), '' );
 } );
 
+test( 'screenText() counts image alt text, so a chart drawn as an image gets its reading time', () => {
+	const document = createFakeDocument();
+	const section = document.createElement( 'section' );
+	const title = document.createElement( 'h2' );
+	title.textContent = 'Equity';
+	const chart = document.createElement( 'img' );
+	chart.setAttribute( 'alt', 'Earned Equity Shares: 0 on SUN,\n 400 on SAT' );
+	const decorative = document.createElement( 'img' );
+	decorative.setAttribute( 'alt', '' );
+	const noAlt = document.createElement( 'img' );
+	section.append( title, chart, decorative, noAlt );
+	assert.equal( screenText( section ), 'Equity Earned Equity Shares: 0 on SUN, 400 on SAT' );
+	// Only images inside the screen count, and an image-only screen is read by its alt text.
+	const imageOnly = document.createElement( 'section' );
+	const lone = document.createElement( 'img' );
+	lone.setAttribute( 'alt', 'Value of Shares' );
+	imageOnly.append( lone );
+	assert.equal( screenText( imageOnly ), 'Value of Shares' );
+} );
+
 test( 'a NARRATION screen with no script or clip waits for the reading time of its text, then advances', async () => {
 	const { engine, clock, posts } = setup();
 	engine.register( wordsScreen( 'game_of_kings', TEN_WORDS ) );
