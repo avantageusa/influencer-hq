@@ -13,6 +13,9 @@ import {
 	lineChartSvg,
 	tickFraction,
 	chartImageSrc,
+	chartAltText,
+	CHART_ALT_KEYS,
+	CHART_ALT_FORMATS,
 	teachingScreens,
 	install,
 } from './onboarding-screens-teaching.js';
@@ -119,13 +122,16 @@ test( 'screen 9, Classic: PO-3208 copy', () => {
 	] );
 } );
 
-test( 'screen 10, Equity: the title and both charts, in order, with their titles as alt text', () => {
+const SHARES_ALT = 'Earned Equity Shares: 0 on SUN, 70 on MON, 70 on TUE, 130 on WED, 250 on THU, 275 on FRI, 400 on SAT';
+const VALUE_ALT = 'Value of Shares: $0.20 at START, $0.90 at 6 MOS, $1.20 at 12 MOS, $2.20 at 18 MOS, $4.00 at 24 MOS';
+
+test( 'screen 10, Equity: the title and both charts, in order, each described by its data in the alt text', () => {
 	const { content } = setup( { stage: 'equity' } );
 	const screen = screenOf( content );
 	assert.deepEqual( texts( screen, 'h2' ), [ 'Equity' ] );
 	const charts = screen.querySelectorAll( 'img[data-chart]' );
 	assert.deepEqual( charts.map( ( chart ) => chart.getAttribute( 'data-chart' ) ), [ 'shares', 'value' ] );
-	assert.deepEqual( charts.map( ( chart ) => chart.getAttribute( 'alt' ) ), [ 'Earned Equity Shares', 'Value of Shares' ] );
+	assert.deepEqual( charts.map( ( chart ) => chart.getAttribute( 'alt' ) ), [ SHARES_ALT, VALUE_ALT ] );
 	assert.deepEqual( charts.map( ( chart ) => chart.getAttribute( 'src' ) ), EQUITY_CHARTS.map( ( chart ) => chartImageSrc( chart, englishOf ) ) );
 } );
 
@@ -263,13 +269,62 @@ test( 'a language change redraws the charts; leaving the screen stops listening'
 	strings.add( 'ja', { sharesChartTitle: '獲得株式' } );
 	api.setLocale( 'ja' );
 	const chart = screenOf( content ).querySelector( 'img[data-chart="shares"]' );
-	assert.equal( chart.getAttribute( 'alt' ), '獲得株式' );
+	assert.equal( chart.getAttribute( 'alt' ), '獲得株式: 0 on SUN, 70 on MON, 70 on TUE, 130 on WED, 250 on THU, 275 on FRI, 400 on SAT' );
 	assert.equal( chart.getAttribute( 'src' ), chartImageSrc( EQUITY_CHARTS[ 0 ], ( key ) => strings.t( 'ja', key ) ) );
 	engine.advance();
 	const before = chart.getAttribute( 'src' );
 	api.setLocale( 'en' );
 	assert.equal( chart.getAttribute( 'src' ), before );
 	assert.doesNotThrow( () => events.emit( 'locale', 'en' ) );
+} );
+
+test( 'chartAltText: the title, then each value with its x label, money with cents', () => {
+	const [ shares, value ] = EQUITY_CHARTS;
+	assert.equal( chartAltText( shares, englishOf ), SHARES_ALT );
+	assert.equal( chartAltText( value, englishOf ), VALUE_ALT );
+} );
+
+test( 'chartAltText: every word comes from the string table, English where a translation is missing', () => {
+	const japanese = {
+		valueChartTitle: '株式の価値',
+		periodStart: '開始',
+		chartAltSummary: '{title}（{points}）',
+		chartAltSeparator: '、',
+		chartAltPointAt: '{label}に{value}',
+	};
+	const t = ( key ) => japanese[ key ] || TEACHING_STRINGS_EN[ key ];
+	assert.equal( chartAltText( EQUITY_CHARTS[ 1 ], t ), '株式の価値（開始に$0.20、6 MOSに$0.90、12 MOSに$1.20、18 MOSに$2.20、24 MOSに$4.00）' );
+	// A language with none of the alt keys reads them in English.
+	const titleOnly = ( key ) => ( { sharesChartTitle: '株' }[ key ] || TEACHING_STRINGS_EN[ key ] );
+	assert.equal( chartAltText( EQUITY_CHARTS[ 0 ], titleOnly ), '株: 0 on SUN, 70 on MON, 70 on TUE, 130 on WED, 250 on THU, 275 on FRI, 400 on SAT' );
+} );
+
+test( 'chartAltText: the currency is a string-table template too', () => {
+	const t = ( key ) => ( { chartAltMoney: '{amount} USD' }[ key ] || TEACHING_STRINGS_EN[ key ] );
+	assert.equal( chartAltText( EQUITY_CHARTS[ 1 ], t ), 'Value of Shares: 0.20 USD at START, 0.90 USD at 6 MOS, 1.20 USD at 12 MOS, 2.20 USD at 18 MOS, 4.00 USD at 24 MOS' );
+} );
+
+test( 'chartAltText follows the values: other values give other alt text', () => {
+	const [ shares, value ] = EQUITY_CHARTS;
+	assert.equal( chartAltText( { ...shares, values: [ 400, 275, 250, 130, 70, 70, 0 ] }, englishOf ), 'Earned Equity Shares: 400 on SUN, 275 on MON, 250 on TUE, 130 on WED, 70 on THU, 70 on FRI, 0 on SAT' );
+	assert.equal( chartAltText( { ...value, values: [ 1, 1.5, 2.25, 3, 3.999 ] }, englishOf ), 'Value of Shares: $1.00 at START, $1.50 at 6 MOS, $2.25 at 12 MOS, $3.00 at 18 MOS, $4.00 at 24 MOS' );
+	assert.equal( chartAltText( { ...shares, values: [ 5 ], xKeys: [ 'dayWed' ] }, englishOf ), 'Earned Equity Shares: 5 on WED' );
+} );
+
+test( 'chartAltText: a placeholder a template does not fill is left as written; an unknown chart gets its title alone', () => {
+	const t = ( key ) => ( { chartAltPointOn: '{value} on {label} {extra}' }[ key ] || TEACHING_STRINGS_EN[ key ] );
+	assert.equal( chartAltText( { ...EQUITY_CHARTS[ 0 ], values: [ 1 ], xKeys: [ 'daySun' ] }, t ), 'Earned Equity Shares: 1 on SUN {extra}' );
+	assert.equal( chartAltText( { ...EQUITY_CHARTS[ 0 ], id: 'other' }, englishOf ), 'Earned Equity Shares' );
+} );
+
+test( 'the alt text keys are in the English table, and each chart has an alt format', () => {
+	assert.deepEqual( CHART_ALT_KEYS, { summary: 'chartAltSummary', separator: 'chartAltSeparator', money: 'chartAltMoney' } );
+	assert.deepEqual( CHART_ALT_FORMATS, {
+		shares: { pointKey: 'chartAltPointOn', valueFormat: 'count' },
+		value: { pointKey: 'chartAltPointAt', valueFormat: 'money' },
+	} );
+	assert.deepEqual( [ 'chartAltSummary', 'chartAltSeparator', 'chartAltPointOn', 'chartAltPointAt', 'chartAltMoney' ].map( englishOf ), [ '{title}: {points}', ', ', '{value} on {label}', '{value} at {label}', '${amount}' ] );
+	assert.deepEqual( EQUITY_CHARTS.map( ( chart ) => Object.hasOwn( CHART_ALT_FORMATS, chart.id ) ), [ true, true ] );
 } );
 
 test( 'screen 11, How This Works: the title and two bullets only (no chart or table)', () => {
@@ -318,7 +373,8 @@ test( 'screen 13 shows the same figures whatever the follower answer', () => {
 } );
 
 test( 'every piece of copy on every screen is a string-table key, so it can be translated', () => {
-	const chartKeys = EQUITY_CHARTS.flatMap( ( chart ) => [ chart.titleKey, ...chart.xKeys, ...chart.yKeys ] );
+	const altKeys = [ ...Object.values( CHART_ALT_KEYS ), ...Object.values( CHART_ALT_FORMATS ).map( ( format ) => format.pointKey ) ];
+	const chartKeys = [ ...EQUITY_CHARTS.flatMap( ( chart ) => [ chart.titleKey, ...chart.xKeys, ...chart.yKeys ] ), ...altKeys ];
 	const renderedKeys = teachingScreens().flatMap( ( definition ) => {
 		const { content } = setup( { stage: definition.id } );
 		return screenOf( content ).querySelectorAll( 'h2, p, li' ).map( ( element ) => {
@@ -327,7 +383,8 @@ test( 'every piece of copy on every screen is a string-table key, so it can be t
 			return key;
 		} );
 	} );
-	// Every key but the chart labels (drawn into the chart images) is on a screen as text.
+	// Every key but the chart labels (drawn into the chart images) and the charts' alt text is
+	// on a screen as text.
 	assert.deepEqual( renderedKeys, Object.keys( TEACHING_STRINGS_EN ).filter( ( key ) => ! chartKeys.includes( key ) ) );
 } );
 

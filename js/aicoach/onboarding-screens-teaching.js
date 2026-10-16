@@ -64,6 +64,13 @@ export const TEACHING_STRINGS_EN = {
 	valueAxis2: '$2',
 	valueAxis3: '$3',
 	valueAxis4: '$4',
+	// The charts' alt text (decision 12): the title, then each plotted value with its x label.
+	// Templates, so a language can reorder the words; {name} is filled in by chartAltText().
+	chartAltSummary: '{title}: {points}',
+	chartAltSeparator: ', ',
+	chartAltPointOn: '{value} on {label}',
+	chartAltPointAt: '{value} at {label}',
+	chartAltMoney: '${amount}',
 
 	howTitle: 'HOW THIS WORKS',
 	howBullet1: 'You, your followers, and everyone your followers refer',
@@ -257,6 +264,75 @@ export function chartImageSrc( chart, t ) {
 	return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent( svg );
 }
 
+/** The string-table keys of the alt text's frame, shared by both charts. */
+export const CHART_ALT_KEYS = Object.freeze( {
+	summary: 'chartAltSummary',
+	separator: 'chartAltSeparator',
+	money: 'chartAltMoney',
+} );
+
+const VALUE_FORMAT = Object.freeze( { count: 'count', money: 'money' } );
+
+// Money in the alt text always shows cents ($0.20, $4.00): read aloud, "$.20" is unclear.
+const MONEY_DECIMALS = 2;
+
+/**
+ * How each chart's alt text reads its values, by chart id: the joining phrase between a value
+ * and its x label ("on SUN" for days, "at 6 MOS" for periods), and how a value is written.
+ */
+export const CHART_ALT_FORMATS = Object.freeze( {
+	shares: Object.freeze( { pointKey: 'chartAltPointOn', valueFormat: VALUE_FORMAT.count } ),
+	value: Object.freeze( { pointKey: 'chartAltPointAt', valueFormat: VALUE_FORMAT.money } ),
+} );
+
+/**
+ * Fills each {name} in a template from fields; a name with no field is left as written.
+ *
+ * @param {string}                 template
+ * @param {Object<string, string>} fields
+ * @return {string} The filled-in text.
+ */
+function fillTemplate( template, fields ) {
+	return template.replace( /\{(\w+)\}/g, ( placeholder, name ) => {
+		if ( ! Object.hasOwn( fields, name ) ) {
+			return placeholder;
+		}
+		return fields[ name ];
+	} );
+}
+
+function formatValue( { value, valueFormat, t } ) {
+	if ( valueFormat === VALUE_FORMAT.money ) {
+		return fillTemplate( t( CHART_ALT_KEYS.money ), { amount: value.toFixed( MONEY_DECIMALS ) } );
+	}
+	return String( value );
+}
+
+/**
+ * A chart's alt text in the current language, built from its own values and x labels, e.g.
+ * "Earned Equity Shares: 0 on SUN, 70 on MON, …". It describes the plotted values only. A
+ * chart with no entry in CHART_ALT_FORMATS gets its title alone.
+ *
+ * @param {Object}   chart One of EQUITY_CHARTS.
+ * @param {Function} t     ( key ) => text.
+ * @return {string} The alt text.
+ */
+export function chartAltText( chart, t ) {
+	const title = t( chart.titleKey );
+	const format = CHART_ALT_FORMATS[ chart.id ];
+	if ( ! format ) {
+		return title;
+	}
+	const points = chart.values.map( ( value, index ) => fillTemplate( t( format.pointKey ), {
+		value: formatValue( { value, valueFormat: format.valueFormat, t } ),
+		label: t( chart.xKeys[ index ] ),
+	} ) );
+	return fillTemplate( t( CHART_ALT_KEYS.summary ), {
+		title,
+		points: points.join( t( CHART_ALT_KEYS.separator ) ),
+	} );
+}
+
 function addHero( container, api, stage ) {
 	const src = api.imageUrl( stage );
 	if ( ! src ) {
@@ -292,7 +368,7 @@ function renderEquity( { container, api, t, text } ) {
 	function draw() {
 		images.forEach( ( { chart, image } ) => {
 			image.setAttribute( 'src', chartImageSrc( chart, t ) );
-			image.setAttribute( 'alt', t( chart.titleKey ) );
+			image.setAttribute( 'alt', chartAltText( chart, t ) );
 		} );
 	}
 	draw();
