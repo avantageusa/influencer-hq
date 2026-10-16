@@ -9,7 +9,7 @@ import { createClient, AnamEvent } from 'https://cdn.jsdelivr.net/npm/@anam-ai/j
 // script modules registered in inc/aicoach-modules.php.
 import { createSequenceHold } from '@ihq/aicoach/sequence-hold';
 import { createStallWatchdog, once } from '@ihq/aicoach/stall-watchdog';
-import { isAvatarIdle } from '@ihq/aicoach/idle-state';
+import { isAvatarIdle, isScreenWithoutClip } from '@ihq/aicoach/idle-state';
 import { buildCues, estimateDurationMs, visibleTextAt } from '@ihq/aicoach/commentary';
 import { SUPPORTED_LOCALES, t, detectLocale } from '@ihq/aicoach/locales';
 import {
@@ -371,6 +371,11 @@ if ( stage && avatarWrap ) {
     let closeAskSamiPanel = null; // set once buildAskSami() runs below; selectLocale() calls this before hiding the panel
     let toggleAskSamiPanel = null; // set once buildAskSami() runs below; the stage's tap-to-interrupt listener calls this
     let applyResumedQaHistory = null; // set once buildAskSami() runs below; init() calls this with a resumed visitor's saved Q&A pairs
+    // ENGR-7099 — true while the screen on show has no clip of its own (identity, channels, final,
+    // Time is up, appointment), so the clip before it is not left on its last frame. showPanel()
+    // sets it; syncAvatarIdle() (set by buildAskSami() below) reads it through isAvatarIdle().
+    let screenWithoutClip = false;
+    let syncAvatarIdleHook = null;
 
     function selectLocale( locale ) {
         if ( locale === currentLocale ) {
@@ -1257,8 +1262,10 @@ if ( stage && avatarWrap ) {
             avatarWrap.classList.toggle( 'is-idle', isAvatarIdle( {
                 panelOpen: wrap.classList.contains( 'is-open' ),
                 answerVideoActive: qaVideoActive,
+                screenWithoutClip,
             } ) );
         }
+        syncAvatarIdleHook = syncAvatarIdle;
 
         function openPanel() {
             wrap.classList.add( 'is-open' );
@@ -1417,6 +1424,17 @@ if ( stage && avatarWrap ) {
         } );
     }
 
+    // ENGR-7099 — a screen without a clip shows Sami's neutral portrait, the same one the Ask Sami
+    // panel and Time is up use, instead of the last frame of the clip before it.
+    function refreshAvatarIdleFor( panelKey ) {
+        screenWithoutClip = isScreenWithoutClip( panelKey, Object.keys( PRERENDERED_PANEL_MAP ) );
+        if ( syncAvatarIdleHook ) {
+            syncAvatarIdleHook();
+            return;
+        }
+        avatarWrap.classList.toggle( 'is-idle', screenWithoutClip );
+    }
+
     function showPanel( panelKey ) {
         const next = stage.querySelector( '.aicoach-panel[data-panel="' + panelKey + '"]' );
         if ( ! next ) {
@@ -1469,6 +1487,7 @@ if ( stage && avatarWrap ) {
                 next.classList.add( 'is-active' );
                 next.setAttribute( 'aria-hidden', 'false' );
                 stage.style.minHeight = next.offsetHeight + 'px';
+                refreshAvatarIdleFor( panelKey );
                 resolvePanelWaiters( panelKey );
                 resolve();
 
@@ -2454,7 +2473,9 @@ if ( stage && avatarWrap ) {
         if ( returnPanelKey ) {
             await showPanel( returnPanelKey );
         }
-        avatarWrap.classList.remove( 'is-idle' );
+        // The screen is back; whether she is idle now depends on that screen (ENGR-7099).
+        const backOn = getActivePanel();
+        refreshAvatarIdleFor( backOn ? backOn.getAttribute( 'data-panel' ) : returnPanelKey || 'intro' );
         if ( askSamiBtn ) {
             askSamiBtn.disabled = timeUpAskSamiWasDisabled;
         }

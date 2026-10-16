@@ -2476,8 +2476,8 @@ $aicoach_channels = array(
             margin: 0;
         }
 
-        /* The time ask: three columns that start where the design puts them (x 172, 826 and 1378 of
-        1920). The rows are staggered: the 10-minute one rises beside the commentary box. */
+        /* The time ask: three columns of 508 units that start at x 141, 706 and 1271 of 1920, all
+        three rows on one line (Ivan's update, 2026-10-14). */
         .aicoach-panel[data-panel="home"] {
             padding-inline: 0;
         }
@@ -2497,33 +2497,25 @@ $aicoach_channels = array(
 
         .aicoach-tiers {
             display: grid;
-            grid-template-columns: calc(826 * var(--px)) calc(552 * var(--px)) 1fr;
+            grid-template-columns: repeat(3, calc(565 * var(--px)));
             align-items: start;
             gap: 0;
-            padding: 0;
+            padding: calc(35 * var(--px)) 0 0 calc(141 * var(--px));
         }
 
-        .aicoach-tier:nth-child(1) {
-            margin-top: calc(72 * var(--px));
-            padding-left: calc(172 * var(--px));
-        }
-
-        .aicoach-tier:nth-child(2) {
-            margin-top: calc(64 * var(--px));
-        }
-
-        .aicoach-tier:nth-child(3) {
-            margin-top: calc(-24 * var(--px));
+        .aicoach-tier:nth-child(n) {
+            margin-top: 0;
+            padding-left: 0;
         }
 
         .aicoach-tier-head {
-            gap: calc(24 * var(--px));
+            gap: calc(16 * var(--px));
             padding-left: 0;
         }
 
         .aicoach-tier-box {
-            width: calc(38 * var(--px));
-            height: calc(38 * var(--px));
+            width: calc(40 * var(--px));
+            height: calc(40 * var(--px));
             border-width: max(2px, calc(3 * var(--px)));
         }
 
@@ -2532,7 +2524,8 @@ $aicoach_channels = array(
         }
 
         .aicoach-tier-list {
-            margin-left: calc(30 * var(--px));
+            margin: calc(16 * var(--px)) 0 0;
+            padding-left: calc(34 * var(--px));
         }
 
         .aicoach-tier-list li {
@@ -2636,6 +2629,9 @@ $aicoach_channels = array(
             max-width: none;
             margin-top: calc(19 * var(--px));
             font-size: max(20px, calc(42 * var(--px)));
+            /* "COMMUNITY COMPETITION" is one line in the design, wider than its column; the
+            columns on both sides leave room for it. */
+            white-space: nowrap;
         }
 
         .aicoach-competition-format {
@@ -2644,6 +2640,15 @@ $aicoach_channels = array(
             margin: calc(-36 * var(--px)) 0 0;
             font-size: max(14px, calc(30 * var(--px)));
             line-height: calc(52 * var(--px));
+        }
+
+        /* Community has one sentence, not three lines: two lines 400 units wide, centred under
+        the right column and below the commentary box (design, Community - Desktop). */
+        .aicoach-panel[data-panel="competition-community"] .aicoach-competition-format {
+            max-width: calc(400 * var(--px));
+            margin: calc(27 * var(--px)) 0 0 calc(172 * var(--px));
+            font-size: max(14px, calc(28 * var(--px)));
+            line-height: calc(49 * var(--px));
         }
 
         /* Identity and channels: the title under the box, the fields in a row. */
@@ -2694,6 +2699,16 @@ $aicoach_channels = array(
             width: calc(245 * var(--px));
             min-width: 160px;
             margin-top: calc(40 * var(--px));
+        }
+
+        /* "LET'S CONTINUE" is longer than the other buttons' labels: it takes the room it needs on
+        one line instead of wrapping and being cut. */
+        .aicoach-final .aicoach-form-continue {
+            width: auto;
+            min-width: calc(300 * var(--px));
+            height: max(44px, calc(60 * var(--px)));
+            padding: 0 calc(32 * var(--px));
+            white-space: nowrap;
         }
 
         .aicoach-channel-list {
