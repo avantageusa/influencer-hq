@@ -31,6 +31,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// The listeners below hook the store's action-name constants at load time, and functions.php's
+// glob loads modules by file name, so "braze" comes before "progress". Load the store first.
+require_once __DIR__ . '/portal-onboarding-progress.php';
+
 /** Seconds to wait for Braze. The send runs after the response where PHP-FPM allows it; elsewhere the save waits this long at most. */
 const IHQ_PORTAL_ONBOARDING_BRAZE_TIMEOUT = 5;
 
