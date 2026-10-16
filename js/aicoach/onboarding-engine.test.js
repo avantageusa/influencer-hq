@@ -10,7 +10,7 @@ import { createStallWatchdog } from './stall-watchdog.js';
 import { buildSentenceCues, subtitleAt } from './onboarding-subtitles.js';
 import { estimateDurationMs } from './commentary.js';
 import { createNarrator } from './onboarding-narrator.js';
-import { createEngine, ADVANCE_MODES } from './onboarding-engine.js';
+import { createEngine, ADVANCE_MODES, MIN_READING_TIME_MS, screenText } from './onboarding-engine.js';
 
 const STATE = { stage: '', answers: {}, platforms: [], handles: {}, language: '', completed: false, completed_at: '' };
 
@@ -50,6 +50,7 @@ function setup( { stage = '', clips = {}, saveResult = { ok: true, status: 200, 
 	const historyGuard = { install: () => guardCalls.push( 'install' ), uninstall: () => guardCalls.push( 'uninstall' ) };
 	const errors = [];
 	const fetchFn = () => {};
+	const clock = createFakeClock();
 	const engine = createEngine( {
 		api,
 		sequence: { SEQUENCE, startStage, nextStage },
@@ -57,9 +58,12 @@ function setup( { stage = '', clips = {}, saveResult = { ok: true, status: 200, 
 		postJson,
 		fetchFn,
 		historyGuard,
+		estimateDurationMs,
+		setTimeout: clock.setTimeout,
+		clearTimeout: clock.clearTimeout,
 		onError: ( error ) => errors.push( error.message ),
 	} );
-	return { document, content, events, api, engine, said, endLine, closes, posts, guardCalls, errors, fetchFn };
+	return { document, content, events, api, engine, said, endLine, closes, posts, guardCalls, errors, fetchFn, clock };
 }
 
 // A screen that records its lifecycle. valid() decides whether it lets the flow advance;
@@ -466,7 +470,7 @@ test( 'a screen that leaves out its advance mode moves on when its line has been
 
 test( 'a NARRATION screen moves on when its line has been said', async () => {
 	const { engine, endLine } = setup();
-	registerAll( engine, [], { game_of_kings: { advanceMode: ADVANCE_MODES.NARRATION } } );
+	registerAll( engine, [], { game_of_kings: { advanceMode: ADVANCE_MODES.NARRATION, narration: 'kingsLine' } } );
 	engine.start();
 	endLine[ 0 ]();
 	await flush();
@@ -516,7 +520,7 @@ test( 'a screen advance() still respects isValid() and shows the validation stat
 
 test( 'a manual advance racing the line ending moves the flow once (advance first)', async () => {
 	const { engine, endLine, posts } = setup();
-	registerAll( engine, [] );
+	registerAll( engine, [], { game_of_kings: { narration: 'kingsLine' } } );
 	engine.start();
 	assert.equal( engine.advance(), true );
 	// Moving on stops the line, and the narrator settles it.
@@ -529,7 +533,7 @@ test( 'a manual advance racing the line ending moves the flow once (advance firs
 test( 'a manual advance racing the line ending moves the flow once (line first)', async () => {
 	const advancers = {};
 	const { engine, endLine, posts } = setup();
-	registerAll( engine, [], { game_of_kings: { advancers } } );
+	registerAll( engine, [], { game_of_kings: { advancers, narration: 'kingsLine' } } );
 	engine.start();
 	const kingsAdvance = advancers.game_of_kings;
 	endLine[ 0 ]();
@@ -570,7 +574,7 @@ test( 'a line stopped by complete() closing the layer moves nothing', async () =
 // finish points (clip end, caption timer, fallback after an error) are what moves the flow.
 function setupNarrated( { clips = {}, estimate = () => 1000 } = {} ) {
 	const harness = setup( { clips } );
-	const clock = createFakeClock();
+	const { clock } = harness;
 	const video = new EventTarget();
 	video.duration = Number.NaN;
 	video.currentTime = 0;
@@ -589,7 +593,7 @@ function setupNarrated( { clips = {}, estimate = () => 1000 } = {} ) {
 		now: clock.now,
 	} );
 	harness.api.shell.say = ( line ) => narrator.play( line );
-	return { ...harness, clock, video, narrator };
+	return { ...harness, video, narrator };
 }
 
 const KINGS_CLIPS = { game_of_kings: { en: 'kings-en.mp4', ja: 'kings-ja.mp4' } };
@@ -629,14 +633,14 @@ test( 'narrator: a clip that fails falls back to captions, and their end moves t
 	assert.equal( engine.current(), 'modern_era' );
 } );
 
-test( 'narrator: a screen with no script and no clip moves on as soon as it is shown (reading time 0)', async () => {
-	const { engine } = setupNarrated( { estimate: estimateDurationMs } );
+test( 'narrator: a screen with no script or clip waits for its text, though its 0 ms line ends at once', async () => {
+	const { engine, clock } = setupNarrated( { estimate: estimateDurationMs } );
 	engine.register( screen( 'game_of_kings', [] ) );
 	engine.register( screen( 'modern_era', [], { advanceMode: ADVANCE_MODES.MANUAL } ) );
 	engine.start();
-	assert.equal( estimateDurationMs( '' ), 0 );
-	assert.equal( engine.current(), 'game_of_kings', 'not inside start()' );
 	await flush();
+	assert.equal( engine.current(), 'game_of_kings' );
+	clock.tick( MIN_READING_TIME_MS );
 	assert.equal( engine.current(), 'modern_era' );
 } );
 
@@ -652,4 +656,145 @@ test( 'narrator: a clip stopped by a language change does not move the flow; the
 	await flush();
 	assert.equal( engine.current(), 'modern_era' );
 	assert.deepEqual( posts.map( ( post ) => post.body ), [ { stage: 'modern_era' } ] );
+} );
+
+// A screen showing exactly these words (and no script), for the reading-time tests.
+function wordsScreen( id, words, options = {} ) {
+	return {
+		id,
+		advanceMode: options.advanceMode,
+		narration: options.narration,
+		render( { container } ) {
+			if ( '' === words ) {
+				return {};
+			}
+			const paragraph = container.ownerDocument.createElement( 'p' );
+			paragraph.textContent = words;
+			container.append( paragraph );
+			return {};
+		},
+	};
+}
+
+// Ten words at the narrator's 2.5 words a second: 4000 ms, above the floor.
+const TEN_WORDS = 'For over five hundred years, Baccarat has been the game.';
+
+test( 'the reading-time floor', () => {
+	assert.equal( MIN_READING_TIME_MS, 2000 );
+	assert.equal( estimateDurationMs( TEN_WORDS ), 4000 );
+} );
+
+test( 'screenText() is the section text, white space collapsed and trimmed', () => {
+	const document = createFakeDocument();
+	const section = document.createElement( 'section' );
+	const title = document.createElement( 'h2' );
+	title.textContent = '  The Game\n of   Kings ';
+	const body = document.createElement( 'p' );
+	body.textContent = '\tFor 500 years. ';
+	section.append( title, body );
+	assert.equal( screenText( section ), 'The Game of Kings For 500 years.' );
+	assert.equal( screenText( document.createElement( 'section' ) ), '' );
+} );
+
+test( 'a NARRATION screen with no script or clip waits for the reading time of its text, then advances', async () => {
+	const { engine, clock, posts } = setup();
+	engine.register( wordsScreen( 'game_of_kings', TEN_WORDS ) );
+	engine.register( wordsScreen( 'modern_era', '', { advanceMode: ADVANCE_MODES.MANUAL } ) );
+	engine.start();
+	clock.tick( 3999 );
+	assert.equal( engine.current(), 'game_of_kings' );
+	clock.tick( 1 );
+	assert.equal( engine.current(), 'modern_era' );
+	await flush();
+	assert.equal( posts.length, 1 );
+	assert.equal( clock.pendingCount(), 0 );
+} );
+
+test( 'a scriptless screen of a few words stays up for the floor', () => {
+	const { engine, clock } = setup();
+	engine.register( wordsScreen( 'game_of_kings', 'Hello there.' ) );
+	engine.register( wordsScreen( 'modern_era', '', { advanceMode: ADVANCE_MODES.MANUAL } ) );
+	engine.start();
+	clock.tick( MIN_READING_TIME_MS - 1 );
+	assert.equal( engine.current(), 'game_of_kings' );
+	clock.tick( 1 );
+	assert.equal( engine.current(), 'modern_era' );
+} );
+
+test( 'a scriptless screen with no text advances right away, but not inside start()', () => {
+	const { engine, clock } = setup();
+	engine.register( wordsScreen( 'game_of_kings', '' ) );
+	engine.register( wordsScreen( 'modern_era', '', { advanceMode: ADVANCE_MODES.MANUAL } ) );
+	engine.start();
+	assert.equal( engine.current(), 'game_of_kings' );
+	clock.tick( 0 );
+	assert.equal( engine.current(), 'modern_era' );
+} );
+
+test( 'a language change restarts the reading time, and the first timer never fires', async () => {
+	const { engine, clock, api, posts } = setup();
+	engine.register( wordsScreen( 'game_of_kings', TEN_WORDS ) );
+	engine.register( wordsScreen( 'modern_era', '', { advanceMode: ADVANCE_MODES.MANUAL } ) );
+	engine.start();
+	clock.tick( 3000 );
+	api.setLocale( 'ja' );
+	assert.equal( clock.pendingCount(), 1 );
+	clock.tick( 3999 );
+	assert.equal( engine.current(), 'game_of_kings' );
+	clock.tick( 1 );
+	assert.equal( engine.current(), 'modern_era' );
+	await flush();
+	assert.equal( posts.length, 1 );
+} );
+
+test( 'moving on cancels the reading time of the screen left', async () => {
+	const { engine, clock, posts } = setup();
+	engine.register( wordsScreen( 'game_of_kings', TEN_WORDS ) );
+	engine.register( wordsScreen( 'modern_era', TEN_WORDS ) );
+	engine.register( wordsScreen( 'baccarat_experience', '', { advanceMode: ADVANCE_MODES.PICK } ) );
+	engine.start();
+	clock.tick( 1000 );
+	assert.equal( engine.advance(), true );
+	assert.equal( clock.pendingCount(), 1 );
+	clock.tick( 3999 );
+	assert.equal( engine.current(), 'modern_era' );
+	clock.tick( 1 );
+	assert.equal( engine.current(), 'baccarat_experience' );
+	await flush();
+	assert.equal( posts.length, 2 );
+} );
+
+test( 'complete() cancels the reading time', async () => {
+	const { engine, clock, posts } = setup( { stage: 'closing' } );
+	engine.register( wordsScreen( 'closing', TEN_WORDS ) );
+	engine.start();
+	assert.equal( await engine.complete(), true );
+	assert.equal( clock.pendingCount(), 0 );
+	clock.tick( 10000 );
+	assert.equal( engine.current(), null );
+	assert.deepEqual( posts.map( ( post ) => post.url ), [ '/complete' ] );
+} );
+
+test( 'a screen with a script, or with only a clip, waits for its line, not its text', async () => {
+	for ( const options of [ { narration: 'kingsLine', clips: {} }, { narration: undefined, clips: KINGS_CLIPS } ] ) {
+		const { engine, clock, endLine } = setup( { clips: options.clips } );
+		engine.register( wordsScreen( 'game_of_kings', TEN_WORDS, { narration: options.narration } ) );
+		engine.register( wordsScreen( 'modern_era', '', { advanceMode: ADVANCE_MODES.MANUAL } ) );
+		engine.start();
+		assert.equal( clock.pendingCount(), 0 );
+		clock.tick( 60000 );
+		assert.equal( engine.current(), 'game_of_kings' );
+		endLine[ 0 ]();
+		await flush();
+		assert.equal( engine.current(), 'modern_era' );
+	}
+} );
+
+test( 'PICK and MANUAL screens with no script start no reading timer', () => {
+	for ( const advanceMode of [ ADVANCE_MODES.PICK, ADVANCE_MODES.MANUAL ] ) {
+		const { engine, clock } = setup();
+		engine.register( wordsScreen( 'game_of_kings', TEN_WORDS, { advanceMode } ) );
+		engine.start();
+		assert.equal( clock.pendingCount(), 0, advanceMode );
+	}
 } );

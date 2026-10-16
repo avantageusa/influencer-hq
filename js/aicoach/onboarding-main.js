@@ -62,6 +62,9 @@ async function start() {
 		postJson,
 		fetchFn: window.fetch.bind( window ),
 		historyGuard: createHistoryGuard( { history: window.history, window } ),
+		estimateDurationMs,
+		setTimeout: window.setTimeout.bind( window ),
+		clearTimeout: window.clearTimeout.bind( window ),
 	} );
 	// Screen modules import nothing, so the advance modes reach them on the API.
 	api.screens = { register: engine.register, ADVANCE_MODES };

@@ -13,7 +13,8 @@
  *
  * There is no CONTINUE button (design decision 1). How a screen moves on is its advance mode:
  * NARRATION screens move on when Sami's line ends (the clip's end, or the caption-only
- * fallback's reading-time end); PICK and MANUAL screens never move on by themselves and call
+ * fallback's reading-time end); one with no script and no clip yet moves on after the reading
+ * time of its own text instead. PICK and MANUAL screens never move on by themselves and call
  * ctx.advance() (after a pick, or from their own control).
  *
  * render() gets { container, api, t, text, advance } and draws the screen into container.
@@ -41,6 +42,23 @@ export const ADVANCE_MODES = Object.freeze( {
 const KNOWN_ADVANCE_MODES = Object.freeze( Object.values( ADVANCE_MODES ) );
 
 /**
+ * The least time a NARRATION screen with no script or clip stays up when it has any text, so a
+ * screen of a few words does not flash past. One with no text at all moves on at once.
+ */
+export const MIN_READING_TIME_MS = 2000;
+
+/**
+ * The words a screen shows, for its reading time: the text of its own section (not the
+ * shell's commentary or footer), with runs of white space collapsed.
+ *
+ * @param {Element} container The screen's section.
+ * @return {string} The text, trimmed.
+ */
+export function screenText( container ) {
+	return container.textContent.replace( /\s+/g, ' ' ).trim();
+}
+
+/**
  * @param {Object}   deps
  * @param {Object}   deps.api          The onboarding API (onboarding-boot.js createApi()), with shell set.
  * @param {Object}   deps.sequence     { SEQUENCE, startStage, nextStage } from onboarding-sequence.js.
@@ -48,11 +66,14 @@ const KNOWN_ADVANCE_MODES = Object.freeze( Object.values( ADVANCE_MODES ) );
  * @param {Function} deps.postJson     From onboarding-request.js.
  * @param {Function} deps.fetchFn      Same contract as window.fetch.
  * @param {Object}   deps.historyGuard From onboarding-history.js.
+ * @param {Function} deps.estimateDurationMs Reading-pace length of a text (commentary.js), as the narrator uses.
+ * @param {Function} deps.setTimeout
+ * @param {Function} deps.clearTimeout
  * @param {Function} [deps.onError]    Told about a failed save. Defaults to console.error.
  * @return {Object} { register, start, advance, current, save, complete }.
  */
 export function createEngine( deps ) {
-	const { api, sequence, document, postJson, fetchFn, historyGuard } = deps;
+	const { api, sequence, document, postJson, fetchFn, historyGuard, estimateDurationMs, setTimeout, clearTimeout } = deps;
 	const onError = deps.onError || reportError;
 	const definitions = new Map();
 	let stage = null;
@@ -63,6 +84,10 @@ export function createEngine( deps ) {
 	// stopped by another screen or a new language and must not move the flow. (One stopped by
 	// complete() closing the layer finds no screen to move on from.)
 	let currentLine = null;
+	// The section the current screen draws into, and the timer standing in for Sami's line
+	// on a screen that has no script or clip yet.
+	let screenElement = null;
+	let readingTimer = null;
 	// Every progress save (stage and answers) runs after the one before has settled. The
 	// server's merge reads, changes and writes the whole record without a lock, so two
 	// overlapping saves could lose one of the writes, and an older answer arriving last
@@ -151,24 +176,46 @@ export function createEngine( deps ) {
 	 * unless it was stopped first. The narrator settles say() either way, so a stopped line is
 	 * told apart by no longer being the latest one.
 	 *
-	 * A screen with no script and no clip gets the caption-only fallback at a reading time of
-	 * 0 ms, so it moves on straight after it is shown.
+	 * A screen with no script and no clip would get a 0 ms line, so it waits for the reading
+	 * time of its own text instead; a real script or clip takes over once there is one.
 	 */
 	function narrate() {
+		stopReadingTimer();
 		const definition = definitions.get( stage );
 		const script = definition.narration ? t( definition.narration ) : '';
-		const line = api.shell.say( { script, clipUrl: api.clipUrl( stage ) } );
+		const clipUrl = api.clipUrl( stage );
+		const line = api.shell.say( { script, clipUrl } );
 		currentLine = line;
 		if ( ADVANCE_MODES.NARRATION !== advanceModeOf( definition ) ) {
 			return;
 		}
 		const shownVisit = visit;
+		if ( '' === script && ! clipUrl ) {
+			readingTimer = setTimeout( () => advanceFrom( shownVisit ), readingTimeMs( screenText( screenElement ) ) );
+			return;
+		}
 		Promise.resolve( line ).then( () => {
 			if ( currentLine !== line ) {
 				return;
 			}
 			advanceFrom( shownVisit );
 		} );
+	}
+
+	/**
+	 * @param {string} words What the screen shows.
+	 * @return {number} Milliseconds: 0 for no text, else the reading pace, at least the floor.
+	 */
+	function readingTimeMs( words ) {
+		if ( '' === words ) {
+			return 0;
+		}
+		return Math.max( MIN_READING_TIME_MS, estimateDurationMs( words ) );
+	}
+
+	function stopReadingTimer() {
+		clearTimeout( readingTimer );
+		readingTimer = null;
 	}
 
 	/**
@@ -194,6 +241,7 @@ export function createEngine( deps ) {
 		container.className = 'ihq-onb-screen';
 		container.setAttribute( 'data-stage', id );
 		api.shell.content.replaceChildren( container );
+		screenElement = container;
 		const screenAdvance = () => advanceFrom( shownVisit );
 		controller = definition.render( { container, api, t, text, advance: screenAdvance } ) || {};
 		narrate();
@@ -263,6 +311,7 @@ export function createEngine( deps ) {
 		}
 		controller = {};
 		stage = null;
+		stopReadingTimer();
 		historyGuard.uninstall();
 		api.shell.close();
 		return true;
