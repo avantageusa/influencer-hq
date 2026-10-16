@@ -17,6 +17,8 @@ get_template_part( 'template-parts/portal-styles' );
     <main id="primary" class="site-main">
         
         <?php get_template_part( 'template-parts/portal-header' ); ?>
+        <?php /* ENGR-7564 — start or resume Sami's onboarding over the Coach page for an Influencer who has not finished it (inc/portal-onboarding-gate.php); prints nothing for everyone else. */ ?>
+        <?php if ( function_exists( 'ihq_portal_onboarding_maybe_render' ) ) { ihq_portal_onboarding_maybe_render(); } ?>
         <?php
             $cf_country = strtoupper( $_SERVER['HTTP_CF_IPCOUNTRY'] ?? 'US' );
             $phone_map  = [
