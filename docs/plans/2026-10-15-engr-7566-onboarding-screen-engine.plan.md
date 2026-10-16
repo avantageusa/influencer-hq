@@ -11,7 +11,7 @@ todos:
     content: onboarding-sequence.js — SEQUENCE, BRANCHES, startStage(), nextStage() (pure)
     status: completed
   - id: engine
-    content: onboarding-engine.js — register/start/advance/save/complete, CONTINUE button, validation gate, screen events
+    content: onboarding-engine.js — register/start/advance/save/complete, validation gate, screen events
     status: completed
   - id: history
     content: onboarding-history.js — browser back keeps the current screen
@@ -31,6 +31,12 @@ todos:
   - id: serial-saves
     content: answer saves (api.save) share the stage saves' serial chain (CodeRabbit, PR 126); complete() still posts at once
     status: completed
+  - id: advance-modes
+    content: design decision 1 — no CONTINUE button; screens declare advanceMode (NARRATION default, PICK, MANUAL); narration end advances, a stopped line does not; render ctx advance() scoped to its screen
+    status: completed
+  - id: scriptless-reading-time
+    content: a NARRATION screen with no script or clip waits for the reading time of its own text (estimateDurationMs, floor MIN_READING_TIME_MS 2000 ms; no text, at once); cancelled like a stopped line
+    status: completed
 ---
 
 # [ENGR-7566] Forward-only onboarding screen engine with edit-return branch
@@ -47,10 +53,23 @@ comes next, saves the position, or stops the Influencer skipping or going back.
   `ihq_portal_onboarding_stages()` in ENGR-7563), `BRANCHES` (`post_action` + `edit_together` →
   `draft_posts`), `startStage()` (saved stage, else screen 1) and `nextStage()` (one forward, or a
   branch). Both are data so T16 can add its appointment screens and branch.
-- Screens register `{ id, narration?, hideContinue?, render( ctx ) }` through `api.screens.register()`.
-  `render()` gets `{ container, api, t, text }` and may return a controller with `isValid()`,
-  `showValidation()`, `choice()` and `destroy()`. The engine adds a CONTINUE button (string key
-  `continue`) unless `hideContinue`.
+- Screens register `{ id, narration?, advanceMode?, render( ctx ) }` through `api.screens.register()`.
+  `render()` gets `{ container, api, t, text, advance }` and may return a controller with `isValid()`,
+  `showValidation()`, `choice()` and `destroy()`.
+- There is no CONTINUE button (design decision 1). `advanceMode` is one of the frozen
+  `ADVANCE_MODES` (exported, and on `api.screens.ADVANCE_MODES` because screen modules import
+  nothing): `NARRATION` (the default) moves on when the narrator settles the screen's line, `PICK`
+  and `MANUAL` never move on by themselves and call `ctx.advance()`. An unknown mode is rejected at
+  registration. The narrator settles `say()` both when a line ends and when it is stopped, so the
+  engine keeps the latest `say()` promise and ignores one that has been replaced (next screen,
+  language change). `ctx.advance()` only works while its screen is showing, so a late timer or a
+  second pick cannot skip a screen.
+- A NARRATION screen with no script and no clip (the teaching screens until OQ1's scripts) would
+  get a 0 ms line, so the engine waits for the reading time of its own section's text instead
+  (`estimateDurationMs`, the narrator's pace, injected with `setTimeout`/`clearTimeout`), at
+  least `MIN_READING_TIME_MS` (2000 ms); an empty screen moves on at once. Moving on, a language
+  change (which restarts it) and `complete()` cancel the timer. Once a script or clip exists,
+  the line's end decides again.
 - Advancing: blocked while `isValid()` is false (and `showValidation()` is called); otherwise moves
   to `nextStage()`, saves `{ stage }` to the store (not awaited; a failure is logged and never
   blocks; every progress save, stage or answers through `api.save()`, is chained so they reach
@@ -87,3 +106,7 @@ ENGR-7564's action fires.
   checks for the frame stylesheet is the same.
 - The cross-check that `SEQUENCE` equals the PHP stage list lives in ENGR-7568, the first branch that
   has both files.
+- Design decision 1 removed CONTINUE, so the engine tests that asserted the button (its label,
+  click, `hideContinue`, the `continue` string) were removed or rewritten; the requirement changed.
+  The test fake's `say()` now stays pending until the test ends the line, because a settled line
+  now moves the flow.
