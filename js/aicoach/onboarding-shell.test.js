@@ -330,3 +330,51 @@ test( 'the stylesheet adds no media query width other than the portal 768/1025 p
 	const queries = css.match( /@media[^{]+/g ).map( ( query ) => query.trim() );
 	assert.deepEqual( queries, [ '@media (min-width: 768px)', '@media (min-width: 1025px)' ] );
 } );
+
+// The declarations of the one top-level rule (outside any @media) whose selector is exactly
+// `selector`, in order.
+function ruleDeclarations( css, selector ) {
+	const topLevel = css.replace( /@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '' );
+	const rules = Array.from( topLevel.matchAll( /([^{}]+)\{([^{}]*)\}/g ) ).filter( ( match ) => match[ 1 ].replace( /\/\*[\s\S]*?\*\//g, '' ).trim() === selector );
+	assert.equal( rules.length, 1, 'one rule for ' + selector );
+	const body = rules[ 0 ][ 2 ].replace( /\/\*[\s\S]*?\*\//g, '' );
+	return body.split( ';' ).map( ( declaration ) => declaration.trim() ).filter( ( declaration ) => '' !== declaration );
+}
+
+test( 'the Save row is a footer under the scrolling content, clear of the home indicator', () => {
+	const css = readFileSync( new URL( '../../css/portal-onboarding.css', import.meta.url ), 'utf8' );
+	assert.deepEqual( ruleDeclarations( css, '.ihq-onb__column' ), [
+		'box-sizing: border-box',
+		'display: flex',
+		'flex-direction: column',
+		'width: var(--ihq-onb-column-width)',
+		'height: 100%',
+		'margin: 0 auto',
+	] );
+	assert.deepEqual( ruleDeclarations( css, '.ihq-onb__header,\n.ihq-onb__banner,\n.ihq-onb__commentary' ), [ 'flex-shrink: 0' ] );
+	assert.deepEqual( ruleDeclarations( css, '.ihq-onb__content' ), [
+		'flex: 1 1 0',
+		'min-height: var(--ihq-onb-content-min-height)',
+		'padding: 20px 16px 0',
+		'overflow-y: auto',
+		'overscroll-behavior: contain',
+		'-webkit-overflow-scrolling: touch',
+	] );
+	// The plain padding first: a browser without env() drops the calc() line and keeps it.
+	assert.deepEqual( ruleDeclarations( css, '.ihq-onb__cta' ), [
+		'flex: none',
+		'padding: 20px 16px var(--ihq-onb-footer-gap)',
+		'padding-bottom: calc(var(--ihq-onb-footer-gap) + env(safe-area-inset-bottom, 0px))',
+		'background: var(--ihq-onb-page-bg)',
+	] );
+	assert.equal( css.match( /--ihq-onb-footer-gap: 24px;/g ).length, 1 );
+	assert.equal( css.match( /--ihq-onb-content-min-height: 120px;/g ).length, 1 );
+} );
+
+test( 'the Save button is the last thing in the layer, after the content area', () => {
+	const template = readFileSync( new URL( '../../template-parts/portal-onboarding.php', import.meta.url ), 'utf8' );
+	const content = template.indexOf( 'data-onb="content"' );
+	const footer = template.indexOf( 'class="ihq-onb__cta"' );
+	const save = template.indexOf( ' data-ihq-save-home ' );
+	assert.deepEqual( { contentBeforeFooter: -1 !== content && content < footer, saveInFooter: footer < save, saveLastControl: template.indexOf( '<button', save ) }, { contentBeforeFooter: true, saveInFooter: true, saveLastControl: -1 } );
+} );
