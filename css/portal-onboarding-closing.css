@@ -3,6 +3,11 @@
  * Loaded after css/portal-onboarding.css by the shell.
  */
 
+/* The extra space above CONTINUE TO IHQ PORTAL, on top of the actions' gap. */
+.ihq-onb {
+	--ihq-onb-closing-proceed-gap: 8px;
+}
+
 .ihq-onb-closing__avatar {
 	display: block;
 	width: 200px;
@@ -33,4 +38,8 @@
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
+}
+
+.ihq-onb-closing__proceed {
+	margin-top: var(--ihq-onb-closing-proceed-gap);
 }

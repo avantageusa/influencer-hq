@@ -5,8 +5,13 @@ import { createEmitter } from './onboarding-events.js';
 import { createStringTable } from './onboarding-strings.js';
 import { createApi } from './onboarding-boot.js';
 import { SEQUENCE, startStage, nextStage } from './onboarding-sequence.js';
-import { createEngine, ENGINE_STRINGS_EN } from './onboarding-engine.js';
+import { createFakeClock } from './fake-clock.js';
+import { estimateDurationMs } from './commentary.js';
+import { createEngine, ADVANCE_MODES } from './onboarding-engine.js';
 import { CLOSING_STRINGS_EN, install } from './onboarding-screens-closing.js';
+
+// Far longer than any reading time or line, so a screen that would move on by itself has.
+const LONG_WAIT_MS = 60000;
 
 const STATE = { stage: 'closing', answers: {}, platforms: [], handles: {}, language: '', completed: false, completed_at: '' };
 
@@ -27,7 +32,6 @@ function setup( { completeResults = [ { ok: true, status: 200, data: { completed
 	const content = root.querySelector( '[data-onb="content"]' );
 	const events = createEmitter();
 	const strings = createStringTable();
-	strings.add( 'en', ENGINE_STRINGS_EN );
 	const api = createApi( { config: { state: { ...STATE, stage }, progressUrl: '/p', completeUrl: '/complete', nonce: 'n' }, events, strings } );
 	const closes = [];
 	api.shell = {
@@ -41,6 +45,7 @@ function setup( { completeResults = [ { ok: true, status: 200, data: { completed
 	};
 	const posts = [];
 	const guard = [];
+	const clock = createFakeClock();
 	const engine = createEngine( {
 		api,
 		sequence: { SEQUENCE, startStage, nextStage },
@@ -52,8 +57,11 @@ function setup( { completeResults = [ { ok: true, status: 200, data: { completed
 		fetchFn: () => {},
 		historyGuard: { install: () => guard.push( 'install' ), uninstall: () => guard.push( 'uninstall' ) },
 		onError: () => {},
+		estimateDurationMs,
+		setTimeout: clock.setTimeout,
+		clearTimeout: clock.clearTimeout,
 	} );
-	api.screens = { register: engine.register };
+	api.screens = { register: engine.register, ADVANCE_MODES };
 	// Each completion's promise, so a test can wait for exactly that request instead of a timer.
 	const completions = [];
 	api.complete = () => {
@@ -68,7 +76,7 @@ function setup( { completeResults = [ { ok: true, status: 200, data: { completed
 	const frameSave = root.querySelector( '[data-ihq-save-home]' );
 	// The click handler awaited the same promise first, so it has finished once this resolves.
 	const settled = () => completions[ completions.length - 1 ];
-	return { document, root, engine, posts, closes, guard, screen, api, frameSave, settled };
+	return { document, root, engine, posts, closes, guard, screen, api, frameSave, settled, clock };
 }
 
 test( 'the closing copy', () => {
@@ -80,8 +88,8 @@ test( 'the closing copy', () => {
 	} );
 } );
 
-test( 'the screen shows the enlarged avatar, both message points and both buttons, CONTINUE first', () => {
-	const { screen, frameSave } = setup();
+test( 'the screen shows the enlarged avatar, both message points and CONTINUE TO IHQ PORTAL', () => {
+	const { screen } = setup();
 	const avatar = screen().querySelector( 'img.ihq-onb-closing__avatar' );
 	assert.equal( avatar.getAttribute( 'src' ), 'https://example.test/sami.webp' );
 	assert.equal( avatar.getAttribute( 'alt' ), '' );
@@ -89,17 +97,17 @@ test( 'the screen shows the enlarged avatar, both message points and both button
 		"I'll always be here for you 24 hours a day, 7 days a week.",
 		'If you have not saved the IHQ portal address already, make sure to do that now.',
 	] );
-	const buttons = screen().querySelector( '.ihq-onb-closing__actions' ).querySelectorAll( 'button' );
-	assert.deepEqual( buttons.map( ( button ) => button.textContent ), [ 'CONTINUE TO IHQ PORTAL', 'SAVE IHQ TO HOME SCREEN' ] );
-	assert.equal( buttons[ 1 ], frameSave );
-	assert.equal( buttons[ 1 ].hasAttribute( 'data-ihq-save-home' ), true );
-	assert.deepEqual( buttons.map( ( button ) => button.getAttribute( 'type' ) ), [ 'button', 'button' ] );
+	const buttons = screen().querySelectorAll( 'button' );
+	assert.deepEqual( buttons.map( ( button ) => button.textContent ), [ 'CONTINUE TO IHQ PORTAL' ] );
+	assert.equal( buttons[ 0 ].getAttribute( 'type' ), 'button' );
+	assert.equal( buttons[ 0 ].className, 'ihq-onb__button ihq-onb-closing__proceed' );
+	assert.equal( buttons[ 0 ].parentNode, screen().querySelector( '.ihq-onb-closing__actions' ) );
 } );
 
 test( 'without a banner portrait the screen shows no avatar, not an empty ring', () => {
 	const { screen } = setup( { portrait: null } );
 	assert.equal( screen().querySelector( 'img' ), null );
-	assert.deepEqual( screen().querySelector( '.ihq-onb-closing__actions' ).querySelectorAll( 'button' ).map( ( button ) => button.textContent ), [ 'CONTINUE TO IHQ PORTAL', 'SAVE IHQ TO HOME SCREEN' ] );
+	assert.deepEqual( screen().querySelectorAll( 'button' ).map( ( button ) => button.textContent ), [ 'CONTINUE TO IHQ PORTAL' ] );
 } );
 
 test( 'a portrait with an empty src shows no avatar either', () => {
@@ -107,18 +115,32 @@ test( 'a portrait with an empty src shows no avatar either', () => {
 	assert.equal( screen().querySelector( 'img' ), null );
 } );
 
-test( 'the engine adds no CONTINUE of its own here', () => {
-	const { screen } = setup();
-	assert.equal( screen().querySelector( '[data-onb="continue"]' ), null );
+test( 'the closing screen does not move on when its line ends', async () => {
+	const { engine, screen, clock, posts, closes } = setup();
+	const shown = screen();
+	await Promise.resolve();
+	await Promise.resolve();
+	// Closing is the last stage, so an attempt to move on would change nothing visible; the
+	// reading timer a NARRATION screen without a script starts is what would give it away.
+	assert.equal( clock.pendingCount(), 0 );
+	clock.tick( LONG_WAIT_MS );
+	assert.equal( engine.current(), 'closing' );
+	assert.equal( screen(), shown );
+	assert.equal( clock.pendingCount(), 0 );
+	assert.deepEqual( posts, [] );
+	assert.deepEqual( closes, [] );
 } );
 
-test( 'the frame Save button moves into the closing screen, so there is one and it keeps its behaviour hook', () => {
-	const { root, frameSave } = setup();
+test( 'the frame Save button is left alone: still in the sticky footer, never moved, still the install hook', () => {
+	const { root, frameSave, screen } = setup();
+	const footer = root.querySelector( '.ihq-onb__cta' );
+	assert.equal( frameSave.parentNode, footer );
 	assert.equal( root.querySelectorAll( '[data-ihq-save-home]' ).length, 1 );
-	assert.equal( root.querySelector( '.ihq-onb__cta' ).querySelector( '[data-ihq-save-home]' ), null );
-	assert.equal( frameSave.parentNode, root.querySelector( '.ihq-onb-closing__actions' ) );
+	assert.equal( screen().querySelector( '[data-ihq-save-home]' ), null );
+	assert.equal( frameSave.hasAttribute( 'data-ihq-save-home' ), true );
 	assert.equal( frameSave.getAttribute( 'data-onb-string' ), 'saveToHomeScreen' );
-	assert.equal( root.querySelector( '.ihq-onb__cta' ).hidden, false );
+	assert.equal( frameSave.textContent, 'SAVE IHQ TO HOME SCREEN' );
+	assert.equal( footer.hidden, false );
 } );
 
 test( 'CONTINUE TO IHQ PORTAL marks onboarding complete and closes the layer onto the Coach page', async () => {
@@ -129,7 +151,7 @@ test( 'CONTINUE TO IHQ PORTAL marks onboarding complete and closes the layer ont
 	assert.deepEqual( closes, [ true ] );
 	assert.deepEqual( guard, [ 'install', 'uninstall' ] );
 	assert.equal( document.body.contains( root ), false );
-	assert.equal( frameSave.parentNode, root.querySelector( '.ihq-onb__cta' ), 'the frame Save button is put back on leaving' );
+	assert.equal( frameSave.parentNode, root.querySelector( '.ihq-onb__cta' ), 'the frame Save button never left the footer' );
 } );
 
 test( 'CONTINUE is disabled while completing, so it cannot be sent twice', () => {
@@ -161,8 +183,8 @@ test( 'a failed completion keeps the user on the screen with a message, and CONT
 } );
 
 test( 'SAVE IHQ TO HOME SCREEN leaves the user on this screen', () => {
-	const { screen, posts, closes, engine } = setup();
-	screen().querySelector( '.ihq-onb-closing__actions' ).querySelector( '[data-ihq-save-home]' ).click();
+	const { frameSave, posts, closes, engine } = setup();
+	frameSave.click();
 	assert.deepEqual( posts, [] );
 	assert.deepEqual( closes, [] );
 	assert.equal( engine.current(), 'closing' );
@@ -180,10 +202,10 @@ test( 'without a frame (no root) the screen still renders', () => {
 	const content = document.createElement( 'div' );
 	const strings = createStringTable();
 	const registered = [];
-	install( { strings, screens: { register: ( definition ) => registered.push( definition ) } } );
+	install( { strings, screens: { register: ( definition ) => registered.push( definition ), ADVANCE_MODES } } );
 	assert.equal( registered.length, 1 );
 	assert.equal( registered[ 0 ].id, 'closing' );
-	assert.equal( registered[ 0 ].hideContinue, true );
+	assert.equal( registered[ 0 ].advanceMode, ADVANCE_MODES.MANUAL );
 	const container = document.createElement( 'section' );
 	content.append( container );
 	const text = ( tag, key, className ) => {
@@ -194,8 +216,8 @@ test( 'without a frame (no root) the screen still renders', () => {
 		}
 		return element;
 	};
-	const controller = registered[ 0 ].render( { container, api: { shell: {}, strings }, text } );
+	const controller = registered[ 0 ].render( { container, api: { shell: {}, strings }, text, advance: () => false } );
+	assert.equal( controller, undefined );
 	assert.equal( container.querySelector( 'img' ), null );
 	assert.deepEqual( container.querySelectorAll( 'button' ).map( ( button ) => button.textContent ), [ 'CONTINUE TO IHQ PORTAL' ] );
-	assert.doesNotThrow( () => controller.destroy() );
 } );
