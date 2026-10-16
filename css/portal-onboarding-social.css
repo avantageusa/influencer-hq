@@ -92,3 +92,20 @@
 .ihq-onb-social__row .ihq-onb__error {
 	grid-column: 2;
 }
+
+/*
+ * The design's CONTINUE: a small green button, 132 by 36 px, Inter
+ * SemiBold 14 px, at the right under the platforms. It takes the shell's
+ * button colour and focus ring from .ihq-onb__button and only resizes it.
+ * It grows wider for a longer translation rather than wrapping.
+ */
+.ihq-onb-social__continue {
+	width: max-content;
+	min-width: 132px;
+	max-width: 100%;
+	margin: 0 0 0 auto;
+	padding: 9px 12px;
+	font-family: Inter, "Be Vietnam Pro", sans-serif;
+	font-size: 14px;
+	line-height: 18px;
+}

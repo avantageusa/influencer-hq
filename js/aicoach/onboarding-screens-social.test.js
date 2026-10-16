@@ -6,7 +6,9 @@ import { createEmitter } from './onboarding-events.js';
 import { createStringTable } from './onboarding-strings.js';
 import { createApi } from './onboarding-boot.js';
 import { SEQUENCE, startStage, nextStage } from './onboarding-sequence.js';
-import { createEngine, ENGINE_STRINGS_EN } from './onboarding-engine.js';
+import { createFakeClock } from './fake-clock.js';
+import { estimateDurationMs } from './commentary.js';
+import { createEngine, ADVANCE_MODES } from './onboarding-engine.js';
 import {
 	PLATFORMS,
 	SOCIAL_STRINGS_EN,
@@ -25,10 +27,10 @@ function setup( state = {} ) {
 	document.body.append( content );
 	const events = createEmitter();
 	const strings = createStringTable();
-	strings.add( 'en', ENGINE_STRINGS_EN );
 	const api = createApi( { config: { state: { ...STATE, ...state }, progressUrl: '/p', completeUrl: '/c', nonce: 'n' }, events, strings } );
 	api.shell = { content, say: () => Promise.resolve(), close: () => {} };
 	const posts = [];
+	const clock = createFakeClock();
 	const engine = createEngine( {
 		api,
 		sequence: { SEQUENCE, startStage, nextStage },
@@ -39,8 +41,11 @@ function setup( state = {} ) {
 		},
 		fetchFn: () => {},
 		historyGuard: { install: () => {}, uninstall: () => {} },
+		estimateDurationMs,
+		setTimeout: clock.setTimeout,
+		clearTimeout: clock.clearTimeout,
 	} );
-	api.screens = { register: engine.register };
+	api.screens = { register: engine.register, ADVANCE_MODES };
 	api.save = engine.save;
 	install( api );
 	// A screen after this one, so advancing has somewhere to go.
@@ -51,13 +56,21 @@ function setup( state = {} ) {
 	const tick = ( key ) => row( key ).querySelector( 'button' );
 	const field = ( key ) => row( key ).querySelector( 'input' );
 	const error = ( key ) => row( key ).querySelector( 'p' );
+	// Clicks the screen's CONTINUE; returns whether the flow left the screen.
+	const pressContinue = () => {
+		screen().querySelector( '.ihq-onb-social__continue' ).click();
+		return 'social_platforms' !== engine.current();
+	};
 	const type = ( key, value ) => {
 		field( key ).value = value;
 		field( key ).dispatchEvent( createEvent( 'input' ) );
 		field( key ).dispatchEvent( createEvent( 'change' ) );
 	};
-	return { document, api, engine, posts, strings, screen, row, tick, field, error, type };
+	return { document, api, engine, clock, posts, strings, screen, row, tick, field, error, type, pressContinue };
 }
+
+// Far longer than any narration line or reading time.
+const LONG_WAIT_MS = 10 * 60 * 1000;
 
 // The engine sends each progress save on its serial chain, a microtask or more after api.save().
 const flush = () => new Promise( ( resolve ) => setTimeout( resolve, 0 ) );
@@ -144,11 +157,11 @@ test( 'unticking hides and clears the handle, and saves without it', async () =>
 } );
 
 test( 'CONTINUE is blocked while a ticked platform has no handle, with an error on that field', () => {
-	const { engine, tick, type, field, error, document } = setup();
+	const { engine, tick, type, field, error, document, pressContinue } = setup();
 	tick( 'tiktok' ).click();
 	tick( 'weibo' ).click();
 	type( 'weibo', 'weibo.com/me' );
-	assert.equal( engine.advance(), false );
+	assert.equal( pressContinue(), false );
 	assert.equal( engine.current(), 'social_platforms' );
 	assert.equal( error( 'tiktok' ).hidden, false );
 	assert.equal( error( 'tiktok' ).textContent, 'Enter your account ID for this platform.' );
@@ -160,42 +173,80 @@ test( 'CONTINUE is blocked while a ticked platform has no handle, with an error 
 	type( 'tiktok', '@tt' );
 	assert.equal( error( 'tiktok' ).hidden, true );
 	assert.equal( field( 'tiktok' ).getAttribute( 'aria-invalid' ), null );
-	assert.equal( engine.advance(), true );
-} );
-
-test( 'a handle of only spaces does not count', () => {
-	const { engine, tick, type } = setup();
-	tick( 'qq' ).click();
-	type( 'qq', '   ' );
-	assert.equal( engine.advance(), false );
-} );
-
-test( 'unticking a platform with an error removes the error', () => {
-	const { engine, tick, error } = setup();
-	tick( 'line' ).click();
-	engine.advance();
-	tick( 'line' ).click();
-	assert.equal( error( 'line' ).hidden, true );
-	assert.equal( engine.advance(), true );
-} );
-
-test( 'no platform ticked is allowed to continue', () => {
-	const { engine } = setup();
-	assert.equal( engine.advance(), true );
+	assert.equal( pressContinue(), true );
 	assert.equal( engine.current(), 'world_championship' );
 } );
 
+test( 'a handle of only spaces does not count', () => {
+	const { tick, type, error, pressContinue } = setup();
+	tick( 'qq' ).click();
+	type( 'qq', '   ' );
+	assert.equal( pressContinue(), false );
+	assert.equal( error( 'qq' ).hidden, false );
+} );
+
+test( 'unticking a platform with an error removes the error', () => {
+	const { tick, error, pressContinue } = setup();
+	tick( 'line' ).click();
+	assert.equal( pressContinue(), false );
+	tick( 'line' ).click();
+	assert.equal( error( 'line' ).hidden, true );
+	assert.equal( pressContinue(), true );
+} );
+
+test( 'no platform ticked is allowed to continue', async () => {
+	const { engine, pressContinue, posts } = setup();
+	assert.equal( pressContinue(), true );
+	assert.equal( engine.current(), 'world_championship' );
+	await flush();
+	assert.deepEqual( posts, [ { stage: 'world_championship' } ] );
+} );
+
+test( 'CONTINUE is a button at the end of the screen, right under the platforms', () => {
+	const { screen } = setup();
+	const children = screen().children;
+	const control = children.at( -1 );
+	assert.equal( control.tagName, 'BUTTON' );
+	assert.equal( control.getAttribute( 'type' ), 'button' );
+	assert.equal( control.className, 'ihq-onb__button ihq-onb-social__continue' );
+	assert.equal( control.textContent, 'CONTINUE' );
+	assert.equal( control.getAttribute( 'data-onb-string' ), 'socialContinue' );
+	assert.equal( screen().querySelectorAll( '.ihq-onb-social__continue' ).length, 1 );
+	assert.equal( children.at( -2 ), screen().querySelector( '.ihq-onb-social__list' ) );
+} );
+
+test( 'clicking CONTINUE with every ticked platform filled in moves on once', () => {
+	const { engine, tick, type, screen } = setup();
+	tick( 'x' ).click();
+	type( 'x', '@me' );
+	const control = screen().querySelector( '.ihq-onb-social__continue' );
+	control.click();
+	assert.equal( engine.current(), 'world_championship' );
+	// The old screen's control is tied to its showing: a late second click does nothing.
+	control.click();
+	assert.equal( engine.current(), 'world_championship' );
+} );
+
+test( 'the screen never moves on by itself, after its line or any reading time', async () => {
+	const { engine, clock } = setup();
+	await flush();
+	clock.tick( LONG_WAIT_MS );
+	await flush();
+	assert.equal( engine.current(), 'social_platforms' );
+	assert.equal( clock.pendingCount(), 0 );
+} );
+
 test( 'a returning Influencer sees their ticked platforms and handles', () => {
-	const { tick, field, engine } = setup( { platforms: [ 'x', 'line', 'myspace' ], handles: { x: '@me', line: 'me-line', youtube: 'stale' } } );
+	const { tick, field, pressContinue } = setup( { platforms: [ 'x', 'line', 'myspace' ], handles: { x: '@me', line: 'me-line', youtube: 'stale' } } );
 	assert.equal( tick( 'x' ).getAttribute( 'aria-checked' ), 'true' );
 	assert.equal( field( 'x' ).value, '@me' );
 	assert.equal( field( 'line' ).value, 'me-line' );
 	assert.equal( tick( 'youtube' ).getAttribute( 'aria-checked' ), 'false' );
-	assert.equal( engine.advance(), true );
+	assert.equal( pressContinue(), true );
 } );
 
 test( 'placeholders and field names follow the language; leaving the screen stops listening', () => {
-	const { field, tick, api, strings, engine, type } = setup();
+	const { field, tick, api, strings, type, pressContinue } = setup();
 	strings.add( 'ja', { placeholder_x: '@ユーザー名', platform_x: 'エックス' } );
 	tick( 'x' ).click();
 	api.setLocale( 'ja' );
@@ -203,7 +254,7 @@ test( 'placeholders and field names follow the language; leaving the screen stop
 	assert.equal( field( 'x' ).getAttribute( 'aria-label' ), 'エックス' );
 	const input = field( 'x' );
 	type( 'x', '@me' );
-	assert.equal( engine.advance(), true );
+	assert.equal( pressContinue(), true );
 	api.setLocale( 'en' );
 	assert.equal( input.getAttribute( 'placeholder' ), '@ユーザー名' );
 } );
@@ -222,11 +273,13 @@ test( 'missingHandles and selectionToSave', () => {
 	assert.notEqual( selectionToSave( selection ).platforms, selection.ticked );
 } );
 
-test( 'registers screen 6 only', () => {
+test( 'registers screen 6 only, in MANUAL advance mode', () => {
 	const registered = [];
 	const strings = createStringTable();
-	install( { strings, screens: { register: ( definition ) => registered.push( definition.id ) } } );
-	assert.deepEqual( registered, [ 'social_platforms' ] );
+	const register = ( definition ) => registered.push( { id: definition.id, advanceMode: definition.advanceMode } );
+	install( { strings, screens: { register, ADVANCE_MODES } } );
+	assert.deepEqual( registered, [ { id: 'social_platforms', advanceMode: ADVANCE_MODES.MANUAL } ] );
+	assert.equal( strings.t( 'en', 'socialContinue' ), 'CONTINUE' );
 	PLATFORMS.forEach( ( key ) => {
 		assert.ok( strings.t( 'en', 'platform_' + key ), key );
 		assert.ok( strings.t( 'en', 'placeholder_' + key ), key );

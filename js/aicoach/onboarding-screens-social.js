@@ -8,6 +8,11 @@
  * included, but CONTINUE is blocked while a ticked platform has no handle, with an error on
  * that field.
  *
+ * The screen never moves on by itself (MANUAL advance mode): only its own CONTINUE control,
+ * the design's small button under SAVE IHQ TO HOME SCREEN, moves the flow on (design
+ * decision 1). It is drawn at the end of the screen's own content, right-aligned, so the
+ * shell's footer stays the shell's.
+ *
  * Platforms and handles are saved to the account store as they change; the server copies the
  * handles to the Profile page (inc/portal-onboarding-social.php). Nothing is pre-filled from
  * the communication channels given at registration (PO-3207).
@@ -53,6 +58,7 @@ export const SOCIAL_STRINGS_EN = {
 	socialPlatformColumn: 'PLATFORM',
 	socialAccountColumn: 'ACCOUNT ID',
 	socialHandleRequired: 'Enter your account ID for this platform.',
+	socialContinue: 'CONTINUE',
 
 	platform_instagram: 'Instagram',
 	platform_facebook: 'Facebook',
@@ -174,7 +180,15 @@ function platformRow( { document, text, t, key } ) {
 	return { row, tick, field, error };
 }
 
-function renderSocial( { container, api, t, text } ) {
+function continueControl( { text, advance } ) {
+	const control = text( 'button', 'socialContinue', 'ihq-onb__button ihq-onb-social__continue' );
+	control.setAttribute( 'type', 'button' );
+	// advance() checks isValid() and calls showValidation() itself; its result is not needed here.
+	control.addEventListener( 'click', () => advance() );
+	return control;
+}
+
+function renderSocial( { container, api, t, text, advance } ) {
 	const document = container.ownerDocument;
 	container.append( text( 'h2', 'socialQuestion', 'ihq-onb-social__question' ) );
 
@@ -246,6 +260,7 @@ function renderSocial( { container, api, t, text } ) {
 		parts.field.addEventListener( 'change', save );
 	} );
 	paint();
+	container.append( continueControl( { text, advance } ) );
 
 	const stopLocale = api.events.on( 'locale', () => {
 		rows.forEach( ( parts, key ) => {
@@ -274,5 +289,9 @@ function renderSocial( { container, api, t, text } ) {
  */
 export function install( api ) {
 	api.strings.add( 'en', SOCIAL_STRINGS_EN );
-	api.screens.register( { id: 'social_platforms', render: renderSocial } );
+	api.screens.register( {
+		id: 'social_platforms',
+		advanceMode: api.screens.ADVANCE_MODES.MANUAL,
+		render: renderSocial,
+	} );
 }
