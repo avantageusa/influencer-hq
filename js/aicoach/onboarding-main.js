@@ -22,7 +22,7 @@ import { CONFIG_ELEMENT_ID, parseConfig, createApi, installModules } from '@ihq/
 import { SEQUENCE, startStage, nextStage } from '@ihq/aicoach/onboarding-sequence';
 import { createHistoryGuard } from '@ihq/aicoach/onboarding-history';
 import { postJson } from '@ihq/aicoach/onboarding-request';
-import { createEngine, ENGINE_STRINGS_EN } from '@ihq/aicoach/onboarding-engine';
+import { createEngine, ADVANCE_MODES } from '@ihq/aicoach/onboarding-engine';
 import { launch } from '@ihq/aicoach/onboarding-launch';
 
 async function start() {
@@ -35,7 +35,6 @@ async function start() {
 
 	const strings = createStringTable();
 	strings.add( FALLBACK_LOCALE, SHELL_STRINGS_EN );
-	strings.add( FALLBACK_LOCALE, ENGINE_STRINGS_EN );
 	const events = createEmitter();
 	const api = createApi( { config, events, strings } );
 
@@ -64,7 +63,8 @@ async function start() {
 		fetchFn: window.fetch.bind( window ),
 		historyGuard: createHistoryGuard( { history: window.history, window } ),
 	} );
-	api.screens = { register: engine.register };
+	// Screen modules import nothing, so the advance modes reach them on the API.
+	api.screens = { register: engine.register, ADVANCE_MODES };
 	api.advance = engine.advance;
 	api.save = engine.save;
 	api.complete = engine.complete;

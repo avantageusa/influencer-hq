@@ -418,15 +418,11 @@ html.ihq-onb-open body {
 	display: none;
 }
 
-/* Screens (ENGR-7566): a section in the content area, CONTINUE under it. */
+/* Screens (ENGR-7566): a section in the content area. */
 .ihq-onb-screen {
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
-}
-
-.ihq-onb__button--continue {
-	margin-top: 8px;
 }
 
 /* A question screen asked to advance without a valid answer. */

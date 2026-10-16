@@ -5,7 +5,12 @@ import { createEmitter } from './onboarding-events.js';
 import { createStringTable } from './onboarding-strings.js';
 import { createApi } from './onboarding-boot.js';
 import { SEQUENCE, startStage, nextStage } from './onboarding-sequence.js';
-import { createEngine, ENGINE_STRINGS_EN } from './onboarding-engine.js';
+import { createFakeClock } from './fake-clock.js';
+import { createStallWatchdog } from './stall-watchdog.js';
+import { buildSentenceCues, subtitleAt } from './onboarding-subtitles.js';
+import { estimateDurationMs } from './commentary.js';
+import { createNarrator } from './onboarding-narrator.js';
+import { createEngine, ADVANCE_MODES } from './onboarding-engine.js';
 
 const STATE = { stage: '', answers: {}, platforms: [], handles: {}, language: '', completed: false, completed_at: '' };
 
@@ -15,18 +20,20 @@ function setup( { stage = '', clips = {}, saveResult = { ok: true, status: 200, 
 	document.body.append( content );
 	const events = createEmitter();
 	const strings = createStringTable();
-	strings.add( 'en', ENGINE_STRINGS_EN );
 	strings.add( 'en', { kingsLine: 'For over 500 years.', askLine: 'Tell me.' } );
-	strings.add( 'ja', { continue: '続ける', kingsLine: '五百年。' } );
+	strings.add( 'ja', { kingsLine: '五百年。', askLine: '教えて。' } );
 	const config = { state: { ...STATE, stage }, progressUrl: '/progress', completeUrl: '/complete', nonce: 'n1', clips };
 	const api = createApi( { config, events, strings } );
 	const said = [];
+	// endLine[ n ]( mode ) settles the nth line Sami was asked to say, as the narrator does
+	// when the line has been said or was stopped. Until then it is still playing.
+	const endLine = [];
 	const closes = [];
 	api.shell = {
 		content,
 		say: ( line ) => {
 			said.push( line );
-			return Promise.resolve( { mode: 'captions' } );
+			return new Promise( ( resolve ) => endLine.push( ( mode = 'captions' ) => resolve( { mode } ) ) );
 		},
 		close: () => closes.push( true ),
 	};
@@ -52,19 +59,21 @@ function setup( { stage = '', clips = {}, saveResult = { ok: true, status: 200, 
 		historyGuard,
 		onError: ( error ) => errors.push( error.message ),
 	} );
-	return { document, content, events, api, engine, said, closes, posts, guardCalls, errors, fetchFn };
+	return { document, content, events, api, engine, said, endLine, closes, posts, guardCalls, errors, fetchFn };
 }
 
-// A screen that records its lifecycle. valid() decides whether it lets the flow advance.
-function screen( id, log, { valid, choice, hideContinue, narration } = {} ) {
+// A screen that records its lifecycle. valid() decides whether it lets the flow advance;
+// advancers[ id ] is the advance() its render context got, for the latest showing.
+function screen( id, log, { valid, choice, narration, advanceMode, advancers = {} } = {} ) {
 	return {
 		id,
 		narration,
-		hideContinue,
-		render( { container, t, text } ) {
+		advanceMode,
+		render( { container, t, text, advance } ) {
 			log.push( [ 'render', id ] );
+			advancers[ id ] = advance;
 			container.append( text( 'h2', 'askLine', 'title' ) );
-			container.setAttribute( 'data-seen-continue', t( 'continue' ) );
+			container.setAttribute( 'data-seen-line', t( 'askLine' ) );
 			return {
 				isValid: valid ? () => valid() : undefined,
 				showValidation: () => log.push( [ 'validation', id ] ),
@@ -81,8 +90,9 @@ function registerAll( engine, log, overrides = {} ) {
 
 const flush = () => new Promise( ( resolve ) => setTimeout( resolve, 0 ) );
 
-test( 'the engine text', () => {
-	assert.deepEqual( ENGINE_STRINGS_EN, { continue: 'CONTINUE' } );
+test( 'the advance modes are named and frozen', () => {
+	assert.deepEqual( ADVANCE_MODES, { NARRATION: 'narration', PICK: 'pick', MANUAL: 'manual' } );
+	assert.equal( Object.isFrozen( ADVANCE_MODES ), true );
 } );
 
 test( 'register() rejects a definition with an unknown id or no render()', () => {
@@ -90,6 +100,19 @@ test( 'register() rejects a definition with an unknown id or no render()', () =>
 	assert.throws( () => engine.register( { id: 'payout', render: () => ( {} ) } ), /invalid screen definition payout/ );
 	assert.throws( () => engine.register( { id: 'equity' } ), /invalid screen definition equity/ );
 	assert.throws( () => engine.register( null ), /invalid screen definition/ );
+} );
+
+test( 'register() rejects an unknown advance mode, and registers nothing', () => {
+	const { engine } = setup();
+	assert.throws( () => engine.register( { id: 'equity', advanceMode: 'continue', render: () => ( {} ) } ), /^Error: Onboarding: unknown advance mode continue for equity$/ );
+	assert.throws( () => engine.register( { id: 'equity', advanceMode: null, render: () => ( {} ) } ), /unknown advance mode null for equity/ );
+	assert.equal( engine.start(), null );
+} );
+
+test( 'register() accepts every named advance mode', () => {
+	const { engine } = setup();
+	Object.values( ADVANCE_MODES ).forEach( ( advanceMode ) => engine.register( { id: 'equity', advanceMode, render: () => ( {} ) } ) );
+	assert.equal( engine.start(), 'equity' );
 } );
 
 test( 'start() with no screens installed shows nothing and does not guard history', () => {
@@ -119,27 +142,16 @@ test( 'a returning user resumes at the saved stage', () => {
 	assert.equal( engine.start(), 'world_tour' );
 } );
 
-test( 'each screen gets a CONTINUE button, labelled through the string table, after its content', () => {
+test( 'the screen draws into its section, and the engine adds nothing of its own (no CONTINUE)', () => {
 	const { engine, content } = setup();
 	registerAll( engine, [] );
 	engine.start();
 	const section = content.querySelector( 'section' );
-	const button = section.querySelector( '[data-onb="continue"]' );
-	assert.equal( button.textContent, 'CONTINUE' );
-	assert.equal( button.getAttribute( 'data-onb-string' ), 'continue' );
-	assert.equal( button.getAttribute( 'type' ), 'button' );
-	assert.equal( button.className, 'ihq-onb__button ihq-onb__button--continue' );
-	assert.equal( section.children.at( -1 ), button );
+	assert.equal( section.children.length, 1 );
+	assert.equal( section.querySelector( 'button' ), null );
 	assert.equal( section.querySelector( 'h2' ).getAttribute( 'data-onb-string' ), 'askLine' );
 	assert.equal( section.querySelector( 'h2' ).textContent, 'Tell me.' );
 	assert.equal( section.querySelector( 'h2' ).className, 'title' );
-} );
-
-test( 'a screen that has its own buttons gets no CONTINUE', () => {
-	const { engine, content } = setup( { stage: 'closing' } );
-	registerAll( engine, [], { closing: { hideContinue: true } } );
-	engine.start();
-	assert.equal( content.querySelector( '[data-onb="continue"]' ), null );
 } );
 
 test( 'the screen text follows the current language', () => {
@@ -147,8 +159,8 @@ test( 'the screen text follows the current language', () => {
 	api.setLocale( 'ja' );
 	registerAll( engine, [] );
 	engine.start();
-	assert.equal( content.querySelector( '[data-onb="continue"]' ).textContent, '続ける' );
-	assert.equal( content.querySelector( 'section' ).getAttribute( 'data-seen-continue' ), '続ける' );
+	assert.equal( content.querySelector( 'h2' ).textContent, '教えて。' );
+	assert.equal( content.querySelector( 'section' ).getAttribute( 'data-seen-line' ), '教えて。' );
 } );
 
 test( 'advancing moves exactly one screen forward and saves the stage', async () => {
@@ -162,14 +174,6 @@ test( 'advancing moves exactly one screen forward and saves the stage', async ()
 	assert.equal( content.querySelectorAll( 'section' ).length, 1 );
 	await flush();
 	assert.deepEqual( posts, [ { url: '/progress', nonce: 'n1', body: { stage: 'modern_era' }, fetchFn } ] );
-} );
-
-test( 'clicking CONTINUE advances', () => {
-	const { engine, content } = setup();
-	registerAll( engine, [] );
-	engine.start();
-	content.querySelector( '[data-onb="continue"]' ).click();
-	assert.equal( engine.current(), 'modern_era' );
 } );
 
 test( 'walking the whole flow visits every screen once, in order, and stops at closing', async () => {
@@ -234,7 +238,7 @@ test( 'an answer save waits behind a stage save still in flight', async () => {
 	assert.deepEqual( api.state, { ...STATE, answers: { baccarat_experience: 'played_some' } } );
 } );
 
-test( 'a stage save from CONTINUE waits behind an answer save still in flight', async () => {
+test( 'a stage save from an advance waits behind an answer save still in flight', async () => {
 	const { held, answer } = holdSaves();
 	const { engine, api, posts } = setup( { stage: 'baccarat_experience', answer } );
 	registerAll( engine, [] );
@@ -445,4 +449,207 @@ test( 'a screen whose render returns nothing still works', () => {
 	engine.start();
 	assert.equal( engine.advance(), true );
 	assert.equal( engine.current(), 'modern_era' );
+} );
+
+test( 'a screen that leaves out its advance mode moves on when its line has been said', async () => {
+	const { engine, endLine, posts, said } = setup();
+	registerAll( engine, [], { game_of_kings: { narration: 'kingsLine' } } );
+	engine.start();
+	await flush();
+	assert.equal( engine.current(), 'game_of_kings', 'not while Sami is still speaking' );
+	endLine[ 0 ]( 'clip' );
+	await flush();
+	assert.equal( engine.current(), 'modern_era' );
+	assert.deepEqual( posts.map( ( post ) => post.body ), [ { stage: 'modern_era' } ] );
+	assert.equal( said.length, 2 );
+} );
+
+test( 'a NARRATION screen moves on when its line has been said', async () => {
+	const { engine, endLine } = setup();
+	registerAll( engine, [], { game_of_kings: { advanceMode: ADVANCE_MODES.NARRATION } } );
+	engine.start();
+	endLine[ 0 ]();
+	await flush();
+	assert.equal( engine.current(), 'modern_era' );
+} );
+
+test( 'PICK and MANUAL screens never move on by themselves, and do on their own advance()', async () => {
+	for ( const advanceMode of [ ADVANCE_MODES.PICK, ADVANCE_MODES.MANUAL ] ) {
+		const advancers = {};
+		const { engine, endLine, posts } = setup();
+		registerAll( engine, [], { game_of_kings: { advanceMode, advancers, narration: 'kingsLine' } } );
+		engine.start();
+		endLine[ 0 ]( 'clip' );
+		await flush();
+		assert.equal( engine.current(), 'game_of_kings', advanceMode );
+		assert.deepEqual( posts, [], advanceMode );
+		assert.equal( advancers.game_of_kings(), true, advanceMode );
+		assert.equal( engine.current(), 'modern_era', advanceMode );
+		await flush();
+		assert.deepEqual( posts.map( ( post ) => post.body ), [ { stage: 'modern_era' } ], advanceMode );
+	}
+} );
+
+test( 'a screen advance() called twice moves the flow once (a second pick, a late timer)', async () => {
+	const advancers = {};
+	const { engine, posts } = setup( { stage: 'baccarat_experience' } );
+	registerAll( engine, [], { baccarat_experience: { advanceMode: ADVANCE_MODES.PICK, advancers } } );
+	engine.start();
+	const firstAdvance = advancers.baccarat_experience;
+	assert.equal( firstAdvance(), true );
+	assert.equal( firstAdvance(), false );
+	assert.equal( engine.current(), 'streaming_experience' );
+	await flush();
+	assert.deepEqual( posts.map( ( post ) => post.body ), [ { stage: 'streaming_experience' } ] );
+} );
+
+test( 'a screen advance() still respects isValid() and shows the validation state', () => {
+	const advancers = {};
+	const log = [];
+	const { engine } = setup( { stage: 'baccarat_experience' } );
+	registerAll( engine, log, { baccarat_experience: { advanceMode: ADVANCE_MODES.PICK, advancers, valid: () => false } } );
+	engine.start();
+	assert.equal( advancers.baccarat_experience(), false );
+	assert.equal( engine.current(), 'baccarat_experience' );
+	assert.deepEqual( log, [ [ 'render', 'baccarat_experience' ], [ 'validation', 'baccarat_experience' ] ] );
+} );
+
+test( 'a manual advance racing the line ending moves the flow once (advance first)', async () => {
+	const { engine, endLine, posts } = setup();
+	registerAll( engine, [] );
+	engine.start();
+	assert.equal( engine.advance(), true );
+	// Moving on stops the line, and the narrator settles it.
+	endLine[ 0 ]();
+	await flush();
+	assert.equal( engine.current(), 'modern_era' );
+	assert.deepEqual( posts.map( ( post ) => post.body ), [ { stage: 'modern_era' } ] );
+} );
+
+test( 'a manual advance racing the line ending moves the flow once (line first)', async () => {
+	const advancers = {};
+	const { engine, endLine, posts } = setup();
+	registerAll( engine, [], { game_of_kings: { advancers } } );
+	engine.start();
+	const kingsAdvance = advancers.game_of_kings;
+	endLine[ 0 ]();
+	await flush();
+	assert.equal( engine.current(), 'modern_era' );
+	assert.equal( kingsAdvance(), false, 'screen 1 is gone, so its advance() does nothing' );
+	assert.equal( engine.current(), 'modern_era' );
+	await flush();
+	assert.deepEqual( posts.map( ( post ) => post.body ), [ { stage: 'modern_era' } ] );
+} );
+
+test( 'a line stopped by a language change does not move the flow; the new line does', async () => {
+	const { engine, endLine, api, posts } = setup();
+	registerAll( engine, [], { game_of_kings: { narration: 'kingsLine' } } );
+	engine.start();
+	api.setLocale( 'ja' );
+	endLine[ 0 ]();
+	await flush();
+	assert.equal( engine.current(), 'game_of_kings' );
+	assert.deepEqual( posts, [] );
+	endLine[ 1 ]();
+	await flush();
+	assert.equal( engine.current(), 'modern_era' );
+} );
+
+test( 'a line stopped by complete() closing the layer moves nothing', async () => {
+	const { engine, endLine, posts } = setup( { stage: 'closing' } );
+	registerAll( engine, [] );
+	engine.start();
+	assert.equal( await engine.complete(), true );
+	endLine[ 0 ]();
+	await flush();
+	assert.equal( engine.current(), null );
+	assert.deepEqual( posts.map( ( post ) => post.url ), [ '/complete' ] );
+} );
+
+// The engine on the real narrator, with a fake <video> and clock, so the narrator's own
+// finish points (clip end, caption timer, fallback after an error) are what moves the flow.
+function setupNarrated( { clips = {}, estimate = () => 1000 } = {} ) {
+	const harness = setup( { clips } );
+	const clock = createFakeClock();
+	const video = new EventTarget();
+	video.duration = Number.NaN;
+	video.currentTime = 0;
+	video.play = () => Promise.resolve();
+	video.pause = () => {};
+	video.fire = ( type ) => video.dispatchEvent( new Event( type ) );
+	const narrator = createNarrator( {
+		video,
+		onSubtitle: () => {},
+		buildSentenceCues,
+		subtitleAt,
+		estimateDurationMs: estimate,
+		createStallWatchdog,
+		setTimeout: clock.setTimeout,
+		clearTimeout: clock.clearTimeout,
+		now: clock.now,
+	} );
+	harness.api.shell.say = ( line ) => narrator.play( line );
+	return { ...harness, clock, video, narrator };
+}
+
+const KINGS_CLIPS = { game_of_kings: { en: 'kings-en.mp4', ja: 'kings-ja.mp4' } };
+
+test( 'narrator: the clip ending moves the flow on', async () => {
+	const { engine, video } = setupNarrated( { clips: KINGS_CLIPS } );
+	registerAll( engine, [], { game_of_kings: { narration: 'kingsLine' } } );
+	engine.start();
+	await flush();
+	assert.equal( engine.current(), 'game_of_kings' );
+	video.fire( 'ended' );
+	await flush();
+	assert.equal( engine.current(), 'modern_era' );
+} );
+
+test( 'narrator: the caption-only fallback timer ending moves the flow on', async () => {
+	const { engine, clock } = setupNarrated();
+	registerAll( engine, [], { game_of_kings: { narration: 'kingsLine' }, modern_era: { advanceMode: ADVANCE_MODES.MANUAL } } );
+	engine.start();
+	clock.tick( 999 );
+	await flush();
+	assert.equal( engine.current(), 'game_of_kings' );
+	clock.tick( 1 );
+	await flush();
+	assert.equal( engine.current(), 'modern_era' );
+} );
+
+test( 'narrator: a clip that fails falls back to captions, and their end moves the flow on', async () => {
+	const { engine, clock, video } = setupNarrated( { clips: KINGS_CLIPS } );
+	registerAll( engine, [], { game_of_kings: { narration: 'kingsLine' }, modern_era: { advanceMode: ADVANCE_MODES.MANUAL } } );
+	engine.start();
+	video.fire( 'error' );
+	await flush();
+	assert.equal( engine.current(), 'game_of_kings' );
+	clock.tick( 1000 );
+	await flush();
+	assert.equal( engine.current(), 'modern_era' );
+} );
+
+test( 'narrator: a screen with no script and no clip moves on as soon as it is shown (reading time 0)', async () => {
+	const { engine } = setupNarrated( { estimate: estimateDurationMs } );
+	engine.register( screen( 'game_of_kings', [] ) );
+	engine.register( screen( 'modern_era', [], { advanceMode: ADVANCE_MODES.MANUAL } ) );
+	engine.start();
+	assert.equal( estimateDurationMs( '' ), 0 );
+	assert.equal( engine.current(), 'game_of_kings', 'not inside start()' );
+	await flush();
+	assert.equal( engine.current(), 'modern_era' );
+} );
+
+test( 'narrator: a clip stopped by a language change does not move the flow; the new clip ending does', async () => {
+	const { engine, api, video, posts } = setupNarrated( { clips: KINGS_CLIPS } );
+	registerAll( engine, [], { game_of_kings: { narration: 'kingsLine' } } );
+	engine.start();
+	api.setLocale( 'ja' );
+	await flush();
+	assert.equal( engine.current(), 'game_of_kings' );
+	assert.equal( video.src, 'kings-ja.mp4' );
+	video.fire( 'ended' );
+	await flush();
+	assert.equal( engine.current(), 'modern_era' );
+	assert.deepEqual( posts.map( ( post ) => post.body ), [ { stage: 'modern_era' } ] );
 } );

@@ -5,16 +5,22 @@
  * and the engine shows them in the order of onboarding-sequence.js. A definition is
  *
  *     {
- *       id: 'baccarat_experience',      // a stage id from SEQUENCE
- *       narration: 'baccaratNarration', // optional string-table key for Sami's line
- *       hideContinue: false,            // true when the screen has its own buttons
+ *       id: 'baccarat_experience',                       // a stage id from SEQUENCE
+ *       narration: 'baccaratNarration',                  // optional string-table key for Sami's line
+ *       advanceMode: api.screens.ADVANCE_MODES.PICK,     // optional, NARRATION when left out
  *       render( ctx ) { ... return controller; },
  *     }
  *
- * render() gets { container, api, t, text } and draws the screen into container. It may
- * return a controller: isValid() (a question screen does not advance until it is true),
- * showValidation() (called when CONTINUE is pressed while it is not), choice() (for a
- * branch, e.g. the post action screen) and destroy().
+ * There is no CONTINUE button (design decision 1). How a screen moves on is its advance mode:
+ * NARRATION screens move on when Sami's line ends (the clip's end, or the caption-only
+ * fallback's reading-time end); PICK and MANUAL screens never move on by themselves and call
+ * ctx.advance() (after a pick, or from their own control).
+ *
+ * render() gets { container, api, t, text, advance } and draws the screen into container.
+ * advance() moves on from this screen only while it is still the one showing, so a late timer
+ * or a second call cannot skip the screen after it. It may return a controller: isValid() (the
+ * screen does not advance until it is true), showValidation() (called when an advance is asked
+ * for while it is not), choice() (for a branch, e.g. the post action screen) and destroy().
  *
  * Advancing saves the new stage to the account store, so a returning Influencer resumes
  * there. Progress saves are sent one at a time, in order, without holding up the flow.
@@ -22,10 +28,17 @@
  * it is tested with the fake DOM.
  */
 
-/** The engine's own text. */
-export const ENGINE_STRINGS_EN = {
-	continue: 'CONTINUE',
-};
+/** How a screen moves on to the next one. */
+export const ADVANCE_MODES = Object.freeze( {
+	// When Sami's line for the screen has been said (teaching screens).
+	NARRATION: 'narration',
+	// The screen calls advance() after the Influencer picks an answer (question screens).
+	PICK: 'pick',
+	// The screen calls advance() from its own control (social platforms, closing).
+	MANUAL: 'manual',
+} );
+
+const KNOWN_ADVANCE_MODES = Object.freeze( Object.values( ADVANCE_MODES ) );
 
 /**
  * @param {Object}   deps
@@ -44,6 +57,12 @@ export function createEngine( deps ) {
 	const definitions = new Map();
 	let stage = null;
 	let controller = {};
+	// Counts screen showings, so a screen's advance() only works while it is still showing.
+	let visit = 0;
+	// What say() returned for the line playing now. A line that is no longer this one was
+	// stopped by another screen or a new language and must not move the flow. (One stopped by
+	// complete() closing the layer finds no screen to move on from.)
+	let currentLine = null;
 	// Every progress save (stage and answers) runs after the one before has settled. The
 	// server's merge reads, changes and writes the whole record without a lock, so two
 	// overlapping saves could lose one of the writes, and an older answer arriving last
@@ -77,12 +96,22 @@ export function createEngine( deps ) {
 		return definitions.has( id );
 	}
 
+	function advanceModeOf( definition ) {
+		if ( undefined === definition.advanceMode ) {
+			return ADVANCE_MODES.NARRATION;
+		}
+		return definition.advanceMode;
+	}
+
 	/**
 	 * @param {Object} definition See the file comment.
 	 */
 	function register( definition ) {
 		if ( ! definition || ! sequence.SEQUENCE.includes( definition.id ) || 'function' !== typeof definition.render ) {
 			throw new Error( 'Onboarding: invalid screen definition ' + ( definition && definition.id ) );
+		}
+		if ( ! KNOWN_ADVANCE_MODES.includes( advanceModeOf( definition ) ) ) {
+			throw new Error( 'Onboarding: unknown advance mode ' + definition.advanceMode + ' for ' + definition.id );
 		}
 		definitions.set( definition.id, definition );
 	}
@@ -117,10 +146,40 @@ export function createEngine( deps ) {
 		return true;
 	}
 
+	/**
+	 * Says the current screen's line. A NARRATION screen moves on when the line has been said,
+	 * unless it was stopped first. The narrator settles say() either way, so a stopped line is
+	 * told apart by no longer being the latest one.
+	 *
+	 * A screen with no script and no clip gets the caption-only fallback at a reading time of
+	 * 0 ms, so it moves on straight after it is shown.
+	 */
 	function narrate() {
 		const definition = definitions.get( stage );
-		const script = definition && definition.narration ? t( definition.narration ) : '';
-		return api.shell.say( { script, clipUrl: api.clipUrl( stage ) } );
+		const script = definition.narration ? t( definition.narration ) : '';
+		const line = api.shell.say( { script, clipUrl: api.clipUrl( stage ) } );
+		currentLine = line;
+		if ( ADVANCE_MODES.NARRATION !== advanceModeOf( definition ) ) {
+			return;
+		}
+		const shownVisit = visit;
+		Promise.resolve( line ).then( () => {
+			if ( currentLine !== line ) {
+				return;
+			}
+			advanceFrom( shownVisit );
+		} );
+	}
+
+	/**
+	 * @param {number} fromVisit The showing the request belongs to.
+	 * @return {boolean} Whether the flow moved.
+	 */
+	function advanceFrom( fromVisit ) {
+		if ( fromVisit !== visit ) {
+			return false;
+		}
+		return advance();
 	}
 
 	function show( id ) {
@@ -129,18 +188,14 @@ export function createEngine( deps ) {
 			controller.destroy();
 		}
 		stage = id;
+		visit += 1;
+		const shownVisit = visit;
 		const container = document.createElement( 'section' );
 		container.className = 'ihq-onb-screen';
 		container.setAttribute( 'data-stage', id );
 		api.shell.content.replaceChildren( container );
-		controller = definition.render( { container, api, t, text } ) || {};
-		if ( ! definition.hideContinue ) {
-			const button = text( 'button', 'continue', 'ihq-onb__button ihq-onb__button--continue' );
-			button.setAttribute( 'type', 'button' );
-			button.setAttribute( 'data-onb', 'continue' );
-			button.addEventListener( 'click', () => advance() );
-			container.append( button );
-		}
+		const screenAdvance = () => advanceFrom( shownVisit );
+		controller = definition.render( { container, api, t, text, advance: screenAdvance } ) || {};
 		narrate();
 		api.events.emit( 'screen', { stage: id, next: nextFrom( id ) } );
 	}
@@ -165,7 +220,9 @@ export function createEngine( deps ) {
 	}
 
 	/**
-	 * Moves exactly one screen forward (or along a branch) when the screen allows it.
+	 * Moves exactly one screen forward (or along a branch) when the screen allows it. Every
+	 * way of moving on comes through here. It acts on whichever screen is showing; a screen
+	 * calls the advance() in its render context instead, which is tied to that screen.
 	 *
 	 * @return {boolean} Whether the flow moved.
 	 */
