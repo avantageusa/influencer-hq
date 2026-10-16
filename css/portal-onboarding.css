@@ -1,0 +1,418 @@
+/*
+ * Portal onboarding layer (ENGR-7565, PO-3063): the frame every
+ * onboarding screen shares. Markup: template-parts/portal-onboarding.php.
+ *
+ * Sizes and colours are the design's at 398 px wide (Figma instance
+ * 46893:117629, checked at 398 px for ENGR-7565), the same frame the
+ * landing flow draws (PO-3062 design alignment, page-home-aicoach.php).
+ * On tablet and desktop the phone layout is kept as a centred
+ * fixed-width column (evaluation OQ11), switching at the portal's existing
+ * 767 px and 1024 px queries: min-width 768px and 1025px below are their
+ * complements. Do not add another width here.
+ */
+
+.ihq-onb {
+	--ihq-onb-yellow: #fdd65b;
+	--ihq-onb-gold: #b7962f;
+	--ihq-onb-green: #148942;
+	--ihq-onb-commentary-bg: #2d2b2b;
+	--ihq-onb-page-bg: #000;
+	--ihq-onb-column-width: 100%;
+
+	/*
+	 * The gap under the Save button, the same on every screen (design
+	 * decision 2: the mock's 40 to 110 px variation is not intended).
+	 */
+	--ihq-onb-footer-gap: 24px;
+
+	/*
+	 * The least height the screen content keeps. Where the header, banner,
+	 * commentary and footer leave less than this (a phone on its side), the
+	 * whole layer scrolls instead, so the Save button can still be reached.
+	 */
+	--ihq-onb-content-min-height: 120px;
+
+	position: fixed;
+	inset: 0;
+	z-index: 100000;
+
+	/* Scrolls only in the short case above; otherwise the content area does. */
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	background: var(--ihq-onb-page-bg);
+	color: #fff;
+	font-family: "Be Vietnam Pro", Inter, sans-serif;
+	-webkit-overflow-scrolling: touch;
+}
+
+html.ihq-onb-open,
+html.ihq-onb-open body {
+	overflow: hidden;
+}
+
+/*
+ * The dialog takes focus when it opens (onboarding-shell.js) so Tab
+ * starts inside it. The layer needs no focus ring; its controls keep
+ * theirs.
+ */
+.ihq-onb:focus {
+	outline: none;
+}
+
+/*
+ * The column is exactly the layer's height: the header, banner and
+ * commentary keep their place, the content area takes what is left and
+ * scrolls, and the footer stays at the bottom (design decision 1).
+ */
+.ihq-onb__column {
+	box-sizing: border-box;
+	display: flex;
+	flex-direction: column;
+	width: var(--ihq-onb-column-width);
+	height: 100%;
+	margin: 0 auto;
+}
+
+/*
+ * Only the content area gives way. The banner would otherwise shrink to
+ * nothing on a short screen, its overflow: hidden letting it go below its
+ * aspect-ratio height.
+ */
+.ihq-onb__header,
+.ihq-onb__banner,
+.ihq-onb__commentary {
+	flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+
+	.ihq-onb {
+		--ihq-onb-column-width: 430px;
+	}
+
+	.ihq-onb__column {
+		border-right: 1px solid #222;
+		border-left: 1px solid #222;
+	}
+}
+
+@media (min-width: 1025px) {
+
+	.ihq-onb {
+		--ihq-onb-column-width: 480px;
+	}
+}
+
+/*
+ * Header: hamburger, brand, sound, globe, 70 px high (the design's
+ * IHQ_Mobile_Header). The icons are centred 22 px from the top, so each
+ * button is 44 px high from the top edge. The two sides share what the
+ * brand leaves equally, which puts the brand where the design does at
+ * 398 px; their spacing is margin, not padding, so the split stays equal.
+ */
+.ihq-onb__header {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	box-sizing: border-box;
+	display: flex;
+	height: 70px;
+	background: var(--ihq-onb-page-bg);
+}
+
+.ihq-onb__header-side {
+	position: relative;
+	display: flex;
+	flex: 1;
+	align-items: flex-start;
+	min-width: 0;
+}
+
+/* The hamburger's bars start 22 px from the edge: a 44 px button 10 px in. */
+.ihq-onb__header-side:not(.ihq-onb__header-side--end) > .ihq-onb__icon-button {
+	margin-left: 10px;
+}
+
+/*
+ * The sound and globe icons sit 27 px apart, centre to centre, with the
+ * globe 22 px from the edge. Two 44 px buttons do not fit there, so these
+ * two are 26 px wide (still above the 24 px minimum target size).
+ */
+.ihq-onb__header-side--end {
+	justify-content: flex-end;
+	gap: 1px;
+}
+
+/*
+ * 18 px at 398 px wide and up. On a narrower phone the side is narrower
+ * than the icons plus 18 px, so the margin gives way first, keeping the
+ * icons clear of the brand: half the brand's 256 px plus the 53 px icon
+ * pair is 181 px, the half-width below which the margin shrinks to 0.
+ */
+.ihq-onb__header-side--end > :last-child {
+	margin-right: clamp(0px, 50vw - 181px, 18px);
+}
+
+.ihq-onb__header-side--end .ihq-onb__icon-button {
+	width: 26px;
+	min-width: 26px;
+}
+
+/*
+ * Full header height, so the language list opens under the header, as
+ * the menu does.
+ */
+.ihq-onb__header-side--end > .ihq-onb__language {
+	align-self: stretch;
+}
+
+.ihq-onb__icon-button img,
+.ihq-onb__icon-button svg {
+	display: block;
+}
+
+/*
+ * The brand as the design draws it: the name, the "ih" mark with its red
+ * lines, and the domain, in Inter. The offsets inside it are the design's.
+ */
+.ihq-onb__brand {
+	display: flex;
+	flex: 0 0 252px;
+	align-items: flex-start;
+	gap: 10px;
+	margin-left: 4px;
+	color: #fff;
+	font-family: Inter, "Be Vietnam Pro", sans-serif;
+	font-size: 15px;
+	font-weight: 600;
+	line-height: normal;
+}
+
+.ihq-onb__brand-name {
+	flex: 0 0 107px;
+	margin-top: 20px;
+}
+
+.ihq-onb__brand-domain {
+	flex: 0 0 73px;
+	margin-top: 30px;
+	text-align: right;
+}
+
+.ihq-onb__brand-mark {
+	position: relative;
+	flex: 0 0 52px;
+	height: 70px;
+}
+
+.ihq-onb__brand-lines {
+	position: absolute;
+	top: 18px;
+	left: 13px;
+}
+
+.ihq-onb__brand-ih,
+.ihq-onb__brand-tm {
+	position: absolute;
+	font-weight: 800;
+}
+
+.ihq-onb__brand-ih {
+	top: 36px;
+	left: 0;
+	font-size: 29px;
+}
+
+.ihq-onb__brand-tm {
+	top: 59px;
+	left: 37px;
+	font-size: 5px;
+}
+
+.ihq-onb__icon-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 44px;
+	min-height: 44px;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	cursor: pointer;
+}
+
+.ihq-onb__icon-button[aria-pressed="true"] img {
+	opacity: 0.4;
+}
+
+.ihq-onb__icon-button:focus-visible,
+.ihq-onb__button:focus-visible,
+.ihq-onb__menu-link:focus-visible {
+	outline: 3px solid var(--ihq-onb-yellow);
+	outline-offset: 2px;
+}
+
+.ihq-onb__menu,
+.ihq-onb__languages {
+	position: absolute;
+	top: 100%;
+	z-index: 3;
+	min-width: 160px;
+	margin: 4px 0 0;
+	padding: 8px 0;
+	border: 1px solid var(--ihq-onb-gold);
+	background: #111;
+	list-style: none;
+}
+
+.ihq-onb__menu {
+	left: 0;
+}
+
+.ihq-onb__languages {
+	right: 0;
+}
+
+.ihq-onb__menu[hidden],
+.ihq-onb__languages[hidden] {
+	display: none;
+}
+
+.ihq-onb__menu-link {
+	display: block;
+	padding: 10px 16px;
+	color: #fff;
+	text-decoration: none;
+}
+
+.ihq-onb__language {
+	position: relative;
+}
+
+/* Sami's banner: the portrait until a clip plays over it. */
+.ihq-onb__banner {
+	position: relative;
+	width: 100%;
+	overflow: hidden;
+	margin-top: 14px;
+	background: #12131a;
+	aspect-ratio: 398 / 182;
+}
+
+.ihq-onb__portrait,
+.ihq-onb__video {
+	position: absolute;
+	inset: 0;
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: center 10%;
+}
+
+.ihq-onb__video:not([src]) {
+	display: none;
+}
+
+/* The commentary box stays in the frame when Sami is quiet. */
+.ihq-onb__commentary {
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: min(316px, 79.4%);
+	min-height: 86px;
+	margin: 6px auto 0;
+	padding: 8px 16px;
+	border: 1px dashed #fff;
+	background: var(--ihq-onb-commentary-bg);
+}
+
+/*
+ * The design's text box is 197 px wide, so a line breaks where the
+ * design's does.
+ */
+.ihq-onb__subtitle {
+	max-width: 197px;
+	margin: 0;
+	font-family: Inter, "Be Vietnam Pro", sans-serif;
+	font-size: 14px;
+	font-style: italic;
+	font-weight: 300;
+	line-height: 24px;
+	text-align: center;
+}
+
+.ihq-onb__sr {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+}
+
+.ihq-onb__content {
+	flex: 1 1 0;
+	min-height: var(--ihq-onb-content-min-height);
+	padding: 20px 16px 0;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	-webkit-overflow-scrolling: touch;
+}
+
+/*
+ * The footer: the Save button, kept in view under the scrolling content.
+ * Under it, the one gap plus the iPhone home-indicator area (design
+ * decision 2). The first padding-bottom is the fallback for a browser
+ * without env(), which drops the second declaration.
+ */
+.ihq-onb__cta {
+	flex: none;
+	padding: 20px 16px var(--ihq-onb-footer-gap);
+	padding-bottom: calc(var(--ihq-onb-footer-gap) + env(safe-area-inset-bottom, 0px));
+	background: var(--ihq-onb-page-bg);
+}
+
+.ihq-onb__button {
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	margin: 0 auto;
+	padding: 14px 12px;
+	border: 0;
+	border-radius: 2px;
+	background: var(--ihq-onb-green);
+	color: #fff;
+	font-family: inherit;
+	font-size: 1.125rem;
+	font-weight: 600;
+	line-height: 1.2;
+	text-align: center;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+/*
+ * The design's Save button: 230 by 36 px, Inter SemiBold 14 px, centred.
+ * It grows wider for a longer translation rather than wrapping.
+ */
+.ihq-onb__button--save {
+	width: max-content;
+	min-width: 230px;
+	max-width: 100%;
+	padding: 9px 12px;
+	font-family: Inter, "Be Vietnam Pro", sans-serif;
+	font-size: 14px;
+	line-height: 18px;
+}
+
+.ihq-onb__button:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+.ihq-onb__button[hidden] {
+	display: none;
+}
