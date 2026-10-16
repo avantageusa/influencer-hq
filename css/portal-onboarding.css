@@ -289,6 +289,41 @@ html.ihq-onb-open body {
 	position: relative;
 }
 
+/* The globe's language list (ENGR-7572): each name in its own language. */
+.ihq-onb__language-option {
+	display: block;
+	width: 100%;
+	padding: 10px 16px;
+	border: 0;
+	background: transparent;
+	color: #fff;
+	font-family: inherit;
+	font-size: 1rem;
+	text-align: left;
+	cursor: pointer;
+}
+
+.ihq-onb__language-option[aria-current="true"] {
+	color: var(--ihq-onb-yellow);
+	font-weight: 800;
+}
+
+.ihq-onb__language-option[aria-current="true"]::after {
+	content: " ✓";
+
+	/*
+	 * Empty alt text: aria-current already tells a screen reader which
+	 * one is active. Browsers without alt text for generated content
+	 * ignore this line and keep the one above.
+	 */
+	content: " ✓" / "";
+}
+
+.ihq-onb__language-option:focus-visible {
+	outline: 3px solid var(--ihq-onb-yellow);
+	outline-offset: -3px;
+}
+
 /* Sami's banner: the portrait until a clip plays over it. */
 .ihq-onb__banner {
 	position: relative;

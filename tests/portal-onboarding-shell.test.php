@@ -36,6 +36,8 @@ function home_url( $path = '' ) { return 'https://example.test' . $path; }
 function wp_logout_url( $redirect = '' ) { return 'https://example.test/wp-login.php?action=logout&redirect_to=' . rawurlencode( $redirect ); }
 function add_query_arg( $key, $value, $url ) { return $url . ( false === strpos( $url, '?' ) ? '?' : '&' ) . $key . '=' . $value; }
 function get_template_part( $slug, $name = null, $args = array() ) { $GLOBALS['parts'][] = array( $slug, $name, $args ); }
+function get_current_user_id() { return 7; }
+function get_user_meta( $user_id, $key, $single = false ) { return 7 === $user_id && '_ihq_aicoach_language' === $key ? 'ko' : ''; }
 
 require __DIR__ . '/../inc/portal-onboarding-shell.php';
 
@@ -81,6 +83,7 @@ check( 'plug-in ids are returned in load order', array( '@ihq/aicoach/onboarding
 check( 'every module is registered, versioned by file time, the entry last with core modules static and plug-ins dynamic', array(
 	array( 'id' => '@ihq/aicoach/commentary', 'src' => $uri . 'commentary.js', 'deps' => array(), 'version' => '1700000001' ),
 	array( 'id' => '@ihq/aicoach/stall-watchdog', 'src' => $uri . 'stall-watchdog.js', 'deps' => array(), 'version' => '1700000002' ),
+	array( 'id' => '@ihq/aicoach/locales', 'src' => $uri . 'locales.js', 'deps' => array(), 'version' => '1700000009' ),
 	array( 'id' => '@ihq/aicoach/onboarding-addon-language', 'src' => $uri . 'onboarding-addon-language.js', 'deps' => array(), 'version' => '1700000007' ),
 	array( 'id' => '@ihq/aicoach/onboarding-boot', 'src' => $uri . 'onboarding-boot.js', 'deps' => array(), 'version' => '1700000005' ),
 	array( 'id' => '@ihq/aicoach/onboarding-narrator', 'src' => $uri . 'onboarding-narrator.js', 'deps' => array(), 'version' => '1700000004' ),
@@ -91,6 +94,7 @@ check( 'every module is registered, versioned by file time, the entry last with 
 		'deps'    => array(
 			'@ihq/aicoach/commentary',
 			'@ihq/aicoach/stall-watchdog',
+			'@ihq/aicoach/locales',
 			'@ihq/aicoach/onboarding-boot',
 			'@ihq/aicoach/onboarding-narrator',
 			array( 'id' => '@ihq/aicoach/onboarding-addon-language', 'import' => 'dynamic' ),
@@ -104,7 +108,7 @@ check( 'only the entry is enqueued', array( '@ihq/aicoach/onboarding-main' ) ===
 // --- Config ---
 
 $context = array( 'state' => array( 'stage' => '' ), 'progressUrl' => 'p', 'completeUrl' => 'c', 'nonce' => 'n' );
-check( 'the config adds modules, empty clips and images, and the log-out URL back to the Coach page', array(
+check( 'the config adds modules, empty clips and images, the log-out URL back to the Coach page and the registration language', array(
 	'state'       => array( 'stage' => '' ),
 	'progressUrl' => 'p',
 	'completeUrl' => 'c',
@@ -113,6 +117,7 @@ check( 'the config adds modules, empty clips and images, and the log-out URL bac
 	'clips'       => array(),
 	'images'      => array(),
 	'logoutUrl'   => 'https://example.test/wp-login.php?action=logout&redirect_to=' . rawurlencode( 'https://example.test/portal/portal-home/' ),
+	'savedLanguage' => 'ko',
 ) === ihq_portal_onboarding_shell_config( $context, array( 'x' ) ) );
 $GLOBALS['filters']['ihq_portal_onboarding_clips']  = array( 'equity' => array( 'en' => 'e.mp4' ) );
 $GLOBALS['filters']['ihq_portal_onboarding_images'] = array( 'equity' => 'e.webp' );
