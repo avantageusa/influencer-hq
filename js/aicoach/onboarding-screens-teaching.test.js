@@ -325,6 +325,20 @@ test( 'chartAltText: the title, then each value with its x label, money with cen
 	assert.equal( chartAltText( value, englishOf ), VALUE_ALT );
 } );
 
+test( 'chartAltText works in a browser without Object.hasOwn (the module ships unpolyfilled)', () => {
+	const [ shares, value ] = EQUITY_CHARTS;
+	const descriptor = Object.getOwnPropertyDescriptor( Object, 'hasOwn' );
+	delete Object.hasOwn;
+	try {
+		assert.equal( typeof Object.hasOwn, 'undefined' );
+		assert.equal( chartAltText( shares, englishOf ), SHARES_ALT );
+		assert.equal( chartAltText( value, englishOf ), VALUE_ALT );
+	} finally {
+		Object.defineProperty( Object, 'hasOwn', descriptor );
+	}
+	assert.equal( typeof Object.hasOwn, 'function' );
+} );
+
 test( 'chartAltText: every word comes from the string table, English where a translation is missing', () => {
 	const japanese = {
 		valueChartTitle: '株式の価値',

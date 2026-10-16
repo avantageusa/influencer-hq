@@ -312,7 +312,8 @@ export const CHART_ALT_FORMATS = Object.freeze( {
  */
 function fillTemplate( template, fields ) {
 	return template.replace( /\{(\w+)\}/g, ( placeholder, name ) => {
-		if ( ! Object.hasOwn( fields, name ) ) {
+		// Not Object.hasOwn: it needs Safari 15.4, like findLastIndex above.
+		if ( ! Object.prototype.hasOwnProperty.call( fields, name ) ) {
 			return placeholder;
 		}
 		return fields[ name ];
