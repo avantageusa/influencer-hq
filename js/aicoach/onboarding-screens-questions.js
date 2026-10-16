@@ -8,9 +8,15 @@
  *
  * Each answer is saved to the account store as soon as it is given, as its enum value (the
  * values ihq_portal_onboarding_answer_values() accepts, inc/portal-onboarding-progress.php),
- * so a drop-out's answers are kept and reach Braze (ENGR-7573). A screen does not advance
- * until it has a complete answer. The engine's api.save() sends every progress save one at a
- * time in call order (answers and stages alike), so answers are saved in click order.
+ * so a drop-out's answers are kept and reach Braze (ENGR-7573). The engine's api.save() sends
+ * every progress save one at a time in call order (answers and stages alike), so answers are
+ * saved in click order.
+ *
+ * There is no CONTINUE (design decision 1): the screens are PICK screens and move on by
+ * themselves PICK_ADVANCE_DELAY_MS after a pick that completes the answer, so the choice is
+ * seen to register first. A pick that reveals the follow-up answers waits for the follow-up
+ * pick. An arrow-key move is a pick like a click, and each further pick during the pause
+ * starts it again, so a keyboard user can browse the answers before settling on one.
  *
  * A plug-in module: the entry installs it, and it registers its screens with the engine.
  */
@@ -56,6 +62,18 @@ const NEXT_OPTION_KEYS = Object.freeze( [ 'ArrowDown', 'ArrowRight' ] );
 const PREVIOUS_OPTION_KEYS = Object.freeze( [ 'ArrowUp', 'ArrowLeft' ] );
 
 const GROUP = Object.freeze( { main: 'main', sub: 'sub' } );
+
+/**
+ * How long a completing pick stays on screen before the screen moves on: long enough to see
+ * the answer fill in, short enough not to feel like a wait.
+ */
+export const PICK_ADVANCE_DELAY_MS = 500;
+
+/** The browser's timers. installModules() passes a plug-in only the api, so install() defaults to these. */
+const BROWSER_TIMERS = Object.freeze( {
+	setTimeout: ( callback, ms ) => window.setTimeout( callback, ms ),
+	clearTimeout: ( id ) => window.clearTimeout( id ),
+} );
 
 /**
  * The four questions as data: the stored field, the text, and each option's stored value.
@@ -327,10 +345,11 @@ function listenToGroup( group, pick ) {
  * The renderer of one question screen.
  *
  * @param {Object} question One of QUESTIONS.
+ * @param {Object} timers   { setTimeout, clearTimeout }, for the pause before advancing.
  * @return {Function} An engine render().
  */
-function renderQuestion( question ) {
-	return function( { container, api, text } ) {
+function renderQuestion( question, timers ) {
+	return function( { container, api, text, advance } ) {
 		const document = container.ownerDocument;
 		const headingId = 'ihq-onb-q-' + question.id;
 		const heading = text( 'h2', question.questionKey, 'ihq-onb-q__question' );
@@ -356,6 +375,20 @@ function renderQuestion( question ) {
 		container.append( error );
 
 		let answer = storedAnswer( question, api.state.answers );
+		let advanceTimer = null;
+
+		function cancelAdvance() {
+			timers.clearTimeout( advanceTimer );
+			advanceTimer = null;
+		}
+
+		function scheduleAdvance() {
+			cancelAdvance();
+			advanceTimer = timers.setTimeout( () => {
+				advanceTimer = null;
+				advance();
+			}, PICK_ADVANCE_DELAY_MS );
+		}
 
 		function paint() {
 			paintGroup( main, answer.main );
@@ -366,14 +399,31 @@ function renderQuestion( question ) {
 			paintGroup( sub, answer.sub );
 		}
 
+		/**
+		 * Takes a pick: stores a changed answer, and (re)starts the pause before advancing
+		 * when the answer is complete, or cancels it when the pick revealed the follow-up.
+		 *
+		 * @param {Object} result From pickMain() or pickSub().
+		 */
 		function apply( result ) {
+			const isComplete = '' === missingAnswer( question, result.answer );
 			if ( ! result.save ) {
+				// Re-picking the current answer keeps a pause already running. With none running
+				// (a returning Influencer's saved answer) it is the way on, as a pick.
+				if ( isComplete && null === advanceTimer ) {
+					scheduleAdvance();
+				}
 				return;
 			}
 			answer = result.answer;
 			error.hidden = true;
 			paint();
 			api.save( { answers: result.save } );
+			if ( isComplete ) {
+				scheduleAdvance();
+				return;
+			}
+			cancelAdvance();
 		}
 
 		listenToGroup( main, ( value ) => apply( pickMain( question, answer, value ) ) );
@@ -390,6 +440,7 @@ function renderQuestion( question ) {
 				error.textContent = api.strings.t( api.getLocale(), key );
 				error.hidden = false;
 			},
+			destroy: cancelAdvance,
 		};
 	};
 }
@@ -397,18 +448,27 @@ function renderQuestion( question ) {
 /**
  * The screen definitions this module registers.
  *
+ * @param {Object} deps
+ * @param {Object} deps.advanceModes The engine's ADVANCE_MODES (api.screens.ADVANCE_MODES).
+ * @param {Object} deps.timers       { setTimeout, clearTimeout }.
  * @return {Object[]} Engine screen definitions.
  */
-export function questionScreens() {
-	return QUESTIONS.map( ( question ) => ( { id: question.id, render: renderQuestion( question ) } ) );
+export function questionScreens( { advanceModes, timers } ) {
+	return QUESTIONS.map( ( question ) => ( {
+		id: question.id,
+		advanceMode: advanceModes.PICK,
+		render: renderQuestion( question, timers ),
+	} ) );
 }
 
 /**
  * Adds the English copy and registers the screens.
  *
- * @param {Object} api The onboarding API.
+ * @param {Object} api      The onboarding API.
+ * @param {Object} [timers] { setTimeout, clearTimeout }; the browser's when left out.
  */
-export function install( api ) {
+export function install( api, timers = BROWSER_TIMERS ) {
 	api.strings.add( 'en', QUESTION_STRINGS_EN );
-	questionScreens().forEach( ( definition ) => api.screens.register( definition ) );
+	const definitions = questionScreens( { advanceModes: api.screens.ADVANCE_MODES, timers } );
+	definitions.forEach( ( definition ) => api.screens.register( definition ) );
 }

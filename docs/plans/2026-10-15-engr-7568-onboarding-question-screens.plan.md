@@ -25,6 +25,9 @@ todos:
   - id: review-fixes
     content: PR #126 review — answer saves in click order on the engine's save queue (ENGR-7566 000fa74; the screen-level queue was dropped), radio keyboard pattern, sub group named by its revealing option, no write on re-pick, named diamond token and glyph, failed-save test
     status: completed
+  - id: pick-advance
+    content: Engine advance modes (ENGR-7566 e453f52, design decision 1, no CONTINUE) — screens are PICK; advance PICK_ADVANCE_DELAY_MS (500) after a completing pick, a revealing pick waits for the follow-up, arrow moves count as picks and restart the pause, destroy() clears the timer
+    status: completed
 ---
 
 # [ENGR-7568] Question screens 3, 4, 5 and 12 with conditional sub-options
@@ -44,17 +47,27 @@ The engine needs the four question screens, and their answers need to reach the 
   compares the engine's sequence with `ihq_portal_onboarding_stages()`.
 - Pure helpers: `pickMain()` (switching away from the revealing option clears the sub-answer and
   saves it as null), `pickSub()` (only a sub-option of the picked answer), `missingAnswer()`
-  (what blocks CONTINUE), `storedAnswer()` (resume).
+  (what blocks advancing), `storedAnswer()` (resume).
 - The renderer draws a radio group of buttons (`role="radio"`, `aria-checked`) named by the question,
-  the sub-group under it (hidden until revealed), and an `role="alert"` message shown when CONTINUE
-  is pressed without a complete answer. Each pick calls `api.save( { answers } )` at once.
+  the sub-group under it (hidden until revealed), and an `role="alert"` message shown when an advance
+  is asked for without a complete answer. Each pick calls `api.save( { answers } )` at once.
+- Advancing (design decision 1, no CONTINUE): each screen registers with
+  `advanceMode: api.screens.ADVANCE_MODES.PICK` (passed into `questionScreens()`), and calls the
+  render context's scoped `advance()` `PICK_ADVANCE_DELAY_MS` (500 ms) after a pick that completes
+  the answer, so the filled square is seen first. A pick that reveals the follow-up cancels any pause
+  and waits for the follow-up pick. A changed pick restarts the pause; re-picking the same answer keeps
+  a running pause (and, with none running, as for a returning Influencer's saved answer, starts one).
+  An arrow-key move is a pick, so browsing with the arrows restarts the pause each step. The timer is
+  cleared in `destroy()`. The pause does not wait for the answer's save: a failed save still advances.
 - Screen 3's options show 3, 2 and 1 lit diamonds out of three (decorative, `aria-hidden`).
 - Screen 12's last option reads "Under 10,000" and stores `under_10k` (OQ16).
 
 ## Alternatives considered
 - Native radio inputs: equivalent; buttons with radio roles match the landing flow's option buttons
   and the design's full-width tappable rows.
-- Saving answers only on CONTINUE: the ticket asks for answers to be written as they are given.
+- Saving answers only on advancing: the ticket asks for answers to be written as they are given.
+- Arrow-key moves that only move focus and the choice without advancing (Enter or Space to commit):
+  the radio pattern selects on arrow, and a separate commit key would be a hidden CONTINUE.
 
 ## Blast radius
 A new plug-in and stylesheet. The branch also carries ENGR-7563 (merged in), so it depends on #121.
@@ -73,5 +86,4 @@ A new plug-in and stylesheet. The branch also carries ENGR-7563 (merged in), so 
   question is 12 px SemiBold and screen 5's answers 11 to 13 px with uneven spacing (14 px ExtraBold
   and frame 4's spacing used); screen 5 draws the sub-answers under I CURRENTLY OWN EQUITY, but they
   are a separate radio group after the three answers, so they show after the third (moving them needs
-  a markup and ARIA decision); the design has no CONTINUE on these screens, and the engine's CONTINUE
-  pushes the Save button below the fold.
+  a markup and ARIA decision). The design has no CONTINUE on these screens; they now advance on pick.

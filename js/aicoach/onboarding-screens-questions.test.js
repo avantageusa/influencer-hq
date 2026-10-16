@@ -2,14 +2,17 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createFakeDocument, createEvent } from './fake-dom.js';
+import { createFakeClock } from './fake-clock.js';
+import { estimateDurationMs } from './commentary.js';
 import { createEmitter } from './onboarding-events.js';
 import { createStringTable } from './onboarding-strings.js';
 import { createApi } from './onboarding-boot.js';
 import { SEQUENCE, startStage, nextStage } from './onboarding-sequence.js';
-import { createEngine, ENGINE_STRINGS_EN } from './onboarding-engine.js';
+import { createEngine, ADVANCE_MODES } from './onboarding-engine.js';
 import {
 	QUESTION_STRINGS_EN,
 	QUESTIONS,
+	PICK_ADVANCE_DELAY_MS,
 	pickMain,
 	pickSub,
 	missingAnswer,
@@ -27,13 +30,15 @@ const REJECTED = { ok: false, status: 400, data: { error: 'Invalid answers.' } }
 
 // The engine with this module installed, on the fake DOM; posts and reported errors are recorded.
 // respond( body ) is what postJson answers (a value or a promise); it defaults to a success.
-function setup( { stage = 'baccarat_experience', answers = {}, respond = () => SAVED } = {} ) {
+// The engine and the screens share one fake clock, so a test moves time with clock.tick().
+// stubs are other stages to install as empty MANUAL screens, so a question can advance onto them.
+function setup( { stage = 'baccarat_experience', answers = {}, respond = () => SAVED, stubs = [] } = {} ) {
 	const document = createFakeDocument();
 	const content = document.createElement( 'div' );
 	document.body.append( content );
 	const events = createEmitter();
 	const strings = createStringTable();
-	strings.add( 'en', ENGINE_STRINGS_EN );
+	const clock = createFakeClock();
 	const api = createApi( { config: { state: { ...STATE, stage, answers }, progressUrl: '/p', completeUrl: '/c', nonce: 'n' }, events, strings } );
 	api.shell = { content, say: () => Promise.resolve(), close: () => {} };
 	const posts = [];
@@ -49,10 +54,14 @@ function setup( { stage = 'baccarat_experience', answers = {}, respond = () => S
 		fetchFn: () => {},
 		historyGuard: { install: () => {}, uninstall: () => {} },
 		onError: ( error ) => errors.push( error.message ),
+		estimateDurationMs,
+		setTimeout: clock.setTimeout,
+		clearTimeout: clock.clearTimeout,
 	} );
-	api.screens = { register: engine.register };
+	api.screens = { register: engine.register, ADVANCE_MODES };
 	api.save = engine.save;
-	install( api );
+	install( api, clock );
+	stubs.forEach( ( id ) => engine.register( { id, advanceMode: ADVANCE_MODES.MANUAL, render: () => ( {} ) } ) );
 	engine.start();
 	const screen = () => content.querySelector( 'section' );
 	const option = ( group, value ) => screen().querySelector( `button[data-group="${ group }"][data-value="${ value }"]` );
@@ -60,17 +69,24 @@ function setup( { stage = 'baccarat_experience', answers = {}, respond = () => S
 	const subGroup = () => screen().querySelector( 'div[data-group="sub"]' );
 	const error = () => screen().querySelector( 'p.ihq-onb__error' );
 	const tabStops = ( group ) => screen().querySelectorAll( `button[data-group="${ group }"]` ).map( ( button ) => button.getAttribute( 'tabindex' ) );
-	return { api, engine, posts, errors, strings, document, screen, option, checked, subGroup, error, tabStops };
+	return { api, engine, clock, posts, errors, strings, document, screen, option, checked, subGroup, error, tabStops };
 }
 
 const labels = ( screen, group ) => screen.querySelectorAll( `button[data-group="${ group }"]` ).map( ( button ) => button.querySelector( '.ihq-onb-q__label' ).textContent );
 
-test( 'registers screens 3, 4, 5 and 12', () => {
-	assert.deepEqual( questionScreens().map( ( definition ) => definition.id ), [ 'baccarat_experience', 'streaming_experience', 'equity_knowledge', 'active_followers' ] );
+test( 'registers screens 3, 4, 5 and 12, each a PICK screen', () => {
+	const definitions = questionScreens( { advanceModes: ADVANCE_MODES, timers: createFakeClock() } );
+	assert.deepEqual( definitions.map( ( definition ) => definition.id ), [ 'baccarat_experience', 'streaming_experience', 'equity_knowledge', 'active_followers' ] );
+	assert.deepEqual( definitions.map( ( definition ) => definition.advanceMode ), [ 'pick', 'pick', 'pick', 'pick' ] );
 	const registered = [];
 	const strings = createStringTable();
-	install( { strings, screens: { register: ( definition ) => registered.push( definition.id ) } } );
-	assert.deepEqual( registered, [ 'baccarat_experience', 'streaming_experience', 'equity_knowledge', 'active_followers' ] );
+	install( { strings, screens: { register: ( definition ) => registered.push( { id: definition.id, advanceMode: definition.advanceMode } ), ADVANCE_MODES } } );
+	assert.deepEqual( registered, [
+		{ id: 'baccarat_experience', advanceMode: 'pick' },
+		{ id: 'streaming_experience', advanceMode: 'pick' },
+		{ id: 'equity_knowledge', advanceMode: 'pick' },
+		{ id: 'active_followers', advanceMode: 'pick' },
+	] );
 	assert.equal( strings.t( 'en', 'followersUnder10k' ), 'Under 10,000' );
 } );
 
@@ -475,4 +491,180 @@ test( 'each diamond is the diamond glyph', () => {
 	const { screen } = setup();
 	const glyphs = screen().querySelectorAll( '.ihq-onb-q__diamond' ).map( ( diamond ) => diamond.textContent );
 	assert.deepEqual( glyphs, [ '◆', '◆', '◆', '◆', '◆', '◆', '◆', '◆', '◆' ] );
+} );
+
+test( 'a pick advances the screen after the pause, not before', async () => {
+	assert.equal( PICK_ADVANCE_DELAY_MS, 500 );
+	for ( const entry of QUESTIONS ) {
+		const plain = entry.options.find( ( candidate ) => ! candidate.reveals );
+		const { option, engine, clock, posts } = setup( { stage: entry.id, stubs: [ 'equity_example' ] } );
+		option( 'main', plain.value ).click();
+		assert.equal( clock.pendingCount(), 1, entry.id );
+		clock.tick( PICK_ADVANCE_DELAY_MS - 1 );
+		assert.equal( engine.current(), entry.id );
+		clock.tick( 1 );
+		const next = nextStage( { current: entry.id, isAvailable: ( id ) => 'equity_example' === id || QUESTIONS.some( ( candidate ) => candidate.id === id ) } );
+		assert.equal( engine.current(), next, entry.id );
+		assert.equal( clock.pendingCount(), 0 );
+		await flush();
+		assert.deepEqual( posts, [ { answers: { [ entry.field ]: plain.value } }, { stage: next } ], entry.id );
+	}
+} );
+
+test( 'screens 4 and 5: a pick that reveals the follow-up does not advance; the follow-up pick does', async () => {
+	const cases = [
+		{ stage: 'streaming_experience', reveal: 'new_to_streaming', follow: 'new_maybe_later', field: 'streaming_experience', subField: 'streaming_learning_intent', next: 'equity_knowledge' },
+		{ stage: 'equity_knowledge', reveal: 'owns_equity', follow: 'owns_self_managed', field: 'equity_knowledge', subField: 'equity_management', next: 'active_followers' },
+	];
+	for ( const { stage, reveal, follow, field, subField, next } of cases ) {
+		const { option, engine, clock, posts, error } = setup( { stage } );
+		option( 'main', reveal ).click();
+		assert.equal( clock.pendingCount(), 0, stage );
+		clock.tick( PICK_ADVANCE_DELAY_MS * 4 );
+		assert.equal( engine.current(), stage );
+		assert.equal( error().hidden, true, 'waiting for the follow-up shows no error' );
+		option( 'sub', follow ).click();
+		clock.tick( PICK_ADVANCE_DELAY_MS - 1 );
+		assert.equal( engine.current(), stage );
+		clock.tick( 1 );
+		assert.equal( engine.current(), next );
+		await flush();
+		assert.deepEqual( posts, [ { answers: { [ field ]: reveal } }, { answers: { [ subField ]: follow } }, { stage: next } ], stage );
+	}
+} );
+
+test( 'a plain pick then a revealing pick during the pause cancels the advance', () => {
+	const { option, engine, clock } = setup( { stage: 'streaming_experience' } );
+	option( 'main', 'streamed_some' ).click();
+	clock.tick( PICK_ADVANCE_DELAY_MS - 100 );
+	option( 'main', 'new_to_streaming' ).click();
+	assert.equal( clock.pendingCount(), 0 );
+	clock.tick( PICK_ADVANCE_DELAY_MS * 4 );
+	assert.equal( engine.current(), 'streaming_experience' );
+} );
+
+test( 're-picking the same answer during the pause neither saves nor restarts the pause', async () => {
+	const { option, engine, clock, posts } = setup();
+	option( 'main', 'played_some' ).click();
+	clock.tick( PICK_ADVANCE_DELAY_MS - 100 );
+	option( 'main', 'played_some' ).click();
+	assert.equal( clock.pendingCount(), 1 );
+	clock.tick( 100 );
+	assert.equal( engine.current(), 'streaming_experience' );
+	assert.equal( clock.pendingCount(), 0 );
+	await flush();
+	assert.deepEqual( posts, [ { answers: { baccarat_experience: 'played_some' } }, { stage: 'streaming_experience' } ] );
+} );
+
+test( 're-picking the follow-up during the pause keeps the one pause', () => {
+	const { option, engine, clock } = setup( { stage: 'equity_knowledge' } );
+	option( 'main', 'owns_equity' ).click();
+	option( 'sub', 'owns_self_managed' ).click();
+	clock.tick( PICK_ADVANCE_DELAY_MS - 100 );
+	option( 'sub', 'owns_self_managed' ).click();
+	option( 'main', 'owns_equity' ).click();
+	assert.equal( clock.pendingCount(), 1 );
+	clock.tick( 100 );
+	assert.equal( engine.current(), 'active_followers' );
+} );
+
+test( 'a returning Influencer re-picking their saved answer moves on after the pause, with no answer save', async () => {
+	const { option, engine, clock, posts } = setup( { stage: 'streaming_experience', answers: { streaming_experience: 'new_to_streaming', streaming_learning_intent: 'new_maybe_later' } } );
+	assert.equal( clock.pendingCount(), 0, 'a saved answer alone does not advance' );
+	option( 'sub', 'new_maybe_later' ).click();
+	clock.tick( PICK_ADVANCE_DELAY_MS - 1 );
+	assert.equal( engine.current(), 'streaming_experience' );
+	clock.tick( 1 );
+	assert.equal( engine.current(), 'equity_knowledge' );
+	await flush();
+	assert.deepEqual( posts, [ { stage: 'equity_knowledge' } ] );
+} );
+
+test( 'a re-pick of a half-answered revealing option does not advance', () => {
+	const { option, engine, clock } = setup( { stage: 'equity_knowledge', answers: { equity_knowledge: 'owns_equity' } } );
+	option( 'main', 'owns_equity' ).click();
+	assert.equal( clock.pendingCount(), 0 );
+	clock.tick( PICK_ADVANCE_DELAY_MS * 4 );
+	assert.equal( engine.current(), 'equity_knowledge' );
+} );
+
+test( 'changing the pick during the pause saves it and restarts the pause', async () => {
+	const { option, engine, clock, posts, checked } = setup();
+	option( 'main', 'played_some' ).click();
+	clock.tick( PICK_ADVANCE_DELAY_MS - 100 );
+	option( 'main', 'new_player' ).click();
+	assert.deepEqual( checked( 'main' ), [ 'new_player' ] );
+	assert.equal( clock.pendingCount(), 1 );
+	clock.tick( PICK_ADVANCE_DELAY_MS - 1 );
+	assert.equal( engine.current(), 'baccarat_experience' );
+	clock.tick( 1 );
+	assert.equal( engine.current(), 'streaming_experience' );
+	await flush();
+	assert.deepEqual( posts, [ { answers: { baccarat_experience: 'played_some' } }, { answers: { baccarat_experience: 'new_player' } }, { stage: 'streaming_experience' } ] );
+} );
+
+test( 'an arrow-key move is a pick: it advances after the pause, and each further move restarts it', async () => {
+	const { option, engine, clock, posts } = setup( { stage: 'active_followers', stubs: [ 'equity_example' ] } );
+	const press = ( value, key ) => option( 'main', value ).dispatchEvent( createEvent( 'keydown', { key } ) );
+	press( '100k_plus', 'ArrowDown' );
+	clock.tick( PICK_ADVANCE_DELAY_MS - 100 );
+	press( '50k_plus', 'ArrowDown' );
+	clock.tick( PICK_ADVANCE_DELAY_MS - 100 );
+	press( '25k_plus', 'ArrowDown' );
+	assert.equal( clock.pendingCount(), 1 );
+	clock.tick( PICK_ADVANCE_DELAY_MS - 1 );
+	assert.equal( engine.current(), 'active_followers' );
+	clock.tick( 1 );
+	assert.equal( engine.current(), 'equity_example' );
+	await flush();
+	assert.deepEqual( posts, [
+		{ answers: { active_follower_count: '50k_plus' } },
+		{ answers: { active_follower_count: '25k_plus' } },
+		{ answers: { active_follower_count: '10k_plus' } },
+		{ stage: 'equity_example' },
+	] );
+} );
+
+test( 'leaving the screen during the pause clears the timer (destroy), so nothing fires later', () => {
+	const { option, engine, clock } = setup();
+	option( 'main', 'played_some' ).click();
+	assert.equal( engine.advance(), true );
+	assert.equal( engine.current(), 'streaming_experience' );
+	assert.equal( clock.pendingCount(), 0 );
+	clock.tick( PICK_ADVANCE_DELAY_MS * 4 );
+	assert.equal( engine.current(), 'streaming_experience' );
+} );
+
+test( 'destroy() cancels the pending advance', () => {
+	const clock = createFakeClock();
+	const document = createFakeDocument();
+	const container = document.createElement( 'section' );
+	document.body.append( container );
+	const strings = createStringTable();
+	strings.add( 'en', QUESTION_STRINGS_EN );
+	const api = { state: { answers: {} }, strings, getLocale: () => 'en', save: () => Promise.resolve( true ) };
+	const text = ( tag, key, className ) => {
+		const element = document.createElement( tag );
+		element.textContent = strings.t( 'en', key );
+		element.className = className || '';
+		return element;
+	};
+	const advances = [];
+	const [ baccarat ] = questionScreens( { advanceModes: ADVANCE_MODES, timers: clock } );
+	const controller = baccarat.render( { container, api, t: ( key ) => strings.t( 'en', key ), text, advance: () => advances.push( 'advance' ) } );
+	container.querySelector( 'button[data-value="played_some"]' ).click();
+	assert.equal( clock.pendingCount(), 1 );
+	controller.destroy();
+	assert.equal( clock.pendingCount(), 0 );
+	clock.tick( PICK_ADVANCE_DELAY_MS * 4 );
+	assert.deepEqual( advances, [] );
+} );
+
+test( 'after a failed save the screen still advances after the pause', async () => {
+	const { option, engine, clock, errors } = setup( { respond: () => REJECTED } );
+	option( 'main', 'played_some' ).click();
+	await flush();
+	assert.deepEqual( errors, [ 'Onboarding: saving progress failed (400)' ] );
+	clock.tick( PICK_ADVANCE_DELAY_MS );
+	assert.equal( engine.current(), 'streaming_experience' );
 } );
