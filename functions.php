@@ -257,6 +257,7 @@ require get_template_directory() . '/inc/influencer-role.php';
  * Email Verification Handler
  */
 require_once get_template_directory() . '/inc/placeholder-email.php';
+require_once get_template_directory() . '/inc/profile-email-display.php';
 require_once get_template_directory() . '/inc/comm-methods-marketing-map.php';
 require_once get_template_directory() . '/inc/ihq-referral-attribution.php';
 require_once get_template_directory() . '/inc/ihq-url-minify.php';

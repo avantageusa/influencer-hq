@@ -9,7 +9,7 @@
  *
  * Required constants (the site refuses to render without them):
  *
- *     define( 'IHQ_ENVIRONMENT',          'dev' );   // dev | qa | prod — diagnostics only
+ *     define( 'IHQ_ENVIRONMENT',          'dev' );   // dev | qa | prod — must be exact: only dev/qa allow IHQ_VISITOR_CODE_DEBUG
  *     define( 'IHQ_API_BASE_URL',         'https://<id>.execute-api.<region>.amazonaws.com/<stage>' );
  *     define( 'IHQ_GAME_PORTAL_BASE_URL', 'https://<host>/av-baccarat' );
  *     define( 'IHQ_INFLUENCER_API_KEY',   '<x-api-key for /oauth/start-session>' );
@@ -21,6 +21,7 @@
  *     define( 'IHQ_ELEVENLABS_API_KEY',   '...' );
  *     define( 'IHQ_GENIUS_REFERRALS_API_TOKEN', '...' );   // test-form.php only
  *     define( 'IHQ_PUBLISHER_URL',        'https://<publisher-host>' );   // STREAM NOW on Live Appearance (ENGR-7346), inc/ihq-stream-now.php
+ *     define( 'IHQ_VISITOR_CODE_DEBUG',   '1' );   // dev/qa ONLY: AJAX echoes visitor codes (ENGR-7634), inc/visitor-intent-handler.php
  *
  * IHQ_PUBLISHER_URL must be an absolute https:// URL, but it is deliberately
  * not in IHQ_ENV_URL_KEYS: an invalid value only hides STREAM NOW (and logs),
@@ -276,8 +277,10 @@ if ( ! defined( 'INFLUENCER_API_BASE' ) ) {
 }
 
 /**
- * Environment name for logs and diagnostics. Never branch behaviour on it —
- * every environment-specific value has its own constant.
+ * Environment name for logs and diagnostics. Don't branch behaviour on it —
+ * every environment-specific value has its own constant. One exception:
+ * ihq_visitor_code_debug_enabled() refuses its code echo unless this is
+ * dev or qa (ENGR-7634), so prod must say prod.
  *
  * @return string
  */
