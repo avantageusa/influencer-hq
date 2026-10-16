@@ -397,7 +397,9 @@ function renderExample( { container, api, text } ) {
 }
 
 /**
- * The screen definitions this module registers, in screen order.
+ * The screen definitions this module registers, in screen order. None declares an advanceMode:
+ * a teaching screen moves on when Sami's line ends (NARRATION, the default), and until its
+ * script exists (OQ1) after the reading time of its own text (design decision 1).
  *
  * @return {Object[]} Engine screen definitions.
  */

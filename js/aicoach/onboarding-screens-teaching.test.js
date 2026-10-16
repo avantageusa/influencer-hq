@@ -5,7 +5,9 @@ import { createEmitter } from './onboarding-events.js';
 import { createStringTable } from './onboarding-strings.js';
 import { createApi } from './onboarding-boot.js';
 import { SEQUENCE, startStage, nextStage } from './onboarding-sequence.js';
-import { createEngine, ENGINE_STRINGS_EN } from './onboarding-engine.js';
+import { createFakeClock } from './fake-clock.js';
+import { estimateDurationMs } from './commentary.js';
+import { createEngine, ADVANCE_MODES, MIN_READING_TIME_MS, screenText } from './onboarding-engine.js';
 import {
 	TEACHING_STRINGS_EN,
 	EQUITY_CHARTS,
@@ -37,11 +39,11 @@ function setup( { stage = 'game_of_kings', images = {}, answers = {} } = {} ) {
 	document.body.append( content );
 	const events = createEmitter();
 	const strings = createStringTable();
-	strings.add( 'en', ENGINE_STRINGS_EN );
 	const api = createApi( { config: { state: { ...STATE, stage, answers }, images, progressUrl: '/p', completeUrl: '/c', nonce: 'n' }, events, strings } );
 	api.shell = { content, say: () => Promise.resolve(), close: () => {} };
 	// What onboarding-main wires up: a language change re-labels every data-onb-string element.
 	events.on( 'locale', () => relabel( content, ( key ) => strings.t( api.getLocale(), key ) ) );
+	const clock = createFakeClock();
 	const engine = createEngine( {
 		api,
 		sequence: { SEQUENCE, startStage, nextStage },
@@ -49,11 +51,14 @@ function setup( { stage = 'game_of_kings', images = {}, answers = {} } = {} ) {
 		postJson: async () => ( { ok: true, status: 200, data: null } ),
 		fetchFn: () => {},
 		historyGuard: { install: () => {}, uninstall: () => {} },
+		estimateDurationMs,
+		setTimeout: clock.setTimeout,
+		clearTimeout: clock.clearTimeout,
 	} );
-	api.screens = { register: engine.register };
+	api.screens = { register: engine.register, ADVANCE_MODES };
 	install( api );
 	engine.start();
-	return { api, engine, content, strings, events };
+	return { api, engine, content, strings, events, clock };
 }
 
 const screenOf = ( content ) => content.querySelector( 'section' );
@@ -68,11 +73,27 @@ test( 'registers screens 1, 2, 7-11 and 13, and only those', () => {
 	assert.equal( strings.t( 'en', 'kingsTitle' ), 'The Game of Kings' );
 } );
 
-test( 'teaching screens have no narration yet (scripts wait on OQ1) and keep CONTINUE', () => {
+test( 'teaching screens have no narration yet (scripts wait on OQ1) and declare no advanceMode, so they advance by narration (the default)', () => {
 	teachingScreens().forEach( ( definition ) => {
 		assert.equal( definition.narration, undefined, definition.id );
-		assert.equal( definition.hideContinue, undefined, definition.id );
+		assert.equal( Object.hasOwn( definition, 'advanceMode' ), false, definition.id );
 	} );
+} );
+
+test( 'a scriptless teaching screen stays up for its text\'s reading time, then advances', () => {
+	const { content, engine, clock } = setup( { stage: 'game_of_kings' } );
+	const words = screenText( screenOf( content ) );
+	// The section's textContent runs the title into the body, as a browser's does; the engine reads the same.
+	assert.equal( words, 'The Game of KingsFor over 500 years, Baccarat has been known as the Game of Kings.' );
+	const wait = Math.max( MIN_READING_TIME_MS, estimateDurationMs( words ) );
+	// Sixteen words at the narrator's pace, above the 2000 ms floor.
+	assert.equal( wait, 6400 );
+	assert.equal( clock.pendingCount(), 1 );
+	clock.tick( wait - 1 );
+	assert.equal( engine.current(), 'game_of_kings' );
+	clock.tick( 1 );
+	assert.equal( engine.current(), 'modern_era' );
+	assert.equal( screenOf( content ).getAttribute( 'data-stage' ), 'modern_era' );
 } );
 
 test( 'screen 1, The Game of Kings: PO-3203 copy, character for character', () => {
