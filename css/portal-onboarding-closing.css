@@ -1,0 +1,45 @@
+/*
+ * Onboarding screen 16, closing (ENGR-7571).
+ * Loaded after css/portal-onboarding.css by the shell.
+ */
+
+/* The extra space above CONTINUE TO IHQ PORTAL, on top of the actions' gap. */
+.ihq-onb {
+	--ihq-onb-closing-proceed-gap: 8px;
+}
+
+.ihq-onb-closing__avatar {
+	display: block;
+	width: 200px;
+	max-width: 70%;
+	height: auto;
+	margin: 0 auto;
+	border: 3px solid var(--ihq-onb-gold);
+	border-radius: 50%;
+	aspect-ratio: 1;
+	object-fit: cover;
+	object-position: center 15%;
+}
+
+.ihq-onb-closing__message {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	font-size: 1.125rem;
+	line-height: 1.5;
+	text-align: center;
+}
+
+.ihq-onb-closing__message p {
+	margin: 0;
+}
+
+.ihq-onb-closing__actions {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.ihq-onb-closing__proceed {
+	margin-top: var(--ihq-onb-closing-proceed-gap);
+}
