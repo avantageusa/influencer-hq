@@ -46,6 +46,9 @@ function get_option( $key, $default = false ) { return $GLOBALS['wp_options'][ $
 function update_option( $key, $value, $autoload = true ) { $GLOBALS['wp_options'][ $key ] = $value; return true; }
 function get_template_directory() { return $GLOBALS['tmp'] . '/theme'; }
 function ihq_aicoach_segment_translations() { return $GLOBALS['translations']; }
+// Sami's onboarding lines (inc/portal-onboarding-narration.php), already in work list shape.
+$GLOBALS['onboarding_items'] = array();
+function ihq_portal_onboarding_narration_work_items() { return $GLOBALS['onboarding_items']; }
 
 // The Coach API: a POST starts a job that is already ready, a GET of the scripts answers
 // what the test set up, and a download writes a small file.
@@ -190,6 +193,21 @@ check( 'the English item carries Gary\'s own hash and text', 'sha-bts' === $list
 check( 'a translation that is only spaces is left out, and so is a held segment with its translations', ! in_array( 'bts__ko', array_column( $list, 'manifest_key' ), true ) && ! in_array( 'private__ja', array_column( $list, 'manifest_key' ), true ) );
 check( 'what is skipped is logged', in_array( "private: status is 'held', not approved — skipping (held content stays as static caption for now)", $logged, true ) && in_array( "community: not present in Gary's script manifest, skipping", $logged, true ) );
 check( 'the list is the same one every time', $list === ihq_aicoach_prerender_work_list() );
+
+$onboarding_item = array(
+	'manifest_key' => 'onboarding_equity__ja',
+	'segment_key'  => 'onboarding_equity',
+	'language'     => 'ja',
+	'text'         => 'Equity in Japanese',
+	'sha256'       => hash( 'sha256', 'Equity in Japanese' ),
+);
+$GLOBALS['onboarding_items'] = array( $onboarding_item );
+$with_onboarding = ihq_aicoach_prerender_work_list();
+check( 'the onboarding lines come after the landing segments, as they are', array_merge( $list, array( $onboarding_item ) ) === $with_onboarding );
+$GLOBALS['scripts_status'] = 500;
+check( 'a Gary error is still an error when there are onboarding lines, so a partial set is never rendered as complete', is_wp_error( ihq_aicoach_prerender_work_list() ) );
+$GLOBALS['scripts_status'] = 200;
+$GLOBALS['onboarding_items'] = array();
 
 $GLOBALS['scripts_status'] = 500;
 $bad_status = ihq_aicoach_prerender_work_list();

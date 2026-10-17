@@ -122,10 +122,11 @@ function ihq_portal_onboarding_shell_config( array $context, array $plugin_ids )
 			'modules'   => $plugin_ids,
 			/**
 			 * Sami's pre-rendered clips per screen and language: [ stage => [ locale => url ] ].
-			 * Empty until the onboarding clips are rendered (PO-3063 T12); every screen then
-			 * plays its subtitles at reading pace.
+			 * A screen with a line but no clip plays its subtitles at reading pace.
 			 */
 			'clips'     => apply_filters( 'ihq_portal_onboarding_clips', array() ),
+			/** Sami's line per screen and language, shown as the subtitles: [ stage => [ locale => text ] ]. */
+			'narration' => apply_filters( 'ihq_portal_onboarding_narration', array() ),
 			/** Hero images per screen: [ stage => url ]. */
 			'images'    => apply_filters( 'ihq_portal_onboarding_images', array() ),
 			'logoutUrl' => wp_logout_url( home_url( IHQ_PORTAL_ONBOARDING_LOGOUT_REDIRECT_PATH ) ),

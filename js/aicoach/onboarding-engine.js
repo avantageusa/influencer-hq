@@ -6,7 +6,8 @@
  *
  *     {
  *       id: 'baccarat_experience',                       // a stage id from SEQUENCE
- *       narration: 'baccaratNarration',                  // optional string-table key for Sami's line
+ *       narration: 'baccaratNarration',                  // optional string-table key for Sami's line;
+ *                                                        // narrationKey( id ) when left out
  *       advanceMode: api.screens.ADVANCE_MODES.PICK,     // optional, NARRATION when left out
  *       render( ctx ) { ... return controller; },
  *     }
@@ -40,6 +41,21 @@ export const ADVANCE_MODES = Object.freeze( {
 } );
 
 const KNOWN_ADVANCE_MODES = Object.freeze( Object.values( ADVANCE_MODES ) );
+
+/**
+ * Sami's line for a screen is the string-table entry narrationKey( stage ), unless the screen
+ * names its own key. The entry fills these from the server's narration table
+ * (inc/portal-onboarding-narration.php), the same text her clips are rendered from.
+ */
+export const NARRATION_KEY_PREFIX = 'narration.';
+
+/**
+ * @param {string} stage A stage id.
+ * @return {string} The string-table key of Sami's line for that screen.
+ */
+export function narrationKey( stage ) {
+	return NARRATION_KEY_PREFIX + stage;
+}
 
 /**
  * The least time a NARRATION screen with no script or clip stays up when it has any text, so a
@@ -188,7 +204,7 @@ export function createEngine( deps ) {
 	function narrate() {
 		stopReadingTimer();
 		const definition = definitions.get( stage );
-		const script = definition.narration ? t( definition.narration ) : '';
+		const script = t( definition.narration || narrationKey( stage ) );
 		const clipUrl = api.clipUrl( stage );
 		const line = api.shell.say( { script, clipUrl } );
 		currentLine = line;

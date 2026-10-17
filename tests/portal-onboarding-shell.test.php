@@ -112,21 +112,24 @@ check( 'only the entry is enqueued', array( '@ihq/aicoach/onboarding-main' ) ===
 // --- Config ---
 
 $context = array( 'state' => array( 'stage' => '' ), 'progressUrl' => 'p', 'completeUrl' => 'c', 'nonce' => 'n' );
-check( 'the config adds modules, empty clips and images, the log-out URL back to the Coach page and the registration language', array(
+check( 'the config adds modules, empty clips, narration and images, the log-out URL back to the Coach page and the registration language', array(
 	'state'       => array( 'stage' => '' ),
 	'progressUrl' => 'p',
 	'completeUrl' => 'c',
 	'nonce'       => 'n',
 	'modules'     => array( 'x' ),
 	'clips'       => array(),
+	'narration'   => array(),
 	'images'      => array(),
 	'logoutUrl'   => 'https://example.test/wp-login.php?action=logout&redirect_to=' . rawurlencode( 'https://example.test/portal/portal-home/' ),
 	'savedLanguage' => 'ko',
 ) === ihq_portal_onboarding_shell_config( $context, array( 'x' ) ) );
 $GLOBALS['filters']['ihq_portal_onboarding_clips']  = array( 'equity' => array( 'en' => 'e.mp4' ) );
 $GLOBALS['filters']['ihq_portal_onboarding_images'] = array( 'equity' => 'e.webp' );
+$GLOBALS['filters']['ihq_portal_onboarding_narration'] = array( 'equity' => array( 'en' => 'Equity line.' ) );
 $with_assets = ihq_portal_onboarding_shell_config( $context, array() );
 check( 'clips and images come from their filters', array( 'equity' => array( 'en' => 'e.mp4' ) ) === $with_assets['clips'] && array( 'equity' => 'e.webp' ) === $with_assets['images'] );
+check( 'narration comes from its filter', array( 'equity' => array( 'en' => 'Equity line.' ) ) === $with_assets['narration'] );
 $GLOBALS['filters'] = array();
 
 check( 'the portrait falls back to the landing flow file, versioned', THEME_URI . '/images/aicoach/coach-portrait-v2.webp?v=1700000011' === ihq_portal_onboarding_portrait_url() );
