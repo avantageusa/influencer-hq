@@ -4,7 +4,9 @@
  * Runs only when inc/portal-onboarding-shell.php has rendered the layer over the Coach page.
  * Builds the frame (narrator, string table, shell), then installs the plug-in modules the
  * server listed (screens, language selector, preloading) and tells them the onboarding is
- * ready. The screen engine (ENGR-7566) starts the first screen on 'ready'.
+ * ready, then the screen engine (ENGR-7566) opens the saved stage or screen 1. When a listed
+ * screen module failed or no screen is installed, the layer is closed for this visit
+ * (onboarding-launch.js).
  *
  * Bare specifiers resolve through the import map WordPress prints from the modules
  * registered in inc/portal-onboarding-shell.php.
@@ -17,6 +19,11 @@ import { createStringTable, SHELL_STRINGS_EN, FALLBACK_LOCALE } from '@ihq/aicoa
 import { createEmitter } from '@ihq/aicoach/onboarding-events';
 import { createShell } from '@ihq/aicoach/onboarding-shell';
 import { CONFIG_ELEMENT_ID, parseConfig, createApi, installModules } from '@ihq/aicoach/onboarding-boot';
+import { SEQUENCE, startStage, nextStage } from '@ihq/aicoach/onboarding-sequence';
+import { createHistoryGuard } from '@ihq/aicoach/onboarding-history';
+import { postJson } from '@ihq/aicoach/onboarding-request';
+import { createEngine, ADVANCE_MODES } from '@ihq/aicoach/onboarding-engine';
+import { launch } from '@ihq/aicoach/onboarding-launch';
 
 async function start() {
 	const root = document.getElementById( 'ihq-onboarding' );
@@ -48,9 +55,26 @@ async function start() {
 	api.shell = shell;
 	events.on( 'locale', () => shell.applyStrings() );
 
-	await installModules( { ids: config.modules, importFn: ( id ) => import( id ), api } );
+	const engine = createEngine( {
+		api,
+		sequence: { SEQUENCE, startStage, nextStage },
+		document,
+		postJson,
+		fetchFn: window.fetch.bind( window ),
+		historyGuard: createHistoryGuard( { history: window.history, window } ),
+		estimateDurationMs,
+		setTimeout: window.setTimeout.bind( window ),
+		clearTimeout: window.clearTimeout.bind( window ),
+	} );
+	// Screen modules import nothing, so the advance modes reach them on the API.
+	api.screens = { register: engine.register, ADVANCE_MODES };
+	api.advance = engine.advance;
+	api.save = engine.save;
+	api.complete = engine.complete;
+
+	const installed = await installModules( { ids: config.modules, importFn: ( id ) => import( id ), api } );
 	shell.applyStrings();
-	events.emit( 'ready', api );
+	launch( { engine, shell, listed: config.modules, installed, ready: () => events.emit( 'ready', api ) } );
 }
 
 start();

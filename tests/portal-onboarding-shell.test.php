@@ -63,6 +63,10 @@ foreach ( $files as $name => $mtime ) {
 }
 file_put_contents( $theme . '/css/portal-onboarding.css', '/* css */' );
 touch( $theme . '/css/portal-onboarding.css', 1700000010 );
+file_put_contents( $theme . '/css/portal-onboarding-teaching.css', '/* teaching */' );
+touch( $theme . '/css/portal-onboarding-teaching.css', 1700000012 );
+file_put_contents( $theme . '/css/portal-onboarding-questions.css', '/* questions */' );
+touch( $theme . '/css/portal-onboarding-questions.css', 1700000013 );
 file_put_contents( $theme . '/images/aicoach/coach-portrait-v2.webp', 'img' );
 touch( $theme . '/images/aicoach/coach-portrait-v2.webp', 1700000011 );
 $GLOBALS['theme_dir'] = $theme;
@@ -140,11 +144,16 @@ check( 'a malformed context renders nothing and enqueues nothing', array() === $
 ihq_portal_onboarding_render_shell( $context );
 check( 'a context renders the template part once', 1 === count( $GLOBALS['parts'] ) && 'template-parts/portal-onboarding' === $GLOBALS['parts'][0][0] && null === $GLOBALS['parts'][0][1] );
 $args = $GLOBALS['parts'][0][2];
-check( 'the template gets the config, the portrait and the versioned stylesheet', array( 'config', 'portrait_url', 'css_url' ) === array_keys( $args ) && $args['config'] === ihq_portal_onboarding_shell_config( $context, $plugins ) && THEME_URI . '/css/portal-onboarding.css?ver=1700000010' === $args['css_url'] );
+check( 'the template gets the config, the portrait and the stylesheets', array( 'config', 'portrait_url', 'css_urls' ) === array_keys( $args ) && $args['config'] === ihq_portal_onboarding_shell_config( $context, $plugins ) );
+check( 'stylesheets: the frame first, then each screen group in name order, versioned', array(
+	THEME_URI . '/css/portal-onboarding.css?ver=1700000010',
+	THEME_URI . '/css/portal-onboarding-questions.css?ver=1700000013',
+	THEME_URI . '/css/portal-onboarding-teaching.css?ver=1700000012',
+) === $args['css_urls'] );
 check( 'rendering enqueues the entry', array( '@ihq/aicoach/onboarding-main' ) === $GLOBALS['enqueued'] );
 
 array_map( 'unlink', glob( $theme . '/js/aicoach/*.js' ) );
-unlink( $theme . '/css/portal-onboarding.css' );
+array_map( 'unlink', glob( $theme . '/css/*.css' ) );
 unlink( $theme . '/images/aicoach/coach-portrait-v2.webp' );
 rmdir( $theme . '/js/aicoach' );
 rmdir( $theme . '/js' );
@@ -166,7 +175,11 @@ check( 'template prints the config as JSON safe inside a script tag', false !== 
 
 $css = file_get_contents( __DIR__ . '/../css/portal-onboarding.css' );
 preg_match_all( '/@media[^{]+/', $css, $queries );
-check( 'the stylesheet uses only the existing 768/1025 px queries', array( '@media (min-width: 768px) ', '@media (min-width: 1025px) ' ) === $queries[0] );
+check( 'the frame stylesheet uses only the existing 768/1025 px queries', array( '@media (min-width: 768px) ', '@media (min-width: 1025px) ' ) === $queries[0] );
+foreach ( glob( __DIR__ . '/../css/portal-onboarding-*.css' ) ?: array() as $group_css ) {
+	preg_match_all( '/@media\s*\(([^)]*)\)/', file_get_contents( $group_css ), $group_queries );
+	check( basename( $group_css ) . ' uses no width query other than the portal 768/1025 px ones', array() === array_diff( $group_queries[1], array( 'min-width: 768px', 'min-width: 1025px', 'prefers-reduced-motion: reduce' ) ) );
+}
 
 $functions = file_get_contents( __DIR__ . '/../functions.php' );
 check( 'functions.php loads every inc/portal-onboarding-*.php module', false !== strpos( $functions, "glob( get_template_directory() . '/inc/portal-onboarding-*.php' )" ) );

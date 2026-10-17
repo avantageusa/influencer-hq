@@ -17,6 +17,7 @@
 	--ihq-onb-green: #148942;
 	--ihq-onb-commentary-bg: #2d2b2b;
 	--ihq-onb-page-bg: #000;
+	--ihq-onb-error: #ff6b6b;
 	--ihq-onb-column-width: 100%;
 
 	/*
@@ -449,5 +450,24 @@ html.ihq-onb-open body {
 }
 
 .ihq-onb__button[hidden] {
+	display: none;
+}
+
+/* Screens (ENGR-7566): a section in the content area. */
+.ihq-onb-screen {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+/* A question screen asked to advance without a valid answer. */
+.ihq-onb__error {
+	margin: 0;
+	color: var(--ihq-onb-error);
+	font-size: 0.875rem;
+	font-weight: 600;
+}
+
+.ihq-onb__error[hidden] {
 	display: none;
 }
