@@ -1,0 +1,111 @@
+/*
+ * Onboarding screen 6, social platforms (ENGR-7569).
+ * Loaded after css/portal-onboarding.css by the shell.
+ */
+
+.ihq-onb-social__question {
+	margin: 0;
+	color: var(--ihq-onb-yellow);
+	font-size: 1.375rem;
+	font-weight: 800;
+	line-height: 1.25;
+	text-align: center;
+}
+
+.ihq-onb-social__columns,
+.ihq-onb-social__row {
+	display: grid;
+	grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+	gap: 8px 12px;
+	align-items: center;
+}
+
+.ihq-onb-social__columns {
+	color: var(--ihq-onb-gold);
+	font-size: 0.8125rem;
+	font-weight: 800;
+	letter-spacing: 0.06em;
+}
+
+.ihq-onb-social__list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.ihq-onb-social__tick {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-height: 44px;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: #fff;
+	font-family: inherit;
+	font-size: 1rem;
+	text-align: left;
+	cursor: pointer;
+}
+
+.ihq-onb-social__tick::before {
+	content: "";
+	flex: none;
+	width: 20px;
+	height: 20px;
+	border: 2px solid var(--ihq-onb-gold);
+	border-radius: 2px;
+}
+
+.ihq-onb-social__tick[aria-checked="true"]::before {
+	border-color: var(--ihq-onb-yellow);
+	background: var(--ihq-onb-green);
+}
+
+.ihq-onb-social__tick:focus-visible,
+.ihq-onb-social__handle:focus-visible {
+	outline: 3px solid var(--ihq-onb-yellow);
+	outline-offset: 2px;
+}
+
+.ihq-onb-social__handle {
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 40px;
+	padding: 8px 10px;
+	border: 1px solid #555;
+	border-radius: 2px;
+	background: #161612;
+	color: #fff;
+	font-family: inherit;
+	font-size: 1rem;
+}
+
+.ihq-onb-social__handle[hidden] {
+	display: none;
+}
+
+.ihq-onb-social__handle[aria-invalid="true"] {
+	border-color: #ff6b6b;
+}
+
+.ihq-onb-social__row .ihq-onb__error {
+	grid-column: 2;
+}
+
+/*
+ * The design's CONTINUE: a small green button, 132 by 36 px, Inter
+ * SemiBold 14 px, at the right under the platforms. It takes the shell's
+ * button colour and focus ring from .ihq-onb__button and only resizes it.
+ * It grows wider for a longer translation rather than wrapping.
+ */
+.ihq-onb-social__continue {
+	width: max-content;
+	min-width: 132px;
+	max-width: 100%;
+	margin: 0 0 0 auto;
+	padding: 9px 12px;
+	font-family: Inter, "Be Vietnam Pro", sans-serif;
+	font-size: 14px;
+	line-height: 18px;
+}

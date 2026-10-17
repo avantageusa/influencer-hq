@@ -796,22 +796,6 @@ if ( ! is_array( $social_handles ) )  { $social_handles  = []; }
 $platform_handle_raw    = get_user_meta( $user->ID, 'platform_handle', true );
 $platform_handle_pairs  = ihq_parse_platform_handle_pairs( $platform_handle_raw );
 $ihq_profile_social_placeholder = __( 'handle or URL', 'influencer-hq' );
-$ihq_profile_social_platforms   = array(
-	array( 'key' => 'facebook', 'label' => 'Facebook' ),
-	array( 'key' => 'reddit', 'label' => 'Reddit' ),
-	array( 'key' => 'tiktok', 'label' => 'TikTok' ),
-	array( 'key' => 'naver-blog', 'label' => 'Naver Blog' ),
-	array( 'key' => 'rednote', 'label' => 'Rednote' ),
-	array( 'key' => 'bilibili', 'label' => 'Bilibili' ),
-	array( 'key' => 'x', 'label' => 'X' ),
-	array( 'key' => 'kakao-business', 'label' => 'Kakao B' ),
-	array( 'key' => 'twitch', 'label' => 'Twitch' ),
-	array( 'key' => 'instagram', 'label' => 'Instagram' ),
-	array( 'key' => 'telegram-channel', 'label' => 'Telegram' ),
-	array( 'key' => 'ameba', 'label' => 'Ameba' ),
-	array( 'key' => 'line', 'label' => 'LINE' ),
-	array( 'key' => 'youtube', 'label' => 'YouTube' ),
-);
 
 $comm_prefs      = get_user_meta( $user->ID, '_ihq_comm_prefs',      true );
 if ( ! is_array( $comm_prefs ) )      { $comm_prefs      = []; }
@@ -837,19 +821,9 @@ $intl_league_team = get_user_meta( $user->ID, '_ihq_intl_league_team', true ) ?:
 $video_submissions = ihq_get_video_submissions( $user->ID );
 $video_feedback    = isset( $_GET['ihq_video'] ) ? sanitize_key( wp_unslash( $_GET['ihq_video'] ) ) : '';
 
-$contact_platforms = array(
-    array( 'key' => 'email', 'label' => 'Email' ),
-    array( 'key' => 'facebook', 'label' => 'Facebook' ),
-    array( 'key' => 'instagram', 'label' => 'Instagram' ),
-    array( 'key' => 'kakaotalk', 'label' => 'KakaoTalk' ),
-    array( 'key' => 'kick', 'label' => 'KICK' ),
-    array( 'key' => 'line', 'label' => 'Line' ),
-    array( 'key' => 'tiktok', 'label' => 'TikTok' ),
-    array( 'key' => 'twitch', 'label' => 'Twitch' ),
-    array( 'key' => 'wechat', 'label' => 'WeChat' ),
-    array( 'key' => 'whatsapp', 'label' => 'WhatsApp' ),
-    array( 'key' => 'x', 'label' => 'X' ),
-);
+// ENGR-7569 (OQ15) — the 19 onboarding platforms are the single list, plus any platform already
+// saved here that is not one of them (inc/portal-onboarding-social.php).
+$contact_platforms = ihq_profile_social_platform_rows( $social_handles );
 
 $ihq_profile_countries = array(
     'Australia', 'Canada', 'China', 'France', 'Germany', 'Hong Kong', 'India', 'Indonesia',
