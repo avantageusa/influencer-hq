@@ -18,11 +18,11 @@ import { createNarrator } from '@ihq/aicoach/onboarding-narrator';
 import { createStringTable, SHELL_STRINGS_EN, FALLBACK_LOCALE } from '@ihq/aicoach/onboarding-strings';
 import { createEmitter } from '@ihq/aicoach/onboarding-events';
 import { createShell } from '@ihq/aicoach/onboarding-shell';
-import { CONFIG_ELEMENT_ID, parseConfig, createApi, installModules } from '@ihq/aicoach/onboarding-boot';
+import { CONFIG_ELEMENT_ID, parseConfig, createApi, installModules, narrationStrings } from '@ihq/aicoach/onboarding-boot';
 import { SEQUENCE, startStage, nextStage } from '@ihq/aicoach/onboarding-sequence';
 import { createHistoryGuard } from '@ihq/aicoach/onboarding-history';
 import { postJson } from '@ihq/aicoach/onboarding-request';
-import { createEngine, ADVANCE_MODES } from '@ihq/aicoach/onboarding-engine';
+import { createEngine, ADVANCE_MODES, narrationKey } from '@ihq/aicoach/onboarding-engine';
 import { launch } from '@ihq/aicoach/onboarding-launch';
 
 async function start() {
@@ -35,6 +35,8 @@ async function start() {
 
 	const strings = createStringTable();
 	strings.add( FALLBACK_LOCALE, SHELL_STRINGS_EN );
+	const lines = narrationStrings( config.narration, narrationKey );
+	Object.keys( lines ).forEach( ( locale ) => strings.add( locale, lines[ locale ] ) );
 	const events = createEmitter();
 	const api = createApi( { config, events, strings } );
 
