@@ -1,0 +1,159 @@
+/*
+ * Onboarding teaching screens (ENGR-7567): 1, 2, 7-11 and 13.
+ * Loaded after css/portal-onboarding.css by the shell.
+ *
+ * Sizes, fonts and spacing are the design's at 398 px wide (Figma
+ * 46893:117629: "1 The Game of Kings", "2 Modern Era", "7 World
+ * Championship", "9 Classic", "10 Equity 3" and "11 Equity 4"). The screen
+ * section already puts a 16 px gap between its children (.ihq-onb-screen,
+ * css/portal-onboarding.css); where the design's distance between two
+ * elements differs, the margin here is that distance minus the gap.
+ *
+ * Cinzel comes from the host page's fonts link
+ * (template-parts/portal-styles.php).
+ */
+
+.ihq-onb-screen {
+
+	/* Keep in step with .ihq-onb-screen's gap in css/portal-onboarding.css. */
+	--ihq-onb-teach-gap: 16px;
+
+	/* The design's distance from the gold rule to the text under it. */
+	--ihq-onb-teach-under-rule: 9px;
+
+	/* The design's distance between the two charts of screen 10. */
+	--ihq-onb-teach-chart-gap: 7px;
+}
+
+/*
+ * The design draws the hero 240.6 x 156.3, centred, 35 px under the
+ * commentary box: the content area's 20 px top padding plus 15 px.
+ */
+.ihq-onb-teach__hero {
+	display: block;
+	width: 100%;
+	max-width: 241px;
+	height: auto;
+	aspect-ratio: 240.6 / 156.3;
+	margin: 15px auto 0;
+	object-fit: cover;
+	border-radius: 4px;
+}
+
+/*
+ * Cinzel has no lower case: its small capitals are the design's look, so
+ * no text-transform.
+ */
+.ihq-onb-teach__title {
+	margin: 0;
+	color: #fff;
+	font-family: Cinzel, serif;
+	font-size: 17px;
+	font-weight: 700;
+	line-height: 23px;
+	text-align: center;
+}
+
+/*
+ * The gold rule under the title: 242.6 px wide, 0.8 opaque. The design
+ * fills it with a radial fade that, on a line this thin, renders brightest
+ * in the middle and fades evenly to both ends, as this linear fade does.
+ */
+.ihq-onb-teach__title::after {
+	content: "";
+	display: block;
+	width: 242px;
+	max-width: 100%;
+	height: 1px;
+	margin: 8px auto 0;
+	color: var(--ihq-onb-gold);
+	background: linear-gradient(90deg, transparent, currentColor, transparent);
+	opacity: 0.8;
+}
+
+/* Screen 13's design has no rule under its title. */
+.ihq-onb-teach__title--plain::after {
+	content: none;
+}
+
+/*
+ * Be Vietnam Pro SemiBold 12 px on an 18 px line, in the design's 240 px
+ * text column.
+ */
+.ihq-onb-teach__body,
+.ihq-onb-teach__bullets {
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 240px;
+	margin: 0 auto;
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1.5;
+	text-align: center;
+}
+
+.ihq-onb-teach__title + .ihq-onb-teach__body,
+.ihq-onb-teach__title + .ihq-onb-teach__bullets {
+	margin-top: calc(var(--ihq-onb-teach-under-rule) - var(--ihq-onb-teach-gap));
+}
+
+/* The design leaves one empty line between paragraphs. */
+.ihq-onb-teach__body + .ihq-onb-teach__body {
+	margin-top: calc(1.5em - var(--ihq-onb-teach-gap));
+}
+
+/*
+ * Screen 11: centred lines, each with its bullet in front, an empty line
+ * between them.
+ */
+.ihq-onb-teach__bullets {
+	padding: 0;
+	list-style-position: inside;
+}
+
+.ihq-onb-teach__bullets > li + li {
+	margin-top: 1.5em;
+}
+
+/* Screen 10: each chart image is the design's 198.5 x 149.8 box. */
+.ihq-onb-teach__chart {
+	display: block;
+	width: 100%;
+	max-width: 198.5px;
+	height: auto;
+	margin: 0 auto;
+}
+
+.ihq-onb-teach__chart + .ihq-onb-teach__chart {
+	margin-top: calc(var(--ihq-onb-teach-chart-gap) - var(--ihq-onb-teach-gap));
+}
+
+/* Screen 13: one step per line, a downward arrow between steps. */
+.ihq-onb-teach__steps {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	text-align: center;
+}
+
+.ihq-onb-teach__step {
+	padding: 6px 12px;
+	font-size: 1rem;
+	font-weight: 600;
+	line-height: 1.4;
+}
+
+.ihq-onb-teach__step + .ihq-onb-teach__step::before {
+	/* Decorative: the empty alt text keeps screen readers from announcing "downwards arrow".
+	   Browsers without alt-text support drop the second declaration and keep the first. */
+	content: "↓";
+	content: "↓" / "";
+	display: block;
+	color: var(--ihq-onb-yellow);
+	font-size: 1.25rem;
+	line-height: 1;
+	margin-bottom: 6px;
+}
