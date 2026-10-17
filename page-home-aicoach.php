@@ -37,6 +37,15 @@ if ( $portrait_mtime ) {
 // browser or the edge that cached the old pictures for a year cannot serve them by mistake.
 $aicoach_design_dir = $theme_uri . '/images/aicoach/design';
 
+// The two banner pictures are replaced in place when the design changes, so their addresses carry
+// the file's modification time: a copy cached for a year by a browser or the edge is not reused.
+$aicoach_design_path = get_template_directory() . '/images/aicoach/design';
+$aicoach_versioned   = static function ( $file ) use ( $aicoach_design_dir, $aicoach_design_path ) {
+	$path    = $aicoach_design_path . '/' . $file;
+	$version = file_exists( $path ) ? filemtime( $path ) : false;
+	return $aicoach_design_dir . '/' . $file . ( $version ? '?ver=' . $version : '' );
+};
+
 $aicoach_img = array(
 	'portrait'           => $portrait_image_url,
 	'bts'                => $aicoach_design_dir . '/bts.webp',
@@ -51,8 +60,10 @@ $aicoach_img = array(
 	'back-arrow'         => $aicoach_design_dir . '/back-arrow.svg',
 	'globe'              => $aicoach_design_dir . '/globe.webp',
 	'sound'              => $aicoach_design_dir . '/sound.svg',
-	'banner-desktop'     => $aicoach_design_dir . '/banner-desktop.webp',
-	'banner-tablet'      => $aicoach_design_dir . '/banner-tablet.webp',
+	'banner-desktop'     => $aicoach_versioned( 'banner-desktop.webp' ),
+	'banner-tablet'      => $aicoach_versioned( 'banner-tablet.webp' ),
+	'banner-tablet-1488' => $aicoach_versioned( 'banner-tablet-1488.webp' ),
+	'banner-tablet-2232' => $aicoach_versioned( 'banner-tablet-2232.webp' ),
 );
 
 $aicoach_tiers = array(
@@ -168,7 +179,12 @@ $aicoach_channels = array(
                         <?php /* The banner is the design's wide picture on a desktop (1025 px is the desktop breakpoint the portal pages already use), the tablet picture from 600 px up, and the 3:2 portrait on a phone. */ ?>
                         <picture>
                             <source media="(min-width: 1025px)" srcset="<?php echo esc_url( $aicoach_img['banner-desktop'] ); ?>">
-                            <source media="(min-width: 600px)" srcset="<?php echo esc_url( $aicoach_img['banner-tablet'] ); ?>">
+                            <?php /* The tablet picture comes in three widths (744, 1488, 2232 px); the banner is as wide as the window, so the browser picks the one that matches the screen's width and density. */ ?>
+                            <source
+                                media="(min-width: 600px)"
+                                srcset="<?php echo esc_url( $aicoach_img['banner-tablet'] ); ?> 744w, <?php echo esc_url( $aicoach_img['banner-tablet-1488'] ); ?> 1488w, <?php echo esc_url( $aicoach_img['banner-tablet-2232'] ); ?> 2232w"
+                                sizes="100vw"
+                            >
                             <img
                                 class="aicoach-portrait"
                                 id="aicoach-portrait"
