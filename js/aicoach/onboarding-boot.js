@@ -55,6 +55,34 @@ export function clipFor( clips, stage, locale ) {
 }
 
 /**
+ * Sami's lines from the config, as string tables per language, so the captions and the
+ * clips say the same words (inc/portal-onboarding-narration.php renders the clips from the
+ * same table). Anything that is not a non-empty string is left out.
+ *
+ * @param {Object}   narration { [stage]: { [locale]: text } }
+ * @param {Function} keyFor    ( stage ) => string-table key; the entry passes narrationKey.
+ * @return {Object} { [locale]: { [key]: text } }
+ */
+export function narrationStrings( narration, keyFor ) {
+	const tables = {};
+	if ( ! narration || 'object' !== typeof narration ) {
+		return tables;
+	}
+	for ( const [ stage, lines ] of Object.entries( narration ) ) {
+		if ( ! lines || 'object' !== typeof lines ) {
+			continue;
+		}
+		for ( const [ locale, text ] of Object.entries( lines ) ) {
+			if ( 'string' !== typeof text || '' === text ) {
+				continue;
+			}
+			tables[ locale ] = { ...tables[ locale ], [ keyFor( stage ) ]: text };
+		}
+	}
+	return tables;
+}
+
+/**
  * The object every plug-in gets in install( api ).
  *
  * @param {Object} deps

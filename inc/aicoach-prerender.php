@@ -599,8 +599,9 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $language 
 /**
  * What is to be rendered: every approved segment this page actually uses (per
  * ihq_aicoach_prerender_panel_map()) in English, and in every other language that has a
- * translated script of ours. The same list drives the WP-CLI command and the step-by-step
- * run from a web page, so they cannot disagree about what the set is.
+ * translated script of ours, then Sami's onboarding lines (ENGR-7574) in every language
+ * that has one. The same list drives the WP-CLI command and the step-by-step run from a
+ * web page, so they cannot disagree about what the set is.
  *
  * @param callable|null $log Optional fn(string $line) for progress output (what is skipped).
  * @return array<int,array{manifest_key:string,segment_key:string,language:string,text:string,sha256:string}>|WP_Error
@@ -677,6 +678,12 @@ function ihq_aicoach_prerender_work_list( $log = null ) {
 				'sha256'       => hash( 'sha256', $translated_text ),
 			);
 		}
+	}
+
+	// Sami's onboarding lines (ENGR-7574): our own approved text in every language, hashed
+	// like the translations above. inc/portal-onboarding-narration.php owns the list.
+	if ( function_exists( 'ihq_portal_onboarding_narration_work_items' ) ) {
+		$items = array_merge( $items, ihq_portal_onboarding_narration_work_items() );
 	}
 
 	return $items;

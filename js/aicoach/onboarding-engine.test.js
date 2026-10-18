@@ -10,7 +10,7 @@ import { createStallWatchdog } from './stall-watchdog.js';
 import { buildSentenceCues, subtitleAt } from './onboarding-subtitles.js';
 import { estimateDurationMs } from './commentary.js';
 import { createNarrator } from './onboarding-narrator.js';
-import { createEngine, ADVANCE_MODES, MIN_READING_TIME_MS, screenText } from './onboarding-engine.js';
+import { createEngine, ADVANCE_MODES, MIN_READING_TIME_MS, NARRATION_KEY_PREFIX, narrationKey, screenText } from './onboarding-engine.js';
 
 const STATE = { stage: '', answers: {}, platforms: [], handles: {}, language: '', completed: false, completed_at: '' };
 
@@ -356,6 +356,46 @@ test( 'Sami says the screen line with the clip in the current language, captions
 	assert.deepEqual( said[ 1 ], { script: '', clipUrl: '' } );
 	api.setLocale( 'ja' );
 	assert.deepEqual( said[ 2 ], { script: '', clipUrl: '' } );
+} );
+
+test( 'narrationKey() is the prefix and the stage', () => {
+	assert.equal( NARRATION_KEY_PREFIX, 'narration.' );
+	assert.equal( narrationKey( 'game_of_kings' ), 'narration.game_of_kings' );
+} );
+
+test( 'a screen that names no key says the narration line of its stage, in the current language, else in English', () => {
+	const { engine, said, api } = setup( { clips: { game_of_kings: { ja: 'kings-ja.mp4' } } } );
+	api.strings.add( 'en', { 'narration.game_of_kings': 'Kings from the server.', 'narration.modern_era': 'Modern from the server.' } );
+	api.strings.add( 'ja', { 'narration.game_of_kings': '王様。' } );
+	registerAll( engine, [], {} );
+	engine.start();
+	api.setLocale( 'ja' );
+	engine.advance();
+	assert.deepEqual( said, [
+		{ script: 'Kings from the server.', clipUrl: '' },
+		{ script: '王様。', clipUrl: 'kings-ja.mp4' },
+		{ script: 'Modern from the server.', clipUrl: '' },
+	] );
+} );
+
+test( 'a screen that names its own key says that line, not its stage line', () => {
+	const { engine, said, api } = setup();
+	api.strings.add( 'en', { 'narration.game_of_kings': 'Kings from the server.' } );
+	registerAll( engine, [], { game_of_kings: { narration: 'kingsLine' } } );
+	engine.start();
+	assert.deepEqual( said, [ { script: 'For over 500 years.', clipUrl: '' } ] );
+} );
+
+test( 'a stage line makes a NARRATION screen wait for the line, not its reading time', async () => {
+	const { engine, clock, endLine, api } = setup();
+	api.strings.add( 'en', { 'narration.game_of_kings': 'Kings from the server.' } );
+	engine.register( wordsScreen( 'game_of_kings', TEN_WORDS ) );
+	engine.register( wordsScreen( 'modern_era', '', { advanceMode: ADVANCE_MODES.MANUAL } ) );
+	engine.start();
+	assert.equal( clock.pendingCount(), 0 );
+	endLine[ 0 ]();
+	await flush();
+	assert.equal( engine.current(), 'modern_era' );
 } );
 
 test( 'a language change restarts the current screen line in the new language and keeps the position', () => {

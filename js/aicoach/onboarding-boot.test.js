@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createEmitter } from './onboarding-events.js';
 import { createStringTable } from './onboarding-strings.js';
-import { CONFIG_ELEMENT_ID, DEFAULT_LOCALE, parseConfig, clipFor, createApi, installModules } from './onboarding-boot.js';
+import { CONFIG_ELEMENT_ID, DEFAULT_LOCALE, parseConfig, clipFor, narrationStrings, createApi, installModules } from './onboarding-boot.js';
 
 const STATE = { stage: '', answers: {}, platforms: [], handles: {}, language: '', completed: false, completed_at: '' };
 
@@ -30,6 +30,28 @@ test( 'clipFor finds a clip by stage and locale, else empty', () => {
 	assert.equal( clipFor( clips, 'broken', 'en' ), '' );
 	assert.equal( clipFor( undefined, 'equity', 'en' ), '' );
 	assert.equal( clipFor( [], 'equity', 'en' ), '' );
+} );
+
+test( 'narrationStrings turns the lines into a string table per language, keyed by keyFor', () => {
+	const keyFor = ( stage ) => 'line:' + stage;
+	assert.deepEqual( narrationStrings( {
+		game_of_kings: { en: 'Kings.', ja: '王様。', zh: '', ko: 7 },
+		modern_era: { en: 'Modern.' },
+		equity: 'not a list of languages',
+		classic: null,
+	}, keyFor ), {
+		en: { 'line:game_of_kings': 'Kings.', 'line:modern_era': 'Modern.' },
+		ja: { 'line:game_of_kings': '王様。' },
+	} );
+} );
+
+test( 'narrationStrings gives no tables when there are no lines', () => {
+	const keyFor = ( stage ) => stage;
+	assert.deepEqual( narrationStrings( undefined, keyFor ), {} );
+	assert.deepEqual( narrationStrings( null, keyFor ), {} );
+	assert.deepEqual( narrationStrings( 'lines', keyFor ), {} );
+	assert.deepEqual( narrationStrings( {}, keyFor ), {} );
+	assert.deepEqual( narrationStrings( [], keyFor ), {} );
 } );
 
 test( 'createApi starts in the saved language, else English', () => {
