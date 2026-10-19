@@ -78,8 +78,10 @@ function ihq_portal_onboarding_narration_segment_key( $stage ) {
 }
 
 /**
- * The fingerprint a clip of a line is rendered with: the hash of the text spoken. The same
- * hash decides whether the render runs again and whether the clip is still served.
+ * The hash of a line's text, the work item's sha256. The manifest records a clip's fingerprint
+ * through ihq_aicoach_prerender_fingerprint(), which is this hash for English and also carries
+ * the language for another; that fingerprint decides whether the render runs again and whether
+ * the clip is still served.
  *
  * @param string $text
  * @return string
@@ -115,7 +117,9 @@ function ihq_portal_onboarding_narration_work_items() {
  * The onboarding clips that can be served, from the served manifest and the clip URLs built
  * from it. A clip is served only while it was rendered from the line as it is now: after a
  * line changes, its old clip would say different words than the captions, so the screen plays
- * the new captions alone until the next render.
+ * the new captions alone until the next render. The same holds for a clip in a language other
+ * than English rendered before its request named its language: it is not served until it is
+ * rendered again with its language.
  *
  * @param array<string, array<string, string>> $scripts  From ihq_portal_onboarding_narration_scripts().
  * @param array                                $manifest The served manifest: manifest key => { fingerprint, file, … }.
@@ -133,7 +137,7 @@ function ihq_portal_onboarding_narration_clips( array $scripts, array $manifest,
 			}
 			$entry       = $manifest[ ihq_aicoach_prerender_manifest_key( $segment_key, $language ) ] ?? array();
 			$fingerprint = is_array( $entry ) && isset( $entry['fingerprint'] ) ? $entry['fingerprint'] : '';
-			if ( ihq_portal_onboarding_narration_fingerprint( $text ) !== $fingerprint ) {
+			if ( ihq_aicoach_prerender_fingerprint( ihq_portal_onboarding_narration_fingerprint( $text ), $language ) !== $fingerprint ) {
 				continue;
 			}
 			$clips[ $stage ][ $language ] = $url;

@@ -113,6 +113,25 @@ const IHQ_AICOACH_PRERENDER_MAX_POLLS = 18;
 /** The shorter wait of a render step run from a web request, which a gateway cuts off at about a minute. */
 const IHQ_AICOACH_PRERENDER_STEP_MAX_POLLS = 5;
 
+/** The Coach API `presentation` every clip is rendered as: Sami. */
+const IHQ_AICOACH_COACH_PRESENTATION = 'sami';
+
+/**
+ * Marks a clip in a language other than English rendered with its language named in the
+ * request. It ends the Idempotency-Key and goes into the fingerprint of such a clip. The clips
+ * rendered before were sent with no `lang`, which the box reads as English (Luna, 2026-10-19),
+ * and their old key now answers 409 idempotency_conflict; the new key renders them again with
+ * the language's own configuration, and the new fingerprint makes that render run and gives
+ * the clip a new URL.
+ */
+const IHQ_AICOACH_PRERENDER_LANGUAGE_RENDER_MARK = 'lang';
+
+/** What Gary's Coach API answers when an Idempotency-Key was used for a different request. */
+const IHQ_AICOACH_COACH_HTTP_CONFLICT = 409;
+
+/** The `error` code of that answer. */
+const IHQ_AICOACH_COACH_IDEMPOTENCY_CONFLICT = 'idempotency_conflict';
+
 /**
  * Whether a string can be an avatar version: "v" and one to three digits. A version ends
  * up in file names and in an idempotency key, so nothing else is accepted.
@@ -274,9 +293,13 @@ function ihq_aicoach_prerender_file_name( $segment_key, $language = 'en', $versi
 }
 
 /**
- * The Idempotency-Key of one render job. Gary matches a job on this key alone, so a
- * different key always starts a new render (his answer, 2026-10-11): the original set
- * keeps the keys it was rendered with, and a version adds its own ending.
+ * The Idempotency-Key of one render job. A different key always starts a new render (Gary,
+ * 2026-10-11), and a known key sent with a different request answers 409
+ * idempotency_conflict (Luna, 2026-10-19). English keeps the keys it was rendered with: its
+ * request now names lang "en" and presentation "sami", the values the box used when they were
+ * left out, so a retry replays the job. Another language ends its key with the language-render
+ * mark, because its request now names a language the old key was not used with. A version
+ * adds its own ending after that.
  *
  * @param string $segment_key
  * @param string $language
@@ -287,8 +310,39 @@ function ihq_aicoach_prerender_file_name( $segment_key, $language = 'en', $versi
 function ihq_aicoach_prerender_idempotency_key( $segment_key, $language, $sha256, $version = '' ) {
 	$key = 'en' === $language
 		? 'ihq-seg-' . $segment_key . '-' . substr( $sha256, 0, 16 )
-		: 'ihq-seg-' . $segment_key . '-' . $language . '-' . substr( $sha256, 0, 16 );
+		: 'ihq-seg-' . $segment_key . '-' . $language . '-' . substr( $sha256, 0, 16 ) . '-' . IHQ_AICOACH_PRERENDER_LANGUAGE_RENDER_MARK;
 	return '' === $version ? $key : "{$key}-{$version}";
+}
+
+/**
+ * The fingerprint a clip is recorded with in the manifest. It decides whether a render runs
+ * again (a clip whose fingerprint differs is rendered again) and it is the ?v= of the clip's
+ * URL, so a clip rendered again under the same file name gets a URL the CDN has not cached.
+ * English is the hash of the text, as it always was. Another language also carries the
+ * language and the language-render mark, so a clip rendered before its request named its
+ * language is rendered again, and its replacement is served under a new URL.
+ *
+ * @param string $sha256   The hash of the text being spoken.
+ * @param string $language
+ * @return string
+ */
+function ihq_aicoach_prerender_fingerprint( $sha256, $language ) {
+	if ( 'en' === $language ) {
+		return $sha256;
+	}
+	return hash( 'sha256', $sha256 . '|' . $language . '|' . IHQ_AICOACH_PRERENDER_LANGUAGE_RENDER_MARK );
+}
+
+/**
+ * Whether a language can be sent to the Coach API as `lang`: one of the seven the AI Coach
+ * supports (IHQ_COACH_THEME_LOCALES, inc/gary-proxy.php). Checked before a render is asked
+ * for, so a typo in a table of lines never spends render budget.
+ *
+ * @param mixed $language
+ * @return bool
+ */
+function ihq_aicoach_coach_language_is_valid( $language ) {
+	return is_string( $language ) && in_array( $language, IHQ_COACH_THEME_LOCALES, true );
 }
 
 /**
@@ -353,28 +407,36 @@ function ihq_aicoach_prerender_get_urls( $version = null ) {
  * currently uses, so this file no longer needs to read or track that config
  * at all.
  *
+ * Every request names its `lang` and `presentation`. Left out, the box uses "en" and "sami"
+ * and does not detect the language from the script (Luna, 2026-10-19): a non-English script
+ * is still spoken through the multilingual voice, but without its language's configuration.
+ *
  * @param string $script          Exact text to speak.
  * @param string $idempotency_key Stable per-script key — see
- *                                 ihq_aicoach_prerender_segment().
+ *                                 ihq_aicoach_prerender_idempotency_key().
  * @param string $segment_key     Gary's segment key, sent as metadata purely
  *                                 for our own visibility (GET /v1/videos),
  *                                 confirmed accepted as a free-form object.
+ * @param string $language        The language the script is in, one of
+ *                                 IHQ_COACH_THEME_LOCALES, sent as `lang`.
  * @param string $video_profile   A Coach API video profile (ENGR-7798), or '' for the
- *                                 default avatar. With a profile Gary asks for `lang` and
- *                                 `presentation` to be sent explicitly too; without one the
- *                                 body is exactly what it always was, so the request hashes
- *                                 of everything rendered before do not change.
- * @param string $language        The clip's language, sent only together with a profile.
+ *                                 default avatar. Sent only when there is one.
  * @return array|WP_Error Decoded response body on success.
  */
-function ihq_aicoach_coach_create_video( $script, $idempotency_key, $segment_key, $video_profile = '', $language = 'en' ) {
+function ihq_aicoach_coach_create_video( $script, $idempotency_key, $segment_key, $language, $video_profile = '' ) {
+	if ( ! ihq_aicoach_coach_language_is_valid( $language ) ) {
+		return new WP_Error(
+			'coach_video_language_invalid',
+			sprintf( 'Not rendered: "%s" is not a language the Coach API is sent (%s).', is_string( $language ) ? $language : gettype( $language ), implode( ', ', IHQ_COACH_THEME_LOCALES ) )
+		);
+	}
 	$body = array(
-		'script'   => $script,
-		'metadata' => array( 'segment' => $segment_key ),
+		'script'       => $script,
+		'metadata'     => array( 'segment' => $segment_key ),
+		'lang'         => $language,
+		'presentation' => IHQ_AICOACH_COACH_PRESENTATION,
 	);
 	if ( '' !== $video_profile ) {
-		$body['lang']          = $language;
-		$body['presentation']  = 'sami';
 		$body['video_profile'] = $video_profile;
 	}
 	$result = ihq_coach_request(
@@ -391,6 +453,21 @@ function ihq_aicoach_coach_create_video( $script, $idempotency_key, $segment_key
 	// an idempotent replay of an already-known key is 200 (confirmed live,
 	// 2026-09-23) — both are success, so this only rejects genuine errors.
 	$status = (int) $result['status'];
+	// The key is known but was used with a different script, presentation, language or
+	// metadata. Nothing was rendered, and sending it again cannot help: only a new key
+	// renders, and a new key is a deliberate new render that spends budget.
+	if ( IHQ_AICOACH_COACH_HTTP_CONFLICT === $status && IHQ_AICOACH_COACH_IDEMPOTENCY_CONFLICT === ( $result['body']['error'] ?? '' ) ) {
+		return new WP_Error(
+			'coach_video_idempotency_conflict',
+			sprintf(
+				'Coach video create refused (HTTP %d %s): Idempotency-Key %s was already used for a different script, presentation, language or metadata. Nothing was rendered; a new render needs a new key.',
+				$status,
+				IHQ_AICOACH_COACH_IDEMPOTENCY_CONFLICT,
+				$idempotency_key
+			),
+			array( 'idempotency_key' => $idempotency_key )
+		);
+	}
 	if ( $status < 200 || $status >= 300 ) {
 		return new WP_Error(
 			'coach_video_create_failed',
@@ -425,7 +502,8 @@ function ihq_aicoach_coach_get_video( $job_id ) {
  * Render one segment end-to-end: create (or resume) the job, poll for a
  * bounded window, download the MP4 once ready, and record it in the
  * manifest. Skips the whole thing (returns 'cached') if the manifest already
- * has this exact sha256 stored and the file is still on disk.
+ * has this clip's fingerprint (ihq_aicoach_prerender_fingerprint()) stored and
+ * the file is still on disk.
  *
  * @param string        $segment_key Gary's segment key, e.g. "we_believe_1".
  * @param string        $text        Exact approved script text, in $language.
@@ -449,9 +527,11 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $language 
 	$manifest_key = ihq_aicoach_prerender_manifest_key( $segment_key, $language );
 	$file_name    = ihq_aicoach_prerender_file_name( $segment_key, $language, $version );
 
+	$fingerprint  = ihq_aicoach_prerender_fingerprint( $sha256, $language );
+
 	$manifest = ihq_aicoach_prerender_load_manifest( $version );
 	$existing = $manifest[ $manifest_key ] ?? null;
-	if ( $existing && ( $existing['fingerprint'] ?? '' ) === $sha256 && file_exists( ihq_aicoach_prerender_dir() . '/' . $existing['file'] ) ) {
+	if ( $existing && ( $existing['fingerprint'] ?? '' ) === $fingerprint && file_exists( ihq_aicoach_prerender_dir() . '/' . $existing['file'] ) ) {
 		$log( "  {$manifest_key}: already rendered for this script, skipping" );
 		return array( 'status' => 'cached' );
 	}
@@ -462,12 +542,16 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $language 
 	// (or a translation changes) only touches segment+language combinations
 	// whose sha256 actually changed. 'en' keeps the original key shape
 	// unchanged (no language suffix) so already-rendered English clips are
-	// never orphaned/re-rendered by this change.
+	// never orphaned/re-rendered by this change. Other languages end with the
+	// language-render mark (see ihq_aicoach_prerender_idempotency_key()).
 	$idempotency_key = ihq_aicoach_prerender_idempotency_key( $segment_key, $language, $sha256, $version );
 
 	$log( "  {$manifest_key}: creating (or resuming) render job..." );
-	$job = ihq_aicoach_coach_create_video( $text, $idempotency_key, $manifest_key, ihq_aicoach_avatar_version_video_profile( $version ), $language );
+	$job = ihq_aicoach_coach_create_video( $text, $idempotency_key, $manifest_key, $language, ihq_aicoach_avatar_version_video_profile( $version ) );
 	if ( is_wp_error( $job ) ) {
+		if ( 'coach_video_idempotency_conflict' === $job->get_error_code() ) {
+			$log( "  {$manifest_key}: IDEMPOTENCY CONFLICT, Gary refused key {$idempotency_key} because it was used for a different request. Nothing rendered; not retried." );
+		}
 		return array(
 			'status' => 'error',
 			'error'  => $job->get_error_message(),
@@ -613,7 +697,7 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $language 
 	$recorded = ihq_aicoach_prerender_record_clip(
 		$manifest_key,
 		array(
-			'fingerprint' => $sha256,
+			'fingerprint' => $fingerprint,
 			'file'        => $file_name,
 			'rendered_at' => gmdate( 'c' ),
 		),
