@@ -10,6 +10,7 @@ import { createClient, AnamEvent } from 'https://cdn.jsdelivr.net/npm/@anam-ai/j
 import { createSequenceHold } from '@ihq/aicoach/sequence-hold';
 import { createStallWatchdog, once } from '@ihq/aicoach/stall-watchdog';
 import { isAvatarIdle, isScreenWithoutClip } from '@ihq/aicoach/idle-state';
+import { createAccountStep } from '@ihq/aicoach/account-step';
 import { buildCues, estimateDurationMs, visibleTextAt } from '@ihq/aicoach/commentary';
 import { SUPPORTED_LOCALES, t, detectLocale } from '@ihq/aicoach/locales';
 import {
@@ -256,7 +257,18 @@ const PROGRESS_URL = cfg.identityRestBase + '/aicoach/progress';
 // write.
 let progressSaveChain = Promise.resolve();
 
+// ENGR-7828 — once the account exists the saved progress is gone with it (the server clears it
+// at creation), so nothing may be saved after that: a later save, such as the final screen's own
+// stage, would leave a row for a visitor who is already a user and will not come back to this flow.
+let progressSavesStopped = false;
+function stopSavingProgress() {
+    progressSavesStopped = true;
+}
+
 function saveProgress( partial ) {
+    if ( progressSavesStopped ) {
+        return;
+    }
     progressSaveChain = progressSaveChain.then( function () {
         return fetch( PROGRESS_URL, {
             method: 'POST',
@@ -2216,8 +2228,37 @@ if ( stage && avatarWrap ) {
     const channelsForm = document.getElementById( 'aicoach-channels-form' );
     const channelsHint = document.getElementById( 'aicoach-channels-hint' );
     const channelsContinueBtn = document.getElementById( 'aicoach-channels-continue' );
+    const channelsError = document.getElementById( 'aicoach-channels-error' );
 
     let capturedChannels = null; // [{ channel, value }] once FR-08 completes; FR-09 reads this next
+
+    // ENGR-7828 — the account is created when this step is confirmed (see
+    // js/aicoach/account-step.js), so it exists before the closing screen; Gary releases the spoken
+    // closing passage only for an account that exists. Luna and the final button used to share
+    // window.ihqCoachEvents.register(); it is still the one function that sends the registration.
+    // No fail-open: a missing event module or a failed create must surface, not fake a portal session.
+    const accountStep = createAccountStep( {
+        register: function ( detail ) {
+            return window.ihqCoachEvents?.register?.( detail );
+        },
+        beforeRegister: function () {
+            // PO-3102 — every prior showPanel()/identity/channels save is chained onto this same
+            // promise; waiting for it keeps a still-in-flight save from reaching the server AFTER
+            // account creation has cleared the progress record.
+            return progressSaveChain;
+        },
+        afterCreated: stopSavingProgress,
+        messageFor: serverErrorMessage,
+        genericMessage: cfg.i18n?.accountCreateErr || 'Something went wrong creating your account. Please try again.',
+    } );
+
+    function createAccount() {
+        return accountStep.run( {
+            identity: capturedIdentity || {},
+            channels: capturedChannels,
+            language: currentLocale,
+        } );
+    }
 
     function getChannelParts( key ) {
         const row = channelsForm?.querySelector( '.aicoach-channel[data-channel="' + key + '"]' );
@@ -2283,7 +2324,7 @@ if ( stage && avatarWrap ) {
             } );
         } );
 
-        channelsForm.addEventListener( 'submit', function ( event ) {
+        channelsForm.addEventListener( 'submit', async function ( event ) {
             event.preventDefault();
             const checked = checkedChannels();
             if ( checked.length === 0 ) {
@@ -2308,8 +2349,12 @@ if ( stage && avatarWrap ) {
                 return { channel: entry.ch.key, value: entry.parts.input.value.trim() };
             } );
             saveProgress( { channels: capturedChannels } ); // PO-3102
+            const continueLabel = channelsContinueBtn.textContent;
             channelsContinueBtn.disabled = true;
             channelsContinueBtn.textContent = cfg.i18n?.identitySaved || 'Saved';
+            if ( channelsError ) {
+                channelsError.textContent = '';
+            }
 
             // PO-3109 step 6 — the visitor came here to book: now that there is a way to
             // reach them, on to choosing the time. The final screen is not queued; the
@@ -2320,10 +2365,24 @@ if ( stage && avatarWrap ) {
                 return;
             }
 
-            // FR-09 — queue the final confirmation + account-creation screen, same
-            // resume pattern as FR-07 queuing FR-08. sequenceEndDestination stays
-            // null: nothing to navigate to on completing this screen's own
-            // narration — the actual "next step" is the portal redirect the
+            // ENGR-7828 — create the account now, before the closing screen: Gary releases the
+            // spoken closing passage only for an account that exists. A failure stays on this
+            // screen with the server's reason (a username already taken, the rate limit), and
+            // CONTINUE works again; the closing screen is not queued.
+            const created = await createAccount();
+            if ( ! created.ok ) {
+                console.warn( '[aicoach] account creation failed:', created.message );
+                if ( channelsError ) {
+                    channelsError.textContent = created.message;
+                }
+                channelsContinueBtn.textContent = continueLabel;
+                updateChannelsContinueState();
+                return;
+            }
+
+            // FR-09 — queue the final confirmation screen, same resume pattern as FR-07 queuing
+            // FR-08. sequenceEndDestination stays null: nothing to navigate to on completing this
+            // screen's own narration — the actual "next step" is the portal redirect the
             // final-continue button triggers, not another panel.
             const loopAlreadyExited = sequenceFinished;
             SCREENS.push( FINAL_SCREEN );
@@ -2334,21 +2393,14 @@ if ( stage && avatarWrap ) {
         } );
     }
 
-    // FR-09 / PO-3257 — account creation + portal transfer. Luna and this
-    // button share window.ihqCoachEvents.register(); redirect:false so we can
-    // close the Gary session before navigating. No fail-open: a missing
-    // event module or a failed create must surface, not fake a portal session.
+    // FR-09 / PO-3257 — the portal transfer. The account was created when the channels step was
+    // confirmed (ENGR-7828), so this click only closes the Gary session and opens the address the
+    // creation returned. A visitor saved at this screen before that change has no account yet:
+    // for them createAccount() creates it here, as this click always did.
     const finalContinueBtn = document.getElementById( 'aicoach-final-continue' );
     const finalError = document.getElementById( 'aicoach-final-error' );
 
     finalContinueBtn?.addEventListener( 'click', async function () {
-        if ( typeof window.ihqCoachEvents?.register !== 'function' ) {
-            if ( finalError ) {
-                finalError.textContent = cfg.i18n?.accountCreateErr || 'Something went wrong creating your account. Please try again.';
-            }
-            return;
-        }
-
         finalContinueBtn.disabled = true;
         if ( finalError ) {
             finalError.textContent = '';
@@ -2356,45 +2408,24 @@ if ( stage && avatarWrap ) {
 
         // ENGR-7511 — the server's own reason (e.g. a username already taken) is
         // shown instead of the generic message, so the visitor knows what to fix.
-        let serverMessage = '';
-
-        try {
-            // PO-3102 — every prior showPanel()/identity/channels save is chained
-            // onto this same promise. Without waiting for it here, a still-in-flight
-            // save (e.g. this very panel's own "stage: final-continue" save, fired
-            // moments ago) could reach the server AFTER account creation already
-            // cleared the progress record, recreating an orphaned row for a visitor
-            // who's already a real WP user and will never return to this flow.
-            await progressSaveChain;
-            const captured = capturedIdentity || {};
-            const data = await window.ihqCoachEvents.register( {
-                firstName: captured.firstName,
-                lastName: captured.lastName,
-                username: captured.username,
-                channels: capturedChannels || undefined,
-                language: currentLocale,
-                redirect: false,
-            } );
-            if ( ! data || ! data.success || ! data.redirectUrl ) {
-                serverMessage = serverErrorMessage( data );
-                throw new Error( ( data && data.error ) || 'create-account failed' );
-            }
-
-            // Best-effort cleanup, matches Gary's documented session lifecycle —
-            // not awaited so it never delays the redirect the visitor is waiting on.
-            if ( garySessionId ) {
-                fetch( garyCloseUrl( garySessionId ), { method: 'POST', headers: { 'X-WP-Nonce': cfg.nonce } } )
-                    .catch( function () {} );
-            }
-
-            window.location.href = data.redirectUrl;
-        } catch ( error ) {
-            console.warn( '[aicoach] account creation failed:', error );
+        const result = await createAccount();
+        if ( ! result.ok ) {
+            console.warn( '[aicoach] account creation failed:', result.message );
             if ( finalError ) {
-                finalError.textContent = serverMessage || cfg.i18n?.accountCreateErr || 'Something went wrong creating your account. Please try again.';
+                finalError.textContent = result.message;
             }
             finalContinueBtn.disabled = false;
+            return;
         }
+
+        // Best-effort cleanup, matches Gary's documented session lifecycle —
+        // not awaited so it never delays the redirect the visitor is waiting on.
+        if ( garySessionId ) {
+            fetch( garyCloseUrl( garySessionId ), { method: 'POST', headers: { 'X-WP-Nonce': cfg.nonce } } )
+                .catch( function () {} );
+        }
+
+        window.location.href = result.redirectUrl;
     } );
 
     // FR-17 — time-remaining check (Scenario 29/30) and the entry to FR-18's
@@ -2498,6 +2529,11 @@ if ( stage && avatarWrap ) {
 
     function maybeShowTimeRemainingCheck() {
         if ( timeRemainingPromptShown ) {
+            return;
+        }
+        // ENGR-7828 — with the account already created the registration is complete, and a
+        // visitor who already has an account must not be offered an appointment to finish it.
+        if ( accountStep.isCreated() ) {
             return;
         }
         // PO-3346 (#7) — don't layer the prompt on top of an open Ask Sami
