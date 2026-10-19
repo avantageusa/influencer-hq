@@ -225,14 +225,15 @@ reset_world();
 ihq_portal_onboarding_maybe_render();
 check( 'an eligible new user gets the layer once', 1 === count( $GLOBALS['actions_fired'] ) && 'ihq_portal_onboarding_render_layer' === $GLOBALS['actions_fired'][0][0] );
 $context = $GLOBALS['actions_fired'][0][1];
-check( 'the layer context state is the store\'s default state, so the shell starts at screen 1', '{"stage":"","answers":{},"platforms":[],"handles":{},"language":"","completed":false,"completed_at":""}' === json_encode( $context['state'] ) );
-check( 'the layer context carries both routes and the wp_rest nonce', array( 'state', 'progressUrl', 'completeUrl', 'nonce' ) === array_keys( $context ) && 'https://example.test/wp-json/ihq/v1/onboarding/progress' === $context['progressUrl'] && 'https://example.test/wp-json/ihq/v1/onboarding/complete' === $context['completeUrl'] && 'nonce-for-wp_rest' === $context['nonce'] );
+check( 'the layer context state is the store\'s default state, so the shell starts at screen 1', '{"stage":"","answers":{},"platforms":[],"handles":{},"language":"","drafts":{},"completed":false,"completed_at":""}' === json_encode( $context['state'] ) );
+check( 'the layer context carries the routes and the wp_rest nonce', array( 'state', 'progressUrl', 'completeUrl', 'draftsUrl', 'draftsReviseUrl', 'nonce' ) === array_keys( $context ) && 'https://example.test/wp-json/ihq/v1/onboarding/progress' === $context['progressUrl'] && 'https://example.test/wp-json/ihq/v1/onboarding/complete' === $context['completeUrl'] && 'nonce-for-wp_rest' === $context['nonce'] );
+check( 'the layer context carries the draft routes of screen 14', 'https://example.test/wp-json/ihq/v1/onboarding/drafts' === $context['draftsUrl'] && 'https://example.test/wp-json/ihq/v1/onboarding/drafts/revise' === $context['draftsReviseUrl'] );
 
 reset_world();
 ihq_portal_onboarding_merge( NEW_USER, array( 'stage' => 'world_tour', 'answers' => array( 'baccarat_experience' => 'played_some' ) ) );
 $GLOBALS['actions_fired'] = array();
 ihq_portal_onboarding_maybe_render();
-check( 'a returning user resumes at the saved stage with saved answers', 1 === count( $GLOBALS['actions_fired'] ) && '{"stage":"world_tour","answers":{"baccarat_experience":"played_some"},"platforms":[],"handles":{},"language":"","completed":false,"completed_at":""}' === json_encode( $GLOBALS['actions_fired'][0][1]['state'] ) );
+check( 'a returning user resumes at the saved stage with saved answers', 1 === count( $GLOBALS['actions_fired'] ) && '{"stage":"world_tour","answers":{"baccarat_experience":"played_some"},"platforms":[],"handles":{},"language":"","drafts":{},"completed":false,"completed_at":""}' === json_encode( $GLOBALS['actions_fired'][0][1]['state'] ) );
 
 $not_rendered = array(
 	'completed user'      => function () { ihq_portal_onboarding_mark_complete( NEW_USER ); $GLOBALS['actions_fired'] = array(); },

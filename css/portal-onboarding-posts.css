@@ -1,0 +1,243 @@
+/*
+ * Onboarding screens 14, draft posts, and 15, post action (ENGR-7570).
+ * Loaded after css/portal-onboarding.css (and, by name order, before
+ * css/portal-onboarding-questions.css) by the shell.
+ *
+ * From the design at 398 px wide (Figma instance 46893:117629, frames
+ * "14 Draft Posts to copy/paste" and "15 Draft Posts to copy/paste"): a
+ * centred white heading, then one white-outlined box per platform, 248 px
+ * wide on a 398 px frame, with Copy and the share icon under its right
+ * edge. The design has no platform name, change request or CONTINUE; those
+ * are the story's (PO-3212) and take the shell's colours and sizes.
+ */
+
+.ihq-onb-posts__heading {
+	max-width: 226px;
+	margin: 9px auto 0;
+	color: #fff;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 20px;
+	text-align: center;
+}
+
+.ihq-onb-posts__empty {
+	margin: 0;
+	color: #fff;
+	font-size: 14px;
+	line-height: 20px;
+	text-align: center;
+}
+
+.ihq-onb-posts__list {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	width: 100%;
+	max-width: 290px;
+	margin: 0 auto;
+}
+
+.ihq-onb-posts__panel {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.ihq-onb-posts__platform {
+	margin: 0;
+	color: var(--ihq-onb-gold);
+	font-size: 13px;
+	font-weight: 800;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+/* The design's box: white 2 px outline, rounded, at least 83 px tall. */
+.ihq-onb-posts__draft {
+	box-sizing: border-box;
+	min-height: 83px;
+	margin: 0;
+	padding: 10px 12px;
+	border: 2px solid #fff;
+	border-radius: 4px;
+	color: #fff;
+	font-size: 14px;
+	line-height: 20px;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	user-select: text;
+}
+
+.ihq-onb-posts__draft[hidden],
+.ihq-onb-posts__actions[hidden],
+.ihq-onb-posts__change[hidden],
+.ihq-onb-posts__status[hidden],
+.ihq-onb-posts__heard[hidden],
+.ihq-onb-posts__retry[hidden],
+.ihq-onb-posts__share[hidden],
+.ihq-onb-posts__mic[hidden] {
+	display: none;
+}
+
+.ihq-onb-posts__status,
+.ihq-onb-posts__heard {
+	margin: 0;
+	color: #ddd;
+	font-size: 13px;
+	line-height: 18px;
+}
+
+.ihq-onb-posts__heard-text {
+	font-style: italic;
+}
+
+/* Copy and Share at the box's right edge, as in the design; the change request after them. */
+.ihq-onb-posts__actions {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 8px 16px;
+}
+
+.ihq-onb-posts__copy,
+.ihq-onb-posts__share,
+.ihq-onb-posts__change-toggle,
+.ihq-onb-posts__retry {
+	min-height: 44px;
+	padding: 0 4px;
+	border: 0;
+	background: transparent;
+	color: #fff;
+	font-family: Inter, "Be Vietnam Pro", sans-serif;
+	font-size: 13px;
+	cursor: pointer;
+}
+
+.ihq-onb-posts__copy,
+.ihq-onb-posts__share {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+/* The design's share glyph: three linked dots, in the gold of the frame. */
+.ihq-onb-posts__share::after {
+	content: "";
+	width: 12px;
+	height: 12px;
+	background: var(--ihq-onb-gold);
+	-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='18' cy='5' r='3'/%3E%3Ccircle cx='6' cy='12' r='3'/%3E%3Ccircle cx='18' cy='19' r='3'/%3E%3Cpath d='M8.6 13.5l6.8 4M15.4 6.5l-6.8 4' stroke='%23000' stroke-width='2'/%3E%3C/svg%3E") center / contain no-repeat;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='18' cy='5' r='3'/%3E%3Ccircle cx='6' cy='12' r='3'/%3E%3Ccircle cx='18' cy='19' r='3'/%3E%3Cpath d='M8.6 13.5l6.8 4M15.4 6.5l-6.8 4' stroke='%23000' stroke-width='2'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.ihq-onb-posts__change-toggle,
+.ihq-onb-posts__retry {
+	color: var(--ihq-onb-yellow);
+	text-decoration: underline;
+}
+
+.ihq-onb-posts__change {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.ihq-onb-posts__change-label {
+	color: #fff;
+	font-size: 13px;
+}
+
+.ihq-onb-posts__change-row {
+	display: flex;
+	gap: 6px;
+	align-items: stretch;
+}
+
+.ihq-onb-posts__input {
+	box-sizing: border-box;
+	flex: 1;
+	min-width: 0;
+	min-height: 44px;
+	padding: 8px 10px;
+	border: 1px solid #555;
+	border-radius: 2px;
+	background: #161612;
+	color: #fff;
+	font-family: inherit;
+	font-size: 1rem;
+}
+
+.ihq-onb-posts__mic,
+.ihq-onb-posts__send {
+	flex: none;
+	min-width: 44px;
+	min-height: 44px;
+	border: 0;
+	border-radius: 2px;
+	background: var(--ihq-onb-green);
+	color: #fff;
+	font-family: Inter, "Be Vietnam Pro", sans-serif;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.ihq-onb-posts__send {
+	padding: 0 12px;
+}
+
+/* A microphone glyph, white on the green button. */
+.ihq-onb-posts__mic::before {
+	content: "";
+	display: block;
+	width: 18px;
+	height: 18px;
+	margin: 0 auto;
+	background: #fff;
+	-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='9' y='2' width='6' height='12' rx='3'/%3E%3Cpath d='M5 11a7 7 0 0 0 14 0M12 18v4' fill='none' stroke='%23000' stroke-width='2'/%3E%3C/svg%3E") center / contain no-repeat;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='9' y='2' width='6' height='12' rx='3'/%3E%3Cpath d='M5 11a7 7 0 0 0 14 0M12 18v4' fill='none' stroke='%23000' stroke-width='2'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.ihq-onb-posts__mic.is-listening {
+	background: var(--ihq-onb-error);
+}
+
+.ihq-onb-posts__mic:disabled,
+.ihq-onb-posts__send:disabled,
+.ihq-onb-posts__input:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+.ihq-onb-posts__copy:focus-visible,
+.ihq-onb-posts__share:focus-visible,
+.ihq-onb-posts__change-toggle:focus-visible,
+.ihq-onb-posts__retry:focus-visible,
+.ihq-onb-posts__input:focus-visible,
+.ihq-onb-posts__mic:focus-visible,
+.ihq-onb-posts__send:focus-visible {
+	outline: 3px solid var(--ihq-onb-yellow);
+	outline-offset: 2px;
+}
+
+/* The same small CONTINUE as screen 6's, at the right under the posts. */
+.ihq-onb-posts__continue {
+	width: max-content;
+	min-width: 132px;
+	max-width: 100%;
+	margin: 0 0 0 auto;
+	padding: 9px 12px;
+	font-family: Inter, "Be Vietnam Pro", sans-serif;
+	font-size: 14px;
+	line-height: 18px;
+}
+
+/*
+ * Screen 15 uses the question screens' answers (.ihq-onb-q__options and
+ * .ihq-onb-q__option: position, the green square and its label), in the
+ * design's sentence case.
+ */
+.ihq-onb-q__option.ihq-onb-post-action__option {
+	text-transform: none;
+}

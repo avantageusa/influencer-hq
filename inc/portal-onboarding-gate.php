@@ -176,17 +176,20 @@ function ihq_portal_onboarding_should_launch( $user_id ) {
 
 /**
  * What the onboarding layer needs to start: the saved state (an empty stage means screen 1),
- * the REST routes and the nonce they check.
+ * the REST routes (progress, completion, and screen 14's drafts) and the nonce they check.
  *
  * @param int $user_id
  * @return array
  */
 function ihq_portal_onboarding_layer_context( $user_id ) {
 	return array(
-		'state'       => ihq_portal_onboarding_public_state( ihq_portal_onboarding_get_state( $user_id ) ),
-		'progressUrl' => rest_url( 'ihq/v1/onboarding/progress' ),
-		'completeUrl' => rest_url( 'ihq/v1/onboarding/complete' ),
-		'nonce'       => wp_create_nonce( 'wp_rest' ),
+		'state'           => ihq_portal_onboarding_public_state( ihq_portal_onboarding_get_state( $user_id ) ),
+		'progressUrl'     => rest_url( 'ihq/v1/onboarding/progress' ),
+		'completeUrl'     => rest_url( 'ihq/v1/onboarding/complete' ),
+		// Screen 14's draft routes (ENGR-7570, inc/portal-onboarding-drafts.php).
+		'draftsUrl'       => rest_url( 'ihq/v1/onboarding/drafts' ),
+		'draftsReviseUrl' => rest_url( 'ihq/v1/onboarding/drafts/revise' ),
+		'nonce'           => wp_create_nonce( 'wp_rest' ),
 	);
 }
 

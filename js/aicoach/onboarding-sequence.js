@@ -10,8 +10,8 @@
  * The stage ids are the ones the account store keeps (inc/portal-onboarding-progress.php,
  * ihq_portal_onboarding_stages()); keep both lists the same.
  *
- * A screen whose module is not installed yet (draft posts and post action wait on
- * ENGR-7570) is passed over, so the flow still reaches the closing screen.
+ * A screen whose module is not installed (or failed to load) is passed over, so the flow
+ * still reaches the closing screen.
  */
 
 /** The sixteen screens, in order. */

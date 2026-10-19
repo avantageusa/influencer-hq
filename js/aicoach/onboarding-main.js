@@ -73,6 +73,8 @@ async function start() {
 	api.advance = engine.advance;
 	api.save = engine.save;
 	api.complete = engine.complete;
+	// For plug-ins that call their own routes (screen 14's drafts), with the same never-throwing contract.
+	api.postJson = postJson;
 
 	const installed = await installModules( { ids: config.modules, importFn: ( id ) => import( id ), api } );
 	shell.applyStrings();
