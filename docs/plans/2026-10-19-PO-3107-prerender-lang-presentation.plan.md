@@ -120,13 +120,14 @@ is rendered again (`wp aicoach avatar-status` lists them).
 
 ## Notes
 
-- **Overlap with PR #142 (ENGR-7798, open).** It changes the same function:
-  `ihq_aicoach_coach_create_video( $script, $idempotency_key, $segment_key, $video_profile = '', $language = 'en' )`
-  sends `lang`, `presentation` and `video_profile` only for a version that has a profile (v3),
-  and keeps the original set and v2 unchanged. This fix sends `lang` and `presentation` for
-  every version. Whichever merges second rebases onto the other. The merged result should send
-  lang and presentation always and `video_profile` only for a profiled version, with this
-  plan's key and fingerprint rules applying to v3 as well (v3 English keys are new anyway).
+- **Merged with PR #142 (ENGR-7798).** #142 merged first and sent `lang`, `presentation`
+  and `video_profile` for v3 only. The merge keeps both: every request sends `lang` and
+  `presentation`, and `video_profile` is added only for a version that has one.
+  `ihq_aicoach_coach_create_video()` is now `( $script, $idempotency_key, $segment_key, $language, $video_profile = '' )`.
+  Two of #142's tests changed with it: the original set and v2 now expect `lang` and
+  `presentation` (no profile), and a v3 non-English key ends `-lang-v3` like every other
+  version. If any v3 non-English clip was rendered before this merges, it renders again; per
+  ENGR-7798 only the English bts probe was meant to be rendered for v3 so far.
 
 - Not verified against the live box: the 409 body is assumed to be the flat
   `{ error, message }` 4xx shape recorded in 2026-09-23-PO-3062-aicoach-coach-video-api.plan.md;
