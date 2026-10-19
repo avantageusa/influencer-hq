@@ -23,6 +23,8 @@ $GLOBALS['translations'] = array();
 $GLOBALS['scripts_status']        = 200;
 $GLOBALS['scripts_transport_error'] = false;
 $GLOBALS['post_job_status']       = 'ready'; // what a new job says: 'ready', or 'queued' to be polled
+$GLOBALS['post_response']         = null;    // a whole answer to the next POSTs instead of a new job, e.g. a 409
+$GLOBALS['downloads']             = 0;
 mkdir( $GLOBALS['tmp'] . '/uploads', 0777, true );
 mkdir( $GLOBALS['tmp'] . '/theme/images/aicoach', 0777, true );
 
@@ -49,6 +51,9 @@ function ihq_aicoach_segment_translations() { return $GLOBALS['translations']; }
 // Sami's onboarding lines (inc/portal-onboarding-narration.php), already in work list shape.
 $GLOBALS['onboarding_items'] = array();
 function ihq_portal_onboarding_narration_work_items() { return $GLOBALS['onboarding_items']; }
+// inc/gary-proxy.php is not loaded; its list of languages is copied here and compared with the
+// file's own text below, so the two cannot drift apart unnoticed.
+const IHQ_COACH_THEME_LOCALES = array( 'en', 'zh', 'yue', 'ja', 'ko', 'th', 'vi' );
 
 // The Coach API: a POST starts a job that is already ready, a GET of the scripts answers
 // what the test set up, and a download writes a small file.
@@ -64,6 +69,9 @@ function ihq_coach_request( $method, $path, $body = null, $headers = array() ) {
 		if ( is_callable( $GLOBALS['during_post'] ?? null ) ) {
 			( $GLOBALS['during_post'] )(); // another render finishing while this one is under way
 		}
+		if ( null !== $GLOBALS['post_response'] ) {
+			return $GLOBALS['post_response'];
+		}
 		return array( 'status' => 202, 'body' => array( 'id' => 'job-' . count( $GLOBALS['api_calls'] ), 'status' => $GLOBALS['post_job_status'], 'content' => array( 'url' => '/coach/v1/videos/x/content' ) ) );
 	}
 	if ( 'GET' === $method && 0 === strpos( $path, '/coach/v1/videos/' ) ) {
@@ -73,6 +81,7 @@ function ihq_coach_request( $method, $path, $body = null, $headers = array() ) {
 	return array( 'status' => 404, 'body' => array() );
 }
 function ihq_coach_download( $path, $dest ) {
+	++$GLOBALS['downloads'];
 	file_put_contents( $dest, 'MP4' );
 	return array( 'status' => 200 );
 }
@@ -117,9 +126,9 @@ check( 'other language file name, version', 'bts-ja.v2.mp4' === ihq_aicoach_prer
 
 $sha = 'abcdef0123456789abcdef0123456789';
 check( 'the original English key is the one already rendered with', 'ihq-seg-bts-abcdef0123456789' === ihq_aicoach_prerender_idempotency_key( 'bts', 'en', $sha ) );
-check( 'the original key of another language is the one already rendered with', 'ihq-seg-bts-ja-abcdef0123456789' === ihq_aicoach_prerender_idempotency_key( 'bts', 'ja', $sha, '' ) );
+check( 'the key of another language ends with the language-render mark, so it is not the one rendered with no lang', 'ihq-seg-bts-ja-abcdef0123456789-lang' === ihq_aicoach_prerender_idempotency_key( 'bts', 'ja', $sha, '' ) );
 check( 'a version ends the English key with itself', 'ihq-seg-bts-abcdef0123456789-v2' === ihq_aicoach_prerender_idempotency_key( 'bts', 'en', $sha, 'v2' ) );
-check( 'a version ends the key of another language with itself', 'ihq-seg-bts-ja-abcdef0123456789-v2' === ihq_aicoach_prerender_idempotency_key( 'bts', 'ja', $sha, 'v2' ) );
+check( 'a version ends the key of another language with itself, after the mark', 'ihq-seg-bts-ja-abcdef0123456789-lang-v2' === ihq_aicoach_prerender_idempotency_key( 'bts', 'ja', $sha, 'v2' ) );
 check( 'two versions never share a key', ihq_aicoach_prerender_idempotency_key( 'bts', 'en', $sha, 'v2' ) !== ihq_aicoach_prerender_idempotency_key( 'bts', 'en', $sha, 'v3' ) && ihq_aicoach_prerender_idempotency_key( 'bts', 'en', $sha, 'v2' ) !== ihq_aicoach_prerender_idempotency_key( 'bts', 'en', $sha ) );
 
 // --- rendering into a version ---
@@ -150,7 +159,7 @@ check( 'the version caches its own clip', 'cached' === $result['status'] && arra
 
 reset_calls();
 $result = ihq_aicoach_prerender_segment( 'bts', 'Changed text', 'bbbb2222bbbb2222bbbb2222', 'ja', null, 'v2' );
-check( 'another language into a version uses the language and version in the name and key', 'rendered' === $result['status'] && file_exists( $dir . '/bts-ja.v2.mp4' ) && 'ihq-seg-bts-ja-bbbb2222bbbb2222-v2' === posted()[0]['headers']['Idempotency-Key'] && isset( ihq_aicoach_prerender_load_manifest( 'v2' )['bts__ja'] ) );
+check( 'another language into a version uses the language and version in the name and key', 'rendered' === $result['status'] && file_exists( $dir . '/bts-ja.v2.mp4' ) && 'ihq-seg-bts-ja-bbbb2222bbbb2222-lang-v2' === posted()[0]['headers']['Idempotency-Key'] && isset( ihq_aicoach_prerender_load_manifest( 'v2' )['bts__ja'] ) );
 
 // --- what visitors are served ---
 
@@ -158,7 +167,7 @@ check( 'with no option visitors are served the original set', array( 'bts' => ar
 check( 'asking for a version says what it holds', array(
 	'bts' => array(
 		'en' => 'https://example.test/wp-content/uploads/aicoach-videos/bts.v2.mp4?v=aaaa1111aaaa',
-		'ja' => 'https://example.test/wp-content/uploads/aicoach-videos/bts-ja.v2.mp4?v=bbbb2222bbbb',
+		'ja' => 'https://example.test/wp-content/uploads/aicoach-videos/bts-ja.v2.mp4?v=' . substr( hash( 'sha256', 'bbbb2222bbbb2222bbbb2222|ja|lang' ), 0, 12 ),
 	),
 ) === ihq_aicoach_prerender_get_urls( 'v2' ) );
 check( 'asking for the original set by name works', ihq_aicoach_prerender_get_urls( '' ) === ihq_aicoach_prerender_get_urls() );
@@ -429,6 +438,123 @@ check( 'with no version asked, the portrait is the original until the version is
 update_option( IHQ_AICOACH_AVATAR_VERSION_OPTION, 'v2' );
 check( 'once the version is served the portrait changes with it', 'coach-portrait-v2.webp' === ihq_aicoach_portrait_file() );
 check( 'the original can still be asked for by name', 'coach-portrait.webp' === ihq_aicoach_portrait_file( '' ) );
+
+// --- the language and presentation of every request (Luna, 2026-10-19) ---
+
+foreach ( glob( $dir . '/*' ) as $f ) { unlink( $f ); }
+$GLOBALS['wp_options'] = array();
+
+preg_match( '/const IHQ_COACH_THEME_LOCALES = array\(([^)]*)\);/', (string) file_get_contents( __DIR__ . '/../inc/gary-proxy.php' ), $locales_source );
+preg_match_all( "/'([^']*)'/", $locales_source[1] ?? '', $locales_listed );
+check( 'the languages copied into this test are the ones inc/gary-proxy.php defines', IHQ_COACH_THEME_LOCALES === $locales_listed[1] );
+check( 'the presentation is Sami', 'sami' === IHQ_AICOACH_COACH_PRESENTATION );
+
+$lang_sha = 'cccc3333cccc3333cccc3333';
+$expected_keys = array(
+	'en'  => 'ihq-seg-world-cccc3333cccc3333',
+	'zh'  => 'ihq-seg-world-zh-cccc3333cccc3333-lang',
+	'yue' => 'ihq-seg-world-yue-cccc3333cccc3333-lang',
+	'ja'  => 'ihq-seg-world-ja-cccc3333cccc3333-lang',
+	'ko'  => 'ihq-seg-world-ko-cccc3333cccc3333-lang',
+	'th'  => 'ihq-seg-world-th-cccc3333cccc3333-lang',
+	'vi'  => 'ihq-seg-world-vi-cccc3333cccc3333-lang',
+);
+foreach ( $expected_keys as $language => $expected_key ) {
+	reset_calls();
+	$manifest_key = ihq_aicoach_prerender_manifest_key( 'world', $language );
+	$result       = ihq_aicoach_prerender_segment( 'world', "World in {$language}", $lang_sha, $language );
+	check( "{$language}: rendered", 'rendered' === $result['status'] );
+	check( "{$language}: the request is exactly the script, its language, Sami and the segment", array(
+		array(
+			'method'  => 'POST',
+			'path'    => '/coach/v1/videos',
+			'body'    => array(
+				'script'       => "World in {$language}",
+				'lang'         => $language,
+				'presentation' => 'sami',
+				'metadata'     => array( 'segment' => $manifest_key ),
+			),
+			'headers' => array( 'Idempotency-Key' => $expected_key ),
+		),
+	) === posted() );
+}
+check( 'English keeps the key it was rendered with when no lang was sent', 'ihq-seg-world-cccc3333cccc3333' === $expected_keys['en'] && $expected_keys['en'] === ihq_aicoach_prerender_idempotency_key( 'world', 'en', $lang_sha ) );
+check( 'English keeps its version key too', 'ihq-seg-world-cccc3333cccc3333-v2' === ihq_aicoach_prerender_idempotency_key( 'world', 'en', $lang_sha, 'v2' ) );
+foreach ( array( 'zh', 'yue', 'ja', 'ko', 'th', 'vi' ) as $language ) {
+	$old_key = 'ihq-seg-world-' . $language . '-cccc3333cccc3333';
+	check( "{$language}: the key is not the one used with no lang, for the original set or a version", $old_key !== ihq_aicoach_prerender_idempotency_key( 'world', $language, $lang_sha ) && "{$old_key}-v2" !== ihq_aicoach_prerender_idempotency_key( 'world', $language, $lang_sha, 'v2' ) );
+}
+
+check( 'the English fingerprint is the hash of the text, as before', $lang_sha === ihq_aicoach_prerender_fingerprint( $lang_sha, 'en' ) );
+check( 'another language\'s fingerprint carries the language and the mark', hash( 'sha256', $lang_sha . '|ja|lang' ) === ihq_aicoach_prerender_fingerprint( $lang_sha, 'ja' ) );
+check( 'the same text in two languages has two fingerprints', ihq_aicoach_prerender_fingerprint( $lang_sha, 'zh' ) !== ihq_aicoach_prerender_fingerprint( $lang_sha, 'yue' ) );
+
+// Clips rendered before this change: English stays, another language renders again.
+foreach ( glob( $dir . '/*' ) as $f ) { unlink( $f ); }
+put_manifest( '', array(
+	'world'     => entry( 'world.mp4', $lang_sha ),
+	'world__ja' => entry( 'world-ja.mp4', $lang_sha ),
+) );
+put_clip( 'world.mp4' );
+file_put_contents( $dir . '/world-ja.mp4', 'OLD MP4' );
+$urls_before = ihq_aicoach_prerender_get_urls();
+check( 'before a new render the old Japanese clip is still served, under its old URL', 'https://example.test/wp-content/uploads/aicoach-videos/world-ja.mp4?v=cccc3333cccc' === $urls_before['world']['ja'] );
+
+reset_calls();
+check( 'an English clip rendered before is cached and asks Gary for nothing', 'cached' === ihq_aicoach_prerender_segment( 'world', 'World in en', $lang_sha, 'en' )['status'] && array() === $GLOBALS['api_calls'] );
+
+reset_calls();
+$rerender = ihq_aicoach_prerender_segment( 'world', 'World in ja', $lang_sha, 'ja' );
+check( 'a Japanese clip rendered with no lang is rendered again, with its language and the new key', 'rendered' === $rerender['status'] && 1 === count( posted() ) && 'ja' === posted()[0]['body']['lang'] && 'ihq-seg-world-ja-cccc3333cccc3333-lang' === posted()[0]['headers']['Idempotency-Key'] );
+$ja_entry = ihq_aicoach_prerender_load_manifest()['world__ja'];
+check( 'the new clip replaces the old file under the same name and the manifest records its new fingerprint', 'MP4' === file_get_contents( $dir . '/world-ja.mp4' ) && 'world-ja.mp4' === $ja_entry['file'] && ihq_aicoach_prerender_fingerprint( $lang_sha, 'ja' ) === $ja_entry['fingerprint'] );
+$urls_after = ihq_aicoach_prerender_get_urls();
+check( 'the new clip is served under a new URL, so the CDN does not keep the old bytes', 'https://example.test/wp-content/uploads/aicoach-videos/world-ja.mp4?v=' . substr( ihq_aicoach_prerender_fingerprint( $lang_sha, 'ja' ), 0, 12 ) === $urls_after['world']['ja'] && $urls_before['world']['ja'] !== $urls_after['world']['ja'] );
+check( 'the English URL does not change', $urls_before['world']['en'] === $urls_after['world']['en'] );
+reset_calls();
+check( 'once rendered with its language it is cached', 'cached' === ihq_aicoach_prerender_segment( 'world', 'World in ja', $lang_sha, 'ja' )['status'] && array() === $GLOBALS['api_calls'] );
+
+// 409 idempotency_conflict.
+put_manifest( '', array( 'world__ko' => entry( 'world-ko.mp4', $lang_sha ) ) );
+file_put_contents( $dir . '/world-ko.mp4', 'OLD MP4' );
+$manifest_before = file_get_contents( $dir . '/manifest.json' );
+$GLOBALS['post_response'] = array( 'status' => 409, 'body' => array( 'error' => 'idempotency_conflict', 'message' => 'Idempotency-Key reused with a different request.' ) );
+$GLOBALS['downloads']     = 0;
+reset_calls();
+$conflict_log = array();
+$conflict = ihq_aicoach_prerender_segment( 'world', 'World in ko', $lang_sha, 'ko', function ( $line ) use ( &$conflict_log ) { $conflict_log[] = $line; } );
+$conflict_message = 'Coach video create refused (HTTP 409 idempotency_conflict): Idempotency-Key ihq-seg-world-ko-cccc3333cccc3333-lang was already used for a different script, presentation, language or metadata. Nothing was rendered; a new render needs a new key.';
+check( 'a 409 idempotency_conflict is an error that names the conflict and the key', array( 'status' => 'error', 'error' => $conflict_message ) === $conflict );
+check( 'it is logged as a conflict, not a generic failure', array(
+	'  world__ko: creating (or resuming) render job...',
+	'  world__ko: IDEMPOTENCY CONFLICT, Gary refused key ihq-seg-world-ko-cccc3333cccc3333-lang because it was used for a different request. Nothing rendered; not retried.',
+) === $conflict_log );
+check( 'after a conflict nothing is polled, downloaded or retried', 1 === count( $GLOBALS['api_calls'] ) && 1 === count( posted() ) && 0 === $GLOBALS['downloads'] );
+check( 'after a conflict the old clip and the manifest are untouched', 'OLD MP4' === file_get_contents( $dir . '/world-ko.mp4' ) && $manifest_before === file_get_contents( $dir . '/manifest.json' ) );
+
+reset_calls();
+$conflict_error = ihq_aicoach_coach_create_video( 'Text', 'key-1', 'world__ko', 'ko' );
+check( 'the create call returns the conflict as its own error code, with the key as data', is_wp_error( $conflict_error ) && 'coach_video_idempotency_conflict' === $conflict_error->get_error_code() && array( 'idempotency_key' => 'key-1' ) === $conflict_error->get_error_data() );
+
+$GLOBALS['post_response'] = array( 'status' => 409, 'body' => array( 'error' => 'something_else' ) );
+$other_409 = ihq_aicoach_coach_create_video( 'Text', 'key-1', 'world__ko', 'ko' );
+check( 'a 409 with another code is a generic create failure', is_wp_error( $other_409 ) && 'coach_video_create_failed' === $other_409->get_error_code() && 'Coach video create failed (HTTP 409): {"error":"something_else"}' === $other_409->get_error_message() );
+$GLOBALS['post_response'] = array( 'status' => 400, 'body' => array( 'error' => 'idempotency_conflict' ) );
+$not_409 = ihq_aicoach_coach_create_video( 'Text', 'key-1', 'world__ko', 'ko' );
+check( 'the conflict code under another status is a generic create failure', is_wp_error( $not_409 ) && 'coach_video_create_failed' === $not_409->get_error_code() );
+$GLOBALS['post_response'] = array( 'status' => 200, 'body' => array( 'id' => 'job-replayed', 'status' => 'ready', 'idempotent_replayed' => true ) );
+check( 'a replay (200, idempotent_replayed) is success and returns the job', array( 'id' => 'job-replayed', 'status' => 'ready', 'idempotent_replayed' => true ) === ihq_aicoach_coach_create_video( 'Text', 'key-1', 'world', 'en' ) );
+$GLOBALS['post_response'] = null;
+
+// A language that is not one of the seven is never sent.
+foreach ( array( 'fr', '', 'EN', 'ja ', 'zh-HK', null, 5, array( 'ja' ) ) as $bad_language ) {
+	reset_calls();
+	$refused_language = ihq_aicoach_coach_create_video( 'Text', 'key-1', 'world', $bad_language );
+	check( 'a language that is not one of the seven is refused before any request: ' . json_encode( $bad_language ), is_wp_error( $refused_language ) && 'coach_video_language_invalid' === $refused_language->get_error_code() && array() === $GLOBALS['api_calls'] );
+}
+reset_calls();
+$bad_render = ihq_aicoach_prerender_segment( 'world', 'Monde', $lang_sha, 'fr' );
+check( 'a render in such a language is an error and asks Gary for nothing', 'error' === $bad_render['status'] && 'Not rendered: "fr" is not a language the Coach API is sent (en, zh, yue, ja, ko, th, vi).' === $bad_render['error'] && array() === $GLOBALS['api_calls'] );
 
 function remove_tree( $path ) {
 	foreach ( glob( $path . '/*' ) as $f ) { is_dir( $f ) ? remove_tree( $f ) : unlink( $f ); }

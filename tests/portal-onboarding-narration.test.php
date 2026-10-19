@@ -35,6 +35,9 @@ function ihq_aicoach_prerender_manifest_key( $segment_key, $language = 'en' ) { 
 function ihq_aicoach_avatar_active_version() { return $GLOBALS['active_version']; }
 function ihq_aicoach_prerender_load_manifest( $version = '' ) { $GLOBALS['manifest_asked'][] = $version; return $GLOBALS['manifest']; }
 function ihq_aicoach_prerender_get_urls( $version = null ) { return $GLOBALS['urls']; }
+// The same fingerprint as inc/aicoach-prerender.php: the text hash for English, and for another
+// language that hash with the language and the language-render mark.
+function ihq_aicoach_prerender_fingerprint( $sha256, $language ) { return 'en' === $language ? $sha256 : hash( 'sha256', $sha256 . '|' . $language . '|lang' ); }
 
 require __DIR__ . '/../inc/portal-onboarding-narration.php';
 
@@ -117,7 +120,7 @@ $scripts = array(
 );
 $manifest = array(
 	'onboarding_game_of_kings'     => array( 'fingerprint' => hash( 'sha256', 'Kings line.' ), 'file' => 'onboarding_game_of_kings.mp4' ),
-	'onboarding_game_of_kings__ja' => array( 'fingerprint' => hash( 'sha256', 'Kings ja.' ), 'file' => 'onboarding_game_of_kings-ja.mp4' ),
+	'onboarding_game_of_kings__ja' => array( 'fingerprint' => hash( 'sha256', hash( 'sha256', 'Kings ja.' ) . '|ja|lang' ), 'file' => 'onboarding_game_of_kings-ja.mp4' ),
 	// Rendered from an older wording of the line.
 	'onboarding_modern_era'        => array( 'fingerprint' => hash( 'sha256', 'Old modern line.' ), 'file' => 'onboarding_modern_era.mp4' ),
 	// In the manifest, but its file is gone, so the URL list has no entry for it.
@@ -135,12 +138,19 @@ $urls = array(
 	// Rendered once, but the screen has no line any more.
 	'onboarding_equity'        => array( 'en' => 'https://example.test/e.mp4' ),
 );
-check( 'only clips rendered from the current line, with a file, of a screen that has a line, are served', array(
+check( 'only clips rendered from the current line, in its language, with a file, of a screen that has a line, are served', array(
 	'game_of_kings' => array(
 		'en' => 'https://example.test/k.mp4?v=1',
 		'ja' => 'https://example.test/k-ja.mp4?v=2',
 	),
 ) === ihq_portal_onboarding_narration_clips( $scripts, $manifest, $urls ) );
+check( 'a clip of another language rendered from the current line but before its request named its language is not served, and once rendered with it, it is', array(
+	array(),
+	array( 'closing' => array( 'zh' => 'https://example.test/c-zh.mp4' ) ),
+) === array(
+	ihq_portal_onboarding_narration_clips( array( 'closing' => array( 'zh' => 'Closing zh.' ) ), array( 'onboarding_closing__zh' => array( 'fingerprint' => hash( 'sha256', 'Closing zh.' ), 'file' => 'onboarding_closing-zh.mp4' ) ), $urls ),
+	ihq_portal_onboarding_narration_clips( array( 'closing' => array( 'zh' => 'Closing zh.' ) ), array( 'onboarding_closing__zh' => array( 'fingerprint' => hash( 'sha256', hash( 'sha256', 'Closing zh.' ) . '|zh|lang' ), 'file' => 'onboarding_closing-zh.mp4' ) ), $urls ),
+) );
 check( 'no lines serve no clips', array() === ihq_portal_onboarding_narration_clips( array(), $manifest, $urls ) );
 check( 'a manifest entry that is not a list is not a match', array() === ihq_portal_onboarding_narration_clips( array( 'modern_era' => array( 'en' => 'Modern line.' ) ), array( 'onboarding_modern_era' => 'broken' ), $urls ) );
 
