@@ -6,8 +6,10 @@
  * once and retries once, a request never refreshes twice, a failed refresh
  * returns today's error, the share link keeps its new-influencer
  * 404 -> start-session -> retry path, and a request that finds another one
- * refreshing waits for it and uses its token. No WordPress bootstrap and no
- * live requests:
+ * refreshing waits for it and uses its token. ENGR-7508: embed SSO reads
+ * refresh through the same lock when the token is expired or within 15
+ * minutes of expiry, persist a new ssoCode, and keep the stored code when
+ * start-session omits it or fails. No WordPress bootstrap and no live requests:
  *
  *     docker run -v "$PWD":/t -w /t php:8.2-cli php tests/platform-id-token-refresh.test.php
  *
@@ -44,6 +46,9 @@ function jwt( $sub, $marker ) {
 define( 'OLD_TOKEN', jwt( SUB, 'old' ) );
 define( 'NEW_TOKEN', jwt( SUB, 'new' ) );
 define( 'SESSION_OK', json_encode( array( 'success' => true, 'data' => array( 'AccessToken' => 'at-new', 'IdToken' => NEW_TOKEN, 'RefreshToken' => 'rt-new', 'ExpiresIn' => 3600 ) ) ) );
+define( 'OLD_SSO', 'sso-old' );
+define( 'NEW_SSO', 'sso-new' );
+define( 'SESSION_OK_SSO', json_encode( array( 'success' => true, 'data' => array( 'AccessToken' => 'at-new', 'IdToken' => NEW_TOKEN, 'RefreshToken' => 'rt-new', 'ExpiresIn' => 3600, 'ssoCode' => NEW_SSO ) ) ) );
 const SESSION_FAIL = '{"success":false,"message":"boom"}';
 
 class WP_Error {
@@ -219,6 +224,7 @@ function given_user( $expires_at ) {
 		'ihq_oauth_country_iso' => 'NL',
 		'first_name'            => 'Ann',
 		'last_name'             => 'Lee',
+		'ihq_sso_code'          => OLD_SSO,
 	);
 }
 function expired() { return time() - 10; }
@@ -262,6 +268,16 @@ check( 'expired: empty meta', ihq_platform_id_token_is_expired( '', 5000 ), fals
 check( 'expired: null meta', ihq_platform_id_token_is_expired( null, 5000 ), false );
 check( 'expired: garbage meta', ihq_platform_id_token_is_expired( 'soon', 5000 ), false );
 
+// --- ihq_platform_embed_sso_needs_refresh(): 15 min margin; unknown expiry is not expired. ---
+check( 'embed window: well before expiry', ihq_platform_embed_sso_needs_refresh( 10000, 8000 ), false );
+check( 'embed window: one second before the margin', ihq_platform_embed_sso_needs_refresh( 10000, 9099 ), false );
+check( 'embed window: at the 15 min margin', ihq_platform_embed_sso_needs_refresh( 10000, 9100 ), true );
+check( 'embed window: past expiry', ihq_platform_embed_sso_needs_refresh( 10000, 20000 ), true );
+check( 'embed window: numeric-string meta', ihq_platform_embed_sso_needs_refresh( '10000', 9100 ), true );
+check( 'embed window: empty meta', ihq_platform_embed_sso_needs_refresh( '', 20000 ), false );
+check( 'embed window: null meta', ihq_platform_embed_sso_needs_refresh( null, 20000 ), false );
+check( 'embed window: garbage meta', ihq_platform_embed_sso_needs_refresh( 'soon', 20000 ), false );
+
 // --- ihq_refresh_influencer_oauth_tokens() now reports success. ---
 reset_state();
 given_user( expired() );
@@ -269,12 +285,20 @@ respond( START_SESSION_URL, 200, SESSION_OK );
 check( 'refresh: true on success', ihq_refresh_influencer_oauth_tokens( USER_ID, 'NL' ), true );
 check( 'refresh: new token stored', get_user_meta( USER_ID, 'ihq_id_token' ), NEW_TOKEN );
 check( 'refresh: expiry pushed out', get_user_meta( USER_ID, 'ihq_token_expires' ) > time() + 3500, true );
+check( 'refresh: ssoCode absent keeps stored code', get_user_meta( USER_ID, 'ihq_sso_code' ), OLD_SSO );
+
+reset_state();
+given_user( expired() );
+respond( START_SESSION_URL, 200, SESSION_OK_SSO );
+check( 'refresh: true when start-session returns ssoCode', ihq_refresh_influencer_oauth_tokens( USER_ID, 'NL' ), true );
+check( 'refresh: new ssoCode stored', get_user_meta( USER_ID, 'ihq_sso_code' ), NEW_SSO );
 
 reset_state();
 given_user( expired() );
 respond( START_SESSION_URL, 500, SESSION_FAIL );
 check( 'refresh: false when start-session fails', ihq_refresh_influencer_oauth_tokens( USER_ID, 'NL' ), false );
 check( 'refresh: old token kept on failure', get_user_meta( USER_ID, 'ihq_id_token' ), OLD_TOKEN );
+check( 'refresh: old ssoCode kept on failure', get_user_meta( USER_ID, 'ihq_sso_code' ), OLD_SSO );
 check( 'refresh: false for user 0', ihq_refresh_influencer_oauth_tokens( 0, 'NL' ), false );
 
 // --- ihq_refresh_platform_id_token(): stored country, returns the new token or ''. ---
@@ -316,6 +340,42 @@ check( 'begin: no stored expiry, no refresh', ihq_platform_session_begin( USER_I
 
 reset_state();
 check( 'begin: no token, no refresh', ihq_platform_session_begin( USER_ID, 2000 ), array( 'user_id' => USER_ID, 'id_token' => '', 'refreshed' => false ) );
+
+// --- ihq_hq_sso_code_for_embed_url() (ENGR-7508): refresh only when expired or within 15 min. ---
+reset_state();
+given_user( 10000 );
+check( 'embed: plenty of time left, stored code, no start-session', ihq_hq_sso_code_for_embed_url( USER_ID, 8000 ), OLD_SSO );
+check( 'embed: plenty of time left, no request', $GLOBALS['requests'], array() );
+
+reset_state();
+given_user( 10000 );
+respond( START_SESSION_URL, 200, SESSION_OK_SSO );
+check( 'embed: within 15 min, new ssoCode', ihq_hq_sso_code_for_embed_url( USER_ID, 9400 ), NEW_SSO );
+check( 'embed: within 15 min, one start-session', request_log(), array( session_line() ) );
+
+reset_state();
+given_user( 1000 );
+respond( START_SESSION_URL, 200, SESSION_OK_SSO );
+check( 'embed: expired, new ssoCode', ihq_hq_sso_code_for_embed_url( USER_ID, 2000 ), NEW_SSO );
+check( 'embed: expired, one start-session', request_log(), array( session_line() ) );
+check( 'embed: second read after refresh, no second start-session', ihq_hq_sso_code_for_embed_url( USER_ID, 2000 ), NEW_SSO );
+check( 'embed: second read still one start-session', request_log(), array( session_line() ) );
+
+reset_state();
+given_user( 1000 );
+respond( START_SESSION_URL, 500, SESSION_FAIL );
+check( 'embed: failed refresh keeps stored ssoCode', ihq_hq_sso_code_for_embed_url( USER_ID, 2000 ), OLD_SSO );
+check( 'embed: failed refresh, one start-session, no loop', request_log(), array( session_line() ) );
+check( 'embed: failed refresh, old token kept', get_user_meta( USER_ID, 'ihq_id_token' ), OLD_TOKEN );
+
+reset_state();
+given_user( '' );
+check( 'embed: no stored expiry, stored code, no refresh', ihq_hq_sso_code_for_embed_url( USER_ID, 2000 ), OLD_SSO );
+check( 'embed: no stored expiry, no request', $GLOBALS['requests'], array() );
+
+reset_state();
+check( 'embed: user 0, empty code, no request', ihq_hq_sso_code_for_embed_url( 0, 2000 ), '' );
+check( 'embed: user 0, no request', $GLOBALS['requests'], array() );
 
 // --- Refresh lock: one start-session per user at a time; a lock older than 30 s is taken over. ---
 const LOCK = 'ihq_platform_refresh_lock_42';
@@ -419,6 +479,7 @@ function other_request_refreshing( $finishes_at_poll, $succeeds = true ) {
 		}
 		$GLOBALS['user_meta'][ USER_ID ]['ihq_id_token']      = NEW_TOKEN;
 		$GLOBALS['user_meta'][ USER_ID ]['ihq_token_expires'] = time() + 3600;
+		$GLOBALS['user_meta'][ USER_ID ]['ihq_sso_code']      = NEW_SSO;
 	};
 }
 const SELECT_LOCK = 'SELECT ' . LOCK;
@@ -458,6 +519,13 @@ check(
 	ihq_platform_session_begin( USER_ID ),
 	array( 'user_id' => USER_ID, 'id_token' => NEW_TOKEN, 'refreshed' => true )
 );
+
+reset_state();
+given_user( expired() );
+get_user_meta( USER_ID, 'ihq_sso_code' );
+other_request_refreshing( 3 );
+check( 'embed wait: returns the other request\'s new ssoCode', ihq_hq_sso_code_for_embed_url( USER_ID ), NEW_SSO );
+check( 'embed wait: no start-session of its own', $GLOBALS['requests'], array() );
 
 reset_state();
 given_user( valid() );

@@ -299,8 +299,15 @@ function ihq_build_hq_game_portal_external_url( $external_path, $user_id = 0 ) {
 	);
 
 	$user_id = $user_id > 0 ? (int) $user_id : (int) get_current_user_id();
-	if ( $user_id > 0 && function_exists( 'ihq_get_hq_sso_code_for_user' ) ) {
-		$hq_sso_code = ihq_get_hq_sso_code_for_user( $user_id );
+	if ( $user_id > 0 ) {
+		// Refresh through the embed helper (15 min margin) so frames do not keep a
+		// login-time ssoCode after the tokens stored with it have expired (ENGR-7508).
+		$hq_sso_code = '';
+		if ( function_exists( 'ihq_hq_sso_code_for_embed_url' ) ) {
+			$hq_sso_code = ihq_hq_sso_code_for_embed_url( $user_id );
+		} elseif ( function_exists( 'ihq_get_hq_sso_code_for_user' ) ) {
+			$hq_sso_code = ihq_get_hq_sso_code_for_user( $user_id );
+		}
 		if ( $hq_sso_code !== '' ) {
 			$args['hqSsoCode'] = $hq_sso_code;
 		}

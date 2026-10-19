@@ -1173,6 +1173,14 @@ function ihq_refresh_influencer_oauth_tokens( $user_id, $country_iso = '' ) {
     update_user_meta( $user_id, 'ihq_id_token', $ihq_data['IdToken'] );
     update_user_meta( $user_id, 'ihq_refresh_token', $ihq_data['RefreshToken'] ?? '' );
     update_user_meta( $user_id, 'ihq_token_type', $ihq_data['TokenType'] ?? 'Bearer' );
+    // Embeds read ihq_sso_code independently of the ID token. A login-time code
+    // still redeems for 24h, but the tokens stored with it expire after ~1h (ENGR-7508).
+    // Skip the write when start-session omitted ssoCode so a failed/partial payload
+    // cannot wipe a still-usable stored code.
+    $sso_code = ihq_extract_sso_code_from_start_session_data( $ihq_data );
+    if ( $sso_code !== '' ) {
+        update_user_meta( $user_id, ihq_sso_code_meta_key(), $sso_code );
+    }
     update_user_meta( $user_id, 'ihq_token_expires', time() + (int) ( $ihq_data['ExpiresIn'] ?? 3600 ) );
     return true;
 }
