@@ -161,6 +161,45 @@ reset_calls();
 $result = ihq_aicoach_prerender_segment( 'bts', 'Changed text', 'bbbb2222bbbb2222bbbb2222', 'ja', null, 'v2' );
 check( 'another language into a version uses the language and version in the name and key', 'rendered' === $result['status'] && file_exists( $dir . '/bts-ja.v2.mp4' ) && 'ihq-seg-bts-ja-bbbb2222bbbb2222-lang-v2' === posted()[0]['headers']['Idempotency-Key'] && isset( ihq_aicoach_prerender_load_manifest( 'v2' )['bts__ja'] ) );
 
+// --- the video profile of a version (ENGR-7798) ---
+
+check( 'v3 is rendered with the sami-framing profile', 'sami-framing-20261018' === ihq_aicoach_avatar_version_video_profile( 'v3' ) );
+check( 'the original set has no profile', '' === ihq_aicoach_avatar_version_video_profile( '' ) );
+check( 'v2 has no profile', '' === ihq_aicoach_avatar_version_video_profile( 'v2' ) );
+check( 'something that is not a version has no profile', '' === ihq_aicoach_avatar_version_video_profile( '../v3' ) && '' === ihq_aicoach_avatar_version_video_profile( null ) && '' === ihq_aicoach_avatar_version_video_profile( array( 'v3' ) ) );
+
+// What the Coach API receives. The original set and v2 send no profile; like every request
+// they name the language and the presentation (PO-3107), which for English resolve to what the
+// box used when they were left out. (The request is built directly here: rendering them would
+// add clips to manifests the later checks count.)
+foreach ( array( '' => 'the original set', 'v2' => 'v2' ) as $version => $name ) {
+	reset_calls();
+	ihq_aicoach_coach_create_video( 'World text', 'key-' . $name, 'world', 'en', ihq_aicoach_avatar_version_video_profile( $version ) );
+	check( "{$name} sends the script, the metadata, the language and the presentation, and no profile", array( 'script' => 'World text', 'metadata' => array( 'segment' => 'world' ), 'lang' => 'en', 'presentation' => 'sami' ) === posted()[0]['body'] );
+}
+
+reset_calls();
+$result = ihq_aicoach_prerender_segment( 'world', 'World text', 'cccc3333cccc3333cccc3333', 'en', null, 'v3' );
+check( 'v3 is rendered', 'rendered' === $result['status'] && file_exists( $dir . '/world.v3.mp4' ) );
+check( 'v3 sends the language, the presentation and the profile with the script', array(
+	'script'        => 'World text',
+	'metadata'      => array( 'segment' => 'world' ),
+	'lang'          => 'en',
+	'presentation'  => 'sami',
+	'video_profile' => 'sami-framing-20261018',
+) === posted()[0]['body'] );
+check( 'v3 sends the key of its own version', 'ihq-seg-world-cccc3333cccc3333-v3' === posted()[0]['headers']['Idempotency-Key'] );
+check( 'v3 has a manifest of its own and the others are untouched', array( 'world' ) === array_keys( ihq_aicoach_prerender_load_manifest( 'v3' ) ) && array( 'bts', 'bts__ja' ) === array_keys( ihq_aicoach_prerender_load_manifest( 'v2' ) ) && array( 'bts' ) === array_keys( ihq_aicoach_prerender_load_manifest( '' ) ) );
+
+reset_calls();
+ihq_aicoach_prerender_segment( 'world', 'ワールド', 'dddd4444dddd4444dddd4444', 'ja', null, 'v3' );
+check( 'v3 sends the language of the clip', 'ja' === posted()[0]['body']['lang'] && 'sami-framing-20261018' === posted()[0]['body']['video_profile'] );
+check( 'v3 keeps the key of another language, with the language-render mark, and the version', 'ihq-seg-world-ja-dddd4444dddd4444-lang-v3' === posted()[0]['headers']['Idempotency-Key'] );
+
+reset_calls();
+$result = ihq_aicoach_prerender_segment( 'world', 'World text', 'cccc3333cccc3333cccc3333', 'en', null, 'v3' );
+check( 'v3 caches its own clip', 'cached' === $result['status'] && array() === $GLOBALS['api_calls'] );
+
 // --- what visitors are served ---
 
 check( 'with no option visitors are served the original set', array( 'bts' => array( 'en' => 'https://example.test/wp-content/uploads/aicoach-videos/bts.mp4?v=aaaa1111aaaa' ) ) === ihq_aicoach_prerender_get_urls() );
@@ -470,9 +509,9 @@ foreach ( $expected_keys as $language => $expected_key ) {
 			'path'    => '/coach/v1/videos',
 			'body'    => array(
 				'script'       => "World in {$language}",
+				'metadata'     => array( 'segment' => $manifest_key ),
 				'lang'         => $language,
 				'presentation' => 'sami',
-				'metadata'     => array( 'segment' => $manifest_key ),
 			),
 			'headers' => array( 'Idempotency-Key' => $expected_key ),
 		),

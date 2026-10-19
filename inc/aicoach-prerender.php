@@ -144,6 +144,31 @@ function ihq_aicoach_avatar_version_is_valid( $version ) {
 }
 
 /**
+ * The Coach API video profile each avatar version is rendered with (ENGR-7798). Gary's
+ * `video_profile` selects the candidate avatar whose frame the page composes onto its banner
+ * (js/aicoach/ banner module, calibrated for that one candidate); a version that is not
+ * listed here is rendered with the default avatar, exactly as before, and sends no profile.
+ * The profile belongs to the version, never to a request, so a version is one avatar from
+ * its first render to its last and a changed profile can never reuse an old Idempotency-Key.
+ */
+const IHQ_AICOACH_AVATAR_VERSION_PROFILES = array(
+	'v3' => 'sami-framing-20261018',
+);
+
+/**
+ * The video profile an avatar version is rendered with.
+ *
+ * @param string $version An avatar version, or '' for the original set.
+ * @return string The profile, or '' when the version uses the default avatar.
+ */
+function ihq_aicoach_avatar_version_video_profile( $version ) {
+	if ( ! ihq_aicoach_avatar_version_is_valid( $version ) ) {
+		return '';
+	}
+	return IHQ_AICOACH_AVATAR_VERSION_PROFILES[ $version ] ?? '';
+}
+
+/**
  * The avatar version visitors are served: the option, or the original set ('') when it is
  * empty, missing or not a valid version.
  *
@@ -394,24 +419,30 @@ function ihq_aicoach_prerender_get_urls( $version = null ) {
  *                                 confirmed accepted as a free-form object.
  * @param string $language        The language the script is in, one of
  *                                 IHQ_COACH_THEME_LOCALES, sent as `lang`.
+ * @param string $video_profile   A Coach API video profile (ENGR-7798), or '' for the
+ *                                 default avatar. Sent only when there is one.
  * @return array|WP_Error Decoded response body on success.
  */
-function ihq_aicoach_coach_create_video( $script, $idempotency_key, $segment_key, $language ) {
+function ihq_aicoach_coach_create_video( $script, $idempotency_key, $segment_key, $language, $video_profile = '' ) {
 	if ( ! ihq_aicoach_coach_language_is_valid( $language ) ) {
 		return new WP_Error(
 			'coach_video_language_invalid',
 			sprintf( 'Not rendered: "%s" is not a language the Coach API is sent (%s).', is_string( $language ) ? $language : gettype( $language ), implode( ', ', IHQ_COACH_THEME_LOCALES ) )
 		);
 	}
+	$body = array(
+		'script'       => $script,
+		'metadata'     => array( 'segment' => $segment_key ),
+		'lang'         => $language,
+		'presentation' => IHQ_AICOACH_COACH_PRESENTATION,
+	);
+	if ( '' !== $video_profile ) {
+		$body['video_profile'] = $video_profile;
+	}
 	$result = ihq_coach_request(
 		'POST',
 		'/coach/v1/videos',
-		array(
-			'script'       => $script,
-			'lang'         => $language,
-			'presentation' => IHQ_AICOACH_COACH_PRESENTATION,
-			'metadata'     => array( 'segment' => $segment_key ),
-		),
+		$body,
 		array( 'Idempotency-Key' => $idempotency_key )
 	);
 	if ( is_wp_error( $result ) ) {
@@ -516,7 +547,7 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $language 
 	$idempotency_key = ihq_aicoach_prerender_idempotency_key( $segment_key, $language, $sha256, $version );
 
 	$log( "  {$manifest_key}: creating (or resuming) render job..." );
-	$job = ihq_aicoach_coach_create_video( $text, $idempotency_key, $manifest_key, $language );
+	$job = ihq_aicoach_coach_create_video( $text, $idempotency_key, $manifest_key, $language, ihq_aicoach_avatar_version_video_profile( $version ) );
 	if ( is_wp_error( $job ) ) {
 		if ( 'coach_video_idempotency_conflict' === $job->get_error_code() ) {
 			$log( "  {$manifest_key}: IDEMPOTENCY CONFLICT, Gary refused key {$idempotency_key} because it was used for a different request. Nothing rendered; not retried." );
