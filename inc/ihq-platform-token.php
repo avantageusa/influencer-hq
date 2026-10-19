@@ -22,6 +22,10 @@
  * minute (backoff). A request that finds the lock taken waits for that refresh
  * and uses its token: the profile page loads the share link and the player at
  * once, and the one that lost the lock used to send the expired token.
+ *
+ * Game-portal embeds (ENGR-7508) use the same refresh, with a 15-minute margin,
+ * via ihq_hq_sso_code_for_embed_url() so iframe URLs do not keep a login-time
+ * ssoCode whose tokens have already expired.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -30,6 +34,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /** Refresh this many seconds before `ihq_token_expires`, so the token can't expire in flight. */
 const IHQ_PLATFORM_ID_TOKEN_EXPIRY_MARGIN_SECONDS = 60;
+
+/**
+ * Embed / PLAY SSO refresh window (ENGR-7508). Wider than the 60 s API-call
+ * margin so a just-loaded iframe is not sitting on a token that dies a minute later.
+ */
+const IHQ_PLATFORM_EMBED_SSO_EXPIRY_MARGIN_SECONDS = 900;
 
 /** The only status that triggers a refresh-and-retry: the authorizer's answer to an expired token. */
 const IHQ_PLATFORM_HTTP_UNAUTHORIZED = 401;
@@ -68,6 +78,50 @@ function ihq_platform_id_token_is_expired( $expires_at, $now ) {
 		return false;
 	}
 	return (int) $expires_at - IHQ_PLATFORM_ID_TOKEN_EXPIRY_MARGIN_SECONDS <= (int) $now;
+}
+
+/**
+ * Whether an embed should re-run start-session before reading the stored ssoCode.
+ *
+ * Missing or non-numeric expiry is not treated as expired: same as ENGR-7017.
+ *
+ * @param mixed $expires_at `ihq_token_expires` meta (Unix seconds).
+ * @param int   $now        Current Unix time.
+ * @return bool
+ */
+function ihq_platform_embed_sso_needs_refresh( $expires_at, $now ) {
+	if ( ! is_numeric( $expires_at ) ) {
+		// Unknown expiry: keep the stored code; do not mint a speculative start-session.
+		return false;
+	}
+	return (int) $expires_at - IHQ_PLATFORM_EMBED_SSO_EXPIRY_MARGIN_SECONDS <= (int) $now;
+}
+
+/**
+ * Stored ssoCode for a game-portal embed or PLAY link, refreshed first when the
+ * platform token is expired or within 15 minutes of expiry (ENGR-7508).
+ *
+ * Failed refresh keeps the stored code. Concurrent callers share the ENGR-7017
+ * lock, so a page load makes at most one start-session. Not used by the generic
+ * getter: profile dumps and STREAM NOW must not pay this side-effect.
+ *
+ * @param int      $wp_user_id WordPress user ID.
+ * @param int|null $now        Current Unix time; defaults to time().
+ * @return string
+ */
+function ihq_hq_sso_code_for_embed_url( $wp_user_id, $now = null ) {
+	$wp_user_id = (int) $wp_user_id;
+	$now        = null === $now ? time() : (int) $now;
+	if ( $wp_user_id <= 0 ) {
+		return '';
+	}
+	if ( ihq_platform_embed_sso_needs_refresh( get_user_meta( $wp_user_id, 'ihq_token_expires', true ), $now ) ) {
+		ihq_refresh_platform_id_token( $wp_user_id, $now );
+	}
+	if ( ! function_exists( 'ihq_get_hq_sso_code_for_user' ) ) {
+		return '';
+	}
+	return ihq_get_hq_sso_code_for_user( $wp_user_id );
 }
 
 /**
