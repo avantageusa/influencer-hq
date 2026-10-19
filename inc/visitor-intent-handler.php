@@ -927,6 +927,13 @@ function ihq_handle_verify_visitor_code_ajax() {
 	ihq_login_verify_clear_failures();
 	ihq_login_verify_release_ip_mutex( $lock_name );
 
+	// The intent is used up and the visitor is signed in. Left in place, the
+	// 30-day cookies outlive a session that ends without a logout and reopen
+	// the code prompt on the next Login (ENGR-7260).
+	if ( function_exists( 'ihq_visitor_logout_clear_cookies' ) ) {
+		ihq_visitor_logout_clear_cookies();
+	}
+
 	$redirect_url = ihq_visitor_intent_portal_account_url();
 	if ( ! empty( $result['existing'] ) ) {
 		$redirect_url = add_query_arg( 'ihq_visitor_existing', '1', $redirect_url );
