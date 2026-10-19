@@ -29,8 +29,11 @@
  * (js/aicoach/onboarding-*.js) and the Braze attribute values, so treat them as a
  * contract: add values, never rename one.
  *
- * Drafts (screen 14) are not stored yet: that task (ENGR-7570) is on hold until Gary's
- * drafting spike is answered, and its field is added with it.
+ * Drafts (screen 14, ENGR-7570) are part of the state but are written only by the server,
+ * through ihq_portal_onboarding_store_drafts() (inc/portal-onboarding-drafts.php calls it with
+ * what Gary wrote). They live in their own user meta key, so a draft request, which takes
+ * seconds, never writes back over a stage or answer saved meanwhile, and the browser cannot
+ * write draft text the screen does not let the Influencer edit.
  *
  * @package influencer-hq
  */
@@ -51,6 +54,19 @@ const IHQ_PORTAL_ONBOARDING_COMPLETED_META_KEY = '_ihq_portal_onboarding_complet
 
 /** The state fields that come from IHQ_PORTAL_ONBOARDING_COMPLETED_META_KEY, never from the record. */
 const IHQ_PORTAL_ONBOARDING_COMPLETION_FIELDS = array( 'completed', 'completed_at' );
+
+/** User meta key holding the drafts of screen 14 (ENGR-7570): platform => text. */
+const IHQ_PORTAL_ONBOARDING_DRAFTS_META_KEY = '_ihq_portal_onboarding_drafts';
+
+/** The state field that comes from IHQ_PORTAL_ONBOARDING_DRAFTS_META_KEY, never from the record. */
+const IHQ_PORTAL_ONBOARDING_DRAFTS_FIELD = 'drafts';
+
+/**
+ * Longest draft stored for one platform, in characters (not bytes: a Japanese or Thai post is
+ * three bytes a character). Well above any platform's post length, so it only stops a reply
+ * that is not a post.
+ */
+const IHQ_PORTAL_ONBOARDING_DRAFT_MAX_LENGTH = 5000;
 
 /** Fires after an onboarding update is stored: ( int $user_id, array $partial, array $state ). */
 const IHQ_PORTAL_ONBOARDING_SAVED_ACTION = 'ihq_portal_onboarding_saved';
@@ -173,19 +189,43 @@ function ihq_portal_onboarding_default_state() {
 		'platforms'    => array(),
 		'handles'      => array(),
 		'language'     => '',
+		'drafts'       => array(),
 		'completed'    => false,
 		'completed_at' => '',
 	);
 }
 
 /**
- * The part of a state stored in the record: the state without its completion fields.
+ * The part of a state stored in the record: the state without its completion fields and its
+ * drafts, which have their own meta keys.
  *
  * @param array $state
  * @return array
  */
 function ihq_portal_onboarding_record( array $state ) {
-	return array_diff_key( $state, array_flip( IHQ_PORTAL_ONBOARDING_COMPLETION_FIELDS ) );
+	$separate = array_merge( IHQ_PORTAL_ONBOARDING_COMPLETION_FIELDS, array( IHQ_PORTAL_ONBOARDING_DRAFTS_FIELD ) );
+	return array_diff_key( $state, array_flip( $separate ) );
+}
+
+/**
+ * Every stored draft, selected platform or not, cleaned: an entry that is not a known platform
+ * with a string is left out.
+ *
+ * @param int $user_id
+ * @return array<string, string>
+ */
+function ihq_portal_onboarding_stored_drafts( $user_id ) {
+	$stored = get_user_meta( (int) $user_id, IHQ_PORTAL_ONBOARDING_DRAFTS_META_KEY, true );
+	if ( ! is_array( $stored ) ) {
+		return array();
+	}
+	$drafts = array();
+	foreach ( $stored as $platform => $text ) {
+		if ( is_string( $platform ) && in_array( $platform, ihq_portal_onboarding_platforms(), true ) && is_string( $text ) ) {
+			$drafts[ $platform ] = $text;
+		}
+	}
+	return $drafts;
 }
 
 /**
@@ -203,6 +243,15 @@ function ihq_portal_onboarding_get_state( $user_id ) {
 	}
 	$defaults = ihq_portal_onboarding_default_state();
 	$state    = array_merge( $defaults, array_intersect_key( $stored, ihq_portal_onboarding_record( $defaults ) ) );
+
+	// Only the drafts of platforms still selected, in their order: unticking a platform hides
+	// its draft, and ticking it again brings the draft back.
+	$stored_drafts = ihq_portal_onboarding_stored_drafts( $user_id );
+	foreach ( (array) $state['platforms'] as $platform ) {
+		if ( isset( $stored_drafts[ $platform ] ) ) {
+			$state['drafts'][ $platform ] = $stored_drafts[ $platform ];
+		}
+	}
 
 	$completed_at = get_user_meta( $user_id, IHQ_PORTAL_ONBOARDING_COMPLETED_META_KEY, true );
 	if ( is_string( $completed_at ) && '' !== $completed_at ) {
@@ -491,6 +540,62 @@ function ihq_portal_onboarding_merge( $user_id, $partial ) {
 }
 
 /**
+ * Check drafts to store: a non-empty map of known platform => non-empty text of at most
+ * IHQ_PORTAL_ONBOARDING_DRAFT_MAX_LENGTH characters. Text is kept as written (line breaks,
+ * emoji, `<` in a sentence): it is a post to copy, never rendered as HTML here.
+ *
+ * @param mixed $value
+ * @return array{value: mixed, error: string}
+ */
+function ihq_portal_onboarding_validate_drafts( $value ) {
+	if ( ! is_array( $value ) || array() === $value ) {
+		return ihq_portal_onboarding_field_result( null, 'Invalid drafts.' );
+	}
+	$drafts = array();
+	foreach ( $value as $platform => $text ) {
+		if ( ! is_string( $platform ) || ! in_array( $platform, ihq_portal_onboarding_platforms(), true ) ) {
+			return ihq_portal_onboarding_field_result( null, 'Unknown platform.' );
+		}
+		if ( ! is_string( $text ) || '' === trim( $text ) || mb_strlen( $text ) > IHQ_PORTAL_ONBOARDING_DRAFT_MAX_LENGTH ) {
+			return ihq_portal_onboarding_field_result( null, 'Invalid draft for ' . $platform . '.' );
+		}
+		$drafts[ $platform ] = $text;
+	}
+	return ihq_portal_onboarding_field_result( $drafts );
+}
+
+/**
+ * Store drafts for some platforms, replacing only those platforms' drafts. Server-side only:
+ * the progress POST does not accept `drafts`. A draft for a platform that is not selected is
+ * refused, like a handle. Fires IHQ_PORTAL_ONBOARDING_SAVED_ACTION with `[ 'drafts' => … ]`.
+ *
+ * @param int   $user_id
+ * @param mixed $drafts platform => text.
+ * @return array|WP_Error The full state after the merge, or a WP_Error (status 400).
+ */
+function ihq_portal_onboarding_store_drafts( $user_id, $drafts ) {
+	$user_id = (int) $user_id;
+	$result  = ihq_portal_onboarding_validate_drafts( $drafts );
+	if ( '' !== $result['error'] ) {
+		return ihq_portal_onboarding_invalid_error( $result['error'] );
+	}
+	$state      = ihq_portal_onboarding_get_state( $user_id );
+	$unselected = array_values( array_diff( array_keys( $result['value'] ), $state['platforms'] ) );
+	if ( array() !== $unselected ) {
+		return ihq_portal_onboarding_invalid_error( 'Draft for a platform that is not selected: ' . implode( ', ', $unselected ) . '.' );
+	}
+
+	$stored = array_merge( ihq_portal_onboarding_stored_drafts( $user_id ), $result['value'] );
+	update_user_meta( $user_id, IHQ_PORTAL_ONBOARDING_DRAFTS_META_KEY, $stored );
+	$state = ihq_portal_onboarding_get_state( $user_id );
+
+	$partial = array( IHQ_PORTAL_ONBOARDING_DRAFTS_FIELD => $result['value'] );
+	/** This action is documented in ihq_portal_onboarding_merge(). */
+	do_action( IHQ_PORTAL_ONBOARDING_SAVED_ACTION, $user_id, $partial, $state );
+	return $state;
+}
+
+/**
  * Mark the user's onboarding complete. Completing twice keeps the first timestamp and
  * fires the action only once. Only the completion meta key is written, so the record and
  * any save in flight are left alone.
@@ -519,8 +624,8 @@ function ihq_portal_onboarding_mark_complete( $user_id ) {
 }
 
 /**
- * The state as JSON: answers and handles as objects even when empty, so the browser
- * always gets `{}` and never `[]` for them.
+ * The state as JSON: answers, handles and drafts as objects even when empty, so the
+ * browser always gets `{}` and never `[]` for them.
  *
  * @param array $state
  * @return array
@@ -528,6 +633,7 @@ function ihq_portal_onboarding_mark_complete( $user_id ) {
 function ihq_portal_onboarding_public_state( array $state ) {
 	$state['answers'] = (object) $state['answers'];
 	$state['handles'] = (object) $state['handles'];
+	$state['drafts']  = (object) $state['drafts'];
 	return $state;
 }
 
