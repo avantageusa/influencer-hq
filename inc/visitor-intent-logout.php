@@ -11,6 +11,13 @@
  * back to the start of the flow. Mid-login (guest, cookie set, no logout) is
  * untouched.
  *
+ * A session can also end without a logout: the visitor-code sign-in sets a
+ * browser-session auth cookie capped at 24 hours (inc/auth-session-lifetime.php),
+ * and closing the browser or waiting it out fires no `wp_logout`. So the verify
+ * handler in inc/visitor-intent-handler.php also clears both cookies once a code
+ * has signed the visitor in; nothing reads them while signed in, because the
+ * Login gates only load for guests.
+ *
  * @package influencer-hq
  */
 
@@ -47,7 +54,7 @@ function ihq_visitor_logout_expired_cookie_options( $secure ) {
  */
 function ihq_visitor_logout_send_expired_cookie( $name ) {
 	if ( headers_sent() ) {
-		error_log( '[ihq-visitor-intent] could not expire the ' . $name . ' cookie on logout: headers already sent' );
+		error_log( '[ihq-visitor-intent] could not expire the ' . $name . ' cookie: headers already sent' );
 		return;
 	}
 	setcookie( $name, '', ihq_visitor_logout_expired_cookie_options( is_ssl() ) );
@@ -55,8 +62,9 @@ function ihq_visitor_logout_send_expired_cookie( $name ) {
 
 /**
  * Expire the visitor-intent cookies and drop them from $_COOKIE. Runs on
- * `wp_logout`, which every logout link reaches through wp_logout_url().
- * Cookies the request does not carry are skipped.
+ * `wp_logout`, which every logout link reaches through wp_logout_url(), and
+ * after a successful visitor-code sign-in. Cookies the request does not carry
+ * are skipped.
  *
  * @param callable|null $send_expired_cookie Header writer; tests inject a recorder.
  * @return string[] Names of the cookies that were expired.

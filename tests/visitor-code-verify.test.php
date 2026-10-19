@@ -200,6 +200,7 @@ require __DIR__ . '/../inc/ihq-env.php';
 require __DIR__ . '/../inc/ihq-referral-attribution.php';
 require __DIR__ . '/../inc/email-verification-handler.php';
 require __DIR__ . '/../inc/visitor-intent-handler.php';
+require __DIR__ . '/../inc/visitor-intent-logout.php';
 
 $fail = 0;
 $out  = array();
@@ -511,6 +512,33 @@ check( 'keys: fail prefix', strpos( $keys['fail'], 'ihq_login_verify_fail_' ), 0
 check( 'keys: timeout prefix', strpos( $keys['fail_timeout'], 'ihq_login_verify_fail_timeout_' ), 0 );
 check( 'keys: scopes do not collide', ihq_visitor_verify_attempt_keys( 'email', 'x' ) === ihq_visitor_verify_attempt_keys( 'fingerprint', 'x' ), false );
 check( 'counters: no email → fingerprint only', count( ihq_visitor_verify_attempt_counters( 'fp', '' ) ), 1 );
+
+// === 22. Sign-in clears the guest login cookies; a failed verify leaves them (ENGR-7260). ===
+const GUEST_COOKIES = array(
+	'ihq_visitor_intent'      => '{"comm_methods":{"email":"victim@example.test"}}',
+	'ihq_visitor_code_issued' => '1',
+	'wordpress_test_cookie'   => 'WP Cookie check',
+);
+reset_state();
+issue( VICTIM_EMAIL );
+$_COOKIE = GUEST_COOKIES;
+check( 'cookies: wrong code refused', verify( VICTIM_EMAIL, wrong_code( last_code() ) ), error_with( MISMATCH_MESSAGE ) );
+check( 'cookies: wrong code leaves them for the retry', $_COOKIE, GUEST_COOKIES );
+check( 'cookies: right code signs in', verify( VICTIM_EMAIL, last_code() )['success'], true );
+check( 'cookies: existing account sign-in clears both, keeps others', $_COOKIE, array( 'wordpress_test_cookie' => 'WP Cookie check' ) );
+
+reset_state();
+$GLOBALS['responses'][ START_SESSION_URL ][] = array( 'status' => 200, 'body' => SUCCESS_BODY );
+issue( NEW_EMAIL );
+$_COOKIE = GUEST_COOKIES;
+check( 'cookies: new visitor registered', verify( NEW_EMAIL, last_code() )['success'], true );
+check( 'cookies: registration clears both, keeps others', $_COOKIE, array( 'wordpress_test_cookie' => 'WP Cookie check' ) );
+
+reset_state();
+issue( ADMIN_EMAIL );
+$_COOKIE = GUEST_COOKIES;
+check( 'cookies: refused sign-in', verify( ADMIN_EMAIL, last_code() ), error_with( REFUSED_MESSAGE ) );
+check( 'cookies: refused sign-in leaves them', $_COOKIE, GUEST_COOKIES );
 
 ob_end_clean();
 echo implode( "\n", $out ) . "\n";
