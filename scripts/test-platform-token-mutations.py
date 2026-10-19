@@ -19,12 +19,21 @@ token = "inc/ihq-platform-token.php"
 ajax = "inc/api-ajax-calls.php"
 handler = "inc/email-verification-handler.php"
 expiry_rule = "return (int) $expires_at - IHQ_PLATFORM_ID_TOKEN_EXPIRY_MARGIN_SECONDS <= (int) $now;"
+embed_rule = "return (int) $expires_at - IHQ_PLATFORM_EMBED_SSO_EXPIRY_MARGIN_SECONDS <= (int) $now;"
 status_guard = "if ( IHQ_PLATFORM_HTTP_UNAUTHORIZED !== (int) wp_remote_retrieve_response_code( $response ) ) {"
 mutations = [
     # ihq_platform_id_token_is_expired()
     (token, expiry_rule, "return (int) $expires_at - IHQ_PLATFORM_ID_TOKEN_EXPIRY_MARGIN_SECONDS < (int) $now;"),
     (token, expiry_rule, "return (int) $expires_at <= (int) $now;"),
     (token, "if ( ! is_numeric( $expires_at ) ) {\n\t\treturn false;", "if ( ! is_numeric( $expires_at ) ) {\n\t\treturn true;"),
+    # ihq_platform_embed_sso_needs_refresh() / ihq_hq_sso_code_for_embed_url() (ENGR-7508)
+    (token, embed_rule, "return (int) $expires_at - IHQ_PLATFORM_EMBED_SSO_EXPIRY_MARGIN_SECONDS < (int) $now;"),
+    (token, embed_rule, "return (int) $expires_at - IHQ_PLATFORM_ID_TOKEN_EXPIRY_MARGIN_SECONDS <= (int) $now;"),
+    (token, "const IHQ_PLATFORM_EMBED_SSO_EXPIRY_MARGIN_SECONDS = 900;", "const IHQ_PLATFORM_EMBED_SSO_EXPIRY_MARGIN_SECONDS = 60;"),
+    (token, "if ( ihq_platform_embed_sso_needs_refresh( get_user_meta( $wp_user_id, 'ihq_token_expires', true ), $now ) ) {", "if ( true ) {"),
+    (token, "if ( ihq_platform_embed_sso_needs_refresh( get_user_meta( $wp_user_id, 'ihq_token_expires', true ), $now ) ) {", "if ( false ) {"),
+    # ihq_refresh_influencer_oauth_tokens(): empty ssoCode must not wipe the stored code
+    (handler, "    $sso_code = ihq_extract_sso_code_from_start_session_data( $ihq_data );\n    if ( $sso_code !== '' ) {", "    $sso_code = ihq_extract_sso_code_from_start_session_data( $ihq_data );\n    if ( true ) {"),
     # ihq_refresh_platform_id_token()
     (token, "if ( true !== $refreshed ) {", "if ( false ) {"),
     # ihq_refresh_platform_id_token(): backoff and lock

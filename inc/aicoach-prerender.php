@@ -125,6 +125,31 @@ function ihq_aicoach_avatar_version_is_valid( $version ) {
 }
 
 /**
+ * The Coach API video profile each avatar version is rendered with (ENGR-7798). Gary's
+ * `video_profile` selects the candidate avatar whose frame the page composes onto its banner
+ * (js/aicoach/ banner module, calibrated for that one candidate); a version that is not
+ * listed here is rendered with the default avatar, exactly as before, and sends no profile.
+ * The profile belongs to the version, never to a request, so a version is one avatar from
+ * its first render to its last and a changed profile can never reuse an old Idempotency-Key.
+ */
+const IHQ_AICOACH_AVATAR_VERSION_PROFILES = array(
+	'v3' => 'sami-framing-20261018',
+);
+
+/**
+ * The video profile an avatar version is rendered with.
+ *
+ * @param string $version An avatar version, or '' for the original set.
+ * @return string The profile, or '' when the version uses the default avatar.
+ */
+function ihq_aicoach_avatar_version_video_profile( $version ) {
+	if ( ! ihq_aicoach_avatar_version_is_valid( $version ) ) {
+		return '';
+	}
+	return IHQ_AICOACH_AVATAR_VERSION_PROFILES[ $version ] ?? '';
+}
+
+/**
  * The avatar version visitors are served: the option, or the original set ('') when it is
  * empty, missing or not a valid version.
  *
@@ -334,16 +359,28 @@ function ihq_aicoach_prerender_get_urls( $version = null ) {
  * @param string $segment_key     Gary's segment key, sent as metadata purely
  *                                 for our own visibility (GET /v1/videos),
  *                                 confirmed accepted as a free-form object.
+ * @param string $video_profile   A Coach API video profile (ENGR-7798), or '' for the
+ *                                 default avatar. With a profile Gary asks for `lang` and
+ *                                 `presentation` to be sent explicitly too; without one the
+ *                                 body is exactly what it always was, so the request hashes
+ *                                 of everything rendered before do not change.
+ * @param string $language        The clip's language, sent only together with a profile.
  * @return array|WP_Error Decoded response body on success.
  */
-function ihq_aicoach_coach_create_video( $script, $idempotency_key, $segment_key ) {
+function ihq_aicoach_coach_create_video( $script, $idempotency_key, $segment_key, $video_profile = '', $language = 'en' ) {
+	$body = array(
+		'script'   => $script,
+		'metadata' => array( 'segment' => $segment_key ),
+	);
+	if ( '' !== $video_profile ) {
+		$body['lang']          = $language;
+		$body['presentation']  = 'sami';
+		$body['video_profile'] = $video_profile;
+	}
 	$result = ihq_coach_request(
 		'POST',
 		'/coach/v1/videos',
-		array(
-			'script'   => $script,
-			'metadata' => array( 'segment' => $segment_key ),
-		),
+		$body,
 		array( 'Idempotency-Key' => $idempotency_key )
 	);
 	if ( is_wp_error( $result ) ) {
@@ -429,7 +466,7 @@ function ihq_aicoach_prerender_segment( $segment_key, $text, $sha256, $language 
 	$idempotency_key = ihq_aicoach_prerender_idempotency_key( $segment_key, $language, $sha256, $version );
 
 	$log( "  {$manifest_key}: creating (or resuming) render job..." );
-	$job = ihq_aicoach_coach_create_video( $text, $idempotency_key, $manifest_key );
+	$job = ihq_aicoach_coach_create_video( $text, $idempotency_key, $manifest_key, ihq_aicoach_avatar_version_video_profile( $version ), $language );
 	if ( is_wp_error( $job ) ) {
 		return array(
 			'status' => 'error',

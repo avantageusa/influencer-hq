@@ -85,8 +85,13 @@ if ( ! defined( 'ABSPATH' ) ) {
                 'hqEmail'          => $email,
                 'hqAvatar'         => $avatar_url,
             );
-            if ( $uid > 0 && function_exists( 'ihq_get_hq_sso_code_for_user' ) ) {
-                $hq_sso_code = ihq_get_hq_sso_code_for_user( $uid );
+            if ( $uid > 0 ) {
+                $hq_sso_code = '';
+                if ( function_exists( 'ihq_hq_sso_code_for_embed_url' ) ) {
+                    $hq_sso_code = ihq_hq_sso_code_for_embed_url( $uid );
+                } elseif ( function_exists( 'ihq_get_hq_sso_code_for_user' ) ) {
+                    $hq_sso_code = ihq_get_hq_sso_code_for_user( $uid );
+                }
                 if ( $hq_sso_code !== '' ) {
                     $game_url_args['hqSsoCode'] = $hq_sso_code;
                 }
