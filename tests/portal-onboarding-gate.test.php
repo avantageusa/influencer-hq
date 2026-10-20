@@ -226,7 +226,8 @@ ihq_portal_onboarding_maybe_render();
 check( 'an eligible new user gets the layer once', 1 === count( $GLOBALS['actions_fired'] ) && 'ihq_portal_onboarding_render_layer' === $GLOBALS['actions_fired'][0][0] );
 $context = $GLOBALS['actions_fired'][0][1];
 check( 'the layer context state is the store\'s default state, so the shell starts at screen 1', '{"stage":"","answers":{},"platforms":[],"handles":{},"language":"","drafts":{},"completed":false,"completed_at":""}' === json_encode( $context['state'] ) );
-check( 'the layer context carries the routes and the wp_rest nonce', array( 'state', 'progressUrl', 'completeUrl', 'draftsUrl', 'draftsReviseUrl', 'nonce' ) === array_keys( $context ) && 'https://example.test/wp-json/ihq/v1/onboarding/progress' === $context['progressUrl'] && 'https://example.test/wp-json/ihq/v1/onboarding/complete' === $context['completeUrl'] && 'nonce-for-wp_rest' === $context['nonce'] );
+check( 'the layer context carries the routes and the wp_rest nonce', array( 'state', 'progressUrl', 'completeUrl', 'draftsUrl', 'draftsReviseUrl', 'appointmentUrl', 'nonce' ) === array_keys( $context ) && 'https://example.test/wp-json/ihq/v1/onboarding/progress' === $context['progressUrl'] && 'https://example.test/wp-json/ihq/v1/onboarding/complete' === $context['completeUrl'] && 'nonce-for-wp_rest' === $context['nonce'] );
+check( 'the layer context carries the appointment route (ENGR-7577)', 'https://example.test/wp-json/ihq/v1/onboarding/appointment' === $context['appointmentUrl'] );
 check( 'the layer context carries the draft routes of screen 14', 'https://example.test/wp-json/ihq/v1/onboarding/drafts' === $context['draftsUrl'] && 'https://example.test/wp-json/ihq/v1/onboarding/drafts/revise' === $context['draftsReviseUrl'] );
 
 reset_world();

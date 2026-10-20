@@ -214,7 +214,22 @@ function ihq_aicoach_appointment_join_decision( array $post, $page_url, $coach_u
 		return $back;
 	}
 	$record = ihq_aicoach_appointment_load( $context['id'] );
-	$ref    = is_array( $record ) && isset( $record['ref'] ) && is_string( $record['ref'] ) ? $record['ref'] : '';
+
+	/**
+	 * Where Join leads for an appointment that is not the landing flow's. Null (the default)
+	 * keeps the landing flow's: the visitor's ref back in the cookie and the AI Coach page. A
+	 * URL sends the visitor there and hands out no ref (the portal onboarding's appointments,
+	 * inc/portal-onboarding-appointment.php, ENGR-7577).
+	 *
+	 * @param string|null $redirect
+	 * @param array       $record   The stored appointment.
+	 */
+	$redirect = apply_filters( 'ihq_aicoach_appointment_join_redirect', null, is_array( $record ) ? $record : array() );
+	if ( is_string( $redirect ) && '' !== $redirect ) {
+		return array( 'ref' => null, 'redirect' => $redirect );
+	}
+
+	$ref = is_array( $record ) && isset( $record['ref'] ) && is_string( $record['ref'] ) ? $record['ref'] : '';
 	if ( ! preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $ref ) ) {
 		return $back;
 	}

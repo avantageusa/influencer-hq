@@ -113,7 +113,7 @@ check( 'saved action name', 'ihq_portal_onboarding_saved' === IHQ_PORTAL_ONBOARD
 check( 'completed action name', 'ihq_portal_onboarding_completed' === IHQ_PORTAL_ONBOARDING_COMPLETED_ACTION );
 check( 'invalid error code and status', 'ihq_onboarding_invalid' === IHQ_PORTAL_ONBOARDING_INVALID_ERROR && 400 === IHQ_PORTAL_ONBOARDING_INVALID_STATUS );
 check( 'language meta key is the registration one', '_ihq_aicoach_language' === IHQ_PORTAL_ONBOARDING_LANGUAGE_META_KEY );
-check( 'sixteen stages in screen order', array( 'game_of_kings', 'modern_era', 'baccarat_experience', 'streaming_experience', 'equity_knowledge', 'social_platforms', 'world_championship', 'world_tour', 'classic', 'equity', 'how_this_works', 'active_followers', 'equity_example', 'draft_posts', 'post_action', 'closing' ) === ihq_portal_onboarding_stages() );
+check( 'the stages in screen order, Talk more? and the appointment before closing (ENGR-7577)', array( 'game_of_kings', 'modern_era', 'baccarat_experience', 'streaming_experience', 'equity_knowledge', 'social_platforms', 'world_championship', 'world_tour', 'classic', 'equity', 'how_this_works', 'active_followers', 'equity_example', 'draft_posts', 'post_action', 'time_up', 'appointment', 'closing' ) === ihq_portal_onboarding_stages() );
 check( 'answer fields and values', array(
 	'baccarat_experience'       => array( 'played_a_lot', 'played_some', 'new_player' ),
 	'streaming_experience'      => array( 'streamed_a_lot', 'streamed_some', 'new_to_streaming' ),

@@ -327,8 +327,8 @@ test( 'an invalid screen with no showValidation still does not advance', () => {
 	assert.equal( engine.advance(), false );
 } );
 
-test( 'the post action edit option returns to the drafts; the other two go to closing', async () => {
-	for ( const [ choice, expected ] of [ [ 'edit_together', 'draft_posts' ], [ 'post_now', 'closing' ], [ 'edit_later', 'closing' ] ] ) {
+test( 'the post action edit option returns to the drafts; the other two go on to Talk more?', async () => {
+	for ( const [ choice, expected ] of [ [ 'edit_together', 'draft_posts' ], [ 'post_now', 'time_up' ], [ 'edit_later', 'time_up' ] ] ) {
 		const { engine, posts } = setup( { stage: 'post_action' } );
 		registerAll( engine, [], { post_action: { choice: () => choice } } );
 		engine.start();
@@ -344,7 +344,7 @@ test( 'screens that are not installed (drafts, post action) are passed over', ()
 	SEQUENCE.filter( ( id ) => ! [ 'draft_posts', 'post_action' ].includes( id ) ).forEach( ( id ) => engine.register( screen( id, [] ) ) );
 	engine.start();
 	engine.advance();
-	assert.equal( engine.current(), 'closing' );
+	assert.equal( engine.current(), 'time_up' );
 } );
 
 test( 'Sami says the screen line with the clip in the current language, captions when none', () => {
@@ -856,5 +856,17 @@ test( 'PICK and MANUAL screens with no script start no reading timer', () => {
 		engine.register( wordsScreen( 'game_of_kings', TEN_WORDS, { advanceMode } ) );
 		engine.start();
 		assert.equal( clock.pendingCount(), 0, advanceMode );
+	}
+} );
+
+test( 'Continue on Talk more? skips the appointment for the closing screen (ENGR-7577)', async () => {
+	for ( const [ choice, expected ] of [ [ 'continue', 'closing' ], [ 'appointment', 'appointment' ] ] ) {
+		const { engine, posts } = setup( { stage: 'time_up' } );
+		registerAll( engine, [], { time_up: { choice: () => choice } } );
+		engine.start();
+		engine.advance();
+		assert.equal( engine.current(), expected, choice );
+		await flush();
+		assert.deepEqual( posts.map( ( post ) => post.body ), [ { stage: expected } ] );
 	}
 } );

@@ -5,7 +5,8 @@
  * The flow only moves forward, one screen at a time: there is no back, no skip and no
  * progress indicator (PO-3218). The one way back is the edit-return branch on the post
  * action screen: "Let's edit this together now" returns to the draft posts, with the drafts
- * kept (PO-3213 Scenario 23).
+ * kept (PO-3213 Scenario 23). The one skip is Continue to IHQ portal on "Talk more?", which
+ * passes over the appointment screen (ENGR-7577, PO-3429).
  *
  * The stage ids are the ones the account store keeps (inc/portal-onboarding-progress.php,
  * ihq_portal_onboarding_stages()); keep both lists the same.
@@ -14,7 +15,11 @@
  * still reaches the closing screen.
  */
 
-/** The sixteen screens, in order. */
+/**
+ * The screens, in order. "Talk more?" (time_up) and the appointment screen come before the
+ * closing screen for everyone (PO-3429, Ivan 2026-10-20). Showing "Talk more?" when the time
+ * runs out mid-flow is not built yet: the onboarding has no time limit to run out.
+ */
 export const SEQUENCE = Object.freeze( [
 	'game_of_kings',
 	'modern_era',
@@ -31,15 +36,18 @@ export const SEQUENCE = Object.freeze( [
 	'equity_example',
 	'draft_posts',
 	'post_action',
+	'time_up',
+	'appointment',
 	'closing',
 ] );
 
 /**
- * The permitted backward steps: from a screen, with a choice, to an earlier screen.
- * Kept as data so the appointment branch (T16) can be added the same way.
+ * The permitted steps off the order: from a screen, with a choice, to another screen.
  */
 export const BRANCHES = Object.freeze( [
 	Object.freeze( { from: 'post_action', choice: 'edit_together', to: 'draft_posts' } ),
+	// Continue to IHQ portal on "Talk more?": no appointment, straight to the end screen.
+	Object.freeze( { from: 'time_up', choice: 'continue', to: 'closing' } ),
 ] );
 
 /**

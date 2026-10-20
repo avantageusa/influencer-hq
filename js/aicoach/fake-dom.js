@@ -1,7 +1,8 @@
 /**
  * A tiny stand-in for the DOM, for the onboarding tests next to it (the way fake-clock.js
  * stands in for timers). It covers only what the onboarding modules use: creating
- * elements, attributes, text, `hidden`, `disabled`, `value`, `checked`, class lists, events
+ * elements, attributes, text, `hidden`, `disabled`, `value`, `checked`, class lists, focus and
+ * select() (recorded on the document as activeElement and selectedElement), events
  * with bubbling, and querySelector(All) for simple selectors (a tag, `.class`, `#id`,
  * `[attr]`, `[attr="value"]`, or one of each joined, like `button[data-x="y"]`).
  *
@@ -253,6 +254,9 @@ export class FakeElement {
 	}
 	focus() {
 		this.ownerDocument.activeElement = this;
+	}
+	select() {
+		this.ownerDocument.selectedElement = this;
 	}
 }
 

@@ -1,0 +1,149 @@
+/*
+ * Onboarding appointment screens (ENGR-7577): "Talk more?" and "Set your
+ * appointment". Loaded after css/portal-onboarding.css,
+ * and by name before the question screens' stylesheet, whose answers
+ * (.ihq-onb-q__option: the green square and its label) these screens reuse; the
+ * overrides below name both classes so they win either way.
+ *
+ * Sizes are the design's at 398 px wide (Figma 47487:22255 for Talk more?, and
+ * frames 16 and 16a-c of instance 46893:117629).
+ */
+
+.ihq-onb {
+
+	/* Field boxes: the design's white-outlined, rounded inputs. */
+	--ihq-onb-appt-field-height: 44px;
+	--ihq-onb-appt-field-radius: 6px;
+	--ihq-onb-appt-field-bg: #141414;
+}
+
+.ihq-onb-appt__title {
+	margin: 0;
+	color: #fff;
+	font-size: 1.75rem;
+	font-weight: 700;
+	line-height: 1.2;
+	text-align: center;
+}
+
+.ihq-onb-appt__subtitle {
+	margin: -8px 0 0;
+	color: #fff;
+	font-size: 1.375rem;
+	font-weight: 600;
+	line-height: 1.25;
+	text-align: center;
+}
+
+/* The answers sit centred under the title rather than at the question screens' inset. */
+.ihq-onb-q__options.ihq-onb-appt__options {
+	width: max-content;
+	max-width: 100%;
+	margin: 0 auto;
+}
+
+.ihq-onb-q__options.ihq-onb-appt__options[hidden] {
+	display: none;
+}
+
+/* The design's sentence case, larger than the question screens' answers. */
+.ihq-onb-q__option.ihq-onb-appt__option {
+	font-size: 1.125rem;
+	font-weight: 600;
+	line-height: 1.3;
+	text-transform: none;
+}
+
+/* Other: Date and Timezone side by side, Appointment Time under them. */
+.ihq-onb-appt__other {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px;
+}
+
+.ihq-onb-appt__other[hidden] {
+	display: none;
+}
+
+.ihq-onb-appt__field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 0;
+}
+
+.ihq-onb-appt__field:last-child {
+	grid-column: 1 / -1;
+}
+
+.ihq-onb-appt__field-label {
+	color: #fff;
+	font-size: 0.875rem;
+	font-weight: 600;
+}
+
+.ihq-onb-appt__input {
+	box-sizing: border-box;
+	width: 100%;
+	min-height: var(--ihq-onb-appt-field-height);
+	padding: 8px 10px;
+	border: 2px solid #fff;
+	border-radius: var(--ihq-onb-appt-field-radius);
+	background: var(--ihq-onb-appt-field-bg);
+	color: #fff;
+	font-family: inherit;
+	font-size: 1rem;
+	color-scheme: dark;
+}
+
+.ihq-onb-appt__input:focus-visible {
+	outline: 3px solid var(--ihq-onb-yellow);
+	outline-offset: 2px;
+}
+
+.ihq-onb-appt__link[hidden] {
+	display: none;
+}
+
+/* The design's large two-line button. */
+.ihq-onb__button.ihq-onb-appt__copy {
+	font-size: 1.75rem;
+	line-height: 1.15;
+}
+
+.ihq-onb__button.ihq-onb-appt__copy:disabled {
+	opacity: 0.7;
+	cursor: default;
+}
+
+.ihq-onb-appt__hint {
+	margin: 0;
+	color: #fff;
+	font-size: 0.875rem;
+	font-weight: 600;
+	line-height: 1.4;
+	text-align: center;
+}
+
+.ihq-onb-appt__errors {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.ihq-onb-appt__errors:empty,
+.ihq-onb-appt__status:empty {
+	display: none;
+}
+
+.ihq-onb-appt__errors p {
+	margin: 0;
+}
+
+.ihq-onb-appt__status {
+	margin: 0;
+	color: var(--ihq-onb-yellow);
+	font-size: 1rem;
+	font-weight: 600;
+	text-align: center;
+}
