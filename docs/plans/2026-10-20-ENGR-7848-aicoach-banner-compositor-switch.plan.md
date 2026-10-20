@@ -7,8 +7,9 @@ overview: >
   the same hidden `<video>` element the flow already uses for clips and the live session. Everything sits behind a WordPress option,
   off by default, so with it off the page is byte-for-byte what it is today. The option can be
   switched in a small Settings screen without WP-CLI or a deploy. It only takes effect when the
-  served avatar version has a video profile (v3) with every clip rendered, otherwise the page falls
-  back to today's banner. Switching it on in production waits for Ivan's decisions and for the v3 clips.
+  served avatar version has a video profile (v3), otherwise the page falls back to today's banner.
+  It does not count clips: a version becomes the served one through `wp aicoach activate-avatar`,
+  which refuses a version that lacks a clip the set served at that moment can play. Switching it on in production waits for Ivan's decisions and for the v3 clips.
 todos:
   - id: read-module
     content: Read Gary's module end to end (no session, no audio, no network call) and record what it needs (poster, calibration, options, API)
@@ -17,7 +18,7 @@ todos:
     content: Host the module, the calibration JSON and the 1152x768 poster in the theme, versioned like the banner images; keep them tied to candidate cf6b6e7d (our banner-desktop.webp stays the scene)
     status: completed
   - id: switch
-    content: One option (`ihq_aicoach_banner_compositor`, default off) read through one function that also checks the served version has a profile and all clips
+    content: One option (`ihq_aicoach_banner_compositor`, default off) read through one function that also checks the served version has the profile and the hosted files are present (clips are guarded by activation, not counted here)
     status: completed
   - id: markup
     content: With the switch on, the page prints a canvas after the video and the video stays in the DOM at opacity 0; with it off the markup is unchanged
@@ -76,9 +77,13 @@ fades out when the status is `live`, and the `<video>` over it. The two cannot b
 - **Between clips.** The adapter holds the last composition while `src` changes (`holding` status),
   so no handling is needed in the flow; only `reset()` and `destroy()` return to the poster.
 - **One switch, one reader.** A WordPress option, default off, read through one function. The
-  function returns true only if the option is on, the served avatar version has a video profile and
-  its manifest has every clip. A version without a profile (original, v2) can never be composed:
-  the calibration is only valid for the candidate avatar.
+  function returns true only if the option is on, the served avatar version has the video profile
+  the calibration was measured for and the hosted files are present. It does not count clips: the
+  version only becomes the served one through `ihq_aicoach_avatar_activate()`, which refuses a
+  version that lacks a clip the set served at that moment can play (it is not an absolute 63-clip
+  requirement, and a served version always reports nothing missing against itself). A version
+  without a profile (original, v2) can never be composed: the calibration is only valid for the
+  candidate avatar.
 - **Live session.** `ihq_coach_handle_open_session()` adds `video_profile` to the open-session
   payload only while the function above is true, so live Sami and the clips come from the same
   avatar. A session opened before the switch keeps its profile.
@@ -91,7 +96,7 @@ fades out when the status is `live`, and the `<video>` over it. The two cannot b
   and in either case shows the video layer again and removes the canvas, so the visitor sees
   today's banner and no error.
 - **Admin screen.** Settings, AI Coach: shows the option, the served avatar version, its profile and
-  whether all clips are present, and has the toggle. It replaces `wp option update` for whoever
+  the clips each version has and lacks, and has the toggle. It replaces `wp option update` for whoever
   switches it. Capability `manage_options`, nonce on save.
 - **Adapter is third-party code.** Read in full on 2026-10-20 (46 lines): it creates one offscreen
   canvas, reads the video element, listens to `loadeddata` and `emptied`, and schedules frame
@@ -157,7 +162,8 @@ fades out when the status is `live`, and the `<video>` over it. The two cannot b
 
 ## Blast radius
 - Switch off: nothing changes for visitors (markup, CSS, behaviour); the new files are not loaded.
-- Switch on without v3 complete: the function returns false, so nothing changes either.
+- Switch on while v3 is not the served version (it has not been activated): the function returns
+  false, so nothing changes either. Activation is the step that checks clips.
 - Switch on with v3: the banner on every device, the idle state, between-clip behaviour, Ask Sami
   interrupt and answer, language switch and sound toggle all go through the canvas. These are the
   paths to check on real devices.

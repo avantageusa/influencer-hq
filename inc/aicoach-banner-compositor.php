@@ -13,9 +13,12 @@
  * Even with the option on, the banner is composed only while the avatar version visitors are
  * served has Gary's sami-framing video profile (v3, see IHQ_AICOACH_AVATAR_VERSION_PROFILES) and
  * the hosted files are there. The calibration is valid for that one avatar: composing the clips of
- * another version would leave the rectangle around her head the adapter exists to remove. A version
- * can only be served once all its clips are rendered (ihq_aicoach_avatar_activate()), so a complete
- * version is implied.
+ * another version would leave the rectangle around her head the adapter exists to remove. This
+ * function does not count clips. What it relies on is the normal way a version becomes the served
+ * one: ihq_aicoach_avatar_activate() refuses a version that lacks a clip the set served at that
+ * moment can play. It is not an absolute requirement (a version can be served with fewer clips
+ * than another has, if the set it replaces had no more), and a version already served always
+ * reports nothing missing against itself.
  *
  * A live session is opened with the same profile while this is on (inc/gary-proxy.php), so the
  * intro and Ask Sami's answers show the same avatar as the clips.
