@@ -11,6 +11,7 @@ import { createSequenceHold } from '@ihq/aicoach/sequence-hold';
 import { createStallWatchdog, once } from '@ihq/aicoach/stall-watchdog';
 import { isAvatarIdle, isScreenWithoutClip } from '@ihq/aicoach/idle-state';
 import { createAccountStep } from '@ihq/aicoach/account-step';
+import { createBannerCompositor } from '@ihq/aicoach/banner-compositor';
 import { buildCues, estimateDurationMs, visibleTextAt } from '@ihq/aicoach/commentary';
 import { SUPPORTED_LOCALES, t, detectLocale } from '@ihq/aicoach/locales';
 import {
@@ -340,6 +341,15 @@ window.addEventListener( 'resize', function () {
 const stage = document.getElementById('aicoach-stage');
 const avatarWrap = document.getElementById('aicoach-avatar-wrap');
 const video = document.getElementById('aicoach-avatar-video');
+// ENGR-7848 — with the composed banner switched on (inc/aicoach-banner-compositor.php) Gary's adapter
+// paints the shared <video> onto a canvas over the banner scene. Without the config nothing starts,
+// and any failure while loading leaves the page on its video (js/aicoach/banner-compositor.js).
+createBannerCompositor( {
+    config: cfg.bannerCompositor,
+    wrap: avatarWrap,
+    video,
+    canvas: document.getElementById( 'aicoach-banner-canvas' ),
+} ).start();
 // Reuses the site-wide header volume control (template-parts/portal-header.php)
 // instead of a second, dedicated mute button overlaid on the avatar itself —
 // that button currently does nothing but open its own slider on every other

@@ -66,6 +66,10 @@ $aicoach_img = array(
 	'banner-tablet-2232' => $aicoach_versioned( 'banner-tablet-2232.webp' ),
 );
 
+// ENGR-7848 — whether the banner is composed by Gary's adapter (the option, the served avatar
+// version and the hosted files; see inc/aicoach-banner-compositor.php).
+$aicoach_banner_composed = function_exists( 'ihq_aicoach_banner_compositor_enabled' ) && ihq_aicoach_banner_compositor_enabled();
+
 $aicoach_tiers = array(
 	array(
 		'key'      => '2',
@@ -196,6 +200,10 @@ $aicoach_channels = array(
                             >
                         </picture>
                         <video class="aicoach-avatar-video" id="aicoach-avatar-video" autoplay playsinline muted></video>
+                        <?php /* ENGR-7848 — printed only while the composed banner is switched on (inc/aicoach-banner-compositor.php). Hidden until js/aicoach/banner-compositor.js has started Gary's adapter on it; the video above keeps playing and feeding it. */ ?>
+                        <?php if ( $aicoach_banner_composed ) : ?>
+                        <canvas class="aicoach-banner-canvas" id="aicoach-banner-canvas"></canvas>
+                        <?php endif; ?>
                         <div class="aicoach-avatar-loading" aria-hidden="true"><div class="aicoach-avatar-spinner"></div></div>
                     </div>
                 </div>
@@ -2764,6 +2772,59 @@ $aicoach_channels = array(
         }
     }
 </style>
+
+<?php if ( $aicoach_banner_composed ) : ?>
+<?php /* ENGR-7848 — the rules of the composed banner, printed only while it is switched on, after the rules above so they win at equal weight. js/aicoach/banner-compositor.js sets .is-composited on the wrapper once Gary's adapter runs and .is-composite-bypass while it reports a frame of the wrong size. */ ?>
+<style id="aicoach-banner-compositor-css">
+    /* Hidden until the adapter runs, so a failure to load leaves the page as it is without it. */
+    .aicoach-banner-canvas {
+        display: none;
+    }
+
+    /* The canvas takes the video's place: the same box, cropped the same way. */
+    .aicoach-avatar-wrap.is-composited .aicoach-banner-canvas {
+        position: absolute;
+        inset: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center 10%;
+    }
+
+    /* The video keeps playing and feeding the canvas but is never shown. */
+    .aicoach-avatar-wrap.is-composited .aicoach-avatar-video {
+        opacity: 0;
+    }
+
+    /* A frame of a size the calibration does not fit (a live stream, say) is shown as the video itself. */
+    .aicoach-avatar-wrap.is-composited.is-composite-bypass:not(.is-idle) .aicoach-banner-canvas {
+        display: none;
+    }
+
+    .aicoach-avatar-wrap.is-composited.is-composite-bypass:not(.is-idle)[data-status="live"] .aicoach-avatar-video {
+        opacity: 1;
+    }
+
+    /* The poster is still, so the scene behind it must not breathe: they would drift apart at the canvas edges. */
+    .aicoach-avatar-wrap.is-composited.is-idle:not([data-status="connecting"]) .aicoach-portrait {
+        animation: none;
+        transform: none;
+        will-change: auto;
+    }
+
+    /* On desktop the clip is a 3:2 box in the middle of the wide scene, as the video is. */
+    @media (min-width: 1025px) {
+        .aicoach-avatar-wrap.is-composited .aicoach-banner-canvas {
+            inset: 0 auto 0 50%;
+            width: auto;
+            height: 100%;
+            aspect-ratio: 3 / 2;
+            transform: translateX(-50%);
+        }
+    }
+</style>
+<?php endif; ?>
 
 <?php
 /*

@@ -295,6 +295,9 @@ function ihq_aicoach_enqueue_coach_flow() {
 			// the caption falls back to the English SCREENS/EQUITY_SCREENS script,
 			// same "missing just means not ready" degrade as the clip itself.
 			'segmentScripts'   => function_exists( 'ihq_aicoach_segment_translations' ) ? ihq_aicoach_segment_translations() : array(),
+			// ENGR-7848 — what the flow needs to compose the banner with Gary's adapter, or false
+			// while the switch is off (inc/aicoach-banner-compositor.php).
+			'bannerCompositor' => function_exists( 'ihq_aicoach_banner_compositor_config' ) ? ihq_aicoach_banner_compositor_config() : false,
 			'i18n'             => array(
 				'usernameTaken'    => __( 'That username is already taken.', 'influencer-hq' ),
 				'identitySaved'    => __( 'Saved', 'influencer-hq' ),

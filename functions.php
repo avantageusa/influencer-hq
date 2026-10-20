@@ -416,6 +416,16 @@ require_once get_template_directory() . '/inc/aicoach-segment-translations.php';
 require_once get_template_directory() . '/inc/aicoach-prerender.php';
 
 /**
+ * AI Coach banner composed by Gary's adapter (ENGR-7848) — a WordPress option switches it, off
+ * by default. Reads the avatar version helpers of aicoach-prerender.php (above) by name.
+ */
+require_once get_template_directory() . '/inc/aicoach-banner-compositor.php';
+
+if ( is_admin() ) {
+	require_once get_template_directory() . '/inc/aicoach-banner-compositor-admin.php';
+}
+
+/**
  * AI Coach registration progress persistence (PO-3102) — must load before
  * inc/aicoach-register.php, which clears a visitor's progress record on
  * successful account creation.
