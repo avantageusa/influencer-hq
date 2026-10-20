@@ -50,10 +50,11 @@ function reset_state() {
 	$GLOBALS['transients']            = array();
 	$GLOBALS['user_meta']             = array();
 	$GLOBALS['user_by_email_lookups'] = array();
+	$GLOBALS['actions']               = array();
+	unset( $_COOKIE[ LOGGED_IN_COOKIE ] );
 }
 
 // --- WordPress stubs. ---
-function add_action( ...$args ) {}
 function add_filter( ...$args ) {}
 function __( $text, $domain = '' ) { return $text; }
 function sanitize_text_field( $s ) { return trim( preg_replace( '/[\r\n\t ]+/', ' ', strip_tags( $s ) ) ); }
@@ -83,7 +84,20 @@ function ihq_create_influencer_user_from_registration_data( array $registration 
 	return NEW_USER_ID;
 }
 function wp_set_current_user( $id ) {}
-function wp_set_auth_cookie( $id, $remember ) { $GLOBALS['signed_in'][] = $id; }
+// The auth cookie WordPress would send to the browser, handed to whoever listens, and a nonce
+// that - like the real one - depends on the session token read from $_COOKIE.
+const LOGGED_IN_COOKIE = 'wordpress_logged_in_test';
+function add_action( $tag, $callback, ...$rest ) { $GLOBALS['actions'][ $tag ][] = $callback; }
+function remove_action( $tag, $callback ) {
+	foreach ( $GLOBALS['actions'][ $tag ] ?? array() as $i => $registered ) {
+		if ( $registered === $callback ) { unset( $GLOBALS['actions'][ $tag ][ $i ] ); }
+	}
+}
+function wp_create_nonce( $action ) { return 'nonce-of-' . $action . '-for-' . ( $_COOKIE[ LOGGED_IN_COOKIE ] ?? 'no-session' ); }
+function wp_set_auth_cookie( $id, $remember ) {
+	$GLOBALS['signed_in'][] = $id;
+	foreach ( $GLOBALS['actions']['set_logged_in_cookie'] ?? array() as $callback ) { $callback( 'cookie-of-' . $id ); }
+}
 
 require __DIR__ . '/../inc/placeholder-email.php';
 require __DIR__ . '/../inc/aicoach-register.php';
@@ -205,7 +219,7 @@ $response = ihq_aicoach_handle_create_account(
 	new WP_REST_Request( base_params( array( array( 'channel' => 'telegram', 'value' => '@Avantage123' ) ) ) )
 );
 check( 'Telegram only: 200', $response->status, 200 );
-check( 'Telegram only: redirects to the portal', $response->data, array( 'success' => true, 'redirectUrl' => PORTAL_REDIRECT ) );
+check( 'Telegram only: redirects to the portal and hands over a nonce made for the new session', $response->data, array( 'success' => true, 'redirectUrl' => PORTAL_REDIRECT, 'restNonce' => 'nonce-of-wp_rest-for-cookie-of-' . NEW_USER_ID ) );
 check(
 	'Telegram only: account created with the stand-in email and the Telegram channel',
 	$GLOBALS['created_registrations'],
@@ -223,6 +237,8 @@ check(
 );
 check( 'Telegram only: existing-account lookup used the stand-in email', $GLOBALS['user_by_email_lookups'], array( array( 'email', $placeholder ) ) );
 check( 'Telegram only: visitor signed in', $GLOBALS['signed_in'], array( NEW_USER_ID ) );
+check( 'Telegram only: the new session cookie was exposed to this request for the nonce', $_COOKIE[ LOGGED_IN_COOKIE ] ?? null, 'cookie-of-' . NEW_USER_ID );
+check( 'Telegram only: the listener that exposes it was removed again', array_values( $GLOBALS['actions']['set_logged_in_cookie'] ?? array() ), array() );
 
 // --- ihq_aicoach_handle_create_account: no channel is a 400 and creates nothing. ---
 reset_state();

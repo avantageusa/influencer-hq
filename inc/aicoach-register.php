@@ -169,7 +169,16 @@ function ihq_aicoach_sign_in_user( $user_id, $country_iso ) {
 	}
 
 	wp_set_current_user( $user_id );
+	// ENGR-7828 — wp_set_auth_cookie() only sends the cookie to the browser. A nonce made later in
+	// this same request reads its session token from $_COOKIE, finds none and is made for no
+	// session, so it would be refused on the next request. Putting the new cookie there for the
+	// length of the call lets the answer carry a nonce that is good for the new session.
+	$expose_cookie = static function ( $logged_in_cookie ) {
+		$_COOKIE[ LOGGED_IN_COOKIE ] = $logged_in_cookie;
+	};
+	add_action( 'set_logged_in_cookie', $expose_cookie );
 	wp_set_auth_cookie( $user_id, false );
+	remove_action( 'set_logged_in_cookie', $expose_cookie );
 
 	if ( function_exists( 'ihq_refresh_influencer_oauth_tokens' ) ) {
 		ihq_refresh_influencer_oauth_tokens( $user_id, $country_iso );
@@ -389,10 +398,15 @@ function ihq_aicoach_handle_create_account( WP_REST_Request $request ) {
 		ihq_aicoach_progress_clear( $progress_ref );
 	}
 
+	// ENGR-7828 — the visitor stays on the AI Coach page after this answer (the closing screen
+	// follows), but the nonce the page was rendered with belongs to a guest: for a signed-in
+	// visitor WordPress refuses it ("Cookie check failed"), which would break everything the
+	// closing screen does through REST, Ask Sami included. The one made now is for the new session.
 	return new WP_REST_Response(
 		array(
 			'success'     => true,
 			'redirectUrl' => $portal_redirect,
+			'restNonce'   => wp_create_nonce( 'wp_rest' ),
 		),
 		200
 	);

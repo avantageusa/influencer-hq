@@ -50,8 +50,17 @@ by the click that comes after that screen (`js/aicoach-coach-flow.js`, the final
   that click always did. Then it closes the Gary session and goes to the address.
 - After creation `saveProgress()` does nothing: the server cleared the progress at creation, and a
   later save (the closing screen's own stage) would leave a row for a visitor who is already a user.
-- After creation the Time is up prompt does not fire: with the account made, registration is
-  complete and an appointment to finish it makes no sense.
+- While the account is being created, and after it exists, the Time is up prompt does not fire
+  (`isStarted()`, not only `isCreated()`): with registration under way an appointment to finish it
+  makes no sense, and a prompt that came due during the request would otherwise open on it. If the
+  request fails the prompt is due again and is shown then (review of #147, second comment).
+- The visitor is signed in at creation, but the page still holds the nonce made for a guest;
+  WordPress answers a signed-in visitor with that nonce "Cookie check failed" (403), which would
+  break Ask Sami and every other REST call on the closing screen. The create-account answer for a
+  new user now carries `restNonce`, made for the new session (the new auth cookie is exposed to
+  that request while signing in, because a nonce reads its session token from `$_COOKIE`), and the
+  page takes it as `cfg.nonce`, which every request reads when it is made (review of #147, first
+  comment). The existing-account path signs nobody in and sends none.
 - `inc/aicoach-modules.php` registers the module; `tests/aicoach-modules.test.php` lists it.
 
 ## Alternatives considered
@@ -82,5 +91,9 @@ by the click that comes after that screen (`js/aicoach-coach-flow.js`, the final
       with the onboarding layer
 - [x] wp-env, first creation answered 400 "That username is already taken.": the channels panel
       stays, shows the reason, CONTINUE is usable, the second try creates the account
-- [ ] A visitor who books an appointment and the "Time is up?" prompt after creation (not run)
+- [x] wp-env, a guarded GET with the page's nonce: 200 before the account, 403 "Cookie check failed"
+      after it without the fix, 200 after it with the fix
+- [x] wp-env, creation held for 52 s so the Time is up timer (due 96 s after the tier click) comes
+      due in flight: the prompt does not open and the closing screen follows
+- [ ] A visitor who books an appointment (not run)
 - [ ] Braze on dev (not run)

@@ -8,6 +8,8 @@
  *
  * - the account is created once: a second call while the first is still running shares it, and a
  *   call after it succeeded returns the same address without sending anything;
+ * - isStarted() is true from the moment the request goes out until it fails, so a screen that must
+ *   not appear for a visitor who is registering (Time is up) can tell a request in flight from none;
  * - a failure never throws and is never remembered, so the visitor can try again;
  * - what is saved to the visitor's progress is flushed before the request (a save that reached the
  *   server after the account was created would leave a row for a visitor who is already a user),
@@ -17,12 +19,13 @@
  * @param {Function} deps.register       Sends the registration; resolves with the server's answer.
  *                                       Normally window.ihqCoachEvents.register.
  * @param {Function} deps.beforeRegister Resolves when the progress saves in flight have reached the server.
- * @param {Function} deps.afterCreated   Called once, right after the account was created.
+ * @param {Function} deps.afterCreated   Called once, right after the account was created, with the server's answer.
  * @param {Function} deps.messageFor     The server's own reason in an answer that was not a success, or ''.
  * @param {string}   deps.genericMessage What the visitor sees when there is no reason to show.
  * @return {{
  *   run: Function,
  *   isCreated: Function,
+ *   isStarted: Function,
  *   redirectUrl: Function
  * }}
  */
@@ -57,7 +60,7 @@ export function createAccountStep( { register, beforeRegister, afterCreated, mes
 			return failure( messageFor( data ) );
 		}
 		createdRedirectUrl = data.redirectUrl;
-		afterCreated();
+		afterCreated( data );
 		return { ok: true, redirectUrl: createdRedirectUrl };
 	}
 
@@ -83,6 +86,9 @@ export function createAccountStep( { register, beforeRegister, afterCreated, mes
 		},
 		isCreated() {
 			return null !== createdRedirectUrl;
+		},
+		isStarted() {
+			return null !== running || null !== createdRedirectUrl;
 		},
 		redirectUrl() {
 			return createdRedirectUrl;

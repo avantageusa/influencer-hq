@@ -178,3 +178,47 @@ test( 'before anything ran, nothing is created', () => {
 	assert.equal( step.isCreated(), false );
 	assert.equal( step.redirectUrl(), null );
 } );
+
+test( 'afterCreated gets the answer the server gave, so the page can take what came with it', async () => {
+	let received = null;
+	const answer = { success: true, redirectUrl: 'https://example.test/portal/portal-home/', restNonce: 'fresh-nonce' };
+	const step = createAccountStep( {
+		register: async () => answer,
+		beforeRegister: async () => {},
+		afterCreated: ( data ) => {
+			received = data;
+		},
+		messageFor,
+		genericMessage: GENERIC,
+	} );
+	await step.run( VISITOR );
+	assert.deepEqual( received, answer );
+} );
+
+test( 'isStarted is true while the request is in flight, after it succeeded, and false after a failure', async () => {
+	let finish;
+	const pendingAnswer = new Promise( ( resolve ) => {
+		finish = resolve;
+	} );
+	const step = createAccountStep( {
+		register: () => pendingAnswer,
+		beforeRegister: async () => {},
+		afterCreated: () => {},
+		messageFor,
+		genericMessage: GENERIC,
+	} );
+	assert.equal( step.isStarted(), false );
+	const pending = step.run( VISITOR );
+	assert.equal( step.isStarted(), true );
+	assert.equal( step.isCreated(), false );
+	finish( { success: false, error: 'Please wait a moment before trying again.' } );
+	await pending;
+	assert.equal( step.isStarted(), false );
+	assert.equal( step.isCreated(), false );
+
+	const created = setup();
+	assert.equal( created.step.isStarted(), false );
+	await created.step.run( VISITOR );
+	assert.equal( created.step.isStarted(), true );
+	assert.equal( created.step.isCreated(), true );
+} );

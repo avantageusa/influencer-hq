@@ -2247,7 +2247,16 @@ if ( stage && avatarWrap ) {
             // account creation has cleared the progress record.
             return progressSaveChain;
         },
-        afterCreated: stopSavingProgress,
+        afterCreated: function ( data ) {
+            stopSavingProgress();
+            // The visitor is signed in now, and the nonce the page was rendered with was made for
+            // a guest: WordPress refuses it for a signed-in visitor ("Cookie check failed"), which
+            // would break every REST call the closing screen makes, Ask Sami included. The server
+            // sends one made for the new session; every request reads cfg.nonce when it is made.
+            if ( data && typeof data.restNonce === 'string' && data.restNonce !== '' ) {
+                cfg.nonce = data.restNonce;
+            }
+        },
         messageFor: serverErrorMessage,
         genericMessage: cfg.i18n?.accountCreateErr || 'Something went wrong creating your account. Please try again.',
     } );
@@ -2377,6 +2386,12 @@ if ( stage && avatarWrap ) {
                 }
                 channelsContinueBtn.textContent = continueLabel;
                 updateChannelsContinueState();
+                // Time is up may have been held back while the request ran: the account does not
+                // exist, so the visitor is still registering and the prompt is due now.
+                if ( timeRemainingCheckPending ) {
+                    timeRemainingCheckPending = false;
+                    maybeShowTimeRemainingCheck();
+                }
                 return;
             }
 
@@ -2531,9 +2546,14 @@ if ( stage && avatarWrap ) {
         if ( timeRemainingPromptShown ) {
             return;
         }
-        // ENGR-7828 — with the account already created the registration is complete, and a
-        // visitor who already has an account must not be offered an appointment to finish it.
-        if ( accountStep.isCreated() ) {
+        // ENGR-7828 — once the account is being created or exists the registration is complete,
+        // and a visitor who already has an account must not be offered an appointment to finish it.
+        if ( accountStep.isStarted() ) {
+            // A request still in flight can fail and leave the visitor on the channels screen;
+            // the prompt is then due again (see the channels submit).
+            if ( ! accountStep.isCreated() ) {
+                timeRemainingCheckPending = true;
+            }
             return;
         }
         // PO-3346 (#7) — don't layer the prompt on top of an open Ask Sami
