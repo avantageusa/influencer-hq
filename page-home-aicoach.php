@@ -425,6 +425,7 @@ $aicoach_channels = array(
                                 </div>
                                 <?php endforeach; ?>
                             </div>
+                            <p class="aicoach-final-error" id="aicoach-channels-error" role="alert"></p>
                             <button type="submit" class="aicoach-form-continue" id="aicoach-channels-continue" disabled data-i18n="continue">
                                 <?php esc_html_e( 'Continue', 'influencer-hq' ); ?>
                             </button>
@@ -1060,6 +1061,11 @@ $aicoach_channels = array(
     .aicoach-final .aicoach-form-continue {
         width: min(261px, 66%);
         margin-top: 0;
+    }
+
+    /* ENGR-7828 — the channels step now creates the account, so it can show the reason when that fails; empty, it takes no room. */
+    .aicoach-channels .aicoach-final-error:empty {
+        display: none;
     }
 
     .aicoach-final-error {
