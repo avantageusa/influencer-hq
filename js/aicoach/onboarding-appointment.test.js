@@ -448,6 +448,7 @@ test( 'choosing again after a failed copy forgets that link, so the next copy bo
 	copyButton().click();
 	await settle();
 	assert.equal( linkBox().hidden, false );
+	assert.equal( fieldOf( 'time' ).disabled, false );
 	fieldOf( 'time' ).value = '11:00';
 	fieldOf( 'time' ).dispatchEvent( createEvent( 'input' ) );
 	assert.equal( linkBox().hidden, true );
@@ -522,4 +523,36 @@ test( 'moving on during the 4 seconds cancels the timer, so the flow moves once'
 	clock.tick( COPIED_ADVANCE_DELAY_MS );
 	await flush();
 	assert.deepEqual( posts, [ { stage: 'closing' } ] );
+} );
+
+test( 'while the link is being made the choice is locked, so the screen shows what was booked', async () => {
+	const { option, copyButton, requests, settle } = setup( { stage: 'appointment' } );
+	option( 'in-an-hour' ).click();
+	copyButton().click();
+	option( 'in-30-minutes' ).click();
+	option( 'other' ).click();
+	assert.equal( option( 'in-an-hour' ).getAttribute( 'aria-checked' ), 'true' );
+	assert.equal( option( 'in-30-minutes' ).getAttribute( 'aria-checked' ), 'false' );
+	await settle();
+	assert.deepEqual( requests.map( ( request ) => request.body.choice ), [ 'in-an-hour' ] );
+} );
+
+test( 'Other\'s fields are locked while the link is being made, unlocked when it fails, and stay locked once copied', async () => {
+	const { option, fieldOf, copyButton, requests, settle } = setup( { stage: 'appointment', responses: [ { status: 400, body: { errors: [ 'time-in-past' ] } } ] } );
+	const fields = () => [ 'date', 'time-zone', 'time' ].map( ( name ) => fieldOf( name ).disabled );
+	option( 'other' ).click();
+	fieldOf( 'date' ).value = FUTURE.date;
+	fieldOf( 'time' ).value = FUTURE.time;
+	fieldOf( 'time-zone' ).value = FUTURE.timeZone;
+	assert.deepEqual( fields(), [ false, false, false ] );
+	copyButton().click();
+	assert.deepEqual( fields(), [ true, true, true ] );
+	await settle();
+	assert.deepEqual( fields(), [ false, false, false ] );
+	assert.equal( copyButton().disabled, false );
+	copyButton().click();
+	await settle();
+	assert.deepEqual( fields(), [ true, true, true ] );
+	assert.equal( copyButton().disabled, true );
+	assert.equal( requests.length, 2 );
 } );

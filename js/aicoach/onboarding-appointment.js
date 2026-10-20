@@ -360,7 +360,9 @@ function renderAppointment( { rules, helpers, env } ) {
 		container.append( copy, errors, status, linkBox, hint );
 
 		function pick( value ) {
-			if ( copied ) {
+			// Locked while a link is being made and after it is copied, so the choice on screen
+			// is always the one that was booked.
+			if ( copied || copy.disabled ) {
 				return;
 			}
 			choice = value;
@@ -402,6 +404,19 @@ function renderAppointment( { rules, helpers, env } ) {
 			linkBox.value = '';
 		}
 
+		/**
+		 * Locks the choice and the Other fields while a link is being made (the request uses
+		 * what they held when Copy was pressed), and unlocks them when it fails.
+		 *
+		 * @param {boolean} locked
+		 */
+		function setLocked( locked ) {
+			copy.disabled = locked;
+			[ date.control, zone.control, time.control ].forEach( ( control ) => {
+				control.disabled = locked;
+			} );
+		}
+
 		// Changing a field makes an issued link the wrong one.
 		other.addEventListener( 'input', forgetLink );
 		other.addEventListener( 'change', forgetLink );
@@ -425,7 +440,7 @@ function renderAppointment( { rules, helpers, env } ) {
 				return;
 			}
 
-			copy.disabled = true;
+			setLocked( true );
 			// The request starts inside the tap and the clipboard is handed the pending link:
 			// Safari on a phone only accepts a clipboard write made inside the gesture.
 			const pending = createdLink
@@ -440,7 +455,7 @@ function renderAppointment( { rules, helpers, env } ) {
 				return;
 			}
 			if ( ! created.ok ) {
-				copy.disabled = false;
+				setLocked( false );
 				showRefusal( created );
 				return;
 			}
@@ -452,7 +467,7 @@ function renderAppointment( { rules, helpers, env } ) {
 				linkBox.focus();
 				linkBox.select();
 				showStatus( 'appointmentCopyFailed' );
-				copy.disabled = false;
+				setLocked( false );
 				return;
 			}
 			copied = true;
