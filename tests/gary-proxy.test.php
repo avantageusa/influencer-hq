@@ -369,6 +369,24 @@ ihq_coach_handle_open_session( new WP_REST_Request( array( 'locale' => 'ja' ) ) 
 $session_body = json_decode( $GLOBALS['last_remote_request']['args']['body'], true );
 check( 'session open still sends the pseudonymous player.ref and want set', '00000000-0000-0000-0000-000000000000' === $session_body['player']['ref'] && array( 'text', 'audio', 'video' ) === $session_body['want'] );
 check( 'the session open is the last request (the locale lookup happens before it)', false !== strpos( $GLOBALS['last_remote_request']['url'], '/coach/v1/session' ) );
+check( 'session open sends exactly player and want while the banner switch module is absent', array( 'player', 'want' ) === array_keys( $session_body ) );
+reset_locale_state();
+
+// ENGR-7848 — a live session carries the banner's video profile only while the composed banner is on.
+$GLOBALS['banner_video_profile'] = '';
+if ( ! function_exists( 'ihq_aicoach_banner_compositor_video_profile' ) ) {
+	function ihq_aicoach_banner_compositor_video_profile() { return $GLOBALS['banner_video_profile']; }
+}
+reset_locale_state();
+ihq_coach_handle_open_session( new WP_REST_Request( array( 'locale' => 'en' ) ) );
+$session_body = json_decode( $GLOBALS['last_remote_request']['args']['body'], true );
+check( 'session open sends no video_profile while the composed banner is off', array( 'player', 'want' ) === array_keys( $session_body ) );
+$GLOBALS['banner_video_profile'] = 'sami-framing-20261018';
+ihq_coach_handle_open_session( new WP_REST_Request( array( 'locale' => 'en' ) ) );
+$session_body = json_decode( $GLOBALS['last_remote_request']['args']['body'], true );
+check( 'session open sends video_profile while the composed banner is on', 'sami-framing-20261018' === $session_body['video_profile'] );
+check( 'session open keeps the player and want it always sent with the profile', array( 'text', 'audio', 'video' ) === $session_body['want'] && 'en' === $session_body['player']['locale'] && array( 'player', 'want', 'video_profile' ) === array_keys( $session_body ) );
+$GLOBALS['banner_video_profile'] = '';
 reset_locale_state();
 
 // ihq_coach_handle_scripts() — GET /coach/v1/registration/scripts passthrough.

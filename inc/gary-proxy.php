@@ -519,6 +519,13 @@ function ihq_coach_handle_open_session( WP_REST_Request $request ) {
 		'want'   => array( 'text', 'audio', 'video' ),
 	);
 
+	// ENGR-7848 — while the banner is composed with Gary's adapter, the live avatar must be the
+	// candidate it was calibrated for, the same one the pre-rendered clips of that version show.
+	$video_profile = function_exists( 'ihq_aicoach_banner_compositor_video_profile' ) ? ihq_aicoach_banner_compositor_video_profile() : '';
+	if ( '' !== $video_profile ) {
+		$payload['video_profile'] = $video_profile;
+	}
+
 	$result = ihq_coach_request( 'POST', '/coach/v1/session', $payload );
 	if ( is_wp_error( $result ) ) {
 		return new WP_REST_Response( array( 'error' => $result->get_error_message() ), 502 );
