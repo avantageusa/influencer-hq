@@ -23,8 +23,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 /** Id of the entry module. */
 const IHQ_PORTAL_ONBOARDING_ENTRY_MODULE = '@ihq/aicoach/onboarding-main';
 
-/** Landing-flow modules the onboarding reuses unchanged (js/aicoach/). */
-const IHQ_PORTAL_ONBOARDING_SHARED_MODULES = array( 'commentary', 'stall-watchdog', 'locales' );
+/**
+ * Landing-flow modules the onboarding reuses unchanged (js/aicoach/). The appointment rules
+ * and helpers (PO-3109) are for the appointment screens (ENGR-7577).
+ */
+const IHQ_PORTAL_ONBOARDING_SHARED_MODULES = array( 'commentary', 'stall-watchdog', 'locales', 'appointment', 'appointment-screen' );
 
 /** File names of plug-in modules, which the entry imports on demand. */
 const IHQ_PORTAL_ONBOARDING_PLUGIN_PATTERN = '/^onboarding-(screens|addon)-[a-z0-9-]+$/';

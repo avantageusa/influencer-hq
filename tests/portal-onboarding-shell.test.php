@@ -88,6 +88,9 @@ check( 'every module is registered, versioned by file time, the entry last with 
 	array( 'id' => '@ihq/aicoach/commentary', 'src' => $uri . 'commentary.js', 'deps' => array(), 'version' => '1700000001' ),
 	array( 'id' => '@ihq/aicoach/stall-watchdog', 'src' => $uri . 'stall-watchdog.js', 'deps' => array(), 'version' => '1700000002' ),
 	array( 'id' => '@ihq/aicoach/locales', 'src' => $uri . 'locales.js', 'deps' => array(), 'version' => '1700000009' ),
+	// No file in the throwaway theme: versioned by the theme version.
+	array( 'id' => '@ihq/aicoach/appointment', 'src' => $uri . 'appointment.js', 'deps' => array(), 'version' => '9.9.9' ),
+	array( 'id' => '@ihq/aicoach/appointment-screen', 'src' => $uri . 'appointment-screen.js', 'deps' => array(), 'version' => '9.9.9' ),
 	array( 'id' => '@ihq/aicoach/onboarding-addon-language', 'src' => $uri . 'onboarding-addon-language.js', 'deps' => array(), 'version' => '1700000007' ),
 	array( 'id' => '@ihq/aicoach/onboarding-boot', 'src' => $uri . 'onboarding-boot.js', 'deps' => array(), 'version' => '1700000005' ),
 	array( 'id' => '@ihq/aicoach/onboarding-narrator', 'src' => $uri . 'onboarding-narrator.js', 'deps' => array(), 'version' => '1700000004' ),
@@ -99,6 +102,8 @@ check( 'every module is registered, versioned by file time, the entry last with 
 			'@ihq/aicoach/commentary',
 			'@ihq/aicoach/stall-watchdog',
 			'@ihq/aicoach/locales',
+			'@ihq/aicoach/appointment',
+			'@ihq/aicoach/appointment-screen',
 			'@ihq/aicoach/onboarding-boot',
 			'@ihq/aicoach/onboarding-narrator',
 			array( 'id' => '@ihq/aicoach/onboarding-addon-language', 'import' => 'dynamic' ),

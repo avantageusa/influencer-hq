@@ -41,6 +41,13 @@ function get_pages( $args ) {
 	return array_slice( $found, 0, (int) ( $args['number'] ?? 0 ) ?: null );
 }
 function get_permalink( $page ) { return $page->permalink; }
+// A filter is a callable in $GLOBALS['filters'][ hook ]; none set returns the value unchanged.
+$GLOBALS['filters']      = array();
+$GLOBALS['filter_calls'] = array();
+function apply_filters( $hook, $value, ...$args ) {
+	$GLOBALS['filter_calls'][] = array( $hook, $value, $args );
+	return isset( $GLOBALS['filters'][ $hook ] ) ? call_user_func( $GLOBALS['filters'][ $hook ], $value, ...$args ) : $value;
+}
 function wp_verify_nonce( $nonce, $action ) { return 'good-nonce' === $nonce && 'ihq_appointment_join' === $action; }
 
 $GLOBALS['wp_options'] = array();
@@ -208,6 +215,29 @@ $GLOBALS['wp_options'][ 'ihq_aicoach_appointment_' . $broken['id'] ]['ref'] = 'n
 check( 'a stored ref that is not a UUID is never put in a cookie', $back( $broken_tok ) === ihq_aicoach_appointment_join_decision( $post( array( 't' => $broken_tok ) ), $page_url, $home_url, $at_join, false ) );
 unset( $GLOBALS['wp_options'][ 'ihq_aicoach_appointment_' . $broken['id'] ]['ref'] );
 check( 'an appointment stored without a ref does not join', $back( $broken_tok ) === ihq_aicoach_appointment_join_decision( $post( array( 't' => $broken_tok ) ), $page_url, $home_url, $at_join, false ) );
+
+// --- the Join redirect filter (ENGR-7577: the portal onboarding's appointments) ---
+
+$GLOBALS['wp_options'] = array();
+$GLOBALS['filter_calls'] = array();
+$filter_ref = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+$filter_rec = ihq_aicoach_appointment_create( $filter_ref, $start, 'UTC', $now );
+$filter_tok = ihq_aicoach_appointment_make_token( $filter_rec['id'], $start );
+$at_filter  = function ( $token ) use ( $page_url, $home_url, $at_join ) {
+	return ihq_aicoach_appointment_join_decision( array( 't' => $token, '_wpnonce' => 'good-nonce' ), $page_url, $home_url, $at_join, false );
+};
+check( 'with no filter, Join is the landing flow\'s', array( 'ref' => $filter_ref, 'redirect' => $home_url ) === $at_filter( $filter_tok ) );
+check( 'the filter is asked once, with null and the stored record', array( array( 'ihq_aicoach_appointment_join_redirect', null, array( $GLOBALS['wp_options'][ 'ihq_aicoach_appointment_' . $filter_rec['id'] ] ) ) ) === $GLOBALS['filter_calls'] );
+$GLOBALS['filters']['ihq_aicoach_appointment_join_redirect'] = function ( $redirect, $record ) { return 'https://example.test/portal/portal-home/'; };
+check( 'a filtered URL is where Join leads, and no ref is handed out', array( 'ref' => null, 'redirect' => 'https://example.test/portal/portal-home/' ) === $at_filter( $filter_tok ) );
+$GLOBALS['filter_calls'] = array();
+check( 'outside the window the filter changes nothing and is not asked', $back( $filter_tok ) === ihq_aicoach_appointment_join_decision( array( 't' => $filter_tok, '_wpnonce' => 'good-nonce' ), $page_url, $home_url, $start + 1800, false ) && array() === $GLOBALS['filter_calls'] );
+check( 'an edited token never reaches the filter', $back( $filter_tok . 'x' ) === $at_filter( $filter_tok . 'x' ) && array() === $GLOBALS['filter_calls'] );
+$GLOBALS['filters']['ihq_aicoach_appointment_join_redirect'] = function ( $redirect, $record ) { return ''; };
+check( 'an empty filtered URL keeps the landing flow\'s Join', array( 'ref' => $filter_ref, 'redirect' => $home_url ) === $at_filter( $filter_tok ) );
+$GLOBALS['filters']['ihq_aicoach_appointment_join_redirect'] = function ( $redirect, $record ) { return array( 'x' ); };
+check( 'a filtered value that is not text keeps the landing flow\'s Join', array( 'ref' => $filter_ref, 'redirect' => $home_url ) === $at_filter( $filter_tok ) );
+$GLOBALS['filters'] = array();
 
 // --- the page request hook and the script ---
 

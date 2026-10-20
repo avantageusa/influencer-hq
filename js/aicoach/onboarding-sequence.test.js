@@ -4,7 +4,7 @@ import { SEQUENCE, BRANCHES, startStage, nextStage } from './onboarding-sequence
 
 const all = () => true;
 
-test( 'the sixteen screens in the order of the ticket', () => {
+test( 'the screens in order, Talk more? and the appointment before closing (ENGR-7577)', () => {
 	assert.deepEqual( SEQUENCE, [
 		'game_of_kings',
 		'modern_era',
@@ -21,14 +21,19 @@ test( 'the sixteen screens in the order of the ticket', () => {
 		'equity_example',
 		'draft_posts',
 		'post_action',
+		'time_up',
+		'appointment',
 		'closing',
 	] );
 	assert.ok( Object.isFrozen( SEQUENCE ) );
 } );
 
-test( 'the one backward branch: edit together on post action goes back to the drafts', () => {
-	assert.deepEqual( BRANCHES, [ { from: 'post_action', choice: 'edit_together', to: 'draft_posts' } ] );
-	assert.ok( Object.isFrozen( BRANCHES ) && Object.isFrozen( BRANCHES[ 0 ] ) );
+test( 'two branches: edit together goes back to the drafts, Continue on Talk more? skips the appointment', () => {
+	assert.deepEqual( BRANCHES, [
+		{ from: 'post_action', choice: 'edit_together', to: 'draft_posts' },
+		{ from: 'time_up', choice: 'continue', to: 'closing' },
+	] );
+	assert.ok( Object.isFrozen( BRANCHES ) && BRANCHES.every( ( branch ) => Object.isFrozen( branch ) ) );
 } );
 
 test( 'advancing moves exactly one screen forward, through the whole order', () => {
@@ -42,11 +47,22 @@ test( 'there is nothing after the closing screen, or after an unknown one', () =
 	assert.equal( nextStage( { current: 'payout', isAvailable: all } ), null );
 } );
 
-test( 'edit together returns to the drafts; the other two post action choices go to closing', () => {
+test( 'edit together returns to the drafts; the other two post action choices go to Talk more?', () => {
 	assert.equal( nextStage( { current: 'post_action', choice: 'edit_together', isAvailable: all } ), 'draft_posts' );
-	assert.equal( nextStage( { current: 'post_action', choice: 'post_now', isAvailable: all } ), 'closing' );
-	assert.equal( nextStage( { current: 'post_action', choice: 'edit_later', isAvailable: all } ), 'closing' );
-	assert.equal( nextStage( { current: 'post_action', isAvailable: all } ), 'closing' );
+	assert.equal( nextStage( { current: 'post_action', choice: 'post_now', isAvailable: all } ), 'time_up' );
+	assert.equal( nextStage( { current: 'post_action', choice: 'edit_later', isAvailable: all } ), 'time_up' );
+	assert.equal( nextStage( { current: 'post_action', isAvailable: all } ), 'time_up' );
+} );
+
+test( 'Talk more?: Continue to IHQ portal goes to closing, Set an Appointment to scheduling, then closing', () => {
+	assert.equal( nextStage( { current: 'time_up', choice: 'continue', isAvailable: all } ), 'closing' );
+	assert.equal( nextStage( { current: 'time_up', choice: 'appointment', isAvailable: all } ), 'appointment' );
+	assert.equal( nextStage( { current: 'appointment', isAvailable: all } ), 'closing' );
+} );
+
+test( 'without the appointment screens installed, post action goes straight to closing', () => {
+	const noAppointment = ( stage ) => ! [ 'time_up', 'appointment' ].includes( stage );
+	assert.equal( nextStage( { current: 'post_action', choice: 'post_now', isAvailable: noAppointment } ), 'closing' );
 } );
 
 test( 'the branch choice only applies on its own screen', () => {
@@ -55,12 +71,12 @@ test( 'the branch choice only applies on its own screen', () => {
 
 test( 'a branch to a screen that is not installed is not taken', () => {
 	const noDrafts = ( stage ) => 'draft_posts' !== stage;
-	assert.equal( nextStage( { current: 'post_action', choice: 'edit_together', isAvailable: noDrafts } ), 'closing' );
+	assert.equal( nextStage( { current: 'post_action', choice: 'edit_together', isAvailable: noDrafts } ), 'time_up' );
 } );
 
 test( 'screens not installed yet are passed over', () => {
 	const held = ( stage ) => ! [ 'draft_posts', 'post_action' ].includes( stage );
-	assert.equal( nextStage( { current: 'equity_example', isAvailable: held } ), 'closing' );
+	assert.equal( nextStage( { current: 'equity_example', isAvailable: held } ), 'time_up' );
 	assert.equal( nextStage( { current: 'closing', isAvailable: held } ), null );
 	assert.equal( nextStage( { current: 'equity_example', isAvailable: () => false } ), null );
 } );
@@ -83,7 +99,7 @@ test( 'onboarding resumes at the saved stage', () => {
 
 test( 'an unknown saved stage opens screen 1; a saved stage not installed opens the next one that is', () => {
 	assert.equal( startStage( { saved: 'payout', isAvailable: all } ), 'game_of_kings' );
-	assert.equal( startStage( { saved: 'draft_posts', isAvailable: ( stage ) => ! [ 'draft_posts', 'post_action' ].includes( stage ) } ), 'closing' );
+	assert.equal( startStage( { saved: 'draft_posts', isAvailable: ( stage ) => ! [ 'draft_posts', 'post_action' ].includes( stage ) } ), 'time_up' );
 	assert.equal( startStage( { saved: '', isAvailable: ( stage ) => 'modern_era' === stage } ), 'modern_era' );
 } );
 

@@ -115,6 +115,8 @@ function ihq_portal_onboarding_stages() {
 		'equity_example',
 		'draft_posts',
 		'post_action',
+		'time_up',
+		'appointment',
 		'closing',
 	);
 }

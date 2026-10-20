@@ -474,20 +474,13 @@ function ihq_aicoach_appointment_no_store( WP_REST_Response $response ) {
 }
 
 /**
- * POST /ihq/v1/aicoach/appointment
+ * The visitor's choice from a request body: the four known string fields, sanitized and
+ * capped; anything else is left out.
  *
- * @param WP_REST_Request $request Request.
- * @return WP_REST_Response
+ * @param mixed $params Decoded JSON body.
+ * @return array { choice?, date?, time?, timeZone? }
  */
-function ihq_aicoach_appointment_handle_post( WP_REST_Request $request ) {
-	// Same per-IP write counter as the progress route: this route writes too.
-	if ( ihq_aicoach_progress_rate_limited() ) {
-		return ihq_aicoach_appointment_no_store(
-			new WP_REST_Response( array( 'error' => 'Too many requests. Please slow down.' ), 429 )
-		);
-	}
-
-	$params = $request->get_json_params();
+function ihq_aicoach_appointment_read_selection( $params ) {
 	if ( ! is_array( $params ) ) {
 		$params = array();
 	}
@@ -497,6 +490,43 @@ function ihq_aicoach_appointment_handle_post( WP_REST_Request $request ) {
 			$selection[ $field ] = mb_substr( sanitize_text_field( $params[ $field ] ), 0, IHQ_AICOACH_APPOINTMENT_MAX_FIELD_LENGTH );
 		}
 	}
+	return $selection;
+}
+
+/**
+ * POST /ihq/v1/aicoach/appointment
+ *
+ * @param WP_REST_Request $request Request.
+ * @return WP_REST_Response
+ */
+function ihq_aicoach_appointment_handle_post( WP_REST_Request $request ) {
+	return ihq_aicoach_appointment_respond(
+		$request,
+		function ( $starts_at, $time_zone, $now ) {
+			return ihq_aicoach_appointment_create( ihq_aicoach_progress_get_ref(), $starts_at, $time_zone, $now );
+		}
+	);
+}
+
+/**
+ * What both appointment routes do (this one and the portal onboarding's,
+ * inc/portal-onboarding-appointment.php): limit, validate, store through $create, answer
+ * with the signed link. Only who the appointment belongs to differs, so that is $create.
+ *
+ * @param WP_REST_Request $request Request.
+ * @param callable        $create  ( int $starts_at, string $time_zone, int $now ) => array|WP_Error,
+ *                                 the stored record with its id and startsAt.
+ * @return WP_REST_Response
+ */
+function ihq_aicoach_appointment_respond( WP_REST_Request $request, callable $create ) {
+	// Same per-IP write counter as the progress route: this route writes too.
+	if ( ihq_aicoach_progress_rate_limited() ) {
+		return ihq_aicoach_appointment_no_store(
+			new WP_REST_Response( array( 'error' => 'Too many requests. Please slow down.' ), 429 )
+		);
+	}
+
+	$selection = ihq_aicoach_appointment_read_selection( $request->get_json_params() );
 
 	$now    = time();
 	$result = ihq_aicoach_appointment_validate( $selection, $now );
@@ -514,9 +544,8 @@ function ihq_aicoach_appointment_handle_post( WP_REST_Request $request ) {
 		);
 	}
 
-	$ref    = ihq_aicoach_progress_get_ref();
-	$record = ihq_aicoach_appointment_create(
-		$ref,
+	$record = call_user_func(
+		$create,
 		$result['startsAt'],
 		isset( $selection['timeZone'] ) ? $selection['timeZone'] : '',
 		$now
