@@ -7,7 +7,7 @@ import { createApi } from './onboarding-boot.js';
 import { SEQUENCE, startStage, nextStage } from './onboarding-sequence.js';
 import { createFakeClock } from './fake-clock.js';
 import { createStallWatchdog } from './stall-watchdog.js';
-import { buildSentenceCues, subtitleAt } from './onboarding-subtitles.js';
+import { buildPhraseCues, captionAt } from './onboarding-subtitles.js';
 import { estimateDurationMs } from './commentary.js';
 import { createNarrator } from './onboarding-narrator.js';
 import { createEngine, ADVANCE_MODES, MIN_READING_TIME_MS, NARRATION_KEY_PREFIX, narrationKey, screenText } from './onboarding-engine.js';
@@ -624,8 +624,8 @@ function setupNarrated( { clips = {}, estimate = () => 1000 } = {} ) {
 	const narrator = createNarrator( {
 		video,
 		onSubtitle: () => {},
-		buildSentenceCues,
-		subtitleAt,
+		buildPhraseCues,
+		captionAt,
 		estimateDurationMs: estimate,
 		createStallWatchdog,
 		setTimeout: clock.setTimeout,

@@ -70,7 +70,7 @@ $ihq_onb_portrait = isset( $args['portrait_url'] ) ? $args['portrait_url'] : '';
 			<video class="ihq-onb__video" data-onb="video" playsinline preload="auto"></video>
 		</div>
 
-		<?php /* What Sami is saying, a sentence at a time; the second element holds the whole line once for a screen reader. */ ?>
+		<?php /* What Sami is saying, a phrase at a time with the one before it (onboarding-caption-box.js); the second element holds the whole line once for a screen reader. */ ?>
 		<div class="ihq-onb__commentary">
 			<p class="ihq-onb__subtitle" data-onb="subtitle" aria-hidden="true"></p>
 			<p class="ihq-onb__sr" data-onb="transcript" aria-live="polite"></p>

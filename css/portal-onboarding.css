@@ -365,18 +365,65 @@ html.ihq-onb-open body {
 }
 
 /*
- * The design's text box is 197 px wide, so a line breaks where the
- * design's does.
+ * What Sami is saying, a phrase at a time (ENGR-7891, Marcus's commentary
+ * delivery instructions): the previous phrase above in a softer style so
+ * a viewer can catch up, the current one below, larger and at full
+ * contrast. Each line has a fixed two-line slot, so the box keeps its
+ * size and place while the phrases change and the screen's headline
+ * below never moves. A phrase is at most about two lines
+ * (onboarding-subtitles.js); a longer previous phrase is cut short, a
+ * longer current one grows the box rather than lose words.
+ *
+ * A change fades the box out over 180 ms (FADE_OUT_MS in
+ * onboarding-caption-box.js), swaps the words and fades back in. Under
+ * prefers-reduced-motion the script never sets is-changing, so the
+ * opacity never changes and nothing fades; no media query is needed.
  */
 .ihq-onb__subtitle {
-	max-width: 197px;
+	--ihq-onb-previous-line: 18px;
+	--ihq-onb-current-line: 22px;
+
+	display: grid;
+	grid-template-rows: calc(2 * var(--ihq-onb-previous-line)) minmax(calc(2 * var(--ihq-onb-current-line)), auto);
+	row-gap: 4px;
+	width: 100%;
 	margin: 0;
 	font-family: Inter, "Be Vietnam Pro", sans-serif;
-	font-size: 14px;
 	font-style: italic;
-	font-weight: 300;
-	line-height: 24px;
 	text-align: center;
+	opacity: 1;
+	transition: opacity 240ms ease-out;
+}
+
+.ihq-onb__subtitle.is-changing {
+	opacity: 0;
+	transition-duration: 180ms;
+	transition-timing-function: ease-in;
+}
+
+.ihq-onb__phrase {
+	display: block;
+}
+
+/* Sits just above the current phrase, whatever its length. */
+.ihq-onb__phrase--previous {
+	display: -webkit-box;
+	align-self: end;
+	overflow: hidden;
+	-webkit-box-orient: vertical;
+	color: #b3b3b3;
+	font-size: 13px;
+	font-weight: 300;
+	line-height: var(--ihq-onb-previous-line);
+	-webkit-line-clamp: 2;
+}
+
+.ihq-onb__phrase--current {
+	align-self: start;
+	color: #fff;
+	font-size: 16px;
+	font-weight: 400;
+	line-height: var(--ihq-onb-current-line);
 }
 
 .ihq-onb__sr {

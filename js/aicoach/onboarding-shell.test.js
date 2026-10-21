@@ -216,14 +216,6 @@ test( 'say() plays the line and gives a screen reader the whole script once', as
 	assert.equal( part( root, 'transcript' ).textContent, 'Hello. I am Sami.' );
 } );
 
-test( 'showSubtitle writes the sentence in the commentary box', () => {
-	const { root, shell } = setup();
-	shell.showSubtitle( 'Hello.' );
-	assert.equal( part( root, 'subtitle' ).textContent, 'Hello.' );
-	shell.showSubtitle( '' );
-	assert.equal( part( root, 'subtitle' ).textContent, '' );
-} );
-
 test( 'stopSpeaking stops the narrator', () => {
 	const { narrator, shell } = setup();
 	shell.stopSpeaking();

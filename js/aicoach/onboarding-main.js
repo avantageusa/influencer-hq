@@ -13,8 +13,9 @@
  */
 import { estimateDurationMs } from '@ihq/aicoach/commentary';
 import { createStallWatchdog } from '@ihq/aicoach/stall-watchdog';
-import { buildSentenceCues, subtitleAt } from '@ihq/aicoach/onboarding-subtitles';
+import { buildPhraseCues, captionAt } from '@ihq/aicoach/onboarding-subtitles';
 import { createNarrator } from '@ihq/aicoach/onboarding-narrator';
+import { createCaptionBox } from '@ihq/aicoach/onboarding-caption-box';
 import { createStringTable, SHELL_STRINGS_EN, FALLBACK_LOCALE } from '@ihq/aicoach/onboarding-strings';
 import { createEmitter } from '@ihq/aicoach/onboarding-events';
 import { createShell } from '@ihq/aicoach/onboarding-shell';
@@ -41,12 +42,13 @@ async function start() {
 	const api = createApi( { config, events, strings } );
 
 	let shell = null;
+	const captionBox = createCaptionBox( { element: root.querySelector( '[data-onb="subtitle"]' ), document, window } );
 	const narrator = createNarrator( {
 		video: root.querySelector( '[data-onb="video"]' ),
-		onSubtitle: ( text ) => shell.showSubtitle( text ),
+		onSubtitle: captionBox.show,
 		onMutedChange: ( muted ) => shell.showMuted( muted ),
-		buildSentenceCues,
-		subtitleAt,
+		buildPhraseCues,
+		captionAt,
 		estimateDurationMs,
 		createStallWatchdog,
 		setTimeout: window.setTimeout.bind( window ),

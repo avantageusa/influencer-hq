@@ -1,7 +1,7 @@
 /**
- * The onboarding frame's behaviour (ENGR-7565): the hamburger menu, the sound button, what
- * Sami says in the commentary box, the content area screens render into, and closing the
- * layer. The markup is template-parts/portal-onboarding.php; elements are found by their
+ * The onboarding frame's behaviour (ENGR-7565): the hamburger menu, the sound button, the
+ * screen-reader transcript of what Sami says, the content area screens render into, and
+ * closing the layer. The commentary box itself is onboarding-caption-box.js. The markup is template-parts/portal-onboarding.php; elements are found by their
  * data-onb attribute.
  *
  * The narrator and the string table are passed in.
@@ -76,7 +76,6 @@ export function createShell( { root, document, window, narrator, strings, getLoc
 	const menuButton = part( root, 'menu-button' );
 	const menu = part( root, 'menu' );
 	const soundButton = part( root, 'sound' );
-	const subtitle = part( root, 'subtitle' );
 	const transcript = part( root, 'transcript' );
 	const content = part( root, 'content' );
 
@@ -182,9 +181,6 @@ export function createShell( { root, document, window, narrator, strings, getLoc
 		content,
 		say,
 		stopSpeaking: () => narrator.stop(),
-		showSubtitle: ( text ) => {
-			subtitle.textContent = text;
-		},
 		showMuted,
 		applyStrings,
 		close,
