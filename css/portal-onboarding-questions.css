@@ -11,6 +11,10 @@
 
 .ihq-onb {
 
+	/* The question and its answers share one type size (ENGR-7890). */
+	--ihq-onb-q-font-size: 14px;
+	--ihq-onb-q-line-height: 18px;
+
 	/* The answer square. */
 	--ihq-onb-q-box-size: 20px;
 
@@ -36,9 +40,9 @@
 	max-width: 183px;
 	margin: 9px auto 0;
 	color: #fff;
-	font-size: 14px;
+	font-size: var(--ihq-onb-q-font-size);
 	font-weight: 800;
-	line-height: 18px;
+	line-height: var(--ihq-onb-q-line-height);
 	text-align: center;
 }
 
@@ -67,10 +71,7 @@
 	padding-left: calc(var(--ihq-onb-q-box-size) + var(--ihq-onb-q-label-gap));
 }
 
-/*
- * The square is the button's ::before, in the first column; the label,
- * and screen 3's diamonds under it, are in the second.
- */
+/* The square is the button's ::before, in the first column; the label is in the second. */
 .ihq-onb-q__option {
 	display: grid;
 	grid-template-columns: var(--ihq-onb-q-box-size) minmax(0, 1fr);
@@ -83,9 +84,9 @@
 	background: transparent;
 	color: #fff;
 	font-family: "Be Vietnam Pro", Inter, sans-serif;
-	font-size: 14px;
+	font-size: var(--ihq-onb-q-font-size);
 	font-weight: 800;
-	line-height: 18px;
+	line-height: var(--ihq-onb-q-line-height);
 	text-align: left;
 	text-transform: uppercase;
 	cursor: pointer;
@@ -107,28 +108,4 @@
 .ihq-onb-q__option:focus-visible {
 	outline: 3px solid var(--ihq-onb-yellow);
 	outline-offset: 2px;
-}
-
-/*
- * Screen 3's XP level: one red ih diamond per level under the label, 41 px
- * apart. The design shows only the lit ones, so the unlit ones are not
- * drawn, and the glyph in the markup gives way to the design's image.
- */
-.ihq-onb-q__diamonds {
-	display: flex;
-	grid-column: 2;
-	gap: 15px;
-	margin-top: 6px;
-}
-
-.ihq-onb-q__diamond {
-	display: none;
-}
-
-.ihq-onb-q__diamond.is-on {
-	display: block;
-	width: 26px;
-	height: 32px;
-	background: url(../images/logo-hero-red-small.png) center / contain no-repeat;
-	font-size: 0;
 }

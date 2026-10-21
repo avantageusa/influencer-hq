@@ -116,16 +116,13 @@ test( 'the engine sequence is the stage list the account store accepts', () => {
 	assert.deepEqual( Array.from( list.matchAll( /'([a-z_]+)'/g ), ( match ) => match[ 1 ] ), SEQUENCE );
 } );
 
-test( 'screen 3: the question, three options with 3/2/1 diamonds, the stored values', () => {
+test( 'screen 3: the question, three options with only their label (no XP level), the stored values', () => {
 	const { screen } = setup();
 	assert.equal( screen().querySelector( 'h2' ).textContent, 'What is your experience with Baccarat?' );
 	assert.deepEqual( labels( screen(), 'main' ), [ "I'VE PLAYED A LOT", "I'VE PLAYED SOME", "I'M NEW" ] );
-	const lit = screen().querySelectorAll( 'button[data-group="main"]' ).map( ( button ) => button.querySelectorAll( '.is-on' ).length );
-	assert.deepEqual( lit, [ 3, 2, 1 ] );
-	screen().querySelectorAll( '.ihq-onb-q__diamonds' ).forEach( ( level ) => {
-		assert.equal( level.getAttribute( 'aria-hidden' ), 'true' );
-		assert.equal( level.children.length, 3 );
-	} );
+	const contents = screen().querySelectorAll( 'button[data-group="main"]' ).map( ( button ) => Array.from( button.children, ( child ) => child.className ) );
+	assert.deepEqual( contents, [ [ 'ihq-onb-q__label' ], [ 'ihq-onb-q__label' ], [ 'ihq-onb-q__label' ] ] );
+	assert.deepEqual( question( 'baccarat_experience' ).options.map( ( option ) => Object.keys( option ) ), [ [ 'value', 'labelKey' ], [ 'value', 'labelKey' ], [ 'value', 'labelKey' ] ] );
 	assert.equal( screen().querySelector( 'div[data-group="sub"]' ), null );
 } );
 
@@ -487,10 +484,24 @@ test( 'the revealed group is named by the option that reveals it, not by the que
 	}
 } );
 
-test( 'each diamond is the diamond glyph', () => {
-	const { screen } = setup();
-	const glyphs = screen().querySelectorAll( '.ihq-onb-q__diamond' ).map( ( diamond ) => diamond.textContent );
-	assert.deepEqual( glyphs, [ '◆', '◆', '◆', '◆', '◆', '◆', '◆', '◆', '◆' ] );
+// The declarations of the one rule whose selector is exactly `selector`, in order.
+function ruleDeclarations( css, selector ) {
+	const rules = Array.from( css.matchAll( /([^{}]+)\{([^{}]*)\}/g ) ).filter( ( match ) => match[ 1 ].replace( /\/\*[\s\S]*?\*\//g, '' ).trim() === selector );
+	assert.equal( rules.length, 1, 'one rule for ' + selector );
+	const body = rules[ 0 ][ 2 ].replace( /\/\*[\s\S]*?\*\//g, '' );
+	return body.split( ';' ).map( ( declaration ) => declaration.trim() ).filter( ( declaration ) => '' !== declaration );
+}
+
+test( 'the question and its answers share one type size, at every width', () => {
+	const css = readFileSync( new URL( '../../css/portal-onboarding-questions.css', import.meta.url ), 'utf8' );
+	assert.equal( css.includes( '@media' ), false );
+	assert.equal( css.includes( 'diamond' ), false );
+	const tokens = ruleDeclarations( css, '.ihq-onb' ).filter( ( declaration ) => /^--ihq-onb-q-(font-size|line-height):/.test( declaration ) );
+	assert.deepEqual( tokens, [ '--ihq-onb-q-font-size: 14px', '--ihq-onb-q-line-height: 18px' ] );
+	const typeOf = ( selector ) => ruleDeclarations( css, selector ).filter( ( declaration ) => /^(font-size|font-weight|line-height):/.test( declaration ) );
+	const shared = [ 'font-size: var(--ihq-onb-q-font-size)', 'font-weight: 800', 'line-height: var(--ihq-onb-q-line-height)' ];
+	assert.deepEqual( typeOf( '.ihq-onb-q__question' ), shared );
+	assert.deepEqual( typeOf( '.ihq-onb-q__option' ), shared );
 } );
 
 test( 'a pick advances the screen after the pause, not before', async () => {
