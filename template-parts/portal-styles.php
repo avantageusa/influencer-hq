@@ -2227,6 +2227,12 @@
         font-size: 18px;
         font-weight: 600;
         line-height: 1;
+        cursor: pointer;
+    }
+
+    body.page-template-page-portal-post-php .post-panel-copy:disabled {
+        cursor: default;
+        opacity: 0.5;
     }
 
     body.page-template-page-portal-post-php .post-panel-share img {

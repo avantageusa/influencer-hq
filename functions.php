@@ -190,6 +190,17 @@ function influencer_hq_scripts() {
 	if ( is_singular() && comments_open() && get_option( 'thread_comments' ) ) {
 		wp_enqueue_script( 'comment-reply' );
 	}
+
+	if ( is_page_template( 'page-portal-post.php' ) ) {
+		$post_copy_path = get_template_directory() . '/js/portal-post-copy.js';
+		$post_copy_ver  = file_exists( $post_copy_path ) ? (string) filemtime( $post_copy_path ) : _S_VERSION;
+		wp_enqueue_script_module(
+			'@ihq/portal-post-copy',
+			get_template_directory_uri() . '/js/portal-post-copy.js',
+			array(),
+			$post_copy_ver
+		);
+	}
 }
 add_action( 'wp_enqueue_scripts', 'influencer_hq_scripts' );
 
