@@ -53,10 +53,6 @@ export const QUESTION_STRINGS_EN = {
 	subAnswerRequired: 'Choose one of the options below your answer to continue.',
 };
 
-/** The diamonds shown next to a baccarat answer, as its XP level. */
-const MAX_DIAMONDS = 3;
-const DIAMOND_GLYPH = '◆';
-
 /** The radio keyboard pattern: these keys move the choice to the next or previous option. */
 const NEXT_OPTION_KEYS = Object.freeze( [ 'ArrowDown', 'ArrowRight' ] );
 const PREVIOUS_OPTION_KEYS = Object.freeze( [ 'ArrowUp', 'ArrowLeft' ] );
@@ -85,9 +81,9 @@ export const QUESTIONS = Object.freeze( [
 		field: 'baccarat_experience',
 		questionKey: 'baccaratQuestion',
 		options: Object.freeze( [
-			Object.freeze( { value: 'played_a_lot', labelKey: 'baccaratPlayedALot', diamonds: 3 } ),
-			Object.freeze( { value: 'played_some', labelKey: 'baccaratPlayedSome', diamonds: 2 } ),
-			Object.freeze( { value: 'new_player', labelKey: 'baccaratNew', diamonds: 1 } ),
+			Object.freeze( { value: 'played_a_lot', labelKey: 'baccaratPlayedALot' } ),
+			Object.freeze( { value: 'played_some', labelKey: 'baccaratPlayedSome' } ),
+			Object.freeze( { value: 'new_player', labelKey: 'baccaratNew' } ),
 		] ),
 	} ),
 	Object.freeze( {
@@ -253,18 +249,6 @@ function optionButton( { document, text, option, group, headingId } ) {
 		label.setAttribute( 'id', revealingLabelId( headingId, option ) );
 	}
 	button.append( label );
-	if ( option.diamonds ) {
-		const level = document.createElement( 'span' );
-		level.className = 'ihq-onb-q__diamonds';
-		level.setAttribute( 'aria-hidden', 'true' );
-		for ( let index = 0; index < MAX_DIAMONDS; index++ ) {
-			const diamond = document.createElement( 'span' );
-			diamond.className = index < option.diamonds ? 'ihq-onb-q__diamond is-on' : 'ihq-onb-q__diamond';
-			diamond.textContent = DIAMOND_GLYPH;
-			level.append( diamond );
-		}
-		button.append( level );
-	}
 	return button;
 }
 
