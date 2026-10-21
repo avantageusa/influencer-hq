@@ -18,7 +18,11 @@ $post_theme_uri = get_template_directory_uri();
 
         <div class="container py-2 the-gradient" id="portal-content" style="max-width: 1024px; padding-left: 20px; padding-right: 20px;">
 
-            <div class="post-page-content">
+            <div
+                class="post-page-content"
+                data-copy-copied="<?php echo esc_attr__( 'Copied', 'influencer-hq' ); ?>"
+                data-copy-failed="<?php echo esc_attr__( "Couldn't copy. Select the text and copy it instead.", 'influencer-hq' ); ?>"
+            >
 
                 <div class="equity-header">
                     <div class="equity-header-top">
@@ -29,7 +33,7 @@ $post_theme_uri = get_template_directory_uri();
 
                 <p class="post-intro"><?php esc_html_e( 'Here are the latest Social Media posts I’ve created for you to share with your followers.', 'influencer-hq' ); ?></p>
 
-                <section class="post-panel" aria-label="<?php esc_attr_e( 'Facebook', 'influencer-hq' ); ?>">
+                <section class="post-panel" data-has-draft aria-label="<?php esc_attr_e( 'Facebook', 'influencer-hq' ); ?>">
                     <div class="post-panel-draft"><?php esc_html_e( 'Facebook Draft Post goes here', 'influencer-hq' ); ?></div>
                     <div class="post-panel-meta">
                         <span class="post-panel-date">08-31-2026</span>
@@ -38,7 +42,7 @@ $post_theme_uri = get_template_directory_uri();
                             <span><?php esc_html_e( 'Posting Now', 'influencer-hq' ); ?></span>
                         </label>
                         <div class="post-panel-actions">
-                            <button type="button" class="post-panel-copy" tabindex="-1"><?php esc_html_e( 'Copy', 'influencer-hq' ); ?></button>
+                            <button type="button" class="post-panel-copy"><?php esc_html_e( 'Copy', 'influencer-hq' ); ?></button>
                             <button type="button" class="post-panel-share" tabindex="-1" aria-label="<?php esc_attr_e( 'Share', 'influencer-hq' ); ?>">
                                 <img src="<?php echo esc_url( $post_theme_uri ); ?>/images/post-share.png" alt="" width="48" height="48">
                             </button>
@@ -46,7 +50,7 @@ $post_theme_uri = get_template_directory_uri();
                     </div>
                 </section>
 
-                <section class="post-panel" aria-label="<?php esc_attr_e( 'LINE', 'influencer-hq' ); ?>">
+                <section class="post-panel" data-has-draft aria-label="<?php esc_attr_e( 'LINE', 'influencer-hq' ); ?>">
                     <div class="post-panel-draft"><?php esc_html_e( 'LINE draft post goes here', 'influencer-hq' ); ?></div>
                     <div class="post-panel-meta">
                         <span class="post-panel-date">08-31-2026</span>
@@ -55,7 +59,7 @@ $post_theme_uri = get_template_directory_uri();
                             <span><?php esc_html_e( 'Posting Now', 'influencer-hq' ); ?></span>
                         </label>
                         <div class="post-panel-actions">
-                            <button type="button" class="post-panel-copy" tabindex="-1"><?php esc_html_e( 'Copy', 'influencer-hq' ); ?></button>
+                            <button type="button" class="post-panel-copy"><?php esc_html_e( 'Copy', 'influencer-hq' ); ?></button>
                             <button type="button" class="post-panel-share" tabindex="-1" aria-label="<?php esc_attr_e( 'Share', 'influencer-hq' ); ?>">
                                 <img src="<?php echo esc_url( $post_theme_uri ); ?>/images/post-share.png" alt="" width="48" height="48">
                             </button>
@@ -63,7 +67,7 @@ $post_theme_uri = get_template_directory_uri();
                     </div>
                 </section>
 
-                <section class="post-panel" aria-label="<?php esc_attr_e( 'WeChat', 'influencer-hq' ); ?>">
+                <section class="post-panel" data-has-draft aria-label="<?php esc_attr_e( 'WeChat', 'influencer-hq' ); ?>">
                     <div class="post-panel-draft"><?php esc_html_e( 'WeChat draft post goes here', 'influencer-hq' ); ?></div>
                     <div class="post-panel-meta">
                         <span class="post-panel-date">08-31-2026</span>
@@ -72,7 +76,7 @@ $post_theme_uri = get_template_directory_uri();
                             <span><?php esc_html_e( 'Posting Now', 'influencer-hq' ); ?></span>
                         </label>
                         <div class="post-panel-actions">
-                            <button type="button" class="post-panel-copy" tabindex="-1"><?php esc_html_e( 'Copy', 'influencer-hq' ); ?></button>
+                            <button type="button" class="post-panel-copy"><?php esc_html_e( 'Copy', 'influencer-hq' ); ?></button>
                             <button type="button" class="post-panel-share" tabindex="-1" aria-label="<?php esc_attr_e( 'Share', 'influencer-hq' ); ?>">
                                 <img src="<?php echo esc_url( $post_theme_uri ); ?>/images/post-share.png" alt="" width="48" height="48">
                             </button>
