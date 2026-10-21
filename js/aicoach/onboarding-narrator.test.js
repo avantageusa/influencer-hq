@@ -2,10 +2,17 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createFakeClock } from './fake-clock.js';
 import { createStallWatchdog } from './stall-watchdog.js';
-import { buildSentenceCues, subtitleAt } from './onboarding-subtitles.js';
-import { createNarrator, sentenceIndexAt, captionOffsetMs, CAPTION_TICK_MS, CLIP_STALL_MS } from './onboarding-narrator.js';
+import { buildPhraseCues, captionAt } from './onboarding-subtitles.js';
+import { createNarrator, phraseIndexAt, captionOffsetMs, CAPTION_TICK_MS, CLIP_STALL_MS, MIN_PHRASE_MS } from './onboarding-narrator.js';
 
-const SCRIPT = 'Aa. Bbbbbb.';
+// Two phrases weighing 3 letters + a 6 break pause, and 7 letters: 9 and 7 sixteenths of the
+// line. At the default 3200 ms reading pace, 'Aa.' is up for 0-1800 ms and 'Bbbbbb.' for
+// 1800-3200 ms; in a 2 s clip, 0-1.125 s and 1.125-2 s.
+const SCRIPT = 'Aa.\nBbbbbb.';
+const DEFAULT_ESTIMATE_MS = 3200;
+const FIRST = { current: 'Aa.', previous: '' };
+const SECOND = { current: 'Bbbbbb.', previous: 'Aa.' };
+const NONE = { current: '', previous: '' };
 
 // A <video> stand-in: records what the narrator does, and lets a test fire media events.
 function createFakeVideo( { playResults = [] } = {} ) {
@@ -45,13 +52,13 @@ function setup( options = {} ) {
 	const estimates = [];
 	const narrator = createNarrator( {
 		video,
-		onSubtitle: ( text ) => subtitles.push( text ),
+		onSubtitle: ( caption ) => subtitles.push( caption ),
 		onMutedChange: ( muted ) => mutedChanges.push( muted ),
-		buildSentenceCues,
-		subtitleAt,
+		buildPhraseCues,
+		captionAt,
 		estimateDurationMs: ( text ) => {
 			estimates.push( text );
-			return options.estimateMs ?? 1000;
+			return options.estimateMs ?? DEFAULT_ESTIMATE_MS;
 		},
 		createStallWatchdog,
 		setTimeout: clock.setTimeout,
@@ -66,26 +73,53 @@ const flush = () => new Promise( ( resolve ) => setTimeout( resolve, 0 ) );
 test( 'constants', () => {
 	assert.equal( CAPTION_TICK_MS, 100 );
 	assert.equal( CLIP_STALL_MS, 8000 );
+	assert.equal( MIN_PHRASE_MS, 1000 );
 } );
 
-test( 'without a clip, subtitles play at reading pace and clear at the end (caption-only fallback)', async () => {
+test( 'without a clip, phrases play at reading pace with the previous one, and clear at the end (caption-only fallback)', async () => {
 	const { clock, video, subtitles, estimates, narrator } = setup();
 	const done = narrator.play( { script: SCRIPT } );
 	assert.deepEqual( estimates, [ SCRIPT ] );
-	assert.deepEqual( subtitles, [ 'Aa.' ] );
+	assert.deepEqual( subtitles, [ FIRST ] );
 	clock.tick( 200 );
-	assert.deepEqual( subtitles, [ 'Aa.', 'Aa.', 'Aa.' ] );
+	assert.deepEqual( subtitles, [ FIRST, FIRST, FIRST ] );
+	clock.tick( 1500 );
+	assert.deepEqual( subtitles.at( -1 ), FIRST );
 	clock.tick( 100 );
-	assert.equal( subtitles.at( -1 ), 'Bbbbbb.' );
-	clock.tick( 700 );
-	assert.equal( subtitles.at( -1 ), '' );
+	assert.deepEqual( subtitles.at( -1 ), SECOND );
+	clock.tick( 1300 );
+	assert.deepEqual( subtitles.at( -1 ), SECOND );
+	clock.tick( 100 );
+	assert.deepEqual( subtitles.at( -1 ), NONE );
 	assert.deepEqual( await done, { mode: 'captions' } );
 	assert.equal( clock.pendingCount(), 0 );
 	assert.equal( video.src, '' );
 	assert.deepEqual( video.calls, [] );
 } );
 
-test( 'with a clip, subtitles follow the clip time and clear when it ends', async () => {
+test( 'at reading pace a phrase stays at least MIN_PHRASE_MS, and the line ends with its last phrase', async () => {
+	// 1000 ms by weight would give 562.5 and 437.5 ms: both are lengthened to 1000.
+	const { clock, subtitles, narrator } = setup( { estimateMs: 1000 } );
+	let settled = false;
+	narrator.play( { script: SCRIPT } ).then( () => {
+		settled = true;
+	} );
+	clock.tick( 900 );
+	assert.deepEqual( subtitles.at( -1 ), FIRST );
+	clock.tick( 100 );
+	assert.deepEqual( subtitles.at( -1 ), SECOND );
+	clock.tick( 900 );
+	assert.deepEqual( subtitles.at( -1 ), SECOND );
+	await flush();
+	assert.equal( settled, false );
+	clock.tick( 100 );
+	assert.deepEqual( subtitles.at( -1 ), NONE );
+	await flush();
+	assert.equal( settled, true );
+	assert.equal( clock.pendingCount(), 0 );
+} );
+
+test( 'with a clip, phrases follow the clip time and clear when it ends', async () => {
 	const { clock, video, subtitles, estimates, narrator } = setup();
 	const done = narrator.play( { script: SCRIPT, clipUrl: 'https://cdn.test/1.mp4' } );
 	assert.equal( video.src, 'https://cdn.test/1.mp4' );
@@ -94,16 +128,29 @@ test( 'with a clip, subtitles follow the clip time and clear when it ends', asyn
 	video.fire( 'loadedmetadata' );
 	video.currentTime = 0.1;
 	video.fire( 'timeupdate' );
-	video.currentTime = 1.0;
+	video.currentTime = 1.124;
 	video.fire( 'timeupdate' );
-	assert.deepEqual( subtitles, [ 'Aa.', 'Bbbbbb.' ] );
+	video.currentTime = 1.125;
+	video.fire( 'timeupdate' );
+	assert.deepEqual( subtitles, [ FIRST, FIRST, SECOND ] );
 	video.fire( 'ended' );
 	assert.deepEqual( await done, { mode: 'clip' } );
-	assert.equal( subtitles.at( -1 ), '' );
+	assert.deepEqual( subtitles.at( -1 ), NONE );
 	assert.deepEqual( estimates, [] );
 	assert.equal( video.listenerCount(), 0 );
 	assert.equal( clock.pendingCount(), 0 );
 	assert.deepEqual( video.calls, [ [ 'play', false ], [ 'pause' ] ] );
+} );
+
+test( 'with a clip the phrases keep to the clip\'s clock, even when one is shorter than the reading minimum', () => {
+	// A 1 s clip: 'Aa.' for 0-562.5 ms, under MIN_PHRASE_MS, and 'Bbbbbb.' after it.
+	const { video, subtitles, narrator } = setup();
+	narrator.play( { script: SCRIPT, clipUrl: 'clip.mp4' } );
+	video.duration = 1;
+	video.fire( 'loadedmetadata' );
+	video.currentTime = 0.6;
+	video.fire( 'timeupdate' );
+	assert.deepEqual( subtitles, [ SECOND ] );
 } );
 
 test( 'mute silences the clip and keeps the subtitles; unmute restores the sound', async () => {
@@ -114,15 +161,15 @@ test( 'mute silences the clip and keeps the subtitles; unmute restores the sound
 	narrator.setMuted( true );
 	assert.equal( video.muted, true );
 	assert.equal( narrator.isMuted(), true );
-	video.currentTime = 0.5;
+	video.currentTime = 0.8;
 	video.fire( 'timeupdate' );
-	assert.deepEqual( subtitles, [ 'Bbbbbb.' ] );
+	assert.deepEqual( subtitles, [ SECOND ] );
 	narrator.setMuted( false );
 	assert.equal( video.muted, false );
 	assert.equal( narrator.isMuted(), false );
 	video.currentTime = 0.1;
 	video.fire( 'timeupdate' );
-	assert.deepEqual( subtitles, [ 'Bbbbbb.', 'Aa.' ] );
+	assert.deepEqual( subtitles, [ SECOND, FIRST ] );
 } );
 
 test( 'a muted narrator starts the next clip muted', () => {
@@ -136,8 +183,8 @@ test( 'mute while captions play changes nothing about the subtitles', () => {
 	const { clock, subtitles, narrator } = setup();
 	narrator.play( { script: SCRIPT } );
 	narrator.setMuted( true );
-	clock.tick( 300 );
-	assert.equal( subtitles.at( -1 ), 'Bbbbbb.' );
+	clock.tick( 1800 );
+	assert.deepEqual( subtitles.at( -1 ), SECOND );
 } );
 
 test( 'a clip that errors falls back to captions for the same line', async () => {
@@ -147,58 +194,58 @@ test( 'a clip that errors falls back to captions for the same line', async () =>
 	assert.deepEqual( estimates, [ SCRIPT ] );
 	assert.deepEqual( video.calls, [ [ 'play', false ], [ 'pause' ] ] );
 	assert.equal( video.listenerCount(), 0 );
-	assert.deepEqual( subtitles, [ 'Aa.' ] );
-	clock.tick( 1000 );
+	assert.deepEqual( subtitles, [ FIRST ] );
+	clock.tick( DEFAULT_ESTIMATE_MS );
 	assert.deepEqual( await done, { mode: 'captions' } );
-	assert.equal( subtitles.at( -1 ), '' );
+	assert.deepEqual( subtitles.at( -1 ), NONE );
 } );
 
 for ( const duration of [ Infinity, NaN ] ) {
-	test( 'a clip reporting its duration as ' + duration + ' spreads the subtitles over the reading-pace length', () => {
+	test( 'a clip reporting its duration as ' + duration + ' spreads the phrases over the reading-pace length', () => {
 		const { video, subtitles, estimates, narrator } = setup();
 		narrator.play( { script: SCRIPT, clipUrl: 'live.m3u8' } );
 		video.duration = duration;
 		video.fire( 'loadedmetadata' );
 		assert.deepEqual( estimates, [ SCRIPT ] );
-		video.currentTime = 0.1;
+		video.currentTime = 1.7;
 		video.fire( 'timeupdate' );
-		video.currentTime = 0.5;
+		video.currentTime = 1.8;
 		video.fire( 'timeupdate' );
-		assert.deepEqual( subtitles, [ 'Aa.', 'Bbbbbb.' ] );
+		assert.deepEqual( subtitles, [ FIRST, SECOND ] );
 	} );
 }
 
-test( 'a clip that breaks off mid-line carries on in captions from the sentence Sami had reached', async () => {
+test( 'a clip that breaks off mid-line carries on in captions from the phrase Sami had reached, previous phrase kept', async () => {
 	const { clock, video, subtitles, estimates, narrator } = setup();
 	const done = narrator.play( { script: SCRIPT, clipUrl: 'clip.mp4' } );
 	video.duration = 2;
 	video.fire( 'loadedmetadata' );
-	video.currentTime = 1;
+	video.currentTime = 1.5;
 	video.fire( 'timeupdate' );
 	video.fire( 'error' );
 	assert.deepEqual( estimates, [ SCRIPT ] );
-	assert.deepEqual( subtitles, [ 'Bbbbbb.', 'Bbbbbb.' ] );
-	// 'Bbbbbb.' starts 300 ms into the 1000 ms caption line, so 700 ms are left.
-	clock.tick( 600 );
-	assert.equal( subtitles.at( -1 ), 'Bbbbbb.' );
+	assert.deepEqual( subtitles, [ SECOND, SECOND ] );
+	// 'Bbbbbb.' starts 1800 ms into the 3200 ms caption line, so 1400 ms are left.
+	clock.tick( 1300 );
+	assert.deepEqual( subtitles.at( -1 ), SECOND );
 	assert.equal( clock.pendingCount(), 1 );
 	clock.tick( 100 );
-	assert.equal( subtitles.at( -1 ), '' );
+	assert.deepEqual( subtitles.at( -1 ), NONE );
 	assert.deepEqual( await done, { mode: 'captions' } );
 	assert.equal( clock.pendingCount(), 0 );
 } );
 
-test( 'sentenceIndexAt: the last sentence that had started, 0 before the first or with no cues', () => {
+test( 'phraseIndexAt: the last phrase that had started, 0 before the first or with no cues', () => {
 	const cues = [ { text: 'A.', startMs: 0, endMs: 100 }, { text: 'B.', startMs: 100, endMs: 300 } ];
-	assert.equal( sentenceIndexAt( cues, 0 ), 0 );
-	assert.equal( sentenceIndexAt( cues, 99 ), 0 );
-	assert.equal( sentenceIndexAt( cues, 100 ), 1 );
-	assert.equal( sentenceIndexAt( cues, 5000 ), 1 );
-	assert.equal( sentenceIndexAt( cues, -1 ), 0 );
-	assert.equal( sentenceIndexAt( [], 50 ), 0 );
+	assert.equal( phraseIndexAt( cues, 0 ), 0 );
+	assert.equal( phraseIndexAt( cues, 99 ), 0 );
+	assert.equal( phraseIndexAt( cues, 100 ), 1 );
+	assert.equal( phraseIndexAt( cues, 5000 ), 1 );
+	assert.equal( phraseIndexAt( cues, -1 ), 0 );
+	assert.equal( phraseIndexAt( [], 50 ), 0 );
 } );
 
-test( 'captionOffsetMs: where a sentence starts, 0 for one that does not exist', () => {
+test( 'captionOffsetMs: where a phrase starts, 0 for one that does not exist', () => {
 	const cues = [ { text: 'A.', startMs: 0, endMs: 100 }, { text: 'B.', startMs: 100, endMs: 300 } ];
 	assert.equal( captionOffsetMs( cues, 0 ), 0 );
 	assert.equal( captionOffsetMs( cues, 1 ), 100 );
@@ -227,7 +274,7 @@ test( 'autoplay with sound refused: the clip plays muted, the sound button is to
 	video.fire( 'loadedmetadata' );
 	video.currentTime = 0.1;
 	video.fire( 'timeupdate' );
-	assert.deepEqual( subtitles, [ 'Aa.' ] );
+	assert.deepEqual( subtitles, [ FIRST ] );
 } );
 
 test( 'autoplay refused even muted: captions instead', async () => {
@@ -278,7 +325,7 @@ test( 'stop() ends the line, clears the subtitle and resolves', async () => {
 	const done = narrator.play( { script: SCRIPT, clipUrl: 'clip.mp4' } );
 	narrator.stop();
 	assert.deepEqual( await done, { mode: 'clip' } );
-	assert.deepEqual( subtitles, [ '' ] );
+	assert.deepEqual( subtitles, [ NONE ] );
 	assert.equal( video.listenerCount(), 0 );
 	assert.equal( clock.pendingCount(), 0 );
 	assert.deepEqual( video.calls, [ [ 'play', false ], [ 'pause' ] ] );
@@ -290,13 +337,13 @@ test( 'stop() with nothing playing does nothing', () => {
 	assert.deepEqual( subtitles, [] );
 } );
 
-test( 'playing a new line stops the previous one', async () => {
+test( 'playing a new line (a language switch) stops the previous one and starts with no previous phrase', async () => {
 	const { clock, subtitles, narrator } = setup();
 	const first = narrator.play( { script: 'First.' } );
 	const second = narrator.play( { script: 'Second.' } );
 	assert.deepEqual( await first, { mode: 'captions' } );
-	assert.deepEqual( subtitles, [ 'First.', '', 'Second.' ] );
-	clock.tick( 1000 );
+	assert.deepEqual( subtitles, [ { current: 'First.', previous: '' }, NONE, { current: 'Second.', previous: '' } ] );
+	clock.tick( DEFAULT_ESTIMATE_MS );
 	assert.deepEqual( await second, { mode: 'captions' } );
 	assert.equal( clock.pendingCount(), 0 );
 } );
@@ -318,7 +365,7 @@ test( 'a late play() rejection after the line was stopped changes nothing', asyn
 test( 'an empty script with no clip resolves straight away', async () => {
 	const { subtitles, narrator } = setup( { estimateMs: 0 } );
 	assert.deepEqual( await narrator.play( { script: '' } ), { mode: 'captions' } );
-	assert.deepEqual( subtitles, [ '' ] );
+	assert.deepEqual( subtitles, [ NONE ] );
 } );
 
 test( 'onMutedChange is optional', async () => {
@@ -327,8 +374,8 @@ test( 'onMutedChange is optional', async () => {
 	const narrator = createNarrator( {
 		video,
 		onSubtitle: () => {},
-		buildSentenceCues,
-		subtitleAt,
+		buildPhraseCues,
+		captionAt,
 		estimateDurationMs: () => 1000,
 		createStallWatchdog,
 		setTimeout: clock.setTimeout,

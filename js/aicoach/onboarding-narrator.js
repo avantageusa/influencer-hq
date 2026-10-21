@@ -1,14 +1,17 @@
 /**
- * Plays what Sami says on one onboarding screen and drives the subtitles (ENGR-7565).
+ * Plays what Sami says on one onboarding screen and drives the subtitles (ENGR-7565): her line
+ * a phrase at a time, with the phrase before it (ENGR-7891).
  *
  * With a clip, the subtitles follow the clip's own clock and clear when it ends. Without
  * one (no clip rendered yet for that screen and language, or a clip that fails, or stalls
- * before it plays) the subtitles still play, at reading pace: the caption-only fallback.
+ * before it plays) the subtitles still play, at reading pace: the caption-only fallback. At
+ * reading pace every phrase stays at least MIN_PHRASE_MS, so a short one can still be read;
+ * with a clip the clip's clock wins, so the words stay in step with Sami.
  *
  * Mute only silences the video. The subtitles carry on either way, and unmuting brings the
  * sound back on the clip that is playing.
  *
- * Everything it uses is passed in (the <video>, timers, the sentence timing from
+ * Everything it uses is passed in (the <video>, timers, the phrase timing from
  * onboarding-subtitles.js, the reading-pace estimate and the stall watchdog from the landing
  * flow's modules), so the whole thing is tested with fakes. Modules here never import each
  * other: the page's import map versions each file, and a relative import would bypass it.
@@ -21,27 +24,36 @@ export const CAPTION_TICK_MS = 100;
 export const CLIP_STALL_MS = 8000;
 
 /**
- * Which sentence had been reached at a moment of a clip: the last one that had started,
+ * The least time a phrase stays up at reading pace. Subtitle guidelines put the floor for a
+ * short subtitle at about a second; below it a phrase flashes past.
+ */
+export const MIN_PHRASE_MS = 1000;
+
+/** The caption once Sami has finished or been stopped: the shape captionAt() returns. */
+const NO_CAPTION = Object.freeze( { current: '', previous: '' } );
+
+/**
+ * Which phrase had been reached at a moment of a clip: the last one that had started,
  * or 0 before the first (or when the clip had no cues yet).
  *
- * @param {Array<Object>} cues   From buildSentenceCues().
+ * @param {Array<Object>} cues   From buildPhraseCues().
  * @param {number}        timeMs Time into the clip.
- * @return {number} The sentence index.
+ * @return {number} The phrase index.
  */
-export function sentenceIndexAt( cues, timeMs ) {
+export function phraseIndexAt( cues, timeMs ) {
 	const started = cues.filter( ( cue ) => timeMs >= cue.startMs ).length;
 	return Math.max( 0, started - 1 );
 }
 
 /**
- * How far into the caption timeline a sentence starts.
+ * How far into the caption timeline a phrase starts.
  *
- * @param {Array<Object>} cues     From buildSentenceCues().
- * @param {number}        sentence Index of the sentence.
- * @return {number} Milliseconds, 0 when there is no such sentence.
+ * @param {Array<Object>} cues   From buildPhraseCues().
+ * @param {number}        phrase Index of the phrase.
+ * @return {number} Milliseconds, 0 when there is no such phrase.
  */
-export function captionOffsetMs( cues, sentence ) {
-	const cue = cues[ sentence ];
+export function captionOffsetMs( cues, phrase ) {
+	const cue = cues[ phrase ];
 	if ( ! cue ) {
 		return 0;
 	}
@@ -51,9 +63,10 @@ export function captionOffsetMs( cues, sentence ) {
 /**
  * @param {Object}   deps
  * @param {Object}   deps.video               An HTMLVideoElement (or a fake with the same members).
- * @param {Function} deps.onSubtitle          Receives the sentence to show ('' to clear).
- * @param {Function} deps.buildSentenceCues   From onboarding-subtitles.js.
- * @param {Function} deps.subtitleAt          From onboarding-subtitles.js.
+ * @param {Function} deps.onSubtitle          Receives the caption to show, { current, previous }
+ *                                            (both '' to clear), on every tick of the clock.
+ * @param {Function} deps.buildPhraseCues     From onboarding-subtitles.js.
+ * @param {Function} deps.captionAt           From onboarding-subtitles.js.
  * @param {Function} deps.estimateDurationMs  Reading-pace length of a script (commentary.js).
  * @param {Function} deps.createStallWatchdog The landing flow's watchdog (stall-watchdog.js).
  * @param {Function} deps.setTimeout
@@ -63,7 +76,7 @@ export function captionOffsetMs( cues, sentence ) {
  * @return {Object} { play, stop, setMuted, isMuted }.
  */
 export function createNarrator( deps ) {
-	const { video, onSubtitle, buildSentenceCues, subtitleAt, setTimeout, clearTimeout } = deps;
+	const { video, onSubtitle, buildPhraseCues, captionAt, setTimeout, clearTimeout } = deps;
 	const onMutedChange = deps.onMutedChange || function() {};
 	let muted = false;
 	let current = null;
@@ -112,7 +125,7 @@ export function createNarrator( deps ) {
 				}
 				run.done = true;
 				cleanups.splice( 0 ).forEach( ( fn ) => fn() );
-				onSubtitle( '' );
+				onSubtitle( NO_CAPTION );
 				if ( current === run ) {
 					current = null;
 				}
@@ -125,24 +138,25 @@ export function createNarrator( deps ) {
 	/**
 	 * @param {Object} run
 	 * @param {string} script
-	 * @param {number} [fromSentence] Index of the sentence to start at (a clip that broke
-	 *                                off mid-line carries on from where Sami got to).
+	 * @param {number} [fromPhrase] Index of the phrase to start at (a clip that broke off
+	 *                              mid-line carries on from where Sami got to).
 	 */
-	function playCaptions( run, script, fromSentence = 0 ) {
+	function playCaptions( run, script, fromPhrase = 0 ) {
 		run.mode = 'captions';
-		const durationMs = deps.estimateDurationMs( script );
-		const cues = buildSentenceCues( script, durationMs );
-		const startedAt = deps.now() - captionOffsetMs( cues, fromSentence );
+		const cues = buildPhraseCues( script, deps.estimateDurationMs( script ), { minPhraseMs: MIN_PHRASE_MS } );
+		// The minimum can make the line longer than the estimate: it ends with its last phrase.
+		const lineMs = cues.length > 0 ? cues[ cues.length - 1 ].endMs : 0;
+		const startedAt = deps.now() - captionOffsetMs( cues, fromPhrase );
 		let timerId = null;
 		run.onCleanup( () => clearTimeout( timerId ) );
 
 		function tick() {
 			const elapsed = deps.now() - startedAt;
-			if ( elapsed >= durationMs ) {
+			if ( elapsed >= lineMs ) {
 				run.finish();
 				return;
 			}
-			onSubtitle( subtitleAt( cues, elapsed ) );
+			onSubtitle( captionAt( cues, elapsed ) );
 			timerId = setTimeout( tick, CAPTION_TICK_MS );
 		}
 		tick();
@@ -165,18 +179,18 @@ export function createNarrator( deps ) {
 				return;
 			}
 			fellBack = true;
-			const fromSentence = sentenceIndexAt( cues, video.currentTime * 1000 );
+			const fromPhrase = phraseIndexAt( cues, video.currentTime * 1000 );
 			detach();
 			video.pause();
-			playCaptions( run, script, fromSentence );
+			playCaptions( run, script, fromPhrase );
 		}
 
 		function onMetadata() {
-			cues = buildSentenceCues( script, clipDurationMs( script ) );
+			cues = buildPhraseCues( script, clipDurationMs( script ) );
 		}
 		function onTime() {
 			watchdog.arm();
-			onSubtitle( subtitleAt( cues, video.currentTime * 1000 ) );
+			onSubtitle( captionAt( cues, video.currentTime * 1000 ) );
 		}
 		function onEnded() {
 			run.finish();
@@ -202,7 +216,7 @@ export function createNarrator( deps ) {
 	}
 
 	// A streamed clip can report its duration as Infinity, and any clip as NaN before its
-	// metadata is in. Then the sentences are spread over the reading-pace length instead, so
+	// metadata is in. Then the phrases are spread over the reading-pace length instead, so
 	// the subtitles still show.
 	function clipDurationMs( script ) {
 		if ( Number.isFinite( video.duration ) ) {
