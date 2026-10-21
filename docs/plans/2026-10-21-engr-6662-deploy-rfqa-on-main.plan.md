@@ -1,44 +1,46 @@
 ---
-name: deploy-rfqa only after the commit is on main
+name: Upload RFQA on merge when the PR has deploy-rfqa
 overview: >
-  Tagging deploy-rfqa on a feature branch tried to SFTP unmerged files. Keep the
-  tag as the trigger, but refuse unless that commit is already on main, then
-  upload the files in that merged commit. Out of scope: auto-deploy on every
-  merge, QC/prod, deleting remote files.
+  Tag deploy-rfqa on a PR commit. When that PR merges to main, SFTP the files
+  in the merge — not the pre-merge branch, and not every merge. Out of scope:
+  QC/prod, deleting remote files, tagging after merge.
 todos:
-  - id: gate
-    content: Fail the job unless the tagged commit is already on origin/main
+  - id: trigger
+    content: Run on pull_request_target closed to main when merged
     status: completed
-  - id: docs
-    content: Document merge-then-tag (reuse the tag on that main commit)
+  - id: gate
+    content: Upload only if deploy-rfqa points at a commit in that PR
+    status: completed
+  - id: files
+    content: Checkout the merge commit and upload git diff HEAD^ HEAD
     status: completed
   - id: verify
-    content: YAML sanity; no SFTP in this change
+    content: YAML structure; no SFTP in this change
     status: completed
 ---
 
-# [ENGR-6662] deploy-rfqa only after the commit is on main
+# [ENGR-6662] Upload RFQA on merge when the PR has deploy-rfqa
 
 **Ticket:** https://avantageusa.atlassian.net/browse/ENGR-6662
 **Drafted by:** Cursor Grok 4.6
 
 ## Problem
 
-`deploy-rfqa` on a feature branch uploads that branch's files before merge. RFQA should get the merged commit's files.
+Tagging a feature branch uploaded unmerged files. Tagging after merge was extra work. We want: tag the commit, merge the PR, RFQA gets the merged files.
 
 ## Approach
 
-- Trigger stays `push` of tag `deploy-rfqa`.
-- After checkout, fetch `origin/main` and require `HEAD` is an ancestor of `origin/main`.
-- Then the existing script uploads `git diff HEAD^ HEAD` (the files in that merge), skipping docs/tests/CI paths.
-
-Sequence: merge the PR to `main`, then point `deploy-rfqa` at that merge commit and push the tag.
+- `pull_request_target` on close to `main` (workflow always from main) with `merged == true`.
+- Checkout `merge_commit_sha` so the upload is what landed, including squash.
+- Fetch `deploy-rfqa`. Upload only when that tag is an ancestor of the PR head and not of the PR base (it was on this PR, not leftover on main).
+- Existing script uploads `git diff HEAD^ HEAD`, skipping docs/tests/CI paths.
 
 ## Alternatives considered
 
-- Upload on every merge to main — user kept the tag as the opt-in.
-- Compare HEAD to the current main tip only — a tag on an older merged commit would be refused even though it is on main.
+- Tag-create after merge — a second manual step.
+- Upload every merge to main — no opt-in.
+- Upload the tagged SHA's tree — squash/rebase would miss what actually landed on main.
 
 ## Blast radius
 
-Tagging a branch that is not on main fails the job and uploads nothing. After this workflow is itself on main, the next `deploy-rfqa` tag uses the gate.
+Untagged merges skip upload. A stale `deploy-rfqa` still pointing at main does not re-upload. Secrets run only after merge, against the merge commit.
