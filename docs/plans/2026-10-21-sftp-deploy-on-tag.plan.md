@@ -18,8 +18,9 @@ todos:
     status: completed
 ---
 
-# SFTP the tagged commit onto the RFQA theme
+# [ENGR-6662] SFTP the tagged commit onto the RFQA theme
 
+**Ticket:** https://avantageusa.atlassian.net/browse/ENGR-6662
 **Drafted by:** Cursor Grok 4.6
 
 ## Problem
@@ -44,5 +45,7 @@ FileZilla uploads of individual theme files after a merge are easy to miss. We w
 Only the files in the tagged commit reach RFQA. Tagging HEAD after five untagged commits uploads the last commit only. The workflow file must already be on the tagged revision (merge this to `main` before the first tag). Reusing the tag means deleting the remote tag first, then pushing it again.
 
 ## Notes
+
+First slice of ENGR-6662 only: a reusable `deploy-rfqa` tag SFTPs the files in that commit. Merge-to-main auto-deploy, QC → QA → PROD promotion, WP Engine's rsync action, and a running-commit stamp are later work on the same epic.
 
 Secrets are already on the repo. Do not put the password in git or in chat.

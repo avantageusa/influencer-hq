@@ -1,4 +1,4 @@
-# SFTP the files in the tagged commit onto the RFQA WordPress theme.
+# ENGR-6662 (first slice): SFTP the files in the tagged commit onto the RFQA theme.
 #
 # Trigger: git tag deploy-rfqa && git push origin deploy-rfqa
 # The tag name is reused. Git forbids two tags with the same name, so the next
