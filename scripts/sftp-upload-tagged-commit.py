@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Upload files changed in HEAD (vs its first parent) over SFTP.
 
-Used by .github/workflows/deploy-rfqa.yml. Credentials come from the
+Used by .github/workflows/deploy-rfqa.yml after a PR tagged deploy-rfqa has
+merged to main. HEAD is that merge commit. Credentials come from the
 environment so they never sit in the theme. Deleted files are skipped: the
 RFQA theme is already populated and we do not remove server files from CI.
 """
