@@ -1,0 +1,51 @@
+# SFTP the files in the tagged commit onto the RFQA WordPress theme.
+#
+# Trigger: git tag deploy-rfqa && git push origin deploy-rfqa
+# The tag name is reused. Git forbids two tags with the same name, so the next
+# deploy is: delete the remote tag, then tag the new commit and push again:
+#
+#   git push origin :refs/tags/deploy-rfqa
+#   git tag deploy-rfqa
+#   git push origin deploy-rfqa
+#
+# GitHub runs the workflow file from the tagged commit, so this file must
+# already be on that commit (merge to main first). Only files changed in that
+# one commit are uploaded — not the whole theme, and not earlier untagged
+# commits on the same branch.
+
+name: Deploy tagged commit (RFQA)
+
+on:
+  push:
+    tags:
+      - deploy-rfqa
+
+permissions:
+  contents: read
+
+jobs:
+  sftp:
+    name: SFTP files from the tagged commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # HEAD^ is required so we can list files in this commit only.
+          fetch-depth: 2
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install SFTP client
+        run: python -m pip install "paramiko==3.5.1"
+
+      - name: Upload changed theme files
+        env:
+          DEV_SFTP_HOST: ${{ secrets.DEV_SFTP_HOST }}
+          DEV_SFTP_USER: ${{ secrets.DEV_SFTP_USER }}
+          DEV_SFTP_PASSWORD: ${{ secrets.DEV_SFTP_PASSWORD }}
+          DEV_SFTP_PORT: ${{ secrets.DEV_SFTP_PORT }}
+          DEV_SFTP_PATH: ${{ secrets.DEV_SFTP_PATH }}
+        run: python3 scripts/sftp-upload-tagged-commit.py
