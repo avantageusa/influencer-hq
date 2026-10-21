@@ -2,9 +2,10 @@
 #
 # Trigger: git tag deploy-rfqa && git push origin deploy-rfqa
 # The tag name is reused. Git forbids two tags with the same name, so the next
-# deploy is: delete the remote tag, then tag the new commit and push again:
+# deploy deletes both the remote tag and the local tag, then tags again:
 #
 #   git push origin :refs/tags/deploy-rfqa
+#   git tag -d deploy-rfqa
 #   git tag deploy-rfqa
 #   git push origin deploy-rfqa
 #
@@ -12,6 +13,10 @@
 # already be on that commit (merge to main first). Only files changed in that
 # one commit are uploaded — not the whole theme, and not earlier untagged
 # commits on the same branch.
+#
+# DEV_SFTP_HOST_KEY is the server's SHA256 fingerprint (ssh-keyscan | ssh-keygen -lf)
+# or the OpenSSH public key line from ssh-keyscan. Without it the script refuses
+# to send the password.
 
 name: Deploy tagged commit (RFQA)
 
@@ -23,18 +28,24 @@ on:
 permissions:
   contents: read
 
+# One SFTP at a time. A later tag push cancels an in-flight upload so an older
+# run cannot finish last and overwrite a newer file on RFQA.
+concurrency:
+  group: deploy-rfqa
+  cancel-in-progress: true
+
 jobs:
   sftp:
     name: SFTP files from the tagged commit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           # HEAD^ is required so we can list files in this commit only.
           fetch-depth: 2
           persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.12"
 
@@ -48,4 +59,5 @@ jobs:
           DEV_SFTP_PASSWORD: ${{ secrets.DEV_SFTP_PASSWORD }}
           DEV_SFTP_PORT: ${{ secrets.DEV_SFTP_PORT }}
           DEV_SFTP_PATH: ${{ secrets.DEV_SFTP_PATH }}
+          DEV_SFTP_HOST_KEY: ${{ secrets.DEV_SFTP_HOST_KEY }}
         run: python3 scripts/sftp-upload-tagged-commit.py
