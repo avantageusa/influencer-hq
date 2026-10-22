@@ -5,8 +5,12 @@
  * opened before a switch still shows the old buttons. When an AJAX handler
  * answers 403 {"error":"method_disabled","method":"<m>","message":"…"}, the
  * page's own error box shows the message, and every element marked
- * data-ihq-channel-method="<m>" is hidden until the next page load. Error
- * boxes are never marked, so the message stays visible.
+ * data-ihq-channel-method="<m>" is hidden until the next page load. The
+ * message also goes into every notice marked
+ * data-ihq-channel-method-unavailable="<m>", which stays visible: the page's
+ * reset and Back paths clear its error boxes, never these notices. The "OR"
+ * divider between two methods (data-ihq-channel-method-divider) hides on any
+ * refusal, as one side of it is then gone.
  *
  * The inline scripts in template-parts/portal-auth-modal.php and
  * page-portal-login.php are not modules, so this one also publishes its
@@ -18,6 +22,15 @@ export const METHOD_DISABLED_ERROR = 'method_disabled';
 
 /** Attribute naming the method an element belongs to. */
 export const METHOD_ATTRIBUTE = 'data-ihq-channel-method';
+
+/** Attribute of the notice that says a method is unavailable, once it is refused. */
+export const UNAVAILABLE_NOTICE_ATTRIBUTE = 'data-ihq-channel-method-unavailable';
+
+/** Attribute of the divider shown between two methods. */
+export const DIVIDER_ATTRIBUTE = 'data-ihq-channel-method-divider';
+
+/** The display a revealed notice gets; its stylesheet may hide it by default. */
+const NOTICE_DISPLAY = 'block';
 
 /** Display names, for a refusal that arrives without a message. */
 export const METHOD_LABELS = Object.freeze( {
@@ -66,7 +79,8 @@ export function methodRefusal( response ) {
 }
 
 /**
- * Hide the controls of a method the server refused.
+ * Hide the controls of a method the server refused, hide the divider, and
+ * show the method's unavailable notices with the refusal's message.
  *
  * @param {Object}           deps
  * @param {Document|Element} deps.root     Where the method's controls live.
@@ -78,9 +92,14 @@ export function hideRefusedMethod( { root, response } ) {
 	if ( ! refusal ) {
 		return null;
 	}
-	const selector = '[' + METHOD_ATTRIBUTE + '="' + refusal.method + '"]';
-	root.querySelectorAll( selector ).forEach( ( element ) => {
+	const controls = '[' + METHOD_ATTRIBUTE + '="' + refusal.method + '"], [' + DIVIDER_ATTRIBUTE + ']';
+	root.querySelectorAll( controls ).forEach( ( element ) => {
 		element.style.display = 'none';
+	} );
+	const notices = '[' + UNAVAILABLE_NOTICE_ATTRIBUTE + '="' + refusal.method + '"]';
+	root.querySelectorAll( notices ).forEach( ( notice ) => {
+		notice.textContent = refusal.message;
+		notice.style.display = NOTICE_DISPLAY;
 	} );
 	return refusal;
 }

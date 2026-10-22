@@ -97,6 +97,8 @@ $ihq_portal_email_on = ihq_channel_method_allowed( 'email', ihq_channel_methods_
                                    autocomplete="email">
                         </div>
                         <div id="login-error" class="portal-alert portal-alert-error" style="display:none;"></div>
+                        <?php // Shown once email is refused, and never cleared by Back (ENGR-8014). ?>
+                        <div class="portal-alert portal-alert-error" data-ihq-channel-method-unavailable="email" style="display:none;"></div>
                         <div id="login-info" class="portal-alert portal-alert-success" style="display:none;background:rgba(255,215,122,.08);border-color:rgba(230,207,160,.35);color:#e8dcb8;"></div>
 
                         <?php if ( $ihq_portal_ts_site_key !== '' ) : ?>
@@ -168,6 +170,7 @@ $ihq_portal_email_on = ihq_channel_method_allowed( 'email', ihq_channel_methods_
                         </div>
 
                         <div id="register-error"   class="portal-alert portal-alert-error"   style="display:none;"></div>
+                        <div class="portal-alert portal-alert-error" data-ihq-channel-method-unavailable="email" style="display:none;"></div>
                         <div id="register-success" class="portal-alert portal-alert-success" style="display:none;"></div>
 
                         <?php if ( $ihq_portal_ts_site_key !== '' ) : ?>
@@ -378,7 +381,7 @@ $ihq_portal_email_on = ihq_channel_method_allowed( 'email', ihq_channel_methods_
 .mt-3  { margin-top: 1rem; }
 </style>
 
-<?php if ( $ihq_portal_ts_site_key !== '' ) : ?>
+<?php if ( $ihq_portal_email_on && $ihq_portal_ts_site_key !== '' ) : ?>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"></script>
 <?php endif; ?>
 

@@ -4,6 +4,8 @@ import { createFakeDocument, build } from './aicoach/fake-dom.js';
 import {
 	METHOD_DISABLED_ERROR,
 	METHOD_ATTRIBUTE,
+	UNAVAILABLE_NOTICE_ATTRIBUTE,
+	DIVIDER_ATTRIBUTE,
 	METHOD_LABELS,
 	unavailableMessage,
 	methodRefusal,
@@ -36,66 +38,100 @@ function setup() {
 		[ 'div', { id: 'email-field', [ METHOD_ATTRIBUTE ]: 'email' } ],
 		[ 'button', { id: 'email-send', [ METHOD_ATTRIBUTE ]: 'email' } ],
 		[ 'div', { id: 'login-error', class: 'auth-err' } ],
-		[ 'div', { id: 'or-divider', [ METHOD_ATTRIBUTE ]: 'telegram' } ],
+		[ 'div', { id: 'email-unavailable', class: 'auth-err', [ UNAVAILABLE_NOTICE_ATTRIBUTE ]: 'email' } ],
+		[ 'div', { id: 'or-divider', [ DIVIDER_ATTRIBUTE ]: '' } ],
 		[ 'button', { id: 'telegram-button', [ METHOD_ATTRIBUTE ]: 'telegram' } ],
 		[ 'div', { id: 'telegram-error', class: 'auth-err' } ],
+		[ 'div', { id: 'telegram-unavailable', class: 'auth-err', [ UNAVAILABLE_NOTICE_ATTRIBUTE ]: 'telegram' } ],
 	] );
 	const byId = ( id ) => root.querySelector( '#' + id );
 	const displays = () => Object.fromEntries(
-		[ 'email-field', 'email-send', 'login-error', 'or-divider', 'telegram-button', 'telegram-error' ]
+		[ 'email-field', 'email-send', 'login-error', 'email-unavailable', 'or-divider', 'telegram-button', 'telegram-error', 'telegram-unavailable' ]
 			.map( ( id ) => [ id, byId( id ).style.display ] )
 	);
-	return { root, displays };
+	const notices = () => ( {
+		email: byId( 'email-unavailable' ).textContent,
+		telegram: byId( 'telegram-unavailable' ).textContent,
+	} );
+	return { root, displays, notices };
 }
 
 const NOTHING_HIDDEN = {
 	'email-field': undefined,
 	'email-send': undefined,
 	'login-error': undefined,
+	'email-unavailable': undefined,
 	'or-divider': undefined,
 	'telegram-button': undefined,
 	'telegram-error': undefined,
+	'telegram-unavailable': undefined,
 };
+const NO_NOTICE = { email: '', telegram: '' };
 
 test( 'names shared with the server', () => {
 	assert.equal( METHOD_DISABLED_ERROR, 'method_disabled' );
 	assert.equal( METHOD_ATTRIBUTE, 'data-ihq-channel-method' );
+	assert.equal( UNAVAILABLE_NOTICE_ATTRIBUTE, 'data-ihq-channel-method-unavailable' );
+	assert.equal( DIVIDER_ATTRIBUTE, 'data-ihq-channel-method-divider' );
 	assert.deepEqual( Object.keys( METHOD_LABELS ), [ 'email', 'sms', 'telegram', 'line', 'whatsapp', 'zalo', 'kakaotalk', 'wechat' ] );
 	assert.deepEqual( Object.values( METHOD_LABELS ), [ 'Email', 'SMS', 'Telegram', 'LINE', 'WhatsApp', 'Zalo', 'KakaoTalk', 'WeChat' ] );
 	assert.equal( Object.isFrozen( METHOD_LABELS ), true );
 } );
 
 test( 'method on: the success answer is no refusal and hides nothing', () => {
-	const { root, displays } = setup();
+	const { root, displays, notices } = setup();
 	assert.equal( methodRefusal( METHOD_ON_ANSWER ), null );
 	assert.equal( hideRefusedMethod( { root, response: METHOD_ON_ANSWER } ), null );
 	assert.deepEqual( displays(), NOTHING_HIDDEN );
+	assert.deepEqual( notices(), NO_NOTICE );
 } );
 
-test( 'method off: email is refused, its controls hide, the error box and Telegram stay', () => {
-	const { root, displays } = setup();
+test( 'method off: email is refused, its controls and the divider hide, its notice shows, Telegram stays', () => {
+	const { root, displays, notices } = setup();
 	assert.deepEqual( methodRefusal( EMAIL_OFF_ANSWER ), { method: 'email', message: "Email isn't available right now" } );
 	assert.deepEqual(
 		hideRefusedMethod( { root, response: EMAIL_OFF_ANSWER } ),
 		{ method: 'email', message: "Email isn't available right now" }
 	);
-	assert.deepEqual( displays(), Object.assign( {}, NOTHING_HIDDEN, { 'email-field': 'none', 'email-send': 'none' } ) );
+	assert.deepEqual(
+		displays(),
+		Object.assign( {}, NOTHING_HIDDEN, { 'email-field': 'none', 'email-send': 'none', 'email-unavailable': 'block', 'or-divider': 'none' } )
+	);
+	assert.deepEqual( notices(), { email: "Email isn't available right now", telegram: '' } );
 } );
 
-test( 'method off: Telegram is refused, its button and divider hide, email stays', () => {
-	const { root, displays } = setup();
+test( 'method off: Telegram is refused, its button and the divider hide, its notice shows, email stays', () => {
+	const { root, displays, notices } = setup();
 	assert.deepEqual(
 		hideRefusedMethod( { root, response: TELEGRAM_OFF_ANSWER } ),
 		{ method: 'telegram', message: "Telegram isn't available right now" }
 	);
-	assert.deepEqual( displays(), Object.assign( {}, NOTHING_HIDDEN, { 'or-divider': 'none', 'telegram-button': 'none' } ) );
+	assert.deepEqual(
+		displays(),
+		Object.assign( {}, NOTHING_HIDDEN, { 'or-divider': 'none', 'telegram-button': 'none', 'telegram-unavailable': 'block' } )
+	);
+	assert.deepEqual( notices(), { email: '', telegram: "Telegram isn't available right now" } );
+} );
+
+test( 'the notice outlives a reset: clearing the error boxes leaves it showing', () => {
+	const { root, displays, notices } = setup();
+	hideRefusedMethod( { root, response: EMAIL_OFF_ANSWER } );
+	// What ihqAuthLoginResetPanels and the Back paths do to the page's error boxes.
+	for ( const id of [ 'login-error', 'telegram-error' ] ) {
+		const box = root.querySelector( '#' + id );
+		box.textContent = '';
+		box.style.display = 'none';
+	}
+	assert.equal( displays()[ 'email-unavailable' ], 'block' );
+	assert.deepEqual( notices(), { email: "Email isn't available right now", telegram: '' } );
 } );
 
 test( 'absent feature: the handler answers as today, so its errors hide nothing', () => {
-	const { root, displays } = setup();
+	const { root, displays, notices } = setup();
 	assert.equal( methodRefusal( ABSENT_FEATURE_ANSWER ), null );
 	assert.equal( hideRefusedMethod( { root, response: ABSENT_FEATURE_ANSWER } ), null );
 	assert.deepEqual( displays(), NOTHING_HIDDEN );
+	assert.deepEqual( notices(), NO_NOTICE );
 } );
 
 test( 'failed call: the handler keeps today\'s lists, and a failed AJAX call hides nothing', () => {
