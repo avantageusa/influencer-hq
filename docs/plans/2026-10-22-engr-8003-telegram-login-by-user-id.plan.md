@@ -1,7 +1,11 @@
 ---
-title: "ENGR-8003: IHQ Telegram login matches the Telegram ID, not the @username"
-ticket: https://avantageusa.atlassian.net/browse/ENGR-8003
-date: 2026-10-22
+name: IHQ Telegram login matches the Telegram ID, not the @username
+overview: >
+  Telegram login signs in whichever influencer's communication_username equals the
+  Telegram @username, so anyone holding that username gets the account. Look the user
+  up by the verified telegram_user_id instead and sign in only on exactly one match.
+  Out of scope: a linking path for accounts without an id, registration-side
+  uniqueness, and the ENGR-7830 replacement login.
 todos:
   - id: lookup
     content: "inc/telegram-login-handler.php ihq_handle_login_telegram_user_ajax: get_users by meta_key telegram_user_id = (int) session id, number => 2, instead of communication_username = session @username"
@@ -14,7 +18,10 @@ todos:
     status: completed
 ---
 
-# ENGR-8003: Telegram login by Telegram user ID
+# [ENGR-8003] Telegram login by Telegram user ID
+
+**Ticket:** https://avantageusa.atlassian.net/browse/ENGR-8003
+**Drafted by:** Claude Code (claude-opus-5-5)
 
 ## Problem
 
@@ -42,6 +49,8 @@ and logged with no ids in the line.
 
 - Influencers with no `telegram_user_id` (admin-created, or registered before 2026-05-28) lose
   Telegram login until linked. Open question for Steve / Nikola, to count on prod before deploy.
+- Influencers whose telegram_user_id is stored on two or more accounts (registration does not
+  enforce uniqueness) are refused and told to contact support. Counted in the same prod check.
 - influencer-hq#156 (ENGR-8014) adds a gate in the same function; rebase onto whichever merges
   first.
 
