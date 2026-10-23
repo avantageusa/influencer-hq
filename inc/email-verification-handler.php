@@ -1186,7 +1186,48 @@ function ihq_refresh_influencer_oauth_tokens( $user_id, $country_iso = '' ) {
 }
 
 /**
+ * HTML body of the login code email. Translatable; the other six IHQ languages
+ * come through PO-3422's translation files. With $warn_not_to_share false it is
+ * the email as sent before ENGR-8022.
+ *
+ * @param string $code              The login code.
+ * @param int    $minutes_left      Minutes until the code expires.
+ * @param bool   $warn_not_to_share Add the "do not share" line (while the fan-out switch is on).
+ * @return string
+ */
+function ihq_login_code_email_body( $code, $minutes_left, $warn_not_to_share ) {
+	$warning = '';
+	if ( $warn_not_to_share ) {
+		$warning = '
+              <p style="color:#888;font-size:14px;line-height:1.6;margin:16px 0 0;">' . esc_html__( 'This is your sign-in code. Do not share it with anyone.', 'influencer-hq' ) . '</p>';
+	}
+	/* translators: %d: minutes until the sign-in code expires. */
+	$expires_line = sprintf( esc_html__( 'This code expires in %d minutes.', 'influencer-hq' ), (int) $minutes_left );
+
+	return '
+    <!DOCTYPE html>
+    <html><head><meta charset="UTF-8"></head>
+    <body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background:#0a0a0a;color:#f0f0f0;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 20px;">
+        <tr><td align="center">
+          <table width="560" cellpadding="0" cellspacing="0" style="background:#161612;border:1px solid rgba(240,201,58,.35);border-radius:12px;">
+            <tr><td style="padding:40px 32px;text-align:center;">
+              <h1 style="color:#F0C93A;font-size:26px;margin:0 0 16px;">Influencer HQ</h1>
+              <p style="color:#EAD9B0;font-size:16px;line-height:1.6;margin:0 0 24px;">' . esc_html__( 'Your sign-in code is:', 'influencer-hq' ) . '</p>
+              <div style="font-size:36px;font-weight:700;letter-spacing:12px;color:#fff;margin:16px 0 24px;">' . esc_html( $code ) . '</div>
+              <p style="color:#888;font-size:14px;line-height:1.6;margin:0;">' . $expires_line . '</p>' . $warning . '
+            </td></tr>
+          </table>
+        </td></tr>
+      </table>
+    </body></html>';
+}
+
+/**
  * Issue and email a passwordless 6-digit login code for an influencer.
+ *
+ * While ihq_login_code_fan_out_enabled() is on, the code also goes to every
+ * verified chat app (inc/login-code-fan-out.php, ENGR-8022).
  *
  * Shared by the login AJAX handler and the AI Coach register path (PO-3257):
  * existing emails must prove inbox ownership instead of receiving a session.
@@ -1208,7 +1249,8 @@ function ihq_issue_and_send_login_code_for_influencer( $user, $args = array() ) 
 	}
 
 	$email = sanitize_email( (string) $user->user_email );
-	if ( ! is_email( $email ) ) {
+	// A stand-in (inc/placeholder-email.php) can never deliver, so it gets no code (ENGR-8022).
+	if ( ! is_email( $email ) || ihq_is_placeholder_email( $email ) ) {
 		return array(
 			'ok'    => false,
 			'error' => __( 'Invalid email address', 'influencer-hq' ),
@@ -1248,23 +1290,7 @@ function ihq_issue_and_send_login_code_for_influencer( $user, $args = array() ) 
 	update_option( $email_map_key, $signup_token, false );
 
 	$subject = __( 'Your Influencer HQ sign-in code', 'influencer-hq' );
-	$message = '
-    <!DOCTYPE html>
-    <html><head><meta charset="UTF-8"></head>
-    <body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background:#0a0a0a;color:#f0f0f0;">
-      <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 20px;">
-        <tr><td align="center">
-          <table width="560" cellpadding="0" cellspacing="0" style="background:#161612;border:1px solid rgba(240,201,58,.35);border-radius:12px;">
-            <tr><td style="padding:40px 32px;text-align:center;">
-              <h1 style="color:#F0C93A;font-size:26px;margin:0 0 16px;">Influencer HQ</h1>
-              <p style="color:#EAD9B0;font-size:16px;line-height:1.6;margin:0 0 24px;">Your sign-in code is:</p>
-              <div style="font-size:36px;font-weight:700;letter-spacing:12px;color:#fff;margin:16px 0 24px;">' . esc_html( $code ) . '</div>
-              <p style="color:#888;font-size:14px;line-height:1.6;margin:0;">This code expires in ' . (int) $minutes_left . ' minutes.</p>
-            </td></tr>
-          </table>
-        </td></tr>
-      </table>
-    </body></html>';
+	$message = ihq_login_code_email_body( $code, $minutes_left, ihq_login_code_fan_out_enabled() );
 
 	$headers = array(
 		'Content-Type: text/html; charset=UTF-8',
@@ -1279,15 +1305,24 @@ function ihq_issue_and_send_login_code_for_influencer( $user, $args = array() ) 
 	$sent = wp_mail( $email, $subject, $message, $headers );
 	remove_action( 'wp_mail_failed', $failed_hook );
 
+	// While the switch is on, every verified chat app gets the code too (ENGR-8022).
+	$code_went_to_chat_apps = ihq_login_code_fan_out( (int) $user->ID, $code, time() );
+
 	if ( ! $sent ) {
-		delete_option( 'pending_login_code_' . $signup_token );
-		delete_option( $email_map_key );
 		$err = $mail_error ? $mail_error : __( 'Failed to send email', 'influencer-hq' );
-		error_log( 'IHQ send_login_code failed for ' . $email . ': ' . $err );
-		return array(
-			'ok'    => false,
-			'error' => $err,
-		);
+		if ( ! $code_went_to_chat_apps ) {
+			delete_option( 'pending_login_code_' . $signup_token );
+			delete_option( $email_map_key );
+			error_log( 'IHQ send_login_code failed for ' . $email . ': ' . $err );
+			return array(
+				'ok'    => false,
+				'error' => $err,
+			);
+		}
+		// The chat apps carry this code, so keep it, whatever influencerhq-api answered: a slow
+		// call can time out here and still deliver. Inside the D3 window nothing else carries it,
+		// so a failed email is handled as before (above).
+		error_log( 'IHQ send_login_code email failed for ' . $email . ', code kept for the chat apps: ' . $err );
 	}
 
 	if ( $respect_throttle ) {
@@ -1327,17 +1362,20 @@ function ihq_handle_send_login_code_ajax() {
 
     /**
      * Always return the same success copy if the inbox exists — avoids leaking which emails are registered.
-     * Only deliver a code when the user exists and is an influencer.
+     * Only deliver a code when the user exists and is an influencer. A stand-in address never gets a
+     * code (ENGR-8022), so it answers like an unknown one.
      */
     $generic_success = __( 'If that email matches an Influencer HQ account, you will receive a sign-in code shortly.', 'influencer-hq' );
 
-    if ( ! $user || ! ihq_user_has_influencer_role( $user ) ) {
+    if ( ! $user || ! ihq_user_has_influencer_role( $user ) || ihq_is_placeholder_email( $email ) ) {
         wp_send_json_success(
-            array(
-                'signup_token'    => '',
-                'expires_minutes' => (int) ceil( IHQ_LOGIN_CODE_EXPIRY_SECONDS / 60 ),
-                'message'         => $generic_success,
-                'skipped'         => true,
+            ihq_login_code_fan_out_add_hint(
+                array(
+                    'signup_token'    => '',
+                    'expires_minutes' => (int) ceil( IHQ_LOGIN_CODE_EXPIRY_SECONDS / 60 ),
+                    'message'         => $generic_success,
+                    'skipped'         => true,
+                )
             )
         );
         return;
@@ -1350,10 +1388,12 @@ function ihq_handle_send_login_code_ajax() {
     }
 
     wp_send_json_success(
-        array(
-            'signup_token'    => $result['signup_token'],
-            'expires_minutes' => $result['expires_minutes'],
-            'message'         => $result['message'] ?? $generic_success,
+        ihq_login_code_fan_out_add_hint(
+            array(
+                'signup_token'    => $result['signup_token'],
+                'expires_minutes' => $result['expires_minutes'],
+                'message'         => $result['message'] ?? $generic_success,
+            )
         )
     );
 }

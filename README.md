@@ -43,6 +43,7 @@ define( 'CF_TURNSTILE_SECRET_KEY',  '' );
 define( 'IHQ_ELEVENLABS_API_KEY',   '' );
 define( 'IHQ_GENIUS_REFERRALS_API_TOKEN', '' );   // test-form.php only
 define( 'IHQ_PUBLISHER_URL',        '' );   // publisher app behind STREAM NOW on Live Appearance (ENGR-7346)
+define( 'IHQ_SERVER_API_KEY',       '' );   // value of SSM /<stage>/influencerhq-api/IHQ_SERVER_API_KEY: login code on every chat app (ENGR-8022)
 
 // Optional — default applies when absent
 define( 'IHQ_REF_COOKIE_TTL_DAYS',  '90' );   // lifetime of the ihq_ref referral cookie (ENGR-6966)
@@ -55,6 +56,11 @@ the existing `ANAM_API_KEY` block, before the `ABSPATH` define.
 `IHQ_PUBLISHER_URL` must also be an absolute `https://` URL, but it is optional: when it is unset
 or invalid, STREAM NOW is simply not rendered (an invalid value is logged) and the rest of the site
 runs normally. Removing it is the kill switch for the button.
+
+`IHQ_SERVER_API_KEY` is the `x-api-key` influencerhq-api checks on its server-only `/ihq/v1/*`
+routes. It is not `IHQ_INFLUENCER_API_KEY`, which is account-api's key. Set it before turning on
+`ihq_login_code_fan_out_enabled` (ENGR-8022). While it is unset, the login code goes by email
+only, and each send logs that the key is missing.
 
 | Instance | `IHQ_ENVIRONMENT` | `IHQ_API_BASE_URL` | `IHQ_GAME_PORTAL_BASE_URL` | `IHQ_PUBLISHER_URL` | API key (SSM, per AWS account) |
 |---|---|---|---|---|---|
