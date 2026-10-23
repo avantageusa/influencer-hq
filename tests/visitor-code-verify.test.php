@@ -61,7 +61,15 @@ class JsonResponse extends Exception {
 	}
 }
 
-/** Enough of $wpdb for the atomic counter and the advisory locks. */
+/** First options.option_id the fake table hands out (the value probed on IHQ dev). */
+const FIRST_OPTION_ID = 5814;
+
+/**
+ * Enough of $wpdb for the atomic counter and the advisory locks. insert_id behaves
+ * like MySQL 8.4: a statement that inserts a row reports the auto-increment id it
+ * generated, even with LAST_INSERT_ID(expr) in VALUES; only the update path reports
+ * LAST_INSERT_ID(expr).
+ */
 class FakeWpdb {
 	public $options   = 'wp_options';
 	public $insert_id = 0;
@@ -70,7 +78,14 @@ class FakeWpdb {
 		if ( strpos( $prepared['query'], 'GET_LOCK' ) !== false ) {
 			return $GLOBALS['mutex_available'] ? 1 : 0;
 		}
-		return (int) ( $GLOBALS['options'][ $prepared['args'][0] ] ?? 0 );
+		if ( strpos( $prepared['query'], 'SELECT CAST(option_value AS UNSIGNED)' ) === 0 ) {
+			$GLOBALS['counter_queries'][] = array( 'select', $prepared['args'] );
+			if ( $GLOBALS['counter_deleted'] ) {
+				return null;
+			}
+			return isset( $GLOBALS['options'][ $prepared['args'][0] ] ) ? (string) $GLOBALS['options'][ $prepared['args'][0] ] : null;
+		}
+		throw new Exception( 'unexpected get_var ' . $prepared['query'] );
 	}
 	public function query( $prepared ) {
 		if ( strpos( $prepared['query'], 'RELEASE_LOCK' ) !== false ) {
@@ -79,9 +94,15 @@ class FakeWpdb {
 		}
 		if ( strpos( $prepared['query'], 'INSERT INTO' ) === 0 ) {
 			$name                         = $prepared['args'][0];
-			$GLOBALS['options'][ $name ]  = (int) ( $GLOBALS['options'][ $name ] ?? 0 ) + 1;
-			$this->insert_id              = $GLOBALS['options'][ $name ];
-			return 1;
+			$GLOBALS['counter_queries'][] = array( 'upsert', $prepared['args'] );
+			if ( ! isset( $GLOBALS['options'][ $name ] ) ) {
+				$GLOBALS['options'][ $name ] = 1;
+				$this->insert_id             = $GLOBALS['next_option_id']++;
+				return 1;
+			}
+			$GLOBALS['options'][ $name ] = (int) $GLOBALS['options'][ $name ] + 1;
+			$this->insert_id             = strpos( $prepared['query'], 'LAST_INSERT_ID(' ) !== false ? $GLOBALS['options'][ $name ] : 0;
+			return 2;
 		}
 		throw new Exception( 'unexpected query ' . $prepared['query'] );
 	}
@@ -90,6 +111,13 @@ $GLOBALS['wpdb'] = new FakeWpdb();
 
 function reset_state() {
 	$GLOBALS['options']         = array();
+	$GLOBALS['object_cache']    = array();
+	$GLOBALS['cache_sets']      = array();
+	$GLOBALS['cache_deletes']   = array();
+	$GLOBALS['counter_queries'] = array();
+	$GLOBALS['next_option_id']  = FIRST_OPTION_ID;
+	$GLOBALS['counter_deleted'] = false;
+	$GLOBALS['wpdb']->insert_id = 0;
 	$GLOBALS['transients']      = array();
 	$GLOBALS['mail']            = array();
 	$GLOBALS['mail_fails']      = false;
@@ -160,13 +188,55 @@ function is_wp_error( $v ) { return $v instanceof WP_Error; }
 function current_time( $t ) { return '2026-10-15 00:00:00'; }
 function get_user_meta( $id, $key, $single = false ) { return $GLOBALS['user_meta'][ $id ][ $key ] ?? ''; }
 function update_user_meta( $id, $key, $value ) { $GLOBALS['user_meta'][ $id ][ $key ] = $value; return true; }
-function get_option( $key, $default = false ) { return $GLOBALS['options'][ $key ] ?? $default; }
-function update_option( $key, $value, $autoload = null ) { $GLOBALS['options'][ $key ] = $value; return true; }
-function delete_option( $key ) { unset( $GLOBALS['options'][ $key ] ); return true; }
+// Options behave like WordPress with a persistent object cache: $GLOBALS['options']
+// is the table, and a miss is remembered in 'notoptions' until the options API
+// writes the key. delete_option() adds the key to notoptions (WordPress 6.4+).
+function notoptions() { return $GLOBALS['object_cache']['options']['notoptions'] ?? false; }
+function forget_notoption( $key ) {
+	$notoptions = notoptions();
+	if ( is_array( $notoptions ) && isset( $notoptions[ $key ] ) ) {
+		unset( $notoptions[ $key ] );
+		$GLOBALS['object_cache']['options']['notoptions'] = $notoptions;
+	}
+}
+function get_option( $key, $default = false ) {
+	$notoptions = notoptions();
+	if ( isset( $notoptions[ $key ] ) ) {
+		return $default;
+	}
+	if ( array_key_exists( $key, $GLOBALS['options'] ) ) {
+		return $GLOBALS['options'][ $key ];
+	}
+	$GLOBALS['object_cache']['options']['notoptions'][ $key ] = true;
+	return $default;
+}
+function update_option( $key, $value, $autoload = null ) {
+	$GLOBALS['options'][ $key ] = $value;
+	forget_notoption( $key );
+	return true;
+}
+function delete_option( $key ) {
+	if ( ! array_key_exists( $key, $GLOBALS['options'] ) ) {
+		return false;
+	}
+	unset( $GLOBALS['options'][ $key ] );
+	$GLOBALS['object_cache']['options']['notoptions'][ $key ] = true;
+	return true;
+}
 function get_transient( $key ) { return $GLOBALS['transients'][ $key ] ?? false; }
 function set_transient( $key, $value, $ttl = 0 ) { $GLOBALS['transients'][ $key ] = $value; return true; }
 function delete_transient( $key ) { unset( $GLOBALS['transients'][ $key ] ); return true; }
-function wp_cache_delete( ...$args ) { return true; }
+function wp_cache_get( $key, $group = '' ) { return $GLOBALS['object_cache'][ $group ][ $key ] ?? false; }
+function wp_cache_set( $key, $value, $group = '' ) {
+	$GLOBALS['cache_sets'][]                  = array( $group, $key, $value );
+	$GLOBALS['object_cache'][ $group ][ $key ] = $value;
+	return true;
+}
+function wp_cache_delete( $key, $group = '' ) {
+	$GLOBALS['cache_deletes'][] = array( $group, $key );
+	unset( $GLOBALS['object_cache'][ $group ][ $key ] );
+	return true;
+}
 function wp_verify_nonce( $nonce, $action ) { return $nonce === 'good-nonce' && $action === 'ihq_visitor_intent_nonce'; }
 function wp_mail( $to, $subject, $message, $headers = array() ) {
 	if ( $GLOBALS['mail_fails'] ) {
@@ -539,6 +609,101 @@ issue( ADMIN_EMAIL );
 $_COOKIE = GUEST_COOKIES;
 check( 'cookies: refused sign-in', verify( ADMIN_EMAIL, last_code() ), error_with( REFUSED_MESSAGE ) );
 check( 'cookies: refused sign-in leaves them', $_COOKIE, GUEST_COOKIES );
+
+// === 23. Counter increment: the first insert counts 1, not the row's option_id (PO-3262). ===
+reset_state();
+$ip_keys = ihq_login_verify_rate_limit_keys();
+check( 'increment: first insert counts 1', ihq_login_verify_increment_failures( $ip_keys ), 1 );
+check( 'increment: insert_id was the auto-increment id, and is ignored', $GLOBALS['wpdb']->insert_id, FIRST_OPTION_ID );
+check( 'increment: one upsert then one readback of that row', $GLOBALS['counter_queries'], array( array( 'upsert', array( $ip_keys['fail'] ) ), array( 'select', array( $ip_keys['fail'] ) ) ) );
+check( 'increment: row holds 1', $GLOBALS['options'][ $ip_keys['fail'] ], 1 );
+$ip_ttl = (int) $GLOBALS['options'][ $ip_keys['fail_timeout'] ] - time();
+check( 'increment: counter lives the lockout window', $ip_ttl > IHQ_LOGIN_CODE_LOCKOUT_SECONDS - 10 && $ip_ttl <= IHQ_LOGIN_CODE_LOCKOUT_SECONDS, true );
+check( 'increment: second counts 2', ihq_login_verify_increment_failures( $ip_keys ), 2 );
+check( 'increment: third counts 3', ihq_login_verify_increment_failures( $ip_keys ), 3 );
+check( 'increment: row holds 3', $GLOBALS['options'][ $ip_keys['fail'] ], 3 );
+
+reset_state();
+$GLOBALS['options'][ $ip_keys['fail'] ]         = 2;
+$GLOBALS['options'][ $ip_keys['fail_timeout'] ] = (string) ( time() - 1 );
+check( 'increment: expired counter restarts at 1', ihq_login_verify_increment_failures( $ip_keys ), 1 );
+
+reset_state();
+$GLOBALS['counter_deleted'] = true;
+check( 'increment: row deleted by a concurrent request still counts 1', ihq_login_verify_increment_failures( $ip_keys ), 1 );
+
+// Three strikes per IP: two misses pass, the third locks, the lock deletes the counter,
+// and the next cycle starts again at one miss (not a lock on the first).
+reset_state();
+check( 'strikes: miss 1 not locked', ihq_login_verify_record_failure(), array( 'locked' => false, 'failures' => 1 ) );
+check( 'strikes: miss 2 not locked', ihq_login_verify_record_failure(), array( 'locked' => false, 'failures' => 2 ) );
+check( 'strikes: no lock before the 3rd miss', $GLOBALS['transients'], array() );
+check( 'strikes: miss 3 locks', ihq_login_verify_record_failure(), array( 'locked' => true, 'failures' => IHQ_LOGIN_CODE_MAX_FAILURES ) );
+check( 'strikes: lock set', $GLOBALS['transients'], array( $ip_keys['lock'] => 1 ) );
+check( 'strikes: lock clears the counter', rate_limit_options(), array() );
+check( 'strikes: while locked nothing is counted', ihq_login_verify_record_failure(), array( 'locked' => true, 'failures' => IHQ_LOGIN_CODE_MAX_FAILURES ) );
+check( 'strikes: while locked no counter row', rate_limit_options(), array() );
+delete_transient( $ip_keys['lock'] );
+check( 'strikes: next cycle, miss 1 not locked', ihq_login_verify_record_failure(), array( 'locked' => false, 'failures' => 1 ) );
+check( 'strikes: next cycle, still no lock', $GLOBALS['transients'], array() );
+
+// === 24. Object cache: get_option() sees counters written by the raw upsert (PO-3262). ===
+reset_state();
+$daily_keys = ihq_visitor_verify_attempt_keys( 'email_daily', VICTIM_EMAIL );
+$GLOBALS['object_cache']['options']['notoptions'] = array( 'unrelated_option' => true );
+check( 'cache: miss before any failure', get_option( $daily_keys['fail'], 0 ), 0 );
+check( 'cache: the miss is remembered', notoptions(), array( 'unrelated_option' => true, $daily_keys['fail'] => true ) );
+ihq_login_verify_increment_failures( $daily_keys, IHQ_VISITOR_VERIFY_DAILY_WINDOW_SECONDS );
+check( 'cache: get_option sees the written counter', get_option( $daily_keys['fail'], 0 ), 1 );
+check( 'cache: only the counter left notoptions', notoptions(), array( 'unrelated_option' => true ) );
+check( 'cache: options entry dropped', $GLOBALS['cache_deletes'], array( array( 'options', $daily_keys['fail'] ) ) );
+delete_option( $daily_keys['fail'] );
+check( 'cache: delete puts the counter back in notoptions', notoptions(), array( 'unrelated_option' => true, $daily_keys['fail'] => true ) );
+ihq_login_verify_increment_failures( $daily_keys, IHQ_VISITOR_VERIFY_DAILY_WINDOW_SECONDS );
+check( 'cache: get_option sees the counter again after a delete', get_option( $daily_keys['fail'], 0 ), 1 );
+
+// Counter not in notoptions: notoptions is left as it is.
+reset_state();
+$GLOBALS['options'][ $daily_keys['fail_timeout'] ] = (string) ( time() + 60 );
+$GLOBALS['object_cache']['options']['notoptions']  = array( 'unrelated_option' => true );
+ihq_login_verify_increment_failures( $daily_keys, IHQ_VISITOR_VERIFY_DAILY_WINDOW_SECONDS );
+check( 'cache: key not in notoptions, notoptions not rewritten', $GLOBALS['cache_sets'], array() );
+check( 'cache: key not in notoptions, notoptions unchanged', notoptions(), array( 'unrelated_option' => true ) );
+
+// Cold cache: no notoptions entry is created.
+reset_state();
+$GLOBALS['options'][ $daily_keys['fail_timeout'] ] = (string) ( time() + 60 );
+ihq_login_verify_increment_failures( $daily_keys, IHQ_VISITOR_VERIFY_DAILY_WINDOW_SECONDS );
+check( 'cache: cold cache, notoptions not written', array( $GLOBALS['cache_sets'], notoptions() ), array( array(), false ) );
+check( 'cache: cold cache, options entry still dropped', $GLOBALS['cache_deletes'], array( array( 'options', $daily_keys['fail'] ) ) );
+
+// Daily cap (visitor-intent-handler): the verify path reads the daily counter with
+// get_option() before any miss is written, so the miss is cached in notoptions.
+reset_state();
+issue( VICTIM_EMAIL );
+check( 'daily cap via counter: no misses yet', get_option( $daily_keys['fail'], 0 ), 0 );
+for ( $miss = 0; $miss < IHQ_VISITOR_VERIFY_DAILY_MAX_FAILURES; $miss++ ) {
+	ihq_login_verify_increment_failures( $daily_keys, IHQ_VISITOR_VERIFY_DAILY_WINDOW_SECONDS );
+}
+check( 'daily cap via counter: right code refused after 10 counted misses', verify( VICTIM_EMAIL, last_code() ), error_with( LOCKOUT_MESSAGE ) );
+check( 'daily cap via counter: no auth cookie', $GLOBALS['auth_cookies'], array() );
+
+// Burn after 3: an earlier sign-in deleted the counters, so they sit in notoptions
+// when the next round of guesses starts.
+reset_state();
+issue( VICTIM_EMAIL );
+check( 'burn via counter: earlier sign-in', verify( VICTIM_EMAIL, last_code() )['success'], true );
+clear_issue_throttle();
+$GLOBALS['auth_cookies'] = array();
+issue( VICTIM_EMAIL );
+$code    = last_code();
+$guesses = array( wrong_code( $code ), wrong_code( wrong_code( $code ) ), wrong_code( wrong_code( wrong_code( $code ) ) ) );
+foreach ( $guesses as $i => $guess ) {
+	$_SERVER['REMOTE_ADDR'] = '192.0.2.' . ( $i + 1 );
+	check( 'burn via counter: guess ' . ( $i + 1 ) . ' mismatches', verify( VICTIM_EMAIL, $guess ), error_with( MISMATCH_MESSAGE ) );
+	check( 'burn via counter: code kept after guess ' . ( $i + 1 ), isset( $GLOBALS['options'][ fp_key( VICTIM_EMAIL ) ] ), $i < 2 );
+}
+check( 'burn via counter: no auth cookie', $GLOBALS['auth_cookies'], array() );
 
 ob_end_clean();
 echo implode( "\n", $out ) . "\n";

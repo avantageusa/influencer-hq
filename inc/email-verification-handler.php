@@ -556,8 +556,8 @@ function ihq_login_verify_purge_expired_failures( array $keys ) {
 /**
  * Atomically increment the per-IP wrong-code counter and return the new value.
  *
- * Uses MySQL INSERT ... ON DUPLICATE KEY UPDATE with LAST_INSERT_ID() so concurrent
- * requests cannot read-modify-write the same count and skip the lockout threshold.
+ * Uses one MySQL INSERT ... ON DUPLICATE KEY UPDATE so concurrent requests cannot
+ * read-modify-write the same count and skip the lockout threshold.
  *
  * @param array{fail:string,fail_timeout:string} $keys           Rate-limit keys.
  * @param int                                    $window_seconds Seconds until the counter expires.
@@ -568,31 +568,48 @@ function ihq_login_verify_increment_failures( array $keys, $window_seconds = IHQ
 
     ihq_login_verify_purge_expired_failures( $keys );
 
-    // LAST_INSERT_ID(1) on insert and LAST_INSERT_ID(n+1) on update make insert_id
-    // the new counter value (not the options.option_id auto-increment).
     $wpdb->query(
         $wpdb->prepare(
             "INSERT INTO {$wpdb->options} (option_name, option_value, autoload)
-             VALUES (%s, LAST_INSERT_ID(1), 'no')
-             ON DUPLICATE KEY UPDATE option_value = LAST_INSERT_ID(CAST(option_value AS UNSIGNED) + 1)",
+             VALUES (%s, '1', 'no')
+             ON DUPLICATE KEY UPDATE option_value = CAST(option_value AS UNSIGNED) + 1",
             $keys['fail']
         )
     );
 
-    $failures = (int) $wpdb->insert_id;
-    if ( $failures < 1 ) {
-        $failures = (int) $wpdb->get_var(
-            $wpdb->prepare(
-                "SELECT CAST(option_value AS UNSIGNED) FROM {$wpdb->options} WHERE option_name = %s",
-                $keys['fail']
-            )
-        );
-    }
+    // Read the row back rather than trusting insert_id: when the statement inserts the
+    // row, insert_id is the options.option_id auto-increment, not the count (PO-3262).
+    // A concurrent increment can only make this read higher, which fails closed.
+    $failures = (int) $wpdb->get_var(
+        $wpdb->prepare(
+            "SELECT CAST(option_value AS UNSIGNED) FROM {$wpdb->options} WHERE option_name = %s",
+            $keys['fail']
+        )
+    );
 
-    wp_cache_delete( $keys['fail'], 'options' );
+    ihq_login_verify_forget_cached_option( $keys['fail'] );
     update_option( $keys['fail_timeout'], (string) ( time() + (int) $window_seconds ), false );
 
     return max( 1, $failures );
+}
+
+/**
+ * Drop an option from the object cache after a write that bypassed the options API.
+ *
+ * A get_option() miss or delete_option() leaves the key in 'notoptions', and a
+ * persistent object cache would keep answering "no such option" for a row that now
+ * exists. Same clean-up add_option() does.
+ *
+ * @param string $option_name Option name.
+ * @return void
+ */
+function ihq_login_verify_forget_cached_option( $option_name ) {
+    $notoptions = wp_cache_get( 'notoptions', 'options' );
+    if ( is_array( $notoptions ) && isset( $notoptions[ $option_name ] ) ) {
+        unset( $notoptions[ $option_name ] );
+        wp_cache_set( 'notoptions', $notoptions, 'options' );
+    }
+    wp_cache_delete( $option_name, 'options' );
 }
 
 /**
