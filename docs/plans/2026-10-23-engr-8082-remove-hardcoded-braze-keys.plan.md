@@ -21,7 +21,7 @@ todos:
     content: "tests/braze-api-key.test.php: undefined and empty constants return '' and log once; defined constant returned; no UUID-shaped literal in braze-integration.php or functions.php"
     status: completed
   - id: env
-    content: "Set both constants in dev, QA and prod wp-config before merge (Steve / Milos), verified per env with a no-write Braze auth probe"
+    content: "Before merge: set both constants in dev, QA and prod wp-config (Steve / Milos), verified per env with a no-write Braze auth probe; confirm Braze rejects both old keys (track key returned 201 on 2026-10-23)"
     status: in-progress
 ---
 
@@ -33,8 +33,9 @@ todos:
 ## Problem
 
 The theme ships two Braze REST keys as fallbacks for the `IHQ_BRAZE_*_API_KEY` constants, and the
-same keys sit in commented-out code in `functions.php`. They are public to anyone with repo access
-and have been revoked, so every environment without the constants now gets 401 from Braze.
+same keys sit in commented-out code in `functions.php`. They are public to anyone with repo access,
+and removing the literals doesn't revoke them. On 2026-10-23 the export key was revoked (401 from a
+no-write probe on dev) but the track key still authenticated (201), so it needs revoking in Braze.
 
 ## Change
 
@@ -45,6 +46,10 @@ already log the Braze response code on failure.
 
 ## Merge gate
 
-Merge only after both constants are set in every IHQ environment (dev, QA, prod). On 2026-10-23
-the leaked track key still authenticated (HTTP 201 from a no-write probe on dev), so an environment
-without `IHQ_BRAZE_TRACK_API_KEY` would lose users/track the moment this lands.
+Merge only after both of these hold, each recorded on the ticket:
+
+- Replacement values for both constants are set in every IHQ environment (dev, QA, prod), and a
+  no-write auth probe from each environment gets past auth on both export and track.
+- Braze rejects both old committed keys: a no-write probe with each old key returns 401. On
+  2026-10-23 the track key still returned 201, so an environment without
+  `IHQ_BRAZE_TRACK_API_KEY` would lose users/track the moment this lands.
