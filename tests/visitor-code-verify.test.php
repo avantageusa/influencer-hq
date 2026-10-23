@@ -219,8 +219,10 @@ function get_option( $key, $default = false ) {
 	$GLOBALS['object_cache']['options']['notoptions'][ $key ] = true;
 	return $default;
 }
+// Like wpdb, every options write runs a query, and each query resets last_error.
 function update_option( $key, $value, $autoload = null ) {
-	$GLOBALS['options'][ $key ] = $value;
+	$GLOBALS['wpdb']->last_error = '';
+	$GLOBALS['options'][ $key ]  = $value;
 	forget_notoption( $key );
 	return true;
 }
@@ -228,6 +230,7 @@ function delete_option( $key ) {
 	if ( ! array_key_exists( $key, $GLOBALS['options'] ) ) {
 		return false;
 	}
+	$GLOBALS['wpdb']->last_error = '';
 	unset( $GLOBALS['options'][ $key ] );
 	$GLOBALS['object_cache']['options']['notoptions'][ $key ] = true;
 	return true;

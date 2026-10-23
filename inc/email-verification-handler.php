@@ -594,12 +594,14 @@ function ihq_login_verify_increment_failures( array $keys, $window_seconds = IHQ
             $keys['fail']
         )
     );
+    // Captured now: every later query (update_option below) resets last_error.
+    $select_error = $wpdb->last_error;
 
     ihq_login_verify_forget_cached_option( $keys['fail'] );
     update_option( $keys['fail_timeout'], (string) ( time() + (int) $window_seconds ), false );
 
-    if ( false === $upserted || '' !== $wpdb->last_error ) {
-        error_log( 'IHQ login-code failure counter ' . $keys['fail'] . ' not counted: ' . ( '' !== $upsert_error ? $upsert_error : $wpdb->last_error ) );
+    if ( false === $upserted || '' !== $select_error ) {
+        error_log( 'IHQ login-code failure counter ' . $keys['fail'] . ' not counted: ' . ( '' !== $upsert_error ? $upsert_error : $select_error ) );
         return IHQ_LOGIN_CODE_COUNTER_ERROR_FAILURES;
     }
 
