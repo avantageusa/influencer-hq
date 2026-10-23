@@ -71,8 +71,9 @@ const FIRST_OPTION_ID = 5814;
  * LAST_INSERT_ID(expr).
  */
 class FakeWpdb {
-	public $options   = 'wp_options';
-	public $insert_id = 0;
+	public $options    = 'wp_options';
+	public $insert_id  = 0;
+	public $last_error = '';
 	public function prepare( $query, ...$args ) { return array( 'query' => $query, 'args' => $args ); }
 	public function get_var( $prepared ) {
 		if ( strpos( $prepared['query'], 'GET_LOCK' ) !== false ) {
@@ -80,7 +81,8 @@ class FakeWpdb {
 		}
 		if ( strpos( $prepared['query'], 'SELECT CAST(option_value AS UNSIGNED)' ) === 0 ) {
 			$GLOBALS['counter_queries'][] = array( 'select', $prepared['args'] );
-			if ( $GLOBALS['counter_deleted'] ) {
+			$this->last_error             = $GLOBALS['select_error'];
+			if ( $GLOBALS['counter_deleted'] || $this->last_error !== '' ) {
 				return null;
 			}
 			return isset( $GLOBALS['options'][ $prepared['args'][0] ] ) ? (string) $GLOBALS['options'][ $prepared['args'][0] ] : null;
@@ -95,6 +97,10 @@ class FakeWpdb {
 		if ( strpos( $prepared['query'], 'INSERT INTO' ) === 0 ) {
 			$name                         = $prepared['args'][0];
 			$GLOBALS['counter_queries'][] = array( 'upsert', $prepared['args'] );
+			$this->last_error             = $GLOBALS['upsert_error'];
+			if ( $this->last_error !== '' ) {
+				return false;
+			}
 			if ( ! isset( $GLOBALS['options'][ $name ] ) ) {
 				$GLOBALS['options'][ $name ] = 1;
 				$this->insert_id             = $GLOBALS['next_option_id']++;
@@ -117,6 +123,9 @@ function reset_state() {
 	$GLOBALS['counter_queries'] = array();
 	$GLOBALS['next_option_id']  = FIRST_OPTION_ID;
 	$GLOBALS['counter_deleted'] = false;
+	$GLOBALS['upsert_error']    = '';
+	$GLOBALS['select_error']    = '';
+	$GLOBALS['wpdb']->last_error = '';
 	$GLOBALS['wpdb']->insert_id = 0;
 	$GLOBALS['transients']      = array();
 	$GLOBALS['mail']            = array();
@@ -327,6 +336,10 @@ function clear_issue_throttle() {
 function wrong_code( $code ) { return str_pad( (string) ( ( (int) $code + 1 ) % 1000000 ), 6, '0', STR_PAD_LEFT ); }
 function fp_key( $email ) { return ihq_visitor_verification_fingerprint_option_key( ihq_visitor_intent_comm_fingerprint( intent_for( $email ) ) ); }
 function error_with( $message ) { return array( 'success' => false, 'data' => array( 'message' => $message ) ); }
+function last_logged( $file ) {
+	$lines = file( $file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES );
+	return preg_replace( '/^\[[^\]]*\] /', '', (string) end( $lines ) );
+}
 function rate_limit_options() {
 	return array_values( array_filter( array_keys( $GLOBALS['options'] ), function ( $k ) { return strpos( $k, 'ihq_login_verify_' ) === 0; } ) );
 }
@@ -631,6 +644,26 @@ check( 'increment: expired counter restarts at 1', ihq_login_verify_increment_fa
 reset_state();
 $GLOBALS['counter_deleted'] = true;
 check( 'increment: row deleted by a concurrent request still counts 1', ihq_login_verify_increment_failures( $ip_keys ), 1 );
+
+// A failed write or read fails closed and is logged; it never reads as one miss.
+reset_state();
+$error_log = tempnam( sys_get_temp_dir(), 'ihq-po3262-' );
+ini_set( 'error_log', $error_log );
+$GLOBALS['select_error'] = 'Lost connection to MySQL server during query';
+check( 'read error: reported over the cap', ihq_login_verify_increment_failures( $ip_keys ), IHQ_LOGIN_CODE_MAX_FAILURES + 1 );
+check( 'read error: logged', last_logged( $error_log ), 'IHQ login-code failure counter ' . $ip_keys['fail'] . ' not counted: Lost connection to MySQL server during query' );
+check( 'read error: first miss locks the IP', ihq_login_verify_record_failure(), array( 'locked' => true, 'failures' => IHQ_LOGIN_CODE_MAX_FAILURES + 1 ) );
+check( 'read error: lock set', $GLOBALS['transients'], array( $ip_keys['lock'] => 1 ) );
+reset_state();
+$GLOBALS['upsert_error'] = 'Deadlock found when trying to get lock';
+check( 'write error: reported over the cap', ihq_login_verify_increment_failures( $ip_keys ), IHQ_LOGIN_CODE_MAX_FAILURES + 1 );
+check( 'write error: logs the write error', last_logged( $error_log ), 'IHQ login-code failure counter ' . $ip_keys['fail'] . ' not counted: Deadlock found when trying to get lock' );
+check( 'write error: visitor attempt refused', ihq_visitor_verify_reserve_attempt( array( $ip_keys ) ), false );
+check( 'write error: nothing stored as a count', isset( $GLOBALS['options'][ $ip_keys['fail'] ] ), false );
+reset_state();
+check( 'no error: visitor attempts 1-3 allowed, 4th refused', array( ihq_visitor_verify_reserve_attempt( array( $ip_keys ) ), ihq_visitor_verify_reserve_attempt( array( $ip_keys ) ), ihq_visitor_verify_reserve_attempt( array( $ip_keys ) ), ihq_visitor_verify_reserve_attempt( array( $ip_keys ) ) ), array( true, true, true, false ) );
+ini_set( 'error_log', '/dev/null' );
+unlink( $error_log );
 
 // Three strikes per IP: two misses pass, the third locks, the lock deletes the counter,
 // and the next cycle starts again at one miss (not a lock on the first).

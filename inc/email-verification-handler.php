@@ -165,6 +165,13 @@ const IHQ_LOGIN_CODE_EXPIRY_SECONDS = 900;
 /** Wrong login-code guesses allowed per IP before lockout (PO-3262). */
 const IHQ_LOGIN_CODE_MAX_FAILURES = 3;
 
+/**
+ * Count reported when the failure counter cannot be written or read: over every cap
+ * its callers check (>= MAX locks the IP, > MAX refuses the visitor attempt), so a
+ * database error fails closed.
+ */
+const IHQ_LOGIN_CODE_COUNTER_ERROR_FAILURES = IHQ_LOGIN_CODE_MAX_FAILURES + 1;
+
 /** Seconds an IP stays locked out of login-code verify after too many wrong guesses. */
 const IHQ_LOGIN_CODE_LOCKOUT_SECONDS = 900;
 
@@ -568,7 +575,7 @@ function ihq_login_verify_increment_failures( array $keys, $window_seconds = IHQ
 
     ihq_login_verify_purge_expired_failures( $keys );
 
-    $wpdb->query(
+    $upserted = $wpdb->query(
         $wpdb->prepare(
             "INSERT INTO {$wpdb->options} (option_name, option_value, autoload)
              VALUES (%s, '1', 'no')
@@ -576,11 +583,12 @@ function ihq_login_verify_increment_failures( array $keys, $window_seconds = IHQ
             $keys['fail']
         )
     );
+    $upsert_error = $wpdb->last_error;
 
     // Read the row back rather than trusting insert_id: when the statement inserts the
     // row, insert_id is the options.option_id auto-increment, not the count (PO-3262).
     // A concurrent increment can only make this read higher, which fails closed.
-    $failures = (int) $wpdb->get_var(
+    $count = $wpdb->get_var(
         $wpdb->prepare(
             "SELECT CAST(option_value AS UNSIGNED) FROM {$wpdb->options} WHERE option_name = %s",
             $keys['fail']
@@ -590,7 +598,13 @@ function ihq_login_verify_increment_failures( array $keys, $window_seconds = IHQ
     ihq_login_verify_forget_cached_option( $keys['fail'] );
     update_option( $keys['fail_timeout'], (string) ( time() + (int) $window_seconds ), false );
 
-    return max( 1, $failures );
+    if ( false === $upserted || '' !== $wpdb->last_error ) {
+        error_log( 'IHQ login-code failure counter ' . $keys['fail'] . ' not counted: ' . ( '' !== $upsert_error ? $upsert_error : $wpdb->last_error ) );
+        return IHQ_LOGIN_CODE_COUNTER_ERROR_FAILURES;
+    }
+
+    // A row deleted by a concurrent request in between reads as null; this attempt still counts.
+    return max( 1, (int) $count );
 }
 
 /**
