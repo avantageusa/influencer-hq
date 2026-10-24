@@ -34,6 +34,9 @@ const GENERIC         = 'If that email matches an Influencer HQ account, you wil
 const DO_NOT_SHARE    = 'This is your sign-in code. Do not share it with anyone.';
 const SENT_BODY       = '{"results":[{"provider":"telegram","status":"sent"},{"provider":"line","status":"not_connected"}]}';
 const NOTHING_BODY    = '{"results":[{"provider":"telegram","status":"not_connected"},{"provider":"line","status":"switched_off"}]}';
+// With methods "all", influencerhq-api answers only for connected methods: no chat app is an empty list.
+const EMPTY_BODY      = '{"results":[]}';
+const SWITCHED_BODY   = '{"results":[{"provider":"telegram","status":"switched_off"}]}';
 const FAILED_BODY     = '{"results":[{"provider":"telegram","status":"failed","reason":"quota_exceeded"},{"provider":"line","status":"failed"}]}';
 
 ini_set( 'error_log', LOG_FILE );
@@ -337,12 +340,17 @@ check( 'failed methods: not connected and switched off are not failures', ihq_lo
 check( 'failed methods: only the failed ones of a mix', ihq_login_code_fan_out_failed_methods( '{"results":[{"provider":"line","status":"sent"},{"provider":"telegram","status":"failed","reason":"blocked"}]}' ), array( 'telegram: blocked' ) );
 check( 'failed methods: not JSON', ihq_login_code_fan_out_failed_methods( 'oops' ), array() );
 check( 'failed methods: no results list', ihq_login_code_fan_out_failed_methods( '{"results":"failed"}' ), array() );
+check( 'results: the list from the answer', ihq_login_code_fan_out_results( SENT_BODY ), array( array( 'provider' => 'telegram', 'status' => 'sent' ), array( 'provider' => 'line', 'status' => 'not_connected' ) ) );
+check( 'results: an empty list', ihq_login_code_fan_out_results( EMPTY_BODY ), array() );
+check( 'results: none in a body that is not JSON', ihq_login_code_fan_out_results( 'oops' ), null );
+check( 'results: none when results is not a list', ihq_login_code_fan_out_results( '{"results":"sent"}' ), null );
+check( 'results: none when there is no results key', ihq_login_code_fan_out_results( '{"status":"sent"}' ), null );
 check( 'failed methods: entries without provider or status are skipped', ihq_login_code_fan_out_failed_methods( '{"results":[{"status":"failed"},{"provider":"line"},"x"]}' ), array() );
 
-// --- Send: true once the request is made, whatever it answers; every failure is logged. ---
+// --- Send: true when a chat app may have the code; every failure is logged. ---
 reset_state();
 queue_response( ok_response( SENT_BODY ) );
-check( 'send: a method reporting sent', ihq_login_code_fan_out_send( INFLUENCER_ID, '123456', INFLUENCER_API_BASE ), true );
+check( 'send: a method reporting sent', ihq_login_code_fan_out_send( INFLUENCER_ID, '123456', INFLUENCER_API_BASE, SERVER_KEY ), true );
 check(
 	'send: one POST to /ihq/v1/messages with the IHQ server key, a 3 s timeout and no redirects',
 	$GLOBALS['requests'],
@@ -363,43 +371,64 @@ check(
 );
 check( 'send: nothing logged on success', logged(), '' );
 
-reset_state();
-queue_response( ok_response( NOTHING_BODY ) );
-check( 'send: nothing connected still made the request', ihq_login_code_fan_out_send( INFLUENCER_ID, '123456', INFLUENCER_API_BASE ), true );
-check( 'send: nothing connected logs nothing', logged(), '' );
+foreach ( array(
+	'an empty results list'       => EMPTY_BODY,
+	'only a switched-off method'  => SWITCHED_BODY,
+	'nothing connected'           => NOTHING_BODY,
+	'only entries with no status' => '{"results":[{"provider":"line"},"x"]}',
+) as $label => $body ) {
+	reset_state();
+	queue_response( ok_response( $body ) );
+	check( 'send: ' . $label . ': no chat app has the code', ihq_login_code_fan_out_send( INFLUENCER_ID, '123456', INFLUENCER_API_BASE, SERVER_KEY ), false );
+	check( 'send: ' . $label . ': the request was made', count( $GLOBALS['requests'] ), 1 );
+	check( 'send: ' . $label . ': logs nothing', logged(), '' );
+}
+
+// Whether a chat app may have the code: a sent method, or an unclear outcome (a timeout or a 5xx).
+foreach ( array(
+	'a timeout'                      => array( new WP_Error( 'http_request_failed', 'cURL error 28: timed out' ), true ),
+	'a 200 with a sent method'       => array( ok_response( '{"results":[{"provider":"line","status":"switched_off"},{"provider":"telegram","status":"sent"}]}' ), true ),
+	'a 201 with a sent method'       => array( array( 'status' => 201, 'body' => SENT_BODY ), true ),
+	'a 299 with a sent method'       => array( array( 'status' => 299, 'body' => SENT_BODY ), true ),
+	'a 500 with no body'             => array( array( 'status' => 500, 'body' => '' ), true ),
+	'a 502 with no body'             => array( array( 'status' => 502, 'body' => '' ), true ),
+	'a 200 with only failed methods' => array( ok_response( FAILED_BODY ), false ),
+	'a 200 with an empty list'       => array( ok_response( EMPTY_BODY ), false ),
+	'a status that only looks sent'  => array( ok_response( '{"results":[{"provider":"telegram","status":"SENT"}]}' ), false ),
+	'a 2xx that is not JSON'         => array( ok_response( 'oops' ), false ),
+	'a 2xx with no results list'     => array( ok_response( '{"results":"sent"}' ), false ),
+	'a 199 with a sent method'       => array( array( 'status' => 199, 'body' => SENT_BODY ), false ),
+	'a 300 with a sent method'       => array( array( 'status' => 300, 'body' => SENT_BODY ), false ),
+	'a 400'                          => array( array( 'status' => 400, 'body' => '' ), false ),
+	'a 403 (a key for another stage)' => array( array( 'status' => 403, 'body' => '' ), false ),
+	'a 499'                          => array( array( 'status' => 499, 'body' => '' ), false ),
+) as $label => $case ) {
+	check( 'may have delivered: ' . $label, ihq_login_code_fan_out_may_have_delivered( $case[0] ), $case[1] );
+}
 
 reset_state();
 queue_response( ok_response( FAILED_BODY ) );
-check( 'send: failed methods still made the request', ihq_login_code_fan_out_send( INFLUENCER_ID, '123456', INFLUENCER_API_BASE ), true );
+check( 'send: only failed methods: no chat app has the code', ihq_login_code_fan_out_send( INFLUENCER_ID, '123456', INFLUENCER_API_BASE, SERVER_KEY ), false );
 check( 'send: failed methods are logged with their reasons, never the code', substr_count( logged(), '[ihq-login-fan-out] methods failed for user 7: telegram: quota_exceeded, line: no reason given' ) === 1 && strpos( logged(), '123456' ) === false, true );
 
 reset_state();
 queue_response( new WP_Error( 'http_request_failed', 'cURL error 28: timed out' ) );
-check( 'send: a timeout still made the request', ihq_login_code_fan_out_send( INFLUENCER_ID, '123456', INFLUENCER_API_BASE ), true );
+check( 'send: after a timeout a chat app may still get the code', ihq_login_code_fan_out_send( INFLUENCER_ID, '123456', INFLUENCER_API_BASE, SERVER_KEY ), true );
 check( 'send: a transport error is logged', substr_count( logged(), '[ihq-login-fan-out] request failed for user 7: cURL error 28: timed out' ), 1 );
 
-foreach ( array( 401, 502, 199, 300 ) as $status ) {
+foreach ( array( 401 => false, 502 => true, 199 => false, 300 => false ) as $status => $may_have_delivered ) {
 	reset_state();
 	queue_response( array( 'status' => $status, 'body' => FAILED_BODY ) );
-	check( 'send: HTTP ' . $status . ' still made the request', ihq_login_code_fan_out_send( INFLUENCER_ID, '123456', INFLUENCER_API_BASE ), true );
+	check( 'send: HTTP ' . $status . ' answers by its status', ihq_login_code_fan_out_send( INFLUENCER_ID, '123456', INFLUENCER_API_BASE, SERVER_KEY ), $may_have_delivered );
 	check( 'send: HTTP ' . $status . ' is logged once, and its body is not read', array( substr_count( logged(), '[ihq-login-fan-out] HTTP ' . $status . ' for user 7' ), strpos( logged(), 'methods failed' ) ), array( 1, false ) );
 }
 foreach ( array( 200, 299 ) as $status ) {
 	reset_state();
 	queue_response( array( 'status' => $status, 'body' => FAILED_BODY ) );
-	check( 'send: HTTP ' . $status . ' is read', ihq_login_code_fan_out_send( INFLUENCER_ID, '123456', INFLUENCER_API_BASE ), true );
+	check( 'send: HTTP ' . $status . ' is read: only failed methods', ihq_login_code_fan_out_send( INFLUENCER_ID, '123456', INFLUENCER_API_BASE, SERVER_KEY ), false );
 	check( 'send: HTTP ' . $status . ' logs its failed methods only', strpos( logged(), '[ihq-login-fan-out] methods failed for user 7: ' ) !== false && strpos( logged(), 'HTTP ' ) === false, true );
 }
 
-reset_state();
-putenv( 'IHQ_SERVER_API_KEY' );
-check( 'send: no IHQ_SERVER_API_KEY makes no request, so the code did not go', ihq_login_code_fan_out_send( INFLUENCER_ID, '123456', INFLUENCER_API_BASE ), false );
-check( 'send: no IHQ_SERVER_API_KEY makes no request', $GLOBALS['requests'], array() );
-check( 'send: no IHQ_SERVER_API_KEY is logged', substr_count( logged(), '[ihq-login-fan-out] IHQ_SERVER_API_KEY is not set; user 7 got the code by email only' ), 1 );
-
-reset_state();
-putenv( 'IHQ_SERVER_API_KEY=' );
-check( 'send: an empty IHQ_SERVER_API_KEY (the README template) is not set', array( ihq_login_code_fan_out_send( INFLUENCER_ID, '123456', INFLUENCER_API_BASE ), $GLOBALS['requests'] ), array( false, array() ) );
 
 // --- The fan-out step. ---
 reset_state();
@@ -409,8 +438,29 @@ switch_on();
 queue_response( ok_response( SENT_BODY ) );
 check( 'step: on sends', ihq_login_code_fan_out( INFLUENCER_ID, '123456', $now ), true );
 check( 'step: on takes a slot at now', $GLOBALS['transients'][ FAN_OUT_KEY ], array( $now ) );
+check( 'step: on sends with the IHQ server key', $GLOBALS['requests'][0]['args']['headers']['x-api-key'], SERVER_KEY );
 check( 'step: inside the window sends nothing', ihq_login_code_fan_out( INFLUENCER_ID, '123456', $now + 10 ), false );
 check( 'step: one request in all', count( $GLOBALS['requests'] ), 1 );
+
+reset_state();
+switch_on();
+queue_response( ok_response( EMPTY_BODY ) );
+check( 'step: on, with no chat app connected, no chat app has the code', ihq_login_code_fan_out( INFLUENCER_ID, '123456', $now ), false );
+check( 'step: on, with no chat app connected, the slot is still taken', $GLOBALS['transients'][ FAN_OUT_KEY ], array( $now ) );
+
+// The key is read before the slot is claimed, so a stage without it spends none.
+reset_state();
+switch_on();
+putenv( 'IHQ_SERVER_API_KEY' );
+check( 'step: no IHQ_SERVER_API_KEY sends nothing', ihq_login_code_fan_out( INFLUENCER_ID, '123456', $now ), false );
+check( 'step: no IHQ_SERVER_API_KEY makes no request', $GLOBALS['requests'], array() );
+check( 'step: no IHQ_SERVER_API_KEY takes no slot', isset( $GLOBALS['transients'][ FAN_OUT_KEY ] ), false );
+check( 'step: no IHQ_SERVER_API_KEY is logged', substr_count( logged(), '[ihq-login-fan-out] IHQ_SERVER_API_KEY is not set; user 7 got the code by email only' ), 1 );
+
+reset_state();
+switch_on();
+putenv( 'IHQ_SERVER_API_KEY=' );
+check( 'step: an empty IHQ_SERVER_API_KEY (the README template) is not set', array( ihq_login_code_fan_out( INFLUENCER_ID, '123456', $now ), $GLOBALS['requests'], isset( $GLOBALS['transients'][ FAN_OUT_KEY ] ) ), array( false, array(), false ) );
 
 // --- Email body. ---
 check( 'email: without the warning it is the pre-ENGR-8022 email', ihq_login_code_email_body( '123456', 15, false ), pre_8022_login_email( '123456', 15 ) );
@@ -453,7 +503,7 @@ check( 'off, email fails: the error is today\'s', $result, array( 'ok' => false,
 check( 'off, email fails: the code is deleted', array_key_exists( $token_key, $GLOBALS['options'] ), false );
 check( 'off, email fails: the email map is deleted', array_key_exists( $email_map, $GLOBALS['options'] ), false );
 check( 'off, email fails: no throttle is set', isset( $GLOBALS['transients'][ $throttle_key ] ), false );
-check( 'off, email fails: logged as today', substr_count( logged(), 'IHQ send_login_code failed for ' . INFLUENCER_MAIL . ': smtp down' ), 1 );
+check( 'off, email fails: logged by user ID, never the address', array( substr_count( logged(), 'IHQ send_login_code failed for user 7: smtp down' ), strpos( logged(), INFLUENCER_MAIL ) ), array( 1, false ) );
 check( 'off, email fails: the failed-mail hook is removed again', $GLOBALS['actions']['wp_mail_failed'], array() );
 
 // --- Placeholder guard: not gated. ---
@@ -499,15 +549,17 @@ switch_on();
 $started                              = time();
 $GLOBALS['transients'][ FAN_OUT_KEY ] = array( $started - 3000, $started - 2400, $started - 1800, $started - 1200, $started - 600 );
 $result                               = ihq_issue_and_send_login_code_for_influencer( influencer() );
-check( 'on, sixth send within an hour: answered as usual', $result['ok'], true );
+check( 'on, sixth send within an hour: answered as usual', $result, array( 'ok' => true, 'signup_token' => 'token1', 'expires_minutes' => 15, 'message' => GENERIC ) );
 check( 'on, sixth send within an hour: the email goes', count( $GLOBALS['mail'] ), 1 );
 check( 'on, sixth send within an hour: no request', $GLOBALS['requests'], array() );
 
-// A failed call changes nothing the influencer sees.
+// When the email goes, no answer changes what the influencer sees.
 foreach ( array(
 	'transport error' => new WP_Error( 'http_request_failed', 'cURL error 28: timed out' ),
 	'HTTP 502'        => array( 'status' => 502, 'body' => '' ),
+	'HTTP 403'        => array( 'status' => 403, 'body' => '' ),
 	'failed methods'  => ok_response( FAILED_BODY ),
+	'no chat app'     => ok_response( EMPTY_BODY ),
 ) as $label => $response ) {
 	reset_state();
 	switch_on();
@@ -517,11 +569,9 @@ foreach ( array(
 	check( 'on, ' . $label . ': the code is kept for the email', $GLOBALS['options'][ $email_map ], 'token1' );
 }
 
-// A failed email keeps the code whenever it went to the chat apps, whatever influencerhq-api answered.
+// A failed email keeps the code whenever a chat app may have it.
 foreach ( array(
 	'a chat app sent'   => ok_response( SENT_BODY ),
-	'nothing connected' => ok_response( NOTHING_BODY ),
-	'failed methods'    => ok_response( FAILED_BODY ),
 	'HTTP 502'          => array( 'status' => 502, 'body' => '' ),
 	'timeout'           => new WP_Error( 'http_request_failed', 'cURL error 28: timed out' ),
 ) as $label => $response ) {
@@ -535,8 +585,29 @@ foreach ( array(
 	check( 'on, email fails, ' . $label . ': the code is kept', $GLOBALS['options'][ $token_key ]['code_hash'], hash_hmac( 'sha256', $code, 'salt-ihq_login_code' . 'token1' ) );
 	check( 'on, email fails, ' . $label . ': the email map is kept', $GLOBALS['options'][ $email_map ], 'token1' );
 	check( 'on, email fails, ' . $label . ': the email throttle is set', $GLOBALS['transients'][ $throttle_key ], 1 );
-	check( 'on, email fails, ' . $label . ': the email failure is logged', substr_count( logged(), 'IHQ send_login_code email failed for ' . INFLUENCER_MAIL . ', code kept for the chat apps: smtp down' ), 1 );
+	check( 'on, email fails, ' . $label . ': the email failure is logged', substr_count( logged(), 'IHQ send_login_code email failed for user 7, code kept for the chat apps: smtp down' ), 1 );
 	check( 'on, email fails, ' . $label . ': not logged as a failed send', strpos( logged(), 'IHQ send_login_code failed for' ), false );
+	check( 'on, email fails, ' . $label . ': the address is not logged', strpos( logged(), INFLUENCER_MAIL ), false );
+}
+
+// ...and is handled as today when the answer says no chat app has it.
+foreach ( array(
+	'an empty results list'      => ok_response( EMPTY_BODY ),
+	'only a switched-off method' => ok_response( SWITCHED_BODY ),
+	'only failed methods'        => ok_response( FAILED_BODY ),
+	'HTTP 403'                   => array( 'status' => 403, 'body' => '' ),
+) as $label => $response ) {
+	reset_state();
+	switch_on();
+	$GLOBALS['mail_error'] = 'smtp down';
+	queue_response( $response );
+	$result = ihq_issue_and_send_login_code_for_influencer( influencer() );
+	check( 'on, email fails, ' . $label . ': the error is today\'s', $result, array( 'ok' => false, 'error' => 'smtp down' ) );
+	check( 'on, email fails, ' . $label . ': one request', count( $GLOBALS['requests'] ), 1 );
+	check( 'on, email fails, ' . $label . ': the code is deleted', array( array_key_exists( $token_key, $GLOBALS['options'] ), array_key_exists( $email_map, $GLOBALS['options'] ) ), array( false, false ) );
+	check( 'on, email fails, ' . $label . ': no throttle is set', isset( $GLOBALS['transients'][ $throttle_key ] ), false );
+	check( 'on, email fails, ' . $label . ': logged as today', substr_count( logged(), 'IHQ send_login_code failed for user 7: smtp down' ), 1 );
+	check( 'on, email fails, ' . $label . ': the address is not logged', strpos( logged(), INFLUENCER_MAIL ), false );
 }
 
 // ...and is handled as today when the code did not go to the chat apps.
@@ -548,7 +619,7 @@ $result                               = ihq_issue_and_send_login_code_for_influe
 check( 'on, email fails inside the window: the error is today\'s', $result, array( 'ok' => false, 'error' => 'smtp down' ) );
 check( 'on, email fails inside the window: no request', $GLOBALS['requests'], array() );
 check( 'on, email fails inside the window: the code is deleted', array( array_key_exists( $token_key, $GLOBALS['options'] ), array_key_exists( $email_map, $GLOBALS['options'] ) ), array( false, false ) );
-check( 'on, email fails inside the window: logged as today', substr_count( logged(), 'IHQ send_login_code failed for ' . INFLUENCER_MAIL . ': smtp down' ), 1 );
+check( 'on, email fails inside the window: logged as today', substr_count( logged(), 'IHQ send_login_code failed for user 7: smtp down' ), 1 );
 
 reset_state();
 switch_on();

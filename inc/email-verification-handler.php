@@ -1306,23 +1306,23 @@ function ihq_issue_and_send_login_code_for_influencer( $user, $args = array() ) 
 	remove_action( 'wp_mail_failed', $failed_hook );
 
 	// While the switch is on, every verified chat app gets the code too (ENGR-8022).
-	$code_went_to_chat_apps = ihq_login_code_fan_out( (int) $user->ID, $code, time() );
+	$chat_apps_may_carry_code = ihq_login_code_fan_out( (int) $user->ID, $code, time() );
 
 	if ( ! $sent ) {
 		$err = $mail_error ? $mail_error : __( 'Failed to send email', 'influencer-hq' );
-		if ( ! $code_went_to_chat_apps ) {
+		if ( ! $chat_apps_may_carry_code ) {
 			delete_option( 'pending_login_code_' . $signup_token );
 			delete_option( $email_map_key );
-			error_log( 'IHQ send_login_code failed for ' . $email . ': ' . $err );
+			error_log( 'IHQ send_login_code failed for user ' . (int) $user->ID . ': ' . $err );
 			return array(
 				'ok'    => false,
 				'error' => $err,
 			);
 		}
-		// The chat apps carry this code, so keep it, whatever influencerhq-api answered: a slow
-		// call can time out here and still deliver. Inside the D3 window nothing else carries it,
-		// so a failed email is handled as before (above).
-		error_log( 'IHQ send_login_code email failed for ' . $email . ', code kept for the chat apps: ' . $err );
+		// A chat app has this code, or may still get it after a timeout or a 5xx, so keep it.
+		// When nothing else carries it (option off, no key, inside the D3 window, or an answer
+		// with no sent method), a failed email is handled as before (above).
+		error_log( 'IHQ send_login_code email failed for user ' . (int) $user->ID . ', code kept for the chat apps: ' . $err );
 	}
 
 	if ( $respect_throttle ) {

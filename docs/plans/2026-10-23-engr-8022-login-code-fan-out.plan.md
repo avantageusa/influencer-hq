@@ -3,8 +3,8 @@ name: IHQ login code also goes to every verified chat app, behind ihq_login_code
 overview: >
   While the WordPress option ihq_login_code_fan_out_enabled is on, the IHQ login send also posts
   the code to influencerhq-api POST /ihq/v1/messages (ENGR-8005) for every verified method, at
-  most once a minute and five times an hour per influencer. A failed email keeps the code when it
-  went to the chat apps, and the code step says the code is in the influencer's chat apps too. Not
+  most once a minute and five times an hour per influencer. A failed email keeps the code when a
+  chat app may carry it, and the code step says the code is in the influencer's chat apps too. Not
   gated: the login send never mails a placeholder address. With the option off or missing,
   everything else is today's behaviour. Out of scope: influencerhq-api, the channel-service
   grant, translations (PO-3422) and phone-number login (ENGR-8023).
@@ -19,10 +19,10 @@ todos:
     content: "POST {INFLUENCER_API_BASE}/ihq/v1/messages {platformUsername: influencerhq-wpu-<id>, methods: all, kind: one_time_code, text: code, locale} with x-api-key IHQ_SERVER_API_KEY, 3 s timeout; failures logged without the code, never shown"
     status: completed
   - id: login-send
-    content: "ihq_issue_and_send_login_code_for_influencer(): refuse placeholder addresses; fan out after wp_mail; keep the code on a failed wp_mail when it went to the chat apps, whatever influencerhq-api answered; translatable body, don't-share line while on"
+    content: "ihq_issue_and_send_login_code_for_influencer(): refuse placeholder addresses; fan out after wp_mail; keep the code on a failed wp_mail while a chat app may have it (a sent method, a timeout or a 5xx), else today's error; translatable body, don't-share line while on"
     status: completed
   - id: ajax-and-ui
-    content: "ihq_handle_send_login_code_ajax(): placeholder answers like an unknown address; chat_app_hint in the answer while on; Portal Login and the auth modal show it on the code step"
+    content: "ihq_handle_send_login_code_ajax(): placeholder answers like an unknown address; chat_app_hint in the answer while on; Portal Login, the auth modal, Lander, the new home page and Portal home mr claude show it on the code step"
     status: completed
   - id: config-docs
     content: "IHQ_SERVER_API_KEY documented as optional in inc/ihq-env.php and README per-instance configuration"
@@ -31,11 +31,14 @@ todos:
     content: "tests/login-code-fan-out.test.php covering off, on, failure, rate limit and placeholder; scripts/test-login-code-fan-out-mutations.py kills every mutant"
     status: completed
   - id: verify
-    content: Run PHP and JS tests, php -l on touched files and the mutation script (53/53 killed)
+    content: Run PHP and JS tests, php -l on touched files and the mutation script (71/71 killed after the review fixes)
     status: completed
   - id: ci
     content: GitHub Actions Tests (PHP and JS) green on the PR
-    status: in-progress
+    status: completed
+  - id: review-fixes
+    content: "Independent, CodeRabbit and Steve Wolfe reviews: keep the code only while a chat app may have it, the hint on the three other login templates, user ID instead of the email in both logs, the key read before the D3 slot, whole-value checks"
+    status: completed
 ---
 
 # [ENGR-8022] IHQ login code on every verified method
@@ -81,12 +84,16 @@ Login send (`ihq_issue_and_send_login_code_for_influencer()`):
 
 - A placeholder address is refused like an invalid one, so no code is minted or mailed. Not gated.
 - After `wp_mail`, the fan-out runs while the option is on.
-- A failed `wp_mail` keeps the code and answers as a success when the code went to
-  influencerhq-api, whatever it answered (sent, nothing connected, failed, non-2xx, timeout). The
-  Done-when says a failed call changes nothing the influencer sees, and a slow call can time out
-  here and still deliver. When the code did not go to the chat apps at all (option off, inside the
-  D3 window, `IHQ_SERVER_API_KEY` unset), nothing else carries it, so the failure is handled as
-  today: the code is deleted and the error returned.
+- A failed `wp_mail` keeps the code and answers as a success only while a chat app may have it:
+  a method reports `sent`, or the outcome is unclear (a transport error or timeout, or a 5xx,
+  after which influencerhq-api may still deliver). Every other answer means no chat app has it:
+  a 2xx with no `sent` method (with `methods: "all"`, an influencer with no chat app gets an empty
+  results list; only switched-off or failed methods count the same) and any 4xx (a key for another
+  stage sends nothing). Then, as when nothing else carries the code (option off, no key, inside the
+  D3 window), the failure is handled as today: the code is deleted and the error returned. When the
+  email went out, the answer never depends on the call (Steve Wolfe's review of PR #158).
+- `IHQ_SERVER_API_KEY` is read before the D3 slot is claimed, so a stage without the key spends
+  none (Steve Wolfe's review).
 - The body strings become translatable (`esc_html__`, text domain `influencer-hq`); in English the
   email with the option off is byte-identical to today's. While the option is on the email adds
   "This is your sign-in code. Do not share it with anyone."
@@ -124,13 +131,13 @@ Login AJAX (`ihq_handle_send_login_code_ajax()`):
 - Off (the state after deploy): the only change is the placeholder guard. An influencer whose
   account email is a stand-in gets no code email, and typing such an address answers like an
   unknown one. Every other answer and email is unchanged.
-- On: each login send may wait up to 3 s more for influencerhq-api. When the email fails but the
-  code went to influencerhq-api, the influencer reaches the code step even if no chat app is
-  connected; the hint says the code is in a chat app only if one is connected. The AI Coach register path
+- On: each login send may wait up to 3 s more for influencerhq-api. When the email fails and the
+  answer says no chat app has the code, the influencer sees today's email error and can retry. The AI Coach register path
   (`inc/aicoach-register.php`) shares the login send, so it fans out and keeps the code the same
   way. It ignores `chat_app_hint`, which only the login AJAX adds.
 - `page-lander.php`, `page-home.php` and `page-portal-home-claude.php` have their own copies of
-  the login JS. They ignore `chat_app_hint`, so their code step shows no hint.
+  the login JS; each shows `chat_app_hint` on its code step and clears it on reset, as Portal Login
+  does (independent review, PR #158).
 - Open PR #156 (ENGR-8014) edits the same AJAX handler and both login templates near these lines;
   whichever merges second may need a textual merge.
 

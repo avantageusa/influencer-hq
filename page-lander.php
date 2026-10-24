@@ -722,6 +722,7 @@ $ihq_modal_social_platforms   = array(
         </div>
         <div id="auth-login-step-code" style="display:none;max-width:480px;margin:0 auto">
           <p class="auth-section-sub" style="margin-bottom:16px">Enter the code from your email.</p>
+          <p class="auth-section-sub" id="auth-login-code-chat-hint" style="display:none;margin:-8px 0 16px"></p>
           <div class="auth-field">
             <label for="auth-login-code">6-digit code</label>
             <input type="text" id="auth-login-code" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="000000" style="text-align:center;letter-spacing:0.35em;font-size:1.2rem">
@@ -898,6 +899,11 @@ function ihqAuthLoginRenderTurnstileWhenNeeded() {
   ihqAuthLoginTurnstileWidgetId = window.turnstile.render(el, { sitekey: IHQ_AUTH_LOGIN.turnstileSiteKey });
   el.setAttribute('data-rendered', '1');
 }
+// The send answer carries chat_app_hint only while the code also goes to chat apps (ENGR-8022).
+function ihqAuthLoginSetChatAppHint(text) {
+  var hint=document.getElementById('auth-login-code-chat-hint'); if(!hint)return;
+  hint.textContent=text||''; hint.style.display=text?'block':'none';
+}
 function ihqAuthLoginResetPanels() {
   ihqAuthLoginSignupToken = '';
   var se = document.getElementById('auth-login-step-email');
@@ -906,6 +912,7 @@ function ihqAuthLoginResetPanels() {
   ['auth-login-email','auth-login-code'].forEach(function(id){var x=document.getElementById(id);if(x)x.value='';});
   ['auth-login-err','auth-login-info','auth-login-code-err'].forEach(function(id){var x=document.getElementById(id);if(x){x.textContent='';x.style.display='none';}});
   var exp=document.getElementById('auth-login-code-expires'); if(exp)exp.textContent='';
+  ihqAuthLoginSetChatAppHint('');
   ihqAuthLoginRemoveTurnstile(); window.setTimeout(ihqAuthLoginRenderTurnstileWhenNeeded, 80);
 }
 function ihqAuthLoginBackToEmail() {
@@ -941,6 +948,7 @@ function ihqAuthLoginSendCode() {
       ihqAuthLoginSignupToken=d.signup_token;
       var minutes=d.expires_minutes||IHQ_AUTH_LOGIN.codeExpiresMinutes;
       var expEl=document.getElementById('auth-login-code-expires');if(expEl)expEl.textContent='Code expires in '+minutes+' minute'+(minutes===1?'':'s')+'.';
+      ihqAuthLoginSetChatAppHint(d.chat_app_hint);
       var codeErr=document.getElementById('auth-login-code-err');if(codeErr)codeErr.textContent='';
       var codeInput=document.getElementById('auth-login-code');if(codeInput)codeInput.value='';
       document.getElementById('auth-login-step-email').style.display='none';

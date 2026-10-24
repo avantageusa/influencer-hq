@@ -45,8 +45,17 @@ const IHQ_LOGIN_CODE_FAN_OUT_METHODS = 'all';
 /** Sent on each app's approved code template (cross-repo contract name). */
 const IHQ_LOGIN_CODE_FAN_OUT_KIND = 'one_time_code';
 
+/** A method's result when the channel service sent the code. */
+const IHQ_LOGIN_CODE_FAN_OUT_SENT = 'sent';
+
 /** A method's result when the channel service could not send; it carries a reason. */
 const IHQ_LOGIN_CODE_FAN_OUT_FAILED = 'failed';
+
+/**
+ * Lowest HTTP status of a server error. After one, influencerhq-api may still have
+ * sent the code, so the outcome is unclear.
+ */
+const IHQ_LOGIN_CODE_FAN_OUT_SERVER_ERROR_STATUS = 500;
 
 /** Logged for a failed method that came back without a reason. */
 const IHQ_LOGIN_CODE_FAN_OUT_NO_REASON = 'no reason given';
@@ -227,6 +236,20 @@ function ihq_login_code_fan_out_request_body( $user_id, $code ) {
 }
 
 /**
+ * The per-method results in the route's answer.
+ *
+ * @param string $body Raw response body: {"results": [{"provider", "status", "reason"?}]}.
+ * @return array|null The results list, or null when the body has none.
+ */
+function ihq_login_code_fan_out_results( $body ) {
+	$decoded = json_decode( (string) $body, true );
+	if ( ! is_array( $decoded ) || ! isset( $decoded['results'] ) || ! is_array( $decoded['results'] ) ) {
+		return null;
+	}
+	return $decoded['results'];
+}
+
+/**
  * The methods the route reports as failed, for the log.
  *
  * @param string $body Raw response body: {"results": [{"provider", "status", "reason"?}]}.
@@ -234,11 +257,11 @@ function ihq_login_code_fan_out_request_body( $user_id, $code ) {
  */
 function ihq_login_code_fan_out_failed_methods( $body ) {
 	$failed  = array();
-	$decoded = json_decode( (string) $body, true );
-	if ( ! is_array( $decoded ) || ! isset( $decoded['results'] ) || ! is_array( $decoded['results'] ) ) {
+	$results = ihq_login_code_fan_out_results( $body );
+	if ( null === $results ) {
 		return $failed;
 	}
-	foreach ( $decoded['results'] as $result ) {
+	foreach ( $results as $result ) {
 		if ( ! is_array( $result ) || ! isset( $result['provider'], $result['status'] ) ) {
 			continue;
 		}
@@ -255,24 +278,18 @@ function ihq_login_code_fan_out_failed_methods( $body ) {
  * Send the code to every verified method. Never throws; every failure is logged
  * without the code or the key, and never shown to the influencer.
  *
- * It waits for the answer only to log failures, and at most
- * IHQ_LOGIN_CODE_FAN_OUT_TIMEOUT_SECONDS. 'blocking' => false would not wait
- * less: WordPress's cURL transport still runs the request to its timeout, and
+ * It waits for the answer, at most IHQ_LOGIN_CODE_FAN_OUT_TIMEOUT_SECONDS, to log
+ * failures and to tell whether a chat app may have the code. 'blocking' => false
+ * would not wait less: WordPress's cURL transport still runs the request to its timeout, and
  * then drops the answer and every error (Requests, Transport/Curl.php).
  *
  * @param int    $user_id      Influencer's WordPress user ID.
  * @param string $code         The login code.
  * @param string $api_base_url influencerhq-api base (INFLUENCER_API_BASE).
- * @return bool Whether the request was made, whatever it answered. False only
- *              when IHQ_SERVER_API_KEY is not set.
+ * @param string $api_key      IHQ_SERVER_API_KEY's value, sent as the x-api-key.
+ * @return bool Whether a chat app may have the code (ihq_login_code_fan_out_may_have_delivered()).
  */
-function ihq_login_code_fan_out_send( $user_id, $code, $api_base_url ) {
-	$api_key = ihq_env_get( IHQ_LOGIN_CODE_FAN_OUT_API_KEY_NAME );
-	if ( null === $api_key ) {
-		error_log( IHQ_LOGIN_CODE_FAN_OUT_LOG_PREFIX . IHQ_LOGIN_CODE_FAN_OUT_API_KEY_NAME . ' is not set; user ' . (int) $user_id . ' got the code by email only' );
-		return false;
-	}
-
+function ihq_login_code_fan_out_send( $user_id, $code, $api_base_url, $api_key ) {
 	$response = wp_remote_post(
 		$api_base_url . IHQ_LOGIN_CODE_FAN_OUT_PATH,
 		array(
@@ -287,7 +304,41 @@ function ihq_login_code_fan_out_send( $user_id, $code, $api_base_url ) {
 	);
 
 	ihq_login_code_fan_out_log_answer( $user_id, $response );
-	return true;
+	return ihq_login_code_fan_out_may_have_delivered( $response );
+}
+
+/**
+ * Whether a chat app may have the code after the route's answer. Yes when a method
+ * reports sent, or when the outcome is unclear: a transport error or timeout, or a
+ * 5xx, after which influencerhq-api may still deliver. No for every other answer:
+ * a 2xx with no sent method (with methods "all", an influencer with no chat app
+ * gets an empty results list), or a 4xx, such as a key for another stage, which
+ * sends nothing (Steve Wolfe's review of PR #158).
+ *
+ * @param array|WP_Error $response wp_remote_post()'s answer.
+ * @return bool
+ */
+function ihq_login_code_fan_out_may_have_delivered( $response ) {
+	if ( is_wp_error( $response ) ) {
+		return true;
+	}
+	$status = (int) wp_remote_retrieve_response_code( $response );
+	if ( $status >= IHQ_LOGIN_CODE_FAN_OUT_SERVER_ERROR_STATUS ) {
+		return true;
+	}
+	if ( $status < 200 || $status >= 300 ) {
+		return false;
+	}
+	$results = ihq_login_code_fan_out_results( wp_remote_retrieve_body( $response ) );
+	if ( null === $results ) {
+		return false;
+	}
+	foreach ( $results as $result ) {
+		if ( is_array( $result ) && isset( $result['status'] ) && IHQ_LOGIN_CODE_FAN_OUT_SENT === $result['status'] ) {
+			return true;
+		}
+	}
+	return false;
 }
 
 /**
@@ -317,23 +368,29 @@ function ihq_login_code_fan_out_log_answer( $user_id, $response ) {
 }
 
 /**
- * The login send's fan-out step: off, rate limited, or sent.
+ * The login send's fan-out step: off, no key, rate limited, or sent.
  *
- * The answer is whether the code went to influencerhq-api, never whether a chat
- * app reported it delivered, so a failed or slow call changes nothing the
+ * The answer matters only when the email failed: it decides whether the code is
+ * kept. When the email went out, a failed or slow call changes nothing the
  * influencer sees (ENGR-8022 Done-when).
  *
  * @param int    $user_id Influencer's WordPress user ID.
  * @param string $code    The login code.
  * @param int    $now     Current Unix time.
- * @return bool Whether the code was sent to influencerhq-api for the chat apps.
+ * @return bool Whether a chat app may carry the code.
  */
 function ihq_login_code_fan_out( $user_id, $code, $now ) {
 	if ( ! ihq_login_code_fan_out_enabled() ) {
 		return false;
 	}
+	// Read before the slot is claimed, so a stage without the key spends none.
+	$api_key = ihq_env_get( IHQ_LOGIN_CODE_FAN_OUT_API_KEY_NAME );
+	if ( null === $api_key ) {
+		error_log( IHQ_LOGIN_CODE_FAN_OUT_LOG_PREFIX . IHQ_LOGIN_CODE_FAN_OUT_API_KEY_NAME . ' is not set; user ' . (int) $user_id . ' got the code by email only' );
+		return false;
+	}
 	if ( ! ihq_login_code_fan_out_claim_slot( $user_id, $now ) ) {
 		return false;
 	}
-	return ihq_login_code_fan_out_send( $user_id, $code, INFLUENCER_API_BASE );
+	return ihq_login_code_fan_out_send( $user_id, $code, INFLUENCER_API_BASE, (string) $api_key );
 }
