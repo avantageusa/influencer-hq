@@ -527,7 +527,8 @@ add_action( 'wp_ajax_nopriv_ihq_register_telegram_user', 'ihq_handle_register_te
  * and AI Coach logins do, so the stored platform tokens and synced profile are fresh (ENGR-8003).
  *
  * The Telegram login request sends no country, so the one stored at the last start-session is
- * used. A failed refresh does not fail the login: the lazy refresh (ENGR-7017) retries once the tokens expire.
+ * used. A failed refresh does not fail the login: the lazy refresh (ENGR-7017) retries once stored
+ * tokens expire, and a user with no stored token is retried at their next sign-in.
  *
  * @param int $user_id WordPress user ID that was just signed in.
  */
