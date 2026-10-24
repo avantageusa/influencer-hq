@@ -123,13 +123,23 @@ mutations = [
     (client, "export const UNAVAILABLE_NOTICE_ATTRIBUTE = 'data-ihq-channel-method-unavailable';", "export const UNAVAILABLE_NOTICE_ATTRIBUTE = 'data-channel-method-unavailable';"),
     (client, "export const DIVIDER_ATTRIBUTE = 'data-ihq-channel-method-divider';", "export const DIVIDER_ATTRIBUTE = 'data-channel-method-divider';"),
     (client, "const NOTICE_DISPLAY = 'block';", "const NOTICE_DISPLAY = '';"),
-    (client, "const notices = '[' + UNAVAILABLE_NOTICE_ATTRIBUTE + '=\"' + refusal.method + '\"]';", "const notices = '[' + UNAVAILABLE_NOTICE_ATTRIBUTE + ']';"),
+    (client, "return '[' + UNAVAILABLE_NOTICE_ATTRIBUTE + '=\"' + method + '\"]';", "return '[' + UNAVAILABLE_NOTICE_ATTRIBUTE + ']';"),
     (client, "\t\tnotice.textContent = refusal.message;\n", ""),
     (client, "\t\tnotice.style.display = NOTICE_DISPLAY;\n", ""),
     (client, "\t\telement.style.display = 'none';", "\t\telement.hidden = true;"),
-    (client, "\treturn refusal;\n}\n\nif", "\treturn null;\n}\n\nif"),
+    (client, "\treturn refusal;\n}\n\n/**", "\treturn null;\n}\n\n/**"),
     (client, "if ( 'undefined' !== typeof window ) {", "if ( false ) {"),
-    (client, "window.ihqChannelMethods = Object.freeze( { methodRefusal, hideRefusedMethod } );", "window.ihqChannelMethods = { methodRefusal, hideRefusedMethod };"),
+    (client, "window.ihqChannelMethods = Object.freeze( { methodRefusal, hideRefusedMethod, showFailure } );", "window.ihqChannelMethods = { methodRefusal, hideRefusedMethod, showFailure };"),
+    (client, "window.ihqChannelMethods = Object.freeze( { methodRefusal, hideRefusedMethod, showFailure } );", "window.ihqChannelMethods = Object.freeze( { methodRefusal, hideRefusedMethod } );"),
+    # showFailure: a refusal shows once, in the notice (re-review of 28a29c9)
+    (client, "if ( refusal && root.querySelector( noticeSelector( refusal.method ) ) ) {", "if ( root.querySelector( noticeSelector( refusal.method ) ) ) {"),
+    (client, "if ( refusal && root.querySelector( noticeSelector( refusal.method ) ) ) {", "if ( refusal ) {"),
+    (client, "\t\terrorBox.textContent = '';\n", ""),
+    (client, "\t\terrorBox.style.display = 'none';\n\t\treturn refusal;", "\t\treturn refusal;"),
+    (client, "\t\terrorBox.style.display = 'none';\n\t\treturn refusal;", "\t\terrorBox.style.display = 'none';\n\t\treturn null;"),
+    (client, "\terrorBox.textContent = message;\n", ""),
+    (client, "if ( ! errorBox ) {\n\t\treturn refusal;", "if ( ! errorBox ) {\n\t\treturn null;"),
+    (client, "const ERROR_DISPLAY = 'block';", "const ERROR_DISPLAY = '';"),
 ]
 
 
