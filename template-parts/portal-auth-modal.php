@@ -27,38 +27,51 @@ if ( defined( 'IHQ_TELEGRAM_LOGIN_CLIENT_ID' ) && preg_match( '/^\d+$/', (string
 }
 
 /**
+ * Which methods sign-in may use, from influencerhq-api GET /v1/channels/methods
+ * (ENGR-8014). A switched-off method is left out of the list, the form and the
+ * buttons; with no feature everything shows as before. Telegram still needs its
+ * client id as well.
+ */
+$ihq_portal_channel_methods  = ihq_channel_methods_current();
+$ihq_portal_auth_email_on    = ihq_channel_method_allowed( 'email', $ihq_portal_channel_methods );
+$ihq_portal_auth_telegram_on = $ihq_portal_telegram_client_id > 0 && ihq_channel_method_allowed( 'telegram', $ihq_portal_channel_methods );
+
+/**
  * Channels the sign-in code can be delivered on (PO-3192). Only email is wired
  * up to ihq_send_login_code today; the rest are listed so the choice is visible
  * and become selectable as each channel is implemented. Mirrors the method list
  * the register pane offers.
  */
 $ihq_portal_auth_login_default_method = 'email';
-$ihq_portal_auth_login_methods        = array(
+$ihq_portal_auth_login_methods        = ihq_channel_methods_filter_list(
 	array(
-		'id'        => 'email',
-		'label'     => __( 'Email', 'influencer-hq' ),
-		'available' => true,
+		array(
+			'id'        => 'email',
+			'label'     => __( 'Email', 'influencer-hq' ),
+			'available' => true,
+		),
+		array(
+			'id'        => 'line',
+			'label'     => __( 'LINE', 'influencer-hq' ),
+			'available' => false,
+		),
+		array(
+			'id'        => 'telegram',
+			'label'     => __( 'Telegram', 'influencer-hq' ),
+			'available' => false,
+		),
+		array(
+			'id'        => 'whatsapp',
+			'label'     => __( 'WhatsApp', 'influencer-hq' ),
+			'available' => false,
+		),
+		array(
+			'id'        => 'wechat',
+			'label'     => __( 'WeChat', 'influencer-hq' ),
+			'available' => false,
+		),
 	),
-	array(
-		'id'        => 'line',
-		'label'     => __( 'LINE', 'influencer-hq' ),
-		'available' => false,
-	),
-	array(
-		'id'        => 'telegram',
-		'label'     => __( 'Telegram', 'influencer-hq' ),
-		'available' => false,
-	),
-	array(
-		'id'        => 'whatsapp',
-		'label'     => __( 'WhatsApp', 'influencer-hq' ),
-		'available' => false,
-	),
-	array(
-		'id'        => 'wechat',
-		'label'     => __( 'WeChat', 'influencer-hq' ),
-		'available' => false,
-	),
+	$ihq_portal_channel_methods
 );
 ?>
 <style>
@@ -112,7 +125,7 @@ $ihq_portal_auth_login_methods        = array(
 	color: rgba(234, 217, 176, 0.65);
 }
 </style>
-<?php if ( $ihq_portal_auth_turnstile !== '' ) : ?>
+<?php if ( $ihq_portal_auth_email_on && $ihq_portal_auth_turnstile !== '' ) : ?>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <?php endif; ?>
 
@@ -139,12 +152,16 @@ $ihq_portal_auth_login_methods        = array(
 
 				<div class="auth-pane active" id="auth-pane-login">
 					<div id="auth-login-step-email" style="max-width:480px;margin:0 auto">
-						<p class="auth-section-sub" style="margin-bottom:16px"><?php esc_html_e( 'Enter your email. We’ll send a 6-digit sign-in code.', 'influencer-hq' ); ?></p>
-						<div class="auth-field">
+						<?php if ( ! $ihq_portal_auth_email_on && ! $ihq_portal_auth_telegram_on ) : ?>
+						<p class="auth-section-sub" id="auth-login-unavailable" style="margin-bottom:16px"><?php echo esc_html( ihq_channel_method_unavailable_message( 'email' ) ); ?></p>
+						<?php endif; ?>
+						<?php if ( $ihq_portal_auth_email_on ) : ?>
+						<p class="auth-section-sub" style="margin-bottom:16px" data-ihq-channel-method="email"><?php esc_html_e( 'Enter your email. We’ll send a 6-digit sign-in code.', 'influencer-hq' ); ?></p>
+						<div class="auth-field" data-ihq-channel-method="email">
 							<label for="auth-login-email"><?php esc_html_e( 'Email', 'influencer-hq' ); ?></label>
 							<input type="email" id="auth-login-email" name="email" required placeholder="your@email.com" autocomplete="email">
 						</div>
-						<div class="auth-login-methods">
+						<div class="auth-login-methods" data-ihq-channel-method="email">
 							<p class="auth-login-methods-title" id="auth-login-method-label"><?php esc_html_e( 'Preferred method of communication', 'influencer-hq' ); ?></p>
 							<div class="auth-login-method-group" role="radiogroup" aria-labelledby="auth-login-method-label">
 								<?php foreach ( $ihq_portal_auth_login_methods as $ihq_login_method ) : ?>
@@ -169,19 +186,29 @@ $ihq_portal_auth_login_methods        = array(
 							</div>
 						</div>
 						<?php if ( $ihq_portal_auth_turnstile !== '' ) : ?>
-						<div id="auth-login-turnstile" data-sitekey="<?php echo esc_attr( $ihq_portal_auth_turnstile ); ?>" style="display:flex;justify-content:center;margin:16px 0"></div>
+						<div id="auth-login-turnstile" data-ihq-channel-method="email" data-sitekey="<?php echo esc_attr( $ihq_portal_auth_turnstile ); ?>" style="display:flex;justify-content:center;margin:16px 0"></div>
 						<?php endif; ?>
+						<?php endif; // $ihq_portal_auth_email_on ?>
 						<div class="auth-err" id="auth-login-err"></div>
+						<?php if ( $ihq_portal_auth_email_on ) : ?>
+						<?php // Shown once email is refused, and never cleared by a reset or Back (ENGR-8014). ?>
+						<div class="auth-err" data-ihq-channel-method-unavailable="email" style="display:none"></div>
+						<?php endif; ?>
 						<div class="auth-err" id="auth-login-info" style="display:none;background:rgba(40,167,69,.12);border-color:rgba(40,167,69,.35);color:#6fcf97"></div>
-						<button type="button" class="auth-submit-btn" id="auth-login-send-btn" onclick="ihqAuthLoginSendCode()"><?php esc_html_e( 'Send sign-in code', 'influencer-hq' ); ?></button>
-						<?php if ( $ihq_portal_telegram_client_id > 0 ) : ?>
-						<div style="display:flex;align-items:center;gap:10px;margin:14px 0">
+						<?php if ( $ihq_portal_auth_email_on ) : ?>
+						<button type="button" class="auth-submit-btn" id="auth-login-send-btn" data-ihq-channel-method="email" onclick="ihqAuthLoginSendCode()"><?php esc_html_e( 'Send sign-in code', 'influencer-hq' ); ?></button>
+						<?php endif; ?>
+						<?php if ( $ihq_portal_auth_telegram_on ) : ?>
+						<?php if ( $ihq_portal_auth_email_on ) : ?>
+						<div data-ihq-channel-method-divider style="display:flex;align-items:center;gap:10px;margin:14px 0">
 							<div style="height:1px;flex:1;background:rgba(240,201,58,.22)"></div>
 							<div style="font-family:'Be Vietnam Pro',sans-serif;font-size:.72rem;letter-spacing:.16em;color:var(--warm)">OR</div>
 							<div style="height:1px;flex:1;background:rgba(240,201,58,.22)"></div>
 						</div>
-						<button type="button" class="auth-submit-btn" id="auth-login-telegram-btn" style="background:transparent;border:1px solid rgba(42,171,238,.55);color:#7ecdf8" onclick="ihqAuthLoginWithTelegram()"><?php esc_html_e( 'Login with Telegram', 'influencer-hq' ); ?></button>
+						<?php endif; ?>
+						<button type="button" class="auth-submit-btn" id="auth-login-telegram-btn" data-ihq-channel-method="telegram" style="background:transparent;border:1px solid rgba(42,171,238,.55);color:#7ecdf8" onclick="ihqAuthLoginWithTelegram()"><?php esc_html_e( 'Login with Telegram', 'influencer-hq' ); ?></button>
 						<div class="auth-err" id="auth-login-telegram-err"></div>
+						<div class="auth-err" data-ihq-channel-method-unavailable="telegram" style="display:none"></div>
 						<?php endif; ?>
 					</div>
 					<div id="auth-login-step-code" style="display:none;max-width:480px;margin:0 auto">
@@ -345,6 +372,33 @@ function ihqModalAjaxErrMessage(data) {
 	return 'Something went wrong.';
 }
 
+/**
+ * A method switched off after this page loaded: hide its controls until the
+ * next load (js/ihq-channel-methods.js, ENGR-8014). The code step's error box
+ * shows the server's "<method> isn't available right now", and so does the
+ * method's notice on the first step, which no reset or Back clears.
+ */
+function ihqAuthHideRefusedMethod(data) {
+	if (window.ihqChannelMethods) {
+		window.ihqChannelMethods.hideRefusedMethod({ root: document, response: data });
+	}
+}
+
+/**
+ * A failed answer on the first step: a refusal shows only in the method's
+ * notice below errorBox (ENGR-8014), anything else in errorBox as before.
+ */
+function ihqAuthShowFailure(data, errorBox, message) {
+	if (window.ihqChannelMethods) {
+		window.ihqChannelMethods.showFailure({ root: document, response: data, errorBox: errorBox, message: message });
+		return;
+	}
+	if (errorBox) {
+		errorBox.textContent = message;
+		errorBox.style.display = 'block';
+	}
+}
+
 function ihqAuthLoginRemoveTurnstile() {
 	var host = document.getElementById('auth-login-turnstile');
 	if (!host || !IHQ_AUTH_LOGIN.turnstileSiteKey) {
@@ -451,7 +505,7 @@ function ihqAuthLoginWithTelegram() {
 			if (!data.success || !data.data || !data.data.server_nonce) {
 				ihqAuthLoginTelegramBusy = false;
 				if (btn) btn.disabled = false;
-				ihqAuthShowTelegramErr(ihqModalAjaxErrMessage(data) || 'Could not start Telegram login.');
+				ihqAuthShowFailure(data, document.getElementById('auth-login-telegram-err'), ihqModalAjaxErrMessage(data) || 'Could not start Telegram login.');
 				return;
 			}
 			var serverNonce = data.data.server_nonce;
@@ -486,7 +540,7 @@ function ihqAuthLoginWithTelegram() {
 								if (!data2.success || !data2.data || !data2.data.telegram_session_token) {
 									ihqAuthLoginTelegramBusy = false;
 									if (btn) btn.disabled = false;
-									ihqAuthShowTelegramErr(ihqModalAjaxErrMessage(data2) || 'Telegram verification failed.');
+									ihqAuthShowFailure(data2, document.getElementById('auth-login-telegram-err'), ihqModalAjaxErrMessage(data2) || 'Telegram verification failed.');
 									return;
 								}
 								var fd3 = new FormData();
@@ -499,7 +553,7 @@ function ihqAuthLoginWithTelegram() {
 										ihqAuthLoginTelegramBusy = false;
 										if (btn) btn.disabled = false;
 										if (!data3.success || !data3.data || !data3.data.redirect_url) {
-											ihqAuthShowTelegramErr(ihqModalAjaxErrMessage(data3) || 'Could not sign in with Telegram.');
+											ihqAuthShowFailure(data3, document.getElementById('auth-login-telegram-err'), ihqModalAjaxErrMessage(data3) || 'Could not sign in with Telegram.');
 											return;
 										}
 										window.location.href = data3.data.redirect_url;
@@ -583,10 +637,7 @@ function ihqAuthLoginSendCode() {
 		.then(function (data) {
 			if (btn) btn.disabled = false;
 			if (!data.success) {
-				if (errBox) {
-					errBox.textContent = ihqModalAjaxErrMessage(data);
-					errBox.style.display = 'block';
-				}
+				ihqAuthShowFailure(data, errBox, ihqModalAjaxErrMessage(data));
 				ihqAuthLoginRemoveTurnstile();
 				window.setTimeout(ihqAuthLoginRenderTurnstileWhenNeeded, 80);
 				return;
@@ -656,6 +707,7 @@ function ihqAuthLoginVerify() {
 			if (btn) btn.disabled = false;
 			if (!data.success) {
 				if (errEl) errEl.textContent = ihqModalAjaxErrMessage(data);
+				ihqAuthHideRefusedMethod(data);
 				return;
 			}
 			window.location.href = data.data.redirect_url || IHQ_AUTH_LOGIN.redirectUrl;

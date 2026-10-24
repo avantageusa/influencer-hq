@@ -815,17 +815,40 @@ function ihq_parse_comm_methods_from_post() {
 }
 
 /**
+ * How a registration code is delivered: by Telegram DM when the visitor chose
+ * Telegram and posted no other method, otherwise by email.
+ *
+ * @param string               $comm_primary Posted comm_primary.
+ * @param array<string,string> $comm_methods ihq_parse_comm_methods_from_post().
+ * @return string 'telegram' or 'email'.
+ */
+function ihq_registration_code_delivery_method( $comm_primary, $comm_methods ) {
+    if ( 'telegram' === $comm_primary && empty( $comm_methods ) ) {
+        return 'telegram';
+    }
+    return 'email';
+}
+
+/**
+ * Whether a pending registration's code went out by Telegram or by email: only
+ * the Telegram delivery stores a Telegram user id.
+ *
+ * @param array<string,mixed> $pending Stored pending_reg_code_<token> record.
+ * @return string 'telegram' or 'email'.
+ */
+function ihq_pending_registration_delivery_method( array $pending ) {
+    if ( isset( $pending['telegram_user_id'] ) && (int) $pending['telegram_user_id'] > 0 ) {
+        return 'telegram';
+    }
+    return 'email';
+}
+
+/**
  * Send 6-digit registration code email (landing-page modal flow).
  */
 function ihq_handle_send_registration_code_ajax() {
     if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_reg_code_nonce' ) ) {
         wp_send_json_error( array( 'message' => __( 'Invalid security token', 'influencer-hq' ) ) );
-        return;
-    }
-
-    $turn = ihq_verify_turnstile_or_error_for_ajax();
-    if ( is_wp_error( $turn ) ) {
-        wp_send_json_error( array( 'message' => $turn->get_error_message() ) );
         return;
     }
 
@@ -839,6 +862,17 @@ function ihq_handle_send_registration_code_ajax() {
     $telegram_session_token = isset( $_POST['telegram_session_token'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_session_token'] ) ) : '';
     $country_iso_raw        = isset( $_POST['country_iso'] ) ? sanitize_text_field( wp_unslash( $_POST['country_iso'] ) ) : '';
     $comm_methods           = ihq_parse_comm_methods_from_post();
+    $delivery_method        = ihq_registration_code_delivery_method( $comm_primary, $comm_methods );
+
+    if ( ihq_channel_method_refuse_if_off( $delivery_method ) ) {
+        return;
+    }
+
+    $turn = ihq_verify_turnstile_or_error_for_ajax();
+    if ( is_wp_error( $turn ) ) {
+        wp_send_json_error( array( 'message' => $turn->get_error_message() ) );
+        return;
+    }
 
     // Previously: force email code delivery when modal posted comm_methods including email.
     // if ( ! empty( $comm_methods ) && isset( $comm_methods['email'] ) ) {
@@ -856,7 +890,7 @@ function ihq_handle_send_registration_code_ajax() {
     }
 
     $telegram_user_id = 0;
-    if ( $comm_primary === 'telegram' && empty( $comm_methods ) ) {
+    if ( 'telegram' === $delivery_method ) {
         $tu = ltrim( trim( $telegram_user ), '@' );
         if ( $tu === '' ) {
             wp_send_json_error( array( 'message' => __( 'Please enter your Telegram username', 'influencer-hq' ) ) );
@@ -1056,6 +1090,10 @@ function ihq_handle_verify_registration_code_ajax() {
     $pending  = get_option( $opt_key );
     if ( ! is_array( $pending ) || empty( $pending['email'] ) ) {
         wp_send_json_error( array( 'message' => __( 'Invalid or expired code. Please start again', 'influencer-hq' ) ) );
+        return;
+    }
+
+    if ( ihq_channel_method_refuse_if_off( ihq_pending_registration_delivery_method( $pending ) ) ) {
         return;
     }
 
@@ -1344,6 +1382,10 @@ function ihq_handle_send_login_code_ajax() {
         return;
     }
 
+    if ( ihq_channel_method_refuse_if_off( 'email' ) ) {
+        return;
+    }
+
     $turn = ihq_verify_turnstile_or_error_for_ajax();
     if ( is_wp_error( $turn ) ) {
         wp_send_json_error( array( 'message' => $turn->get_error_message() ) );
@@ -1399,6 +1441,10 @@ add_action( 'wp_ajax_nopriv_ihq_send_login_code', 'ihq_handle_send_login_code_aj
 function ihq_handle_verify_login_code_ajax() {
     if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_login_code_nonce' ) ) {
         wp_send_json_error( array( 'message' => __( 'Invalid security token', 'influencer-hq' ) ) );
+        return;
+    }
+
+    if ( ihq_channel_method_refuse_if_off( 'email' ) ) {
         return;
     }
 

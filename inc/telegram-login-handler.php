@@ -10,6 +10,9 @@
  * 4. If the site sends Cross-Origin-Opener-Policy: same-origin, change it to
  *    same-origin-allow-popups or remove it — otherwise the Telegram popup cannot post back.
  *
+ * Every AJAX handler here refuses with 403 method_disabled while influencerhq-api
+ * lists telegram as off (ENGR-8014, inc/ihq-channel-methods.php).
+ *
  * @package influencer-hq
  */
 
@@ -319,6 +322,10 @@ function ihq_handle_telegram_login_nonce_ajax() {
 		return;
 	}
 
+	if ( ihq_channel_method_refuse_if_off( 'telegram' ) ) {
+		return;
+	}
+
 	if ( '' === ihq_telegram_login_get_client_id() ) {
 		wp_send_json_error( array( 'message' => __( 'Telegram login is not configured', 'influencer-hq' ) ) );
 		return;
@@ -343,6 +350,10 @@ add_action( 'wp_ajax_nopriv_ihq_telegram_login_nonce', 'ihq_handle_telegram_logi
 function ihq_handle_verify_telegram_id_token_ajax() {
 	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_telegram_login_pubkey' ) ) {
 		wp_send_json_error( array( 'message' => __( 'Invalid security token', 'influencer-hq' ) ) );
+		return;
+	}
+
+	if ( ihq_channel_method_refuse_if_off( 'telegram' ) ) {
 		return;
 	}
 
@@ -475,6 +486,10 @@ function ihq_handle_register_telegram_user_ajax() {
 		wp_send_json_error( array( 'message' => __( 'Invalid security token', 'influencer-hq' ) ) );
 		return;
 	}
+
+	if ( ihq_channel_method_refuse_if_off( 'telegram' ) ) {
+		return;
+	}
 	$session_token = isset( $_POST['telegram_session_token'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_session_token'] ) ) : '';
 	$session       = ihq_get_telegram_registration_session( $session_token );
 	if ( ! is_array( $session ) || empty( $session['telegram_user_id'] ) || empty( $session['telegram_username'] ) ) {
@@ -532,6 +547,10 @@ add_action( 'wp_ajax_nopriv_ihq_register_telegram_user', 'ihq_handle_register_te
 function ihq_handle_login_telegram_user_ajax() {
 	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_telegram_login_pubkey' ) ) {
 		wp_send_json_error( array( 'message' => __( 'Invalid security token', 'influencer-hq' ) ) );
+		return;
+	}
+
+	if ( ihq_channel_method_refuse_if_off( 'telegram' ) ) {
 		return;
 	}
 	$session_token = isset( $_POST['telegram_session_token'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_session_token'] ) ) : '';

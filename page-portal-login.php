@@ -15,6 +15,8 @@ $ihq_portal_ts_site_key = '';
 if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_configured() && defined( 'CF_TURNSTILE_SITE_KEY' ) ) {
 	$ihq_portal_ts_site_key = CF_TURNSTILE_SITE_KEY;
 }
+// Email is this page's only sign-in method; influencerhq-api can switch it off (ENGR-8014).
+$ihq_portal_email_on = ihq_channel_method_allowed( 'email', ihq_channel_methods_current() );
 ?>
 
 <main id="primary" class="site-main">
@@ -62,6 +64,10 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
                     <div class="portal-alert portal-alert-success"><?php echo $auth_success; ?></div>
                 <?php endif; ?>
 
+                <?php if ( ! $ihq_portal_email_on ) : ?>
+                <div class="portal-alert portal-alert-error"><?php echo esc_html( ihq_channel_method_unavailable_message( 'email' ) ); ?></div>
+                <?php else : ?>
+
                 <!-- Tab switcher -->
                 <div class="auth-tabs mb-4">
                     <button id="tab-login"
@@ -81,8 +87,8 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
                 <!-- ── LOGIN (6-digit email code) ───────────────────────────── -->
                 <div id="pane-login">
                     <div id="login-step-email">
-                        <p style="color:#aaa;font-size:.9rem;margin-bottom:16px;">We’ll email you a one-time code to sign in. No password needed.</p>
-                        <div class="portal-form-group">
+                        <p style="color:#aaa;font-size:.9rem;margin-bottom:16px;" data-ihq-channel-method="email">We’ll email you a one-time code to sign in. No password needed.</p>
+                        <div class="portal-form-group" data-ihq-channel-method="email">
                             <label for="login-email" class="portal-label">Email</label>
                             <input type="email"
                                    id="login-email"
@@ -91,13 +97,15 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
                                    autocomplete="email">
                         </div>
                         <div id="login-error" class="portal-alert portal-alert-error" style="display:none;"></div>
+                        <?php // Shown once email is refused, and never cleared by Back (ENGR-8014). ?>
+                        <div class="portal-alert portal-alert-error" data-ihq-channel-method-unavailable="email" style="display:none;"></div>
                         <div id="login-info" class="portal-alert portal-alert-success" style="display:none;background:rgba(255,215,122,.08);border-color:rgba(230,207,160,.35);color:#e8dcb8;"></div>
 
                         <?php if ( $ihq_portal_ts_site_key !== '' ) : ?>
-                        <div id="portal-login-turnstile" class="mt-3" data-sitekey="<?php echo esc_attr( $ihq_portal_ts_site_key ); ?>" style="display:flex;justify-content:center;"></div>
+                        <div id="portal-login-turnstile" class="mt-3" data-ihq-channel-method="email" data-sitekey="<?php echo esc_attr( $ihq_portal_ts_site_key ); ?>" style="display:flex;justify-content:center;"></div>
                         <?php endif; ?>
 
-                        <button type="button" id="login-send-code-btn" class="portal-btn-primary w-100 mt-3">
+                        <button type="button" id="login-send-code-btn" class="portal-btn-primary w-100 mt-3" data-ihq-channel-method="email">
                             Send sign-in code
                         </button>
                     </div>
@@ -131,9 +139,9 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
                 <!-- ── REGISTER (6-digit email code) ───────────────────────── -->
                 <div id="pane-register" style="display:none;">
                     <div id="reg-step-details">
-                        <p style="color:#aaa;font-size:.9rem;margin-bottom:16px;">Tell us who you are. We’ll email a registration code.</p>
+                        <p style="color:#aaa;font-size:.9rem;margin-bottom:16px;" data-ihq-channel-method="email">Tell us who you are. We’ll email a registration code.</p>
 
-                        <div class="portal-form-row">
+                        <div class="portal-form-row" data-ihq-channel-method="email">
                             <div class="portal-form-group">
                                 <label for="reg-first-name" class="portal-label">First Name</label>
                                 <input type="text"
@@ -152,7 +160,7 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
                             </div>
                         </div>
 
-                        <div class="portal-form-group">
+                        <div class="portal-form-group" data-ihq-channel-method="email">
                             <label for="reg-email" class="portal-label">Email</label>
                             <input type="email"
                                    id="reg-email"
@@ -162,13 +170,14 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
                         </div>
 
                         <div id="register-error"   class="portal-alert portal-alert-error"   style="display:none;"></div>
+                        <div class="portal-alert portal-alert-error" data-ihq-channel-method-unavailable="email" style="display:none;"></div>
                         <div id="register-success" class="portal-alert portal-alert-success" style="display:none;"></div>
 
                         <?php if ( $ihq_portal_ts_site_key !== '' ) : ?>
-                        <div id="portal-reg-turnstile" class="mt-3" data-sitekey="<?php echo esc_attr( $ihq_portal_ts_site_key ); ?>" style="display:flex;justify-content:center;"></div>
+                        <div id="portal-reg-turnstile" class="mt-3" data-ihq-channel-method="email" data-sitekey="<?php echo esc_attr( $ihq_portal_ts_site_key ); ?>" style="display:flex;justify-content:center;"></div>
                         <?php endif; ?>
 
-                        <button type="button" id="register-send-btn" class="portal-btn-primary w-100 mt-3">
+                        <button type="button" id="register-send-btn" class="portal-btn-primary w-100 mt-3" data-ihq-channel-method="email">
                             Send registration code
                         </button>
                     </div>
@@ -198,6 +207,8 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
                                style="color: var(--gold); text-decoration:none;">Login here</a>
                         </p>
                 </div>
+
+                <?php endif; ?>
 
             <?php endif; ?>
         </div>
@@ -370,10 +381,11 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
 .mt-3  { margin-top: 1rem; }
 </style>
 
-<?php if ( $ihq_portal_ts_site_key !== '' ) : ?>
+<?php if ( $ihq_portal_email_on && $ihq_portal_ts_site_key !== '' ) : ?>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"></script>
 <?php endif; ?>
 
+<?php if ( $ihq_portal_email_on ) : ?>
 <script>
 (function () {
     'use strict';
@@ -398,6 +410,25 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
             return d;
         }
         return d.message ? d.message : 'Something went wrong.';
+    }
+
+    // Email switched off after this page loaded: hide its controls until the
+    // next load; a code step's error box shows the server's message (ENGR-8014).
+    function hideRefusedMethod(data) {
+        if (window.ihqChannelMethods) {
+            window.ihqChannelMethods.hideRefusedMethod({ root: document, response: data });
+        }
+    }
+
+    // A failed answer on an email step: a refusal shows only in the email
+    // notice below errBox (ENGR-8014), anything else in errBox as before.
+    function showFailure(data, errBox, message) {
+        if (window.ihqChannelMethods) {
+            window.ihqChannelMethods.showFailure({ root: document, response: data, errorBox: errBox, message: message });
+            return;
+        }
+        errBox.textContent = message;
+        errBox.style.display = 'block';
     }
 
     function removeLoginTs() {
@@ -553,8 +584,7 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
             .then(function (data) {
                 btn.disabled = false;
                 if (!data.success) {
-                    errBox.textContent = jsonErrMessage(data);
-                    errBox.style.display = 'block';
+                    showFailure(data, errBox, jsonErrMessage(data));
                     removeLoginTs();
                     window.setTimeout(renderLoginTs, 80);
                     return;
@@ -612,6 +642,7 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
                 if (!data.success) {
                     errEl.textContent = jsonErrMessage(data);
                     errEl.style.display = 'block';
+                    hideRefusedMethod(data);
                     return;
                 }
                 window.location.href = data.data.redirect_url || PORTAL_URL;
@@ -671,8 +702,7 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
             .then(function (data) {
                 btn.disabled = false;
                 if (!data.success) {
-                    errBox.textContent = jsonErrMessage(data);
-                    errBox.style.display = 'block';
+                    showFailure(data, errBox, jsonErrMessage(data));
                     removeRegTs();
                     window.setTimeout(renderRegTs, 80);
                     return;
@@ -721,6 +751,7 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
                 if (!data.success) {
                     errEl.textContent = jsonErrMessage(data);
                     errEl.style.display = 'block';
+                    hideRefusedMethod(data);
                     return;
                 }
                 window.location.href = data.data.redirect_url;
@@ -792,5 +823,6 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
     }, 100);
 }());
 </script>
+<?php endif; ?>
 
 <?php get_footer(); ?>

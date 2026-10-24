@@ -58,6 +58,8 @@ function get_users( array $args ) {
 function wp_set_current_user( $user_id ) { $GLOBALS['calls']['wp_set_current_user'][] = $user_id; }
 function wp_set_auth_cookie( $user_id, $remember ) { $GLOBALS['calls']['wp_set_auth_cookie'][] = array( $user_id, $remember ); }
 function wp_send_json_error( $data ) { $GLOBALS['calls']['json'][] = array( 'success' => false, 'data' => $data ); }
+// ENGR-8014: Telegram is switched on in every case here; tests/channel-method-ajax-refusal.test.php covers the switch.
+function ihq_channel_method_refuse_if_off( $method ) { return false; }
 function wp_send_json_success( $data ) { $GLOBALS['calls']['json'][] = array( 'success' => true, 'data' => $data ); }
 
 require __DIR__ . '/../inc/telegram-login-handler.php';
