@@ -523,6 +523,28 @@ add_action( 'wp_ajax_ihq_register_telegram_user', 'ihq_handle_register_telegram_
 add_action( 'wp_ajax_nopriv_ihq_register_telegram_user', 'ihq_handle_register_telegram_user_ajax' );
 
 /**
+ * Re-run start-session for an existing influencer signed in through Telegram, as the email-code
+ * and AI Coach logins do, so the stored platform tokens and synced profile are fresh (ENGR-8003).
+ *
+ * The Telegram login request sends no country, so the one stored at the last start-session is
+ * used. A failed refresh does not fail the login: the lazy refresh (ENGR-7017) retries once stored
+ * tokens expire, and a user with no stored token is retried at their next sign-in.
+ *
+ * @param int $user_id WordPress user ID that was just signed in.
+ */
+function ihq_telegram_login_refresh_platform_tokens( $user_id ) {
+	if ( ! function_exists( 'ihq_refresh_influencer_oauth_tokens' ) ) {
+		return;
+	}
+	$country_iso = get_user_meta( $user_id, 'ihq_oauth_country_iso', true );
+	$refreshed   = ihq_refresh_influencer_oauth_tokens( $user_id, is_string( $country_iso ) ? $country_iso : '' );
+	if ( true !== $refreshed ) {
+		// No user id in the line: it identifies the person.
+		error_log( 'IHQ Telegram login: platform token refresh failed; signed in with the stored tokens' );
+	}
+}
+
+/**
  * AJAX: login existing WP user by verified Telegram user id.
  *
  * Matched on telegram_user_id, never on the @username: a username can be changed
@@ -569,6 +591,7 @@ function ihq_handle_login_telegram_user_ajax() {
 	$user_id = (int) $users[0]->ID;
 	wp_set_current_user( $user_id );
 	wp_set_auth_cookie( $user_id, false );
+	ihq_telegram_login_refresh_platform_tokens( $user_id );
 
 	wp_send_json_success(
 		array(
