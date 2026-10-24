@@ -37,6 +37,11 @@ define( 'IHQ_API_BASE_URL',         'https://<id>.execute-api.<region>.amazonaws
 define( 'IHQ_GAME_PORTAL_BASE_URL', 'https://<portal-host>/av-baccarat' );
 define( 'IHQ_INFLUENCER_API_KEY',   '<value of SSM /<stage>/account-api-tf-api/INFLUENCER_HQ_SSO_API_KEY>' );
 
+// Braze REST keys — no fallback in the theme (ENGR-8082). When absent, Braze calls get 401
+// and the error log names the missing constant. Create them in Braze → Settings → API Keys.
+define( 'IHQ_BRAZE_EXPORT_API_KEY', '<Braze REST key with users.export.ids>' );
+define( 'IHQ_BRAZE_TRACK_API_KEY',  '<Braze REST key with users.track>' );
+
 // Optional — feature is off when absent
 define( 'CF_TURNSTILE_SITE_KEY',    '' );
 define( 'CF_TURNSTILE_SECRET_KEY',  '' );

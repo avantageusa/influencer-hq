@@ -2,10 +2,10 @@
 /**
  * Braze REST integration for influencer registration.
  *
- * Optional wp-config.php overrides:
- *   IHQ_BRAZE_EXPORT_API_KEY — users/export/ids
- *   IHQ_BRAZE_TRACK_API_KEY  — users/track
- *   IHQ_BRAZE_REST_ENDPOINT  — default https://rest.iad-05.braze.com
+ * wp-config.php constants:
+ *   IHQ_BRAZE_EXPORT_API_KEY — users/export/ids (required; no fallback)
+ *   IHQ_BRAZE_TRACK_API_KEY  — users/track (required; no fallback)
+ *   IHQ_BRAZE_REST_ENDPOINT  — optional, default https://rest.iad-05.braze.com
  *
  * @package influencer-hq
  */
@@ -25,23 +25,42 @@ function ihq_braze_rest_endpoint() {
 }
 
 /**
+ * Read a Braze REST API key from its wp-config constant.
+ *
+ * There is deliberately no fallback key: the theme used to ship one, it leaked
+ * through the repo and was revoked (ENGR-8082). A missing constant now returns
+ * an empty key, so Braze answers 401, and logs the constant's name once per
+ * request so the fix is obvious from the error log.
+ *
+ * @param string $constant Constant name, IHQ_BRAZE_EXPORT_API_KEY or IHQ_BRAZE_TRACK_API_KEY.
+ * @return string The key, or '' when the constant is missing or empty.
+ */
+function ihq_braze_api_key( $constant ) {
+	static $logged = array();
+
+	if ( defined( $constant ) && (string) constant( $constant ) !== '' ) {
+		return (string) constant( $constant );
+	}
+
+	if ( ! isset( $logged[ $constant ] ) ) {
+		$logged[ $constant ] = true;
+		error_log( 'IHQ Braze: ' . $constant . ' is not set in wp-config.php; Braze calls that need it will fail with 401' );
+	}
+	return '';
+}
+
+/**
  * @return string
  */
 function ihq_braze_export_api_key() {
-	if ( defined( 'IHQ_BRAZE_EXPORT_API_KEY' ) && IHQ_BRAZE_EXPORT_API_KEY !== '' ) {
-		return (string) IHQ_BRAZE_EXPORT_API_KEY;
-	}
-	return '20bea073-5d29-40ca-b7b5-17126a5893c6';
+	return ihq_braze_api_key( 'IHQ_BRAZE_EXPORT_API_KEY' );
 }
 
 /**
  * @return string
  */
 function ihq_braze_track_api_key() {
-	if ( defined( 'IHQ_BRAZE_TRACK_API_KEY' ) && IHQ_BRAZE_TRACK_API_KEY !== '' ) {
-		return (string) IHQ_BRAZE_TRACK_API_KEY;
-	}
-	return '81adeace-fad5-4566-bdd9-06095acdd3ee';
+	return ihq_braze_api_key( 'IHQ_BRAZE_TRACK_API_KEY' );
 }
 
 /**

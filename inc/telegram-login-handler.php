@@ -27,6 +27,9 @@ const IHQ_TELEGRAM_JWKS_CACHE_SECONDS = 3600;
 const IHQ_TELEGRAM_OIDC_ISSUER = 'https://oauth.telegram.org';
 const IHQ_TELEGRAM_REG_SESSION_TTL = 20 * MINUTE_IN_SECONDS;
 
+/** Login fetches two users by telegram_user_id: enough to tell one owner from a duplicate. */
+const IHQ_TELEGRAM_LOGIN_LOOKUP_LIMIT = 2;
+
 /**
  * Numeric Telegram Login client ID (bot), or empty if disabled.
  *
@@ -535,7 +538,11 @@ add_action( 'wp_ajax_ihq_register_telegram_user', 'ihq_handle_register_telegram_
 add_action( 'wp_ajax_nopriv_ihq_register_telegram_user', 'ihq_handle_register_telegram_user_ajax' );
 
 /**
- * AJAX: login existing WP user by verified Telegram username.
+ * AJAX: login existing WP user by verified Telegram user id.
+ *
+ * Matched on telegram_user_id, never on the @username: a username can be changed
+ * or given up and taken by someone else, and communication_username is free text
+ * typed at registration (ENGR-8003).
  */
 function ihq_handle_login_telegram_user_ajax() {
 	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ihq_telegram_login_pubkey' ) ) {
@@ -553,17 +560,28 @@ function ihq_handle_login_telegram_user_ajax() {
 		return;
 	}
 
-	$telegram_username = (string) $session['telegram_username'];
+	$telegram_user_id = isset( $session['telegram_user_id'] ) ? (int) $session['telegram_user_id'] : 0;
+	if ( $telegram_user_id <= 0 ) {
+		wp_send_json_error( array( 'message' => __( 'Telegram session expired. Please authenticate again.', 'influencer-hq' ) ) );
+		return;
+	}
+
 	$users = get_users(
 		array(
-			'meta_key'   => 'communication_username',
-			'meta_value' => $telegram_username,
-			'number'     => 1,
+			'meta_key'   => 'telegram_user_id',
+			'meta_value' => $telegram_user_id,
+			'number'     => IHQ_TELEGRAM_LOGIN_LOOKUP_LIMIT,
 			'fields'     => array( 'ID' ),
 		)
 	);
 	if ( empty( $users ) || empty( $users[0]->ID ) ) {
 		wp_send_json_error( array( 'message' => __( 'No account is linked to this Telegram username yet. Please register first.', 'influencer-hq' ) ) );
+		return;
+	}
+	if ( count( $users ) > 1 ) {
+		// Neither account can be told apart as the owner. No ids in the log: they identify the person.
+		error_log( 'IHQ Telegram login: refused, more than one account carries the same telegram_user_id' );
+		wp_send_json_error( array( 'message' => __( 'This Telegram account is linked to more than one account. Please contact support.', 'influencer-hq' ) ) );
 		return;
 	}
 
