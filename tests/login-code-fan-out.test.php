@@ -29,7 +29,7 @@ const LEGACY_MAIL     = 'ann@email_telegram.com';
 const ADMIN_MAIL      = 'admin@example.test';
 const OPTION          = 'ihq_login_code_fan_out_enabled';
 const FAN_OUT_KEY     = 'ihq_login_fan_out_7';
-const HINT            = "If you've connected a chat app, the code is there too.";
+const HINT            = "If you've connected a chat app, the code is there too. The newest code is always in your email.";
 const GENERIC         = 'If that email matches an Influencer HQ account, you will receive a sign-in code shortly.';
 const DO_NOT_SHARE    = 'This is your sign-in code. Do not share it with anyone.';
 const SENT_BODY       = '{"results":[{"provider":"telegram","status":"sent"},{"provider":"line","status":"not_connected"}]}';
@@ -269,8 +269,10 @@ foreach ( array( '0', '', 'false', 'no', 'off', '2', '01', 0, 2, false, null, ar
 // --- Hint on the login answer. ---
 reset_state();
 $answer = array( 'message' => GENERIC );
+check( 'off: no hint', ihq_login_code_fan_out_hint(), '' );
 check( 'off: the answer is returned unchanged', ihq_login_code_fan_out_add_hint( $answer ), $answer );
 switch_on();
+check( 'on: the hint says the newest code is always in the email', ihq_login_code_fan_out_hint(), HINT );
 check( 'on: the answer gains chat_app_hint', ihq_login_code_fan_out_add_hint( $answer ), array( 'message' => GENERIC, 'chat_app_hint' => HINT ) );
 
 // --- D3 window. ---
@@ -342,9 +344,9 @@ check( 'failed methods: not JSON', ihq_login_code_fan_out_failed_methods( 'oops'
 check( 'failed methods: no results list', ihq_login_code_fan_out_failed_methods( '{"results":"failed"}' ), array() );
 check( 'results: the list from the answer', ihq_login_code_fan_out_results( SENT_BODY ), array( array( 'provider' => 'telegram', 'status' => 'sent' ), array( 'provider' => 'line', 'status' => 'not_connected' ) ) );
 check( 'results: an empty list', ihq_login_code_fan_out_results( EMPTY_BODY ), array() );
-check( 'results: none in a body that is not JSON', ihq_login_code_fan_out_results( 'oops' ), null );
-check( 'results: none when results is not a list', ihq_login_code_fan_out_results( '{"results":"sent"}' ), null );
-check( 'results: none when there is no results key', ihq_login_code_fan_out_results( '{"status":"sent"}' ), null );
+check( 'results: none in a body that is not JSON', ihq_login_code_fan_out_results( 'oops' ), array() );
+check( 'results: none when results is not a list', ihq_login_code_fan_out_results( '{"results":"sent"}' ), array() );
+check( 'results: none when there is no results key', ihq_login_code_fan_out_results( '{"status":"sent"}' ), array() );
 check( 'failed methods: entries without provider or status are skipped', ihq_login_code_fan_out_failed_methods( '{"results":[{"status":"failed"},{"provider":"line"},"x"]}' ), array() );
 
 // --- Send: true when a chat app may have the code; every failure is logged. ---

@@ -23,8 +23,11 @@ mutations = [
     (module, "in_array( strtolower( trim( $value ) ), IHQ_LOGIN_CODE_FAN_OUT_ON_VALUES, true )", "in_array( strtolower( $value ), IHQ_LOGIN_CODE_FAN_OUT_ON_VALUES, true )"),
     (module, "in_array( strtolower( trim( $value ) ), IHQ_LOGIN_CODE_FAN_OUT_ON_VALUES, true )", "in_array( strtolower( trim( $value ) ), IHQ_LOGIN_CODE_FAN_OUT_ON_VALUES, false )"),
     # The hint.
-    (module, "if ( ! ihq_login_code_fan_out_enabled() ) {\n\t\treturn $answer;", "if ( false ) {\n\t\treturn $answer;"),
-    (module, "if ( ! ihq_login_code_fan_out_enabled() ) {\n\t\treturn $answer;", "if ( true ) {\n\t\treturn $answer;"),
+    (module, "if ( ! ihq_login_code_fan_out_enabled() ) {\n\t\treturn '';", "if ( false ) {\n\t\treturn '';"),
+    (module, "if ( ! ihq_login_code_fan_out_enabled() ) {\n\t\treturn '';", "if ( true ) {\n\t\treturn '';"),
+    (module, "if ( '' === $hint ) {\n\t\treturn $answer;", "if ( false ) {\n\t\treturn $answer;"),
+    (module, "if ( '' === $hint ) {\n\t\treturn $answer;", "if ( true ) {\n\t\treturn $answer;"),
+    (module, " The newest code is always in your email.\", 'influencer-hq' );", "\", 'influencer-hq' );"),
     # The D3 window.
     (module, "is_int( $time ) && $time > $now", "$time > $now"),
     (module, "$time > $now - IHQ_LOGIN_CODE_FAN_OUT_WINDOW_SECONDS", "$time >= $now - IHQ_LOGIN_CODE_FAN_OUT_WINDOW_SECONDS"),
@@ -60,9 +63,9 @@ mutations = [
     (module, "return ihq_login_code_fan_out_may_have_delivered( $response );", "return true;"),
     (module, "return ihq_login_code_fan_out_may_have_delivered( $response );", "return false;"),
     # The results list.
-    (module, "! is_array( $decoded ) || ! isset( $decoded['results'] ) || ! is_array( $decoded['results'] ) ) {\n\t\treturn null;", "! is_array( $decoded ) || ! isset( $decoded['results'] ) ) {\n\t\treturn null;"),
-    (module, "! is_array( $decoded ) || ! isset( $decoded['results'] ) || ! is_array( $decoded['results'] ) ) {\n\t\treturn null;", "! is_array( $decoded ) ) {\n\t\treturn null;"),
-    (module, "$results = ihq_login_code_fan_out_results( $body );\n\tif ( null === $results ) {\n\t\treturn $failed;", "$results = ihq_login_code_fan_out_results( $body );\n\tif ( false ) {\n\t\treturn $failed;"),
+    (module, "! is_array( $decoded ) || ! isset( $decoded['results'] ) || ! is_array( $decoded['results'] ) ) {\n\t\treturn array();", "! is_array( $decoded ) || ! isset( $decoded['results'] ) ) {\n\t\treturn array();"),
+    (module, "! is_array( $decoded ) || ! isset( $decoded['results'] ) || ! is_array( $decoded['results'] ) ) {\n\t\treturn array();", "! is_array( $decoded ) ) {\n\t\treturn array();"),
+    (module, "! is_array( $decoded ) || ! isset( $decoded['results'] ) || ! is_array( $decoded['results'] ) ) {\n\t\treturn array();", "false ) {\n\t\treturn array();"),
     # May have delivered: a sent method, or an unclear outcome (a timeout or a 5xx).
     (module, "if ( is_wp_error( $response ) ) {\n\t\treturn true;", "if ( is_wp_error( $response ) ) {\n\t\treturn false;"),
     (module, "if ( $status >= IHQ_LOGIN_CODE_FAN_OUT_SERVER_ERROR_STATUS ) {", "if ( $status > IHQ_LOGIN_CODE_FAN_OUT_SERVER_ERROR_STATUS ) {"),
@@ -71,7 +74,6 @@ mutations = [
     (module, "if ( $status < 200 || $status >= 300 ) {\n\t\treturn false;", "if ( $status <= 200 || $status >= 300 ) {\n\t\treturn false;"),
     (module, "if ( $status < 200 || $status >= 300 ) {\n\t\treturn false;", "if ( $status < 200 || $status > 300 ) {\n\t\treturn false;"),
     (module, "if ( $status < 200 || $status >= 300 ) {\n\t\treturn false;", "if ( false ) {\n\t\treturn false;"),
-    (module, "$results = ihq_login_code_fan_out_results( wp_remote_retrieve_body( $response ) );\n\tif ( null === $results ) {\n\t\treturn false;", "$results = ihq_login_code_fan_out_results( wp_remote_retrieve_body( $response ) );\n\tif ( null === $results ) {\n\t\treturn true;"),
     (module, "IHQ_LOGIN_CODE_FAN_OUT_SENT === $result['status']", "IHQ_LOGIN_CODE_FAN_OUT_FAILED === $result['status']"),
     (module, "\t\t\treturn true;\n\t\t}\n\t}\n\treturn false;\n}", "\t\t\treturn true;\n\t\t}\n\t}\n\treturn true;\n}"),
     (module, "const IHQ_LOGIN_CODE_FAN_OUT_SENT = 'sent';", "const IHQ_LOGIN_CODE_FAN_OUT_SENT = 'SENT';"),
@@ -100,12 +102,19 @@ mutations = [
 ]
 
 
+# docker run's own failures (daemon error, command not runnable or not found). They say nothing
+# about the mutant, so they stop the run instead of counting as a kill.
+DOCKER_FAILURES = {125, 126, 127}
+
+
 def run(target):
     for test in tests:
         result = subprocess.run(
             ["docker", "run", "--rm", "-v", f"{target}:/app:ro", "-w", "/app", "php:8.2-cli", "php", test],
             capture_output=True,
         )
+        if result.returncode in DOCKER_FAILURES:
+            raise RuntimeError(f"docker run failed ({result.returncode}): {result.stderr.decode()[-500:]}")
         if result.returncode != 0:
             return result.returncode
     return 0

@@ -127,19 +127,35 @@ function ihq_login_code_fan_out_enabled() {
 }
 
 /**
- * Add the code step's line saying the code is in the influencer's chat apps too to
- * a login AJAX answer. While the switch is off the answer is returned unchanged.
- * The line depends only on the switch, never on the account, so it says nothing
- * about which emails are registered. Product may change the copy (PQ1).
+ * The code step's line saying the code is in the influencer's chat apps too, or ''
+ * while the switch is off. It depends only on the switch, never on the account, so
+ * it says nothing about which emails are registered. The second sentence holds when
+ * D3 or a resend left an older code in the chat apps: the email always carries the
+ * newest (Steve Wolfe's copy for the game's code screen, ENGR-8020). Product may
+ * change the copy (PQ1).
+ *
+ * @return string
+ */
+function ihq_login_code_fan_out_hint() {
+	if ( ! ihq_login_code_fan_out_enabled() ) {
+		return '';
+	}
+	return __( "If you've connected a chat app, the code is there too. The newest code is always in your email.", 'influencer-hq' );
+}
+
+/**
+ * Add the code step's line (ihq_login_code_fan_out_hint()) to a login AJAX answer.
+ * While the switch is off the answer is returned unchanged.
  *
  * @param array $answer The answer's data.
  * @return array
  */
 function ihq_login_code_fan_out_add_hint( $answer ) {
-	if ( ! ihq_login_code_fan_out_enabled() ) {
+	$hint = ihq_login_code_fan_out_hint();
+	if ( '' === $hint ) {
 		return $answer;
 	}
-	$answer[ IHQ_LOGIN_CODE_FAN_OUT_HINT_KEY ] = __( "If you've connected a chat app, the code is there too.", 'influencer-hq' );
+	$answer[ IHQ_LOGIN_CODE_FAN_OUT_HINT_KEY ] = $hint;
 	return $answer;
 }
 
@@ -236,15 +252,16 @@ function ihq_login_code_fan_out_request_body( $user_id, $code ) {
 }
 
 /**
- * The per-method results in the route's answer.
+ * The per-method results in the route's answer. A body with no results list reads
+ * as no results: either way no method reports the code sent or failed.
  *
  * @param string $body Raw response body: {"results": [{"provider", "status", "reason"?}]}.
- * @return array|null The results list, or null when the body has none.
+ * @return array
  */
 function ihq_login_code_fan_out_results( $body ) {
 	$decoded = json_decode( (string) $body, true );
 	if ( ! is_array( $decoded ) || ! isset( $decoded['results'] ) || ! is_array( $decoded['results'] ) ) {
-		return null;
+		return array();
 	}
 	return $decoded['results'];
 }
@@ -256,12 +273,8 @@ function ihq_login_code_fan_out_results( $body ) {
  * @return string[] "<provider>: <reason>" for each method that failed.
  */
 function ihq_login_code_fan_out_failed_methods( $body ) {
-	$failed  = array();
-	$results = ihq_login_code_fan_out_results( $body );
-	if ( null === $results ) {
-		return $failed;
-	}
-	foreach ( $results as $result ) {
+	$failed = array();
+	foreach ( ihq_login_code_fan_out_results( $body ) as $result ) {
 		if ( ! is_array( $result ) || ! isset( $result['provider'], $result['status'] ) ) {
 			continue;
 		}
@@ -329,11 +342,7 @@ function ihq_login_code_fan_out_may_have_delivered( $response ) {
 	if ( $status < 200 || $status >= 300 ) {
 		return false;
 	}
-	$results = ihq_login_code_fan_out_results( wp_remote_retrieve_body( $response ) );
-	if ( null === $results ) {
-		return false;
-	}
-	foreach ( $results as $result ) {
+	foreach ( ihq_login_code_fan_out_results( wp_remote_retrieve_body( $response ) ) as $result ) {
 		if ( is_array( $result ) && isset( $result['status'] ) && IHQ_LOGIN_CODE_FAN_OUT_SENT === $result['status'] ) {
 			return true;
 		}

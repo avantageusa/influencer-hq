@@ -31,13 +31,13 @@ todos:
     content: "tests/login-code-fan-out.test.php covering off, on, failure, rate limit and placeholder; scripts/test-login-code-fan-out-mutations.py kills every mutant"
     status: completed
   - id: verify
-    content: Run PHP and JS tests, php -l on touched files and the mutation script (71/71 killed after the review fixes)
+    content: Run PHP and JS tests, php -l on touched files and the mutation script (73/73 killed after the second review; a docker run failure now stops the script instead of counting as a kill)
     status: completed
   - id: ci
     content: GitHub Actions Tests (PHP and JS) green on the PR
     status: completed
   - id: review-fixes
-    content: "Independent, CodeRabbit and Steve Wolfe reviews: keep the code only while a chat app may have it, the hint on the three other login templates, user ID instead of the email in both logs, the key read before the D3 slot, whole-value checks"
+    content: "Independent, CodeRabbit and Steve Wolfe reviews: keep the code only while a chat app may have it, the hint on the three other login templates and on Portal Login's AI Coach resume path, the hint's second sentence (the newest code is always in the email), user ID instead of the email in both logs, the key read before the D3 slot, whole-value checks"
     status: completed
 ---
 
@@ -102,12 +102,19 @@ Login AJAX (`ihq_handle_send_login_code_ajax()`):
 
 - A placeholder address gets the same generic answer as an unknown one, so the new guard reveals
   nothing about which stand-ins exist.
-- While the option is on, both answers carry `chat_app_hint`: "If you've connected a chat app, the
-  code is there too." It depends only on the option, so it says nothing about the account. With
+- While the option is on, both answers carry `chat_app_hint` (`ihq_login_code_fan_out_hint()`):
+  "If you've connected a chat app, the code is there too. The newest code is always in your
+  email." The second sentence holds when D3 (a send 45 to 59 s after the last, or the sixth in an
+  hour) or a resend left an older code in the chat apps; it is Steve Wolfe's copy for the game's
+  code screen (ENGR-8020), and Product has the final word (PQ1). Leaving the hint out when the
+  fan-out was skipped would tell a registered address from an unknown one. It depends only on the
+  option, so it says nothing about the account. With
   the option off, the answer is exactly today's.
 - Portal Login (`page-portal-login.php`) and the portal auth modal
   (`template-parts/portal-auth-modal.php`) show `chat_app_hint` on the code step, under its intro
-  line, and hide it on reset. These are the two login surfaces ENGR-8014 also changes.
+  line, and hide it on reset. These are the two login surfaces ENGR-8014 also changes. Portal
+  Login also renders it when it resumes a code step the AI Coach started (PO-3257), since that code
+  went through the same login send (second independent review).
 
 ## Alternatives considered
 
@@ -134,7 +141,8 @@ Login AJAX (`ihq_handle_send_login_code_ajax()`):
 - On: each login send may wait up to 3 s more for influencerhq-api. When the email fails and the
   answer says no chat app has the code, the influencer sees today's email error and can retry. The AI Coach register path
   (`inc/aicoach-register.php`) shares the login send, so it fans out and keeps the code the same
-  way. It ignores `chat_app_hint`, which only the login AJAX adds.
+  way. Its own answer carries no hint, so it keeps one shape for new and existing emails; Portal
+  Login shows the hint when it resumes that code step.
 - `page-lander.php`, `page-home.php` and `page-portal-home-claude.php` have their own copies of
   the login JS; each shows `chat_app_hint` on its code step and clears it on reset, as Portal Login
   does (independent review, PR #158).

@@ -384,6 +384,8 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
     var LOGIN_NONCE = <?php echo wp_json_encode( $ihq_portal_login_nonce ); ?>;
     var REG_NONCE = <?php echo wp_json_encode( $ihq_portal_reg_nonce ); ?>;
     var TURNSTILE_SITE_KEY = <?php echo wp_json_encode( $ihq_portal_ts_site_key ); ?>;
+    // The code step's chat-app line for a code this page did not request itself (ENGR-8022).
+    var CHAT_APP_HINT = <?php echo wp_json_encode( function_exists( 'ihq_login_code_fan_out_hint' ) ? ihq_login_code_fan_out_hint() : '' ); ?>;
 
     var loginTurnstileWidgetId = null;
     var regTurnstileWidgetId = null;
@@ -792,6 +794,8 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
             infoBox.textContent = message || 'If that email matches an account, you will receive a code.';
             infoBox.style.display = 'block';
         }
+        // The AI Coach sent this code through the same login send, so it went to the chat apps too.
+        setLoginChatAppHint(CHAT_APP_HINT);
         document.getElementById('login-step-email').style.display = 'none';
         document.getElementById('login-step-code').style.display = 'block';
     })();
