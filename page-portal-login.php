@@ -104,6 +104,7 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
 
                     <div id="login-step-code" style="display:none;">
                         <p style="color:#aaa;font-size:.9rem;margin-bottom:16px;">Enter the code we sent you.</p>
+                        <p id="login-code-chat-hint" style="display:none;color:#aaa;font-size:.9rem;margin:-8px 0 16px;"></p>
                         <div class="portal-form-group">
                             <label for="login-code" class="portal-label">6-digit code</label>
                             <input type="text"
@@ -383,6 +384,8 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
     var LOGIN_NONCE = <?php echo wp_json_encode( $ihq_portal_login_nonce ); ?>;
     var REG_NONCE = <?php echo wp_json_encode( $ihq_portal_reg_nonce ); ?>;
     var TURNSTILE_SITE_KEY = <?php echo wp_json_encode( $ihq_portal_ts_site_key ); ?>;
+    // The code step's chat-app line for a code this page did not request itself (ENGR-8022).
+    var CHAT_APP_HINT = <?php echo wp_json_encode( function_exists( 'ihq_login_code_fan_out_hint' ) ? ihq_login_code_fan_out_hint() : '' ); ?>;
 
     var loginTurnstileWidgetId = null;
     var regTurnstileWidgetId = null;
@@ -466,6 +469,13 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
         el.setAttribute('data-rendered', '1');
     }
 
+    // The send answer carries chat_app_hint only while the code also goes to chat apps (ENGR-8022).
+    function setLoginChatAppHint(text) {
+        var hint = document.getElementById('login-code-chat-hint');
+        hint.textContent = text || '';
+        hint.style.display = text ? 'block' : 'none';
+    }
+
     function resetLoginPane() {
         portalLoginToken = '';
         document.getElementById('login-step-email').style.display = 'block';
@@ -476,6 +486,7 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
         document.getElementById('login-info').style.display = 'none';
         document.getElementById('login-code-error').style.display = 'none';
         document.getElementById('login-code-expires').textContent = '';
+        setLoginChatAppHint('');
         removeLoginTs();
         window.setTimeout(renderLoginTs, 80);
     }
@@ -571,6 +582,7 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
                 var minutes = d.expires_minutes || 15;
                 document.getElementById('login-code-expires').textContent =
                     'Code expires in ' + minutes + ' minute' + (minutes === 1 ? '' : 's') + '.';
+                setLoginChatAppHint(d.chat_app_hint);
                 document.getElementById('login-code').value = '';
                 document.getElementById('login-code-error').style.display = 'none';
                 document.getElementById('login-step-email').style.display = 'none';
@@ -782,6 +794,8 @@ if ( function_exists( 'ihq_turnstile_is_configured' ) && ihq_turnstile_is_config
             infoBox.textContent = message || 'If that email matches an account, you will receive a code.';
             infoBox.style.display = 'block';
         }
+        // The AI Coach sent this code through the same login send, so it went to the chat apps too.
+        setLoginChatAppHint(CHAT_APP_HINT);
         document.getElementById('login-step-email').style.display = 'none';
         document.getElementById('login-step-code').style.display = 'block';
     })();

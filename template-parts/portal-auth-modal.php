@@ -186,6 +186,7 @@ $ihq_portal_auth_login_methods        = array(
 					</div>
 					<div id="auth-login-step-code" style="display:none;max-width:480px;margin:0 auto">
 						<p class="auth-section-sub" style="margin-bottom:16px"><?php esc_html_e( 'Please check your preferred method of communication and enter the 6-digit code we sent you.', 'influencer-hq' ); ?></p>
+						<p class="auth-section-sub" id="auth-login-code-chat-hint" style="display:none;margin:-8px 0 16px"></p>
 						<div class="auth-field">
 							<label for="auth-login-code"><?php esc_html_e( '6-digit code', 'influencer-hq' ); ?></label>
 							<input type="text" id="auth-login-code" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="000000" style="text-align:center;letter-spacing:0.35em;font-size:1.2rem">
@@ -378,6 +379,14 @@ function ihqAuthLoginRenderTurnstileWhenNeeded() {
 	el.setAttribute('data-rendered', '1');
 }
 
+// The send answer carries chat_app_hint only while the code also goes to chat apps (ENGR-8022).
+function ihqAuthLoginSetChatAppHint(text) {
+	var hint = document.getElementById('auth-login-code-chat-hint');
+	if (!hint) return;
+	hint.textContent = text || '';
+	hint.style.display = text ? 'block' : 'none';
+}
+
 function ihqAuthLoginResetPanels() {
 	ihqAuthLoginSignupToken = '';
 	var stepEmail = document.getElementById('auth-login-step-email');
@@ -396,6 +405,7 @@ function ihqAuthLoginResetPanels() {
 	if (cer) cer.textContent = '';
 	var exp = document.getElementById('auth-login-code-expires');
 	if (exp) exp.textContent = '';
+	ihqAuthLoginSetChatAppHint('');
 	var defaultMethod = document.getElementById('auth-login-method-' + IHQ_AUTH_LOGIN.defaultMethod);
 	if (defaultMethod) defaultMethod.checked = true;
 	var tgErr = document.getElementById('auth-login-telegram-err');
@@ -608,6 +618,7 @@ function ihqAuthLoginSendCode() {
 			if (expEl) {
 				expEl.textContent = 'Code expires in ' + minutes + ' minute' + (minutes === 1 ? '' : 's') + '.';
 			}
+			ihqAuthLoginSetChatAppHint(d.chat_app_hint);
 			var codeErr = document.getElementById('auth-login-code-err');
 			if (codeErr) codeErr.textContent = '';
 			var codeInput = document.getElementById('auth-login-code');

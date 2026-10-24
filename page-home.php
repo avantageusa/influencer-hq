@@ -227,6 +227,7 @@ $ihq_home_login_nonce = wp_create_nonce( 'ihq_login_code_nonce' );
                                 </div>
                                 <div id="home-login-step-code" class="simple-form" style="max-width:480px;margin:0 auto;display:none;">
                                     <p class="lead mb-3">Enter the code from your email.</p>
+                                    <p id="home-login-code-chat-hint" style="display:none;margin:-8px 0 16px;"></p>
                                     <div class="mb-4">
                                         <label for="login-code" class="form-label">6-digit code:</label>
                                         <input type="text" class="form-control" id="login-code" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="000000" style="letter-spacing:0.35em;text-align:center;">
@@ -448,6 +449,14 @@ function homeLoginJsonErr(data) {
     return d.message ? d.message : 'Something went wrong.';
 }
 
+// The send answer carries chat_app_hint only while the code also goes to chat apps (ENGR-8022).
+function setHomeLoginChatAppHint(text) {
+    var hint = document.getElementById('home-login-code-chat-hint');
+    if (!hint) return;
+    hint.textContent = text || '';
+    hint.style.display = text ? 'block' : 'none';
+}
+
 function resetHomeLoginPane() {
     homeLoginSignupToken = '';
     var stepE = document.getElementById('home-login-step-email');
@@ -466,6 +475,7 @@ function resetHomeLoginPane() {
     if (cer) { cer.style.display = 'none'; cer.textContent = ''; }
     var ex = document.getElementById('home-login-code-expires');
     if (ex) ex.textContent = '';
+    setHomeLoginChatAppHint('');
 }
 
 function switchTab(tab) {
@@ -530,6 +540,7 @@ function homeLoginSendCode() {
             var minutes = d.expires_minutes || 15;
             document.getElementById('home-login-code-expires').textContent =
                 'Code expires in ' + minutes + ' minute' + (minutes === 1 ? '' : 's') + '.';
+            setHomeLoginChatAppHint(d.chat_app_hint);
             document.getElementById('login-code-error').style.display = 'none';
             document.getElementById('home-login-step-email').style.display = 'none';
             document.getElementById('home-login-step-code').style.display = 'block';
