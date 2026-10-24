@@ -10,6 +10,7 @@ import {
 	unavailableMessage,
 	methodRefusal,
 	hideRefusedMethod,
+	showFailure,
 } from './ihq-channel-methods.js';
 
 /*
@@ -197,11 +198,93 @@ test( 'a refusal with no marked controls hides nothing and still reports the ref
 	assert.equal( root.querySelector( '#login-error' ).style.display, undefined );
 } );
 
+test( 'showFailure: a refusal shows once, in the notice, and empties the error box beside it', () => {
+	const { root, displays, notices } = setup();
+	const box = root.querySelector( '#login-error' );
+	// An earlier failure left its message in the box.
+	box.textContent = 'Invalid email address';
+	box.style.display = 'block';
+	assert.deepEqual(
+		showFailure( { root, response: EMAIL_OFF_ANSWER, errorBox: box, message: "Email isn't available right now" } ),
+		{ method: 'email', message: "Email isn't available right now" }
+	);
+	assert.equal( box.textContent, '' );
+	assert.deepEqual(
+		displays(),
+		Object.assign( {}, NOTHING_HIDDEN, {
+			'email-field': 'none',
+			'email-send': 'none',
+			'login-error': 'none',
+			'email-unavailable': 'block',
+			'or-divider': 'none',
+		} )
+	);
+	assert.deepEqual( notices(), { email: "Email isn't available right now", telegram: '' } );
+} );
+
+test( 'showFailure: a Telegram refusal empties the Telegram error box and leaves the email one alone', () => {
+	const { root, displays, notices } = setup();
+	const telegramBox = root.querySelector( '#telegram-error' );
+	showFailure( { root, response: TELEGRAM_OFF_ANSWER, errorBox: telegramBox, message: 'Could not start Telegram login.' } );
+	assert.equal( telegramBox.textContent, '' );
+	assert.deepEqual(
+		displays(),
+		Object.assign( {}, NOTHING_HIDDEN, {
+			'or-divider': 'none',
+			'telegram-button': 'none',
+			'telegram-error': 'none',
+			'telegram-unavailable': 'block',
+		} )
+	);
+	assert.deepEqual( notices(), { email: '', telegram: "Telegram isn't available right now" } );
+} );
+
+test( 'showFailure: any other failure shows its message in the error box and hides nothing', () => {
+	const { root, displays, notices } = setup();
+	const box = root.querySelector( '#login-error' );
+	assert.equal( showFailure( { root, response: ABSENT_FEATURE_ANSWER, errorBox: box, message: 'Invalid email address' } ), null );
+	assert.equal( box.textContent, 'Invalid email address' );
+	assert.deepEqual( displays(), Object.assign( {}, NOTHING_HIDDEN, { 'login-error': 'block' } ) );
+	assert.deepEqual( notices(), NO_NOTICE );
+} );
+
+test( 'showFailure: a refusal with no notice on the page still shows its message in the error box', () => {
+	const document = createFakeDocument();
+	const root = build( document, [
+		'div',
+		{},
+		[ 'button', { id: 'telegram-button', [ METHOD_ATTRIBUTE ]: 'telegram' } ],
+		[ 'div', { id: 'telegram-error' } ],
+	] );
+	const box = root.querySelector( '#telegram-error' );
+	assert.deepEqual(
+		showFailure( { root, response: TELEGRAM_OFF_ANSWER, errorBox: box, message: "Telegram isn't available right now" } ),
+		{ method: 'telegram', message: "Telegram isn't available right now" }
+	);
+	assert.equal( box.textContent, "Telegram isn't available right now" );
+	assert.equal( box.style.display, 'block' );
+	assert.equal( root.querySelector( '#telegram-button' ).style.display, 'none' );
+} );
+
+test( 'showFailure: with no error box it still hides the refused method', () => {
+	const { root, displays, notices } = setup();
+	assert.deepEqual(
+		showFailure( { root, response: EMAIL_OFF_ANSWER, errorBox: null, message: 'unused' } ),
+		{ method: 'email', message: "Email isn't available right now" }
+	);
+	assert.equal( showFailure( { root, response: ABSENT_FEATURE_ANSWER, errorBox: null, message: 'unused' } ), null );
+	assert.deepEqual(
+		displays(),
+		Object.assign( {}, NOTHING_HIDDEN, { 'email-field': 'none', 'email-send': 'none', 'email-unavailable': 'block', 'or-divider': 'none' } )
+	);
+	assert.deepEqual( notices(), { email: "Email isn't available right now", telegram: '' } );
+} );
+
 test( 'the browser build publishes the functions for the inline scripts', async () => {
 	globalThis.window = {};
 	try {
 		await import( './ihq-channel-methods.js?browser' );
-		assert.deepEqual( Object.keys( globalThis.window.ihqChannelMethods ), [ 'methodRefusal', 'hideRefusedMethod' ] );
+		assert.deepEqual( Object.keys( globalThis.window.ihqChannelMethods ), [ 'methodRefusal', 'hideRefusedMethod', 'showFailure' ] );
 		assert.equal( Object.isFrozen( globalThis.window.ihqChannelMethods ), true );
 		assert.deepEqual(
 			globalThis.window.ihqChannelMethods.methodRefusal( EMAIL_OFF_ANSWER ),

@@ -374,13 +374,28 @@ function ihqModalAjaxErrMessage(data) {
 
 /**
  * A method switched off after this page loaded: hide its controls until the
- * next load (js/ihq-channel-methods.js, ENGR-8014). The error box shows the
- * server's "<method> isn't available right now", and so does the method's
- * notice, which no reset or Back clears.
+ * next load (js/ihq-channel-methods.js, ENGR-8014). The code step's error box
+ * shows the server's "<method> isn't available right now", and so does the
+ * method's notice on the first step, which no reset or Back clears.
  */
 function ihqAuthHideRefusedMethod(data) {
 	if (window.ihqChannelMethods) {
 		window.ihqChannelMethods.hideRefusedMethod({ root: document, response: data });
+	}
+}
+
+/**
+ * A failed answer on the first step: a refusal shows only in the method's
+ * notice below errorBox (ENGR-8014), anything else in errorBox as before.
+ */
+function ihqAuthShowFailure(data, errorBox, message) {
+	if (window.ihqChannelMethods) {
+		window.ihqChannelMethods.showFailure({ root: document, response: data, errorBox: errorBox, message: message });
+		return;
+	}
+	if (errorBox) {
+		errorBox.textContent = message;
+		errorBox.style.display = 'block';
 	}
 }
 
@@ -490,8 +505,7 @@ function ihqAuthLoginWithTelegram() {
 			if (!data.success || !data.data || !data.data.server_nonce) {
 				ihqAuthLoginTelegramBusy = false;
 				if (btn) btn.disabled = false;
-				ihqAuthShowTelegramErr(ihqModalAjaxErrMessage(data) || 'Could not start Telegram login.');
-				ihqAuthHideRefusedMethod(data);
+				ihqAuthShowFailure(data, document.getElementById('auth-login-telegram-err'), ihqModalAjaxErrMessage(data) || 'Could not start Telegram login.');
 				return;
 			}
 			var serverNonce = data.data.server_nonce;
@@ -526,8 +540,7 @@ function ihqAuthLoginWithTelegram() {
 								if (!data2.success || !data2.data || !data2.data.telegram_session_token) {
 									ihqAuthLoginTelegramBusy = false;
 									if (btn) btn.disabled = false;
-									ihqAuthShowTelegramErr(ihqModalAjaxErrMessage(data2) || 'Telegram verification failed.');
-									ihqAuthHideRefusedMethod(data2);
+									ihqAuthShowFailure(data2, document.getElementById('auth-login-telegram-err'), ihqModalAjaxErrMessage(data2) || 'Telegram verification failed.');
 									return;
 								}
 								var fd3 = new FormData();
@@ -540,8 +553,7 @@ function ihqAuthLoginWithTelegram() {
 										ihqAuthLoginTelegramBusy = false;
 										if (btn) btn.disabled = false;
 										if (!data3.success || !data3.data || !data3.data.redirect_url) {
-											ihqAuthShowTelegramErr(ihqModalAjaxErrMessage(data3) || 'Could not sign in with Telegram.');
-											ihqAuthHideRefusedMethod(data3);
+											ihqAuthShowFailure(data3, document.getElementById('auth-login-telegram-err'), ihqModalAjaxErrMessage(data3) || 'Could not sign in with Telegram.');
 											return;
 										}
 										window.location.href = data3.data.redirect_url;
@@ -625,11 +637,7 @@ function ihqAuthLoginSendCode() {
 		.then(function (data) {
 			if (btn) btn.disabled = false;
 			if (!data.success) {
-				if (errBox) {
-					errBox.textContent = ihqModalAjaxErrMessage(data);
-					errBox.style.display = 'block';
-				}
-				ihqAuthHideRefusedMethod(data);
+				ihqAuthShowFailure(data, errBox, ihqModalAjaxErrMessage(data));
 				ihqAuthLoginRemoveTurnstile();
 				window.setTimeout(ihqAuthLoginRenderTurnstileWhenNeeded, 80);
 				return;

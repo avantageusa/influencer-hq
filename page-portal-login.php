@@ -413,11 +413,22 @@ $ihq_portal_email_on = ihq_channel_method_allowed( 'email', ihq_channel_methods_
     }
 
     // Email switched off after this page loaded: hide its controls until the
-    // next load; the error box shows the server's message (ENGR-8014).
+    // next load; a code step's error box shows the server's message (ENGR-8014).
     function hideRefusedMethod(data) {
         if (window.ihqChannelMethods) {
             window.ihqChannelMethods.hideRefusedMethod({ root: document, response: data });
         }
+    }
+
+    // A failed answer on an email step: a refusal shows only in the email
+    // notice below errBox (ENGR-8014), anything else in errBox as before.
+    function showFailure(data, errBox, message) {
+        if (window.ihqChannelMethods) {
+            window.ihqChannelMethods.showFailure({ root: document, response: data, errorBox: errBox, message: message });
+            return;
+        }
+        errBox.textContent = message;
+        errBox.style.display = 'block';
     }
 
     function removeLoginTs() {
@@ -573,9 +584,7 @@ $ihq_portal_email_on = ihq_channel_method_allowed( 'email', ihq_channel_methods_
             .then(function (data) {
                 btn.disabled = false;
                 if (!data.success) {
-                    errBox.textContent = jsonErrMessage(data);
-                    errBox.style.display = 'block';
-                    hideRefusedMethod(data);
+                    showFailure(data, errBox, jsonErrMessage(data));
                     removeLoginTs();
                     window.setTimeout(renderLoginTs, 80);
                     return;
@@ -693,9 +702,7 @@ $ihq_portal_email_on = ihq_channel_method_allowed( 'email', ihq_channel_methods_
             .then(function (data) {
                 btn.disabled = false;
                 if (!data.success) {
-                    errBox.textContent = jsonErrMessage(data);
-                    errBox.style.display = 'block';
-                    hideRefusedMethod(data);
+                    showFailure(data, errBox, jsonErrMessage(data));
                     removeRegTs();
                     window.setTimeout(renderRegTs, 80);
                     return;

@@ -3,12 +3,13 @@
  *
  * The server renders only the methods influencerhq-api lists as on, but a page
  * opened before a switch still shows the old buttons. When an AJAX handler
- * answers 403 {"error":"method_disabled","method":"<m>","message":"…"}, the
- * page's own error box shows the message, and every element marked
- * data-ihq-channel-method="<m>" is hidden until the next page load. The
- * message also goes into every notice marked
+ * answers 403 {"error":"method_disabled","method":"<m>","message":"…"}, every
+ * element marked data-ihq-channel-method="<m>" is hidden until the next page
+ * load, and the message goes into every notice marked
  * data-ihq-channel-method-unavailable="<m>", which stays visible: the page's
- * reset and Back paths clear its error boxes, never these notices. The "OR"
+ * reset and Back paths clear its error boxes, never these notices. The error
+ * box beside such a notice stays empty then (showFailure), so the message
+ * shows once; a code step's own error box still shows it. The "OR"
  * divider between two methods (data-ihq-channel-method-divider) hides on any
  * refusal, as one side of it is then gone.
  *
@@ -31,6 +32,9 @@ export const DIVIDER_ATTRIBUTE = 'data-ihq-channel-method-divider';
 
 /** The display a revealed notice gets; its stylesheet may hide it by default. */
 const NOTICE_DISPLAY = 'block';
+
+/** The display a shown error box gets, as the inline scripts gave it. */
+const ERROR_DISPLAY = 'block';
 
 /** Display names, for a refusal that arrives without a message. */
 export const METHOD_LABELS = Object.freeze( {
@@ -96,14 +100,46 @@ export function hideRefusedMethod( { root, response } ) {
 	root.querySelectorAll( controls ).forEach( ( element ) => {
 		element.style.display = 'none';
 	} );
-	const notices = '[' + UNAVAILABLE_NOTICE_ATTRIBUTE + '="' + refusal.method + '"]';
-	root.querySelectorAll( notices ).forEach( ( notice ) => {
+	root.querySelectorAll( noticeSelector( refusal.method ) ).forEach( ( notice ) => {
 		notice.textContent = refusal.message;
 		notice.style.display = NOTICE_DISPLAY;
 	} );
 	return refusal;
 }
 
+/**
+ * Show a failed answer's message once, next to the form that sent it. A
+ * refused method's message goes into its unavailable notice, right below the
+ * error box, so the box is emptied and hidden instead of repeating it (or
+ * keeping an earlier error above it). Anything else, a refusal with no notice
+ * on the page included, shows `message` in the error box as before.
+ *
+ * @param {Object}           deps
+ * @param {Document|Element} deps.root     Where the method's controls and notices live.
+ * @param {*}                deps.response Parsed JSON of a wp_send_json_* answer.
+ * @param {?Element}         deps.errorBox The error box beside the method's notice, if the page has one.
+ * @param {string}           deps.message  What the error box shows for any other failure.
+ * @return {{method: string, message: string}|null} The refusal, or null when nothing was hidden.
+ */
+export function showFailure( { root, response, errorBox, message } ) {
+	const refusal = hideRefusedMethod( { root, response } );
+	if ( ! errorBox ) {
+		return refusal;
+	}
+	if ( refusal && root.querySelector( noticeSelector( refusal.method ) ) ) {
+		errorBox.textContent = '';
+		errorBox.style.display = 'none';
+		return refusal;
+	}
+	errorBox.textContent = message;
+	errorBox.style.display = ERROR_DISPLAY;
+	return refusal;
+}
+
+function noticeSelector( method ) {
+	return '[' + UNAVAILABLE_NOTICE_ATTRIBUTE + '="' + method + '"]';
+}
+
 if ( 'undefined' !== typeof window ) {
-	window.ihqChannelMethods = Object.freeze( { methodRefusal, hideRefusedMethod } );
+	window.ihqChannelMethods = Object.freeze( { methodRefusal, hideRefusedMethod, showFailure } );
 }

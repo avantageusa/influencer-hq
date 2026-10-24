@@ -25,6 +25,13 @@ todos:
   - id: tests
     content: PHP tests (reader + handlers) and node --test (client) for method on, method off, absent feature, failed call; focused mutation script
     status: completed
+  - id: refusal-once
+    content: >
+      Incremental re-review nit: a refusal on a first step showed twice (error box and the notice below it).
+      js/ihq-channel-methods.js showFailure — a refusal with a notice on the page empties and hides the error
+      box beside it; anything else shows the message there as before. The modal's email and Telegram steps and
+      Portal Login's login and register steps use it; code steps keep their own error box
+    status: completed
   - id: verify
     content: Run tests, lint, and CI gate before merge
     status: in-progress
